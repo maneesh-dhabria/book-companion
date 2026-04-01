@@ -31,6 +31,8 @@
 20. [Research Sources](#20-research-sources)
 21. [Open Questions & Risks](#21-open-questions--risks)
 
+*Note: Sections 17 includes sub-sections for Security, Testing, Logging, Dev Workflow, Data Export, and Prompt Templates added in review loops.*
+
 ---
 
 ## 1. Project Overview
@@ -1010,6 +1012,134 @@ Summarization processes sections sequentially. If it fails midway (e.g., on sect
 
 This is tracked via `book_sections.summary_status` enum: `pending | running | completed | failed | stale`
 
+### Security Considerations
+
+Even as a single-user local tool, the app processes untrusted files and runs shell subprocesses:
+
+| Concern | Mitigation |
+|---------|-----------|
+| **File upload validation** | Verify magic bytes match claimed format. Enforce configurable max file size (default 200MB). Reject files that fail format detection. |
+| **CLI command injection** | The Claude Code CLI alias is read from config, not from user input. The subprocess call uses Python's `subprocess.run()` with list arguments (not shell=True), preventing injection. Prompt content is passed via stdin or `--system-prompt`, not interpolated into the command string. |
+| **SQL injection** | Mitigated by SQLAlchemy ORM (parameterized queries). No raw SQL string interpolation. |
+| **Path traversal** | File paths from uploads are sanitized. Backup/restore paths are validated. |
+| **Denial of service** | Budget caps on LLM usage. Configurable timeouts on all external calls. |
+
+### Testing Strategy
+
+| Test Type | Scope | Tools |
+|-----------|-------|-------|
+| **Unit tests** | Service layer functions, parsers, evaluator assertions | `pytest`, `pytest-asyncio` |
+| **Integration tests** | Database operations, full parsing pipeline, search queries | `pytest` + test Postgres (Docker) |
+| **E2E tests (CLI)** | Full CLI command flows | `pytest` + `typer.testing.CliRunner` |
+| **Eval tests** | Summarization quality regression | Custom eval harness against golden test books |
+
+**Test infrastructure:**
+- Test database: Separate Postgres instance in Docker (or testcontainers)
+- Fixtures: Small test EPUB/PDF files included in `tests/fixtures/`
+- CI: GitHub Actions running unit + integration tests on push
+
+**What to test first (priority order):**
+1. Parser correctness (does EPUB/PDF parsing produce expected Markdown?)
+2. Data model integrity (do cascading operations work correctly?)
+3. Search accuracy (do hybrid search results rank correctly?)
+4. CLI command flows (do commands produce expected output?)
+5. Eval assertion accuracy (do binary assertions catch known-bad summaries?)
+
+### Logging & Observability
+
+- **Structured logging** via Python's `logging` module with `structlog` for JSON-formatted output
+- **Log levels**: DEBUG (parser details), INFO (processing milestones), WARNING (eval failures), ERROR (crashes)
+- **Per-book processing log**: Each processing run creates a structured log entry in `processing_jobs` with timing, step details, and error traces
+- **CLI verbosity**: `--verbose` flag increases log output. Default shows progress only.
+- **Log location**: `~/.config/bookcompanion/logs/` with daily rotation
+
+### Development Workflow
+
+**Local development (outside Docker):**
+
+```bash
+# Setup
+uv sync                                    # Install Python dependencies
+cd frontend && npm install                 # Install frontend dependencies
+
+# Backend
+uv run bookcompanion init                  # Setup DB
+uv run bookcompanion <command>             # Run CLI commands
+uv run uvicorn app.api.main:app --reload   # Run API server
+
+# Frontend
+cd frontend && npm run dev                 # Vite dev server
+
+# Testing
+uv run pytest                              # Run all tests
+uv run pytest tests/unit                   # Run unit tests only
+```
+
+**Code quality tools:**
+- **Formatter**: `ruff format` (fast, opinionated)
+- **Linter**: `ruff check` (replaces flake8, isort, etc.)
+- **Type checking**: `mypy` (strict mode)
+- **Frontend**: `eslint` + `prettier` for Vue/TypeScript
+
+### Data Export
+
+Users can export their library data for portability:
+
+```bash
+# Export all data as JSON
+bookcompanion export [--format json|markdown] [--output /path/to/dir]
+
+# Export a specific book with all its data
+bookcompanion export <book_id> [--format json|markdown]
+```
+
+**JSON export** includes: book metadata, section content, summaries, annotations, tags, eval results.
+
+**Markdown export** produces a directory structure:
+```
+export/
+├── Thinking Fast and Slow/
+│   ├── metadata.json
+│   ├── summary.md                 # Book-level summary
+│   ├── sections/
+│   │   ├── 01_introduction.md     # Original content
+│   │   ├── 01_introduction_summary.md
+│   │   └── ...
+│   └── annotations.md             # All annotations formatted
+└── ...
+```
+
+### Prompt Template Structure
+
+Prompts are stored as Jinja2 templates with defined variable contracts:
+
+```
+backend/app/services/summarizer/prompts/
+├── summarize_section_v1.txt
+├── summarize_book_v1.txt
+├── eval_faithfulness_v1.txt
+├── eval_completeness_v1.txt
+├── eval_coherence_v1.txt
+├── eval_format_v1.txt
+└── detect_structure_v1.txt
+```
+
+**Template variables available:**
+
+| Variable | Available In | Description |
+|----------|-------------|-------------|
+| `{{ section_title }}` | Section prompts | Title of the current section |
+| `{{ section_content }}` | Section prompts | Full Markdown content of the section |
+| `{{ book_title }}` | All prompts | Book title |
+| `{{ book_author }}` | All prompts | Book author(s) |
+| `{{ compression_target }}` | Summarization prompts | Target compression percentage |
+| `{{ detail_level }}` | Summarization prompts | brief/standard/detailed |
+| `{{ all_section_summaries }}` | Book summary prompt | Concatenated section summaries |
+| `{{ source_text }}` | Eval prompts | Original content being evaluated |
+| `{{ summary_text }}` | Eval prompts | Summary being evaluated |
+
+**Version convention**: `{purpose}_v{N}.txt` — increment N when making changes. Old versions are kept for reproducibility.
+
 ---
 
 ## 18. V2+ Deferred Features
@@ -1060,6 +1190,10 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 25 | Long section handling | A) Fail, B) Truncate, C) Recursive sub-chunking | **C) Recursive sub-chunking** | Split at paragraph boundaries, summarize sub-chunks, merge. Transparent to user. |
 | 26 | Partial processing recovery | A) Restart from scratch, B) Resume from failure point | **B) Resume from failure point** | Skip completed sections, start from first pending/failed. `--force` for full re-run. |
 | 27 | CLI output rendering | A) Plain text, B) Rich Markdown, C) Rich + pager | **C) Rich + pager** | `rich` library for Markdown rendering, tables, progress bars. Pager for long content. JSON output for scripting. |
+| 28 | Subprocess safety | A) shell=True, B) List args (no shell) | **B) List args** | Prevents command injection. Prompts passed via stdin, not interpolated. |
+| 29 | Logging | A) Print statements, B) stdlib logging, C) structlog | **C) structlog** | JSON-formatted structured logs. Daily rotation. Per-book processing logs. |
+| 30 | Code quality | A) Black+flake8, B) Ruff | **B) Ruff** | Single tool for formatting + linting. Fast, by Astral (same as uv). |
+| 31 | Prompt templates | A) Hardcoded strings, B) External files, C) Jinja2 templates | **C) Jinja2 templates** | Versioned files with defined variable contracts. Enables prompt iteration without code changes. |
 
 ---
 
