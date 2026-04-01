@@ -20,14 +20,16 @@
 9. [Search](#9-search)
 10. [CLI Interface](#10-cli-interface)
 11. [Web Interface](#11-web-interface)
-12. [Project Structure](#12-project-structure)
-13. [Tech Stack](#13-tech-stack)
-14. [Infrastructure & Deployment](#14-infrastructure--deployment)
-15. [Non-Functional Requirements](#15-non-functional-requirements)
-16. [V2+ Deferred Features](#16-v2-deferred-features)
-17. [Decision Log](#17-decision-log)
-18. [Research Sources](#18-research-sources)
-19. [Open Questions & Risks](#19-open-questions--risks)
+12. [Configuration Management](#12-configuration-management)
+13. [Project Structure](#13-project-structure)
+14. [Tech Stack](#14-tech-stack)
+15. [Infrastructure & Deployment](#15-infrastructure--deployment)
+16. [External Dependencies & Setup](#16-external-dependencies--setup)
+17. [Non-Functional Requirements](#17-non-functional-requirements)
+18. [V2+ Deferred Features](#18-v2-deferred-features)
+19. [Decision Log](#19-decision-log)
+20. [Research Sources](#20-research-sources)
+21. [Open Questions & Risks](#21-open-questions--risks)
 
 ---
 
@@ -428,6 +430,11 @@ Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgmen
 
 6. **Summary versioning**: `summary_version` tracks which prompt version generated the summary. `summary_eval` stores assertion results as JSON.
 
+7. **Annotation text anchoring**: Character offsets alone are fragile — they break if content is re-parsed or updated. The annotation model uses a **dual anchoring strategy**:
+   - **Primary**: `text_start` + `text_end` (character offsets within the content)
+   - **Fallback**: `selected_text` (the actual highlighted text, stored verbatim)
+   - **Resolution**: On display, first try offsets. If the text at those offsets doesn't match `selected_text`, fall back to fuzzy text search within the section to relocate the annotation. This handles re-parsing scenarios gracefully.
+
 ---
 
 ## 9. Search
@@ -527,6 +534,12 @@ bookcompanion eval compare --book <id> --section <id> --ratios 10,20,30
 bookcompanion config                        # Show current config
 bookcompanion config set llm.cli_command "claude-personal"
 bookcompanion config set llm.model "sonnet"
+
+# Setup & maintenance
+bookcompanion init                          # First-time setup (DB, migrations, dependency check)
+bookcompanion backup [--output path]        # Full database backup (pg_dump)
+bookcompanion restore <backup_file>         # Restore from backup
+bookcompanion backup list                   # List available backups
 ```
 
 ### Step-by-Step Flow Example
@@ -593,7 +606,98 @@ Summarization complete. Run `bookcompanion summary 7` to read.
 
 ---
 
-## 12. Project Structure
+## 12. Configuration Management
+
+### Config File Location
+
+Configuration follows the XDG Base Directory Specification:
+
+- **Primary**: `~/.config/bookcompanion/config.yaml`
+- **Fallback**: `~/.bookcompanion/config.yaml`
+- **Override**: `BOOKCOMPANION_CONFIG` environment variable
+
+### Configuration Schema
+
+```yaml
+# ~/.config/bookcompanion/config.yaml
+
+database:
+  url: "postgresql://bookcompanion:bookcompanion@localhost:5438/bookcompanion"
+
+llm:
+  cli_command: "claude-personal"       # Claude Code CLI alias from ~/.zshrc
+  model: "sonnet"                       # Default model for summarization
+  max_budget_usd: 5.0                  # Per-book budget cap
+  timeout_seconds: 300                 # Per-section timeout
+  eval_enabled: true                   # Run binary assertions on summaries
+  max_retries: 2                       # Auto-retry on critical eval failures
+
+summarization:
+  default_detail_level: "standard"     # brief | standard | detailed
+  prompt_version: "v1"                 # Active prompt version
+  eval_prompt_version: "v1"            # Active eval prompt version
+
+embedding:
+  ollama_url: "http://localhost:11434"
+  model: "nomic-embed-text"
+  chunk_size: 512                      # Tokens per embedding chunk
+  chunk_overlap: 50                    # Token overlap between chunks
+
+search:
+  rrf_k: 60                           # RRF constant
+  default_limit: 20                   # Default results per query
+
+storage:
+  max_file_size_mb: 200               # Maximum book file size
+```
+
+### Configuration Loading
+
+1. Load defaults from code (hardcoded sensible defaults)
+2. Override with config file values
+3. Override with environment variables (prefixed `BOOKCOMPANION_`, e.g., `BOOKCOMPANION_DATABASE__URL`)
+4. Override with CLI flags (highest priority)
+
+This is implemented via `pydantic-settings` which supports this cascade natively.
+
+### Database Initialization
+
+First-time setup via CLI:
+
+```bash
+# Auto-creates database, runs migrations, pulls embedding model
+bookcompanion init
+
+# Or with custom database URL
+bookcompanion init --database-url "postgresql://..."
+```
+
+The `init` command:
+1. Checks if config file exists, creates with defaults if not
+2. Connects to Postgres, creates the database if needed
+3. Runs all Alembic migrations
+4. Verifies Ollama is running and pulls the embedding model if needed
+5. Runs a health check
+
+Subsequent runs: `bookcompanion` commands auto-check if migrations are pending and prompt the user.
+
+### Backup & Restore
+
+```bash
+# Create a full backup (pg_dump of entire database including BLOBs)
+bookcompanion backup [--output /path/to/backup.sql.gz]
+# Default: ~/.config/bookcompanion/backups/bookcompanion_YYYY-MM-DD_HHMMSS.sql.gz
+
+# Restore from backup
+bookcompanion restore /path/to/backup.sql.gz
+
+# List available backups
+bookcompanion backup list
+```
+
+---
+
+## 13. Project Structure
 
 ```
 book-companion/
@@ -682,7 +786,7 @@ book-companion/
 
 ---
 
-## 14. Infrastructure & Deployment
+## 15. Infrastructure & Deployment
 
 ### Docker Compose Configuration
 
@@ -737,7 +841,75 @@ services:
 
 ---
 
-## 15. Non-Functional Requirements
+## 16. External Dependencies & Setup
+
+### System Dependencies
+
+| Dependency | Required For | Installation | Notes |
+|-----------|-------------|-------------|-------|
+| **Docker + Docker Compose** | Running the full stack | [docs.docker.com](https://docs.docker.com) | Required for all users |
+| **Ollama** | Local embeddings | [ollama.com](https://ollama.com) | Already running on host. Only the CLI/server is needed, not a GUI. |
+| **Calibre (ebook-convert)** | MOBI format support | `brew install calibre` or install CLI tools only | Only the `ebook-convert` CLI tool is needed, not the full Calibre GUI. On macOS: `brew install --cask calibre` installs both. On Linux: `apt install calibre` or download CLI-only from calibre website. |
+| **Claude Code CLI** | LLM summarization | [claude.ai/code](https://claude.ai/code) | Must be configured with a valid profile. The alias (e.g., `claude-personal`) must be resolvable from the shell. |
+
+### Dependency Verification
+
+The `bookcompanion init` command verifies all dependencies:
+
+```bash
+$ bookcompanion init
+
+Checking dependencies...
+  ✓ Docker: v27.1.0
+  ✓ Docker Compose: v2.29.0
+  ✓ Ollama: running at http://localhost:11434
+  ✓ ebook-convert: Calibre 7.x
+  ✓ Claude Code CLI: claude-personal → Claude Code v2.1.x
+  ✓ PostgreSQL: pgvector/pgvector:pg16 image available
+
+All dependencies satisfied. Setting up database...
+```
+
+### LLM Provider Interface
+
+The summarizer uses an abstract provider interface to support future extensibility:
+
+```python
+class LLMProvider(ABC):
+    @abstractmethod
+    async def generate(self, prompt: str, system_prompt: str | None = None,
+                       json_schema: dict | None = None) -> str:
+        """Generate a completion from the LLM."""
+        ...
+
+    @abstractmethod
+    async def generate_structured(self, prompt: str, schema: type[BaseModel],
+                                  system_prompt: str | None = None) -> BaseModel:
+        """Generate a structured (validated) completion."""
+        ...
+
+class ClaudeCodeCLIProvider(LLMProvider):
+    """Invokes Claude Code CLI as a subprocess."""
+    def __init__(self, cli_command: str, model: str, timeout: int): ...
+
+# Future providers:
+# class OllamaProvider(LLMProvider): ...
+# class AnthropicAPIProvider(LLMProvider): ...
+```
+
+The active provider is selected via configuration. Swapping providers requires only a config change, no code changes.
+
+### Async Processing & Progress Tracking
+
+For the **fully async** processing mode:
+
+- **CLI**: The `bookcompanion add --async` command starts processing in a background thread and returns immediately. Progress is polled via `bookcompanion status <book_id>`.
+- **Web UI**: Processing status is tracked in the `processing_jobs` table. The frontend polls the status endpoint at regular intervals (e.g., every 5 seconds) to update the progress UI. WebSocket support can be added in V2 for real-time updates.
+- **Progress granularity**: The `processing_jobs.progress` JSON field stores `{current: N, total: M, current_step: "Summarizing Chapter 3"}` for detailed progress display.
+
+---
+
+## 17. Non-Functional Requirements
 
 ### Performance
 
@@ -774,7 +946,7 @@ For a personal library of ~100 books: **1-15 GB total** — well within single P
 
 ---
 
-## 16. V2+ Deferred Features
+## 18. V2+ Deferred Features
 
 These features are explicitly out of scope for V1 but inform the architecture to ensure extensibility:
 
@@ -791,7 +963,7 @@ These features are explicitly out of scope for V1 but inform the architecture to
 
 ---
 
-## 17. Decision Log
+## 19. Decision Log
 
 | # | Decision | Options Considered | Choice | Rationale |
 |---|----------|-------------------|--------|-----------|
@@ -813,10 +985,15 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 16 | PDF parser | A) PyMuPDF, B) pdfplumber, C) marker-pdf | **C) marker-pdf** | ML-based, best quality for complex layouts with tables and images. Falls back to PyMuPDF for simple text-only PDFs. |
 | 17 | Deployment | A) Local only, B) Local primary + cloud-ready, C) Cloud-native | **B) Local primary, cloud-ready** | Docker Compose for daily use, structured for easy cloud deployment if needed later. |
 | 18 | Primary interface | A) Web-first, B) CLI-first, C) Equal | **B) CLI-first, then equal** | Build and verify all functionality via CLI first. Service layer ensures feature parity when web is added. |
+| 19 | Config location | A) Project-local, B) XDG standard, C) Home directory | **B) XDG standard (~/.config/bookcompanion/)** | Follows platform conventions. Supports env var override. |
+| 20 | Annotation anchoring | A) Character offsets only, B) Text fingerprint only, C) Dual (offsets + stored text) | **C) Dual anchoring** | Offsets for speed, stored text as fallback. Handles re-parsing gracefully via fuzzy text search. |
+| 21 | Async progress tracking | A) Polling, B) WebSocket, C) Polling now + WebSocket later | **C) Polling now, WebSocket V2** | Polling is simpler, sufficient for single user. 5-second intervals are fine for progress tracking. |
+| 22 | Ollama in Docker vs host | A) Docker container, B) Use host Ollama | **B) Use host Ollama** | Already running locally. Avoids duplicate container. Backend connects via host.docker.internal. |
+| 23 | MOBI via Calibre | A) Full Calibre, B) ebook-convert CLI only, C) Drop MOBI support | **B) ebook-convert CLI only** | Only the CLI tool is needed, not the full Calibre GUI. Lighter dependency. |
 
 ---
 
-## 18. Research Sources
+## 20. Research Sources
 
 ### Consulted During Requirements
 
@@ -843,7 +1020,7 @@ These features are explicitly out of scope for V1 but inform the architecture to
 
 ---
 
-## 19. Open Questions & Risks
+## 21. Open Questions & Risks
 
 ### Open Questions
 
