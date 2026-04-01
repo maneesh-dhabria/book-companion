@@ -184,6 +184,27 @@ Upload → Format Detection → [MOBI: Convert to EPUB] → Format-Specific Pars
 - Parse author(s) from: file metadata, EPUB OPF, PDF metadata
 - User can edit/correct parsed metadata
 
+### Duplicate Detection & Re-upload
+
+- On upload, compute a SHA-256 hash of the file content
+- If a book with the same hash already exists, warn the user: "This book already exists (ID: X). Re-import? [y/N]"
+- Re-import replaces the parsed content and sections but preserves: annotations, tags, and manual metadata edits
+- Summaries are marked as `stale` after re-import and must be regenerated
+- Embeddings for re-imported sections are automatically re-generated
+
+### Metadata Editing
+
+Users can edit book metadata and section structure after import:
+
+```bash
+bookcompanion edit <book_id> --title "New Title" --author "Name"
+bookcompanion edit <book_id> sections   # Interactive section structure editor
+```
+
+Cascading effects:
+- **Title/author change**: Updates search index entries for book_title
+- **Section structure change** (merge/split/reorder): Affected sections' summaries are marked `stale`, annotations are preserved via text anchoring fallback
+
 ---
 
 ## 6. Summarization Pipeline
@@ -196,6 +217,15 @@ Books are too long for a single LLM context window. Summarization follows a two-
 Phase 1 (Map): Book Sections → Individual Section Summaries
 Phase 2 (Reduce): All Section Summaries → Book-Level Summary
 ```
+
+### Handling Long Sections
+
+Some book sections can exceed the LLM context window (e.g., 50+ page chapters). Strategy:
+
+1. **Estimate token count** for each section (rough: 1 token ≈ 4 characters)
+2. **If under context limit** (~150K tokens for Claude Sonnet): summarize directly
+3. **If over context limit**: Split into sub-chunks at natural paragraph boundaries, summarize each sub-chunk, then merge sub-chunk summaries into the section summary (recursive map-reduce within a single section)
+4. This is transparent to the user — the final output is still one section summary
 
 ### Phase 1: Section Summarization
 
@@ -479,6 +509,21 @@ where `k=60` (standard constant).
 - **Chunking**: Overlapping windows of ~512 tokens with 50-token overlap
 - **Index**: pgvector HNSW index for approximate nearest neighbor search
 
+### Embedding Index Lifecycle
+
+Embeddings are created and updated at specific trigger points:
+
+| Event | Action |
+|-------|--------|
+| Book parsed (sections created) | Embed section titles + section content chunks |
+| Summary generated | Embed summary chunks, add to search index |
+| Summary regenerated | Delete old summary embeddings, create new ones |
+| Book re-imported | Delete all embeddings for book, re-embed all content |
+| Book deleted | Delete all embeddings for book |
+| Book metadata edited (title/author) | Re-embed book_title entry |
+
+Embedding generation is the final step in both the parse and summarize pipelines. The `processing_jobs` table tracks embedding as a distinct step (`step: embed`).
+
 ### Search Features
 
 - Global search across all books
@@ -574,6 +619,14 @@ Generating book-level summary... done (eval: 13/13 passed)
 
 Summarization complete. Run `bookcompanion summary 7` to read.
 ```
+
+### CLI Output Formatting
+
+- **Long content** (read, summary commands): Pipe through system pager (`less` or `$PAGER`) with Markdown rendering via `rich` library
+- **Tables** (list, search, annotations): Formatted tables via `rich.table`
+- **Progress** (summarize, add --async): Rich progress bars with section-level granularity
+- **Markdown rendering**: Use `rich.markdown` for terminal Markdown rendering with syntax highlighting for code blocks
+- **Output redirection**: All commands support `--format json` for piping to other tools and `--no-pager` to disable paging
 
 ---
 
@@ -937,12 +990,25 @@ For the **fully async** processing mode:
 
 For a personal library of ~100 books: **1-15 GB total** — well within single Postgres capacity.
 
-### Error Handling
+### Error Handling & Recovery
 
-- Failed parsing: Log error, mark book as `parse_failed`, allow retry
+- Failed parsing: Log error, mark book as `parse_failed`, allow retry via `bookcompanion add <file> --force`
 - Failed summarization: Log error, mark section as `summary_failed`, allow retry per-section
 - Failed eval assertions: Auto-retry for critical failures (max 2 retries), flag for user review otherwise
 - Claude Code CLI timeout: Configurable timeout (default 300s), fail gracefully with error message
+
+### Partial Processing Recovery
+
+Summarization processes sections sequentially. If it fails midway (e.g., on section 7 of 12):
+
+1. Sections 1-6 retain their completed summaries
+2. Section 7 is marked as `summary_failed` with the error message
+3. Sections 8-12 remain as `summary_pending`
+4. The user can resume with: `bookcompanion summarize <book_id>` — this skips already-completed sections and starts from the first `pending` or `failed` section
+5. To force re-summarization of all sections: `bookcompanion summarize <book_id> --force`
+6. The book-level summary is only generated after all sections are successfully summarized
+
+This is tracked via `book_sections.summary_status` enum: `pending | running | completed | failed | stale`
 
 ---
 
@@ -990,6 +1056,10 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 21 | Async progress tracking | A) Polling, B) WebSocket, C) Polling now + WebSocket later | **C) Polling now, WebSocket V2** | Polling is simpler, sufficient for single user. 5-second intervals are fine for progress tracking. |
 | 22 | Ollama in Docker vs host | A) Docker container, B) Use host Ollama | **B) Use host Ollama** | Already running locally. Avoids duplicate container. Backend connects via host.docker.internal. |
 | 23 | MOBI via Calibre | A) Full Calibre, B) ebook-convert CLI only, C) Drop MOBI support | **B) ebook-convert CLI only** | Only the CLI tool is needed, not the full Calibre GUI. Lighter dependency. |
+| 24 | Duplicate book handling | A) Reject, B) Replace, C) Warn + offer re-import | **C) Warn + offer re-import** | SHA-256 hash detection. Re-import preserves annotations/tags but marks summaries as stale. |
+| 25 | Long section handling | A) Fail, B) Truncate, C) Recursive sub-chunking | **C) Recursive sub-chunking** | Split at paragraph boundaries, summarize sub-chunks, merge. Transparent to user. |
+| 26 | Partial processing recovery | A) Restart from scratch, B) Resume from failure point | **B) Resume from failure point** | Skip completed sections, start from first pending/failed. `--force` for full re-run. |
+| 27 | CLI output rendering | A) Plain text, B) Rich Markdown, C) Rich + pager | **C) Rich + pager** | `rich` library for Markdown rendering, tables, progress bars. Pager for long content. JSON output for scripting. |
 
 ---
 
