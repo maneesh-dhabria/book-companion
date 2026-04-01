@@ -1,6 +1,6 @@
 # Book Companion - V1 Requirements Document
 
-**Version:** 3.0 (restructured)
+**Version:** 3.1 (restructured + MSF recommendations)
 **Date:** 2026-04-01
 **Status:** Draft — Restructured
 **Source Document:** [Initial Thoughts](../2026-04-01_initial_thoughts.txt)
@@ -94,6 +94,7 @@ Mixed non-fiction: business, self-help, technical, academic. Fiction is not supp
 - External summary/review discovery (4-5 curated links per book, post-generation)
 - Hybrid search (BM25 + semantic) across all books and concepts
 - CLI-first development, then Web + REST APIs
+- Quick summary mode: rough book-level summary in ~2 min before full section processing
 - Dual processing mode: step-by-step (default) and fully async
 
 ### Explicitly Deferred (V2+)
@@ -358,6 +359,25 @@ Books are too long for a single LLM context window. Summarization follows a two-
 Phase 1 (Map): Book Sections → Individual Section Summaries
 Phase 2 (Reduce): All Section Summaries → Book-Level Summary
 ```
+
+### Quick Summary Mode
+
+For users who want a fast overview before committing to full section-level processing:
+
+```bash
+bookcompanion add --quick <file_path>    # Parse + generate rough book summary in ~2 min
+```
+
+**Flow:**
+1. Parse and extract full content as Markdown
+2. Estimate total token count (1 token ≈ 4 characters)
+3. **If under model context limit** (~200K tokens): send entire content in a single pass to Claude Code CLI for a rough book-level summary
+4. **If over context limit**: chunk into ~100K-token blocks, summarize each in parallel, merge into book summary
+5. Store as `quick_summary` on the book (separate from the `overall_summary` generated later from section summaries)
+
+Quick summary skips: section-level processing, eval assertions, concepts extraction, and cumulative context. It's a fast, rough overview. User can trigger full processing later with `bookcompanion summarize <id>`.
+
+**Model configuration**: Quick summary can use a different model than full summarization (e.g., Sonnet for speed/cost on quick, Opus for quality on full). Configurable via `llm.quick_summary_model` in config.
 
 ### Handling Long Sections
 
@@ -632,6 +652,7 @@ The judge is asked: "Given the source text, which summary (A or B) is more faith
 └────────────────┘                           │ file_format    │
                                              │ cover_image    │
                                              │ status         │
+                                             │ quick_summary  │ ← rough single-pass summary
                                              │ overall_summary│
                                              │ metadata (JSON)│
                                              │ created_at     │
@@ -681,6 +702,7 @@ The judge is asked: "Given the source text, which summary (A or B) is more faith
                                 - section_content
                                 - section_summary
                                 - concept
+                                - annotation
 
 ┌────────────────────┐     ┌────────────────────┐     ┌─────────────────────┐
 │  processing_jobs   │     │     concepts       │     │  concept_sections   │
@@ -728,6 +750,10 @@ The judge is asked: "Given the source text, which summary (A or B) is more faith
    - **Fallback**: `selected_text` (the actual highlighted text, stored verbatim)
    - **Resolution**: On display, first try offsets. If the text at those offsets doesn't match `selected_text`, fall back to fuzzy text search within the section to relocate the annotation. This handles re-parsing scenarios gracefully.
 
+8. **Freeform notes as annotations**: Annotations with `text_start`/`text_end`/`selected_text` set to null serve as freeform section-level or book-level notes (not anchored to specific text). This avoids a separate notes system — all user commentary lives in the `annotations` table regardless of whether it's text-anchored or freeform.
+
+9. **User-edited summaries**: `summary_md` can be edited by the user. A `user_edited` boolean flag on `book_sections` prevents auto-regeneration from overwriting manual edits. Same pattern applies to concepts index entries.
+
 ---
 
 ## 9. Search
@@ -748,6 +774,7 @@ All searchable content is indexed in the `search_index` table with both:
 | `section_content` | Original section content (chunked into ~512-token overlapping segments) |
 | `section_summary` | Section summaries (chunked if needed) |
 | `concept` | Concept term + definition from concepts index |
+| `annotation` | Annotation notes + selected text |
 
 ### Search Query Flow
 
@@ -785,6 +812,7 @@ Embeddings are created and updated at specific trigger points:
 | Book re-imported | Delete all embeddings for book, re-embed all content |
 | Book deleted | Delete all embeddings for book |
 | Book metadata edited (title/author) | Re-embed book_title entry |
+| Annotation created/edited | Embed annotation note + selected text, add to search index |
 
 Embedding generation is the final step in both the parse and summarize pipelines. The `processing_jobs` table tracks embedding as a distinct step (`step: embed`).
 
@@ -806,8 +834,10 @@ Development follows CLI-first approach. All functionality is available via CLI b
 ```bash
 # Book management
 bookcompanion add <file_path>              # Upload + parse (step-by-step: user reviews TOC)
+bookcompanion add <file_path> --quick      # Parse + generate rough book summary in ~2 min
 bookcompanion add <file_path> --async      # Upload + parse + summarize + embed (auto-accepts TOC, runs in background)
 bookcompanion list                          # List all books
+bookcompanion list --recent                 # Show recently accessed books
 bookcompanion list --tag <tag>              # Filter by tag
 bookcompanion list --author <name>          # Filter by author
 bookcompanion show <book_id>                # Book details + section list
@@ -815,10 +845,14 @@ bookcompanion delete <book_id>              # Remove a book
 
 # Reading & summaries
 bookcompanion read <book_id> [section_id]   # Read original content
-bookcompanion summary <book_id>             # Book-level summary
+bookcompanion read <book_id> <section_id> --with-summary  # Side-by-side content + summary
+bookcompanion summary <book_id>             # Book-level summary (or quick summary if full not ready)
 bookcompanion summary <book_id> <section_id> # Section summary
-bookcompanion summarize <book_id>           # Trigger summarization
+bookcompanion summary <book_id> --copy      # Copy summary to clipboard
+bookcompanion summary <book_id> --export <file.md>  # Export summary to file
+bookcompanion summarize <book_id>           # Trigger full section-level summarization
 bookcompanion summarize <book_id> <section_id> # Re-summarize a section
+bookcompanion edit-summary <book_id> [section_id]  # Edit summary in $EDITOR (marks as user_edited)
 
 # Annotations
 bookcompanion annotate <book_id> <section_id> --text "..." --note "..."
@@ -828,6 +862,8 @@ bookcompanion annotations --tag <tag>       # List by tag
 # Search
 bookcompanion search "query"                # Hybrid search across all books
 bookcompanion search "query" --book <id>    # Search within a book
+bookcompanion search "query" --annotations-only  # Search only within annotations/notes
+bookcompanion search "query" --source <type>     # Filter by: content|summary|annotation|concept
 
 # Tags & authors
 bookcompanion tag <book_id> <tag_name>      # Add tag to book
@@ -837,6 +873,7 @@ bookcompanion authors                       # List all authors
 # Concepts index
 bookcompanion concepts <book_id>            # Show concepts index for a book
 bookcompanion concepts search "term"        # Search concepts across all books
+bookcompanion concepts edit <book_id>       # Edit concepts index in $EDITOR (user_edited entries)
 
 # External references
 bookcompanion references <book_id>          # List external summary/review links
@@ -899,10 +936,12 @@ Summarization complete. Run `bookcompanion summary 7` to read.
 ### CLI Output Formatting
 
 - **Long content** (read, summary commands): Pipe through system pager (`less` or `$PAGER`) with Markdown rendering via `rich` library
+- **Side-by-side view**: `--with-summary` uses `rich.Columns` for wide terminals or stacked `rich.Panel` for narrow terminals
 - **Tables** (list, search, annotations): Formatted tables via `rich.table`
-- **Progress** (summarize, add --async): Rich progress bars with section-level granularity
+- **Search results**: Grouped by book with top 2-3 results per book and "and N more..." collapse. Book title as section header.
+- **Progress** (summarize): Rich progress bars with section-level granularity. Shows estimated time remaining (based on section count x avg processing time). Completed section summaries are browsable immediately via `bookcompanion summary` while remaining sections are still processing.
 - **Markdown rendering**: Use `rich.markdown` for terminal Markdown rendering with syntax highlighting for code blocks
-- **Output redirection**: All commands support `--format json` for piping to other tools and `--no-pager` to disable paging
+- **Output redirection**: All commands support `--format json` for piping to other tools, `--no-pager` to disable paging, `--copy` for clipboard, `--export <file>` for file output
 
 ---
 
@@ -959,7 +998,8 @@ database:
 llm:
   provider: "claude_cli"               # Active provider: claude_cli | ollama | anthropic_api (future)
   cli_command: "claude-personal"       # Claude Code CLI alias from ~/.zshrc (used when provider=claude_cli)
-  model: "sonnet"                       # Default model for summarization
+  model: "sonnet"                       # Default model for full summarization
+  quick_summary_model: "sonnet"        # Model for quick summary mode (can differ)
   max_budget_usd: 5.0                  # Per-book budget cap
   timeout_seconds: 300                 # Per-section timeout
   eval_enabled: true                   # Run binary assertions on summaries
@@ -1013,6 +1053,19 @@ The `init` command:
 5. Runs a health check
 
 Subsequent runs: `bookcompanion` commands auto-check if migrations are pending and prompt the user.
+
+**Guided first-run**: After successful init, print a Getting Started guide:
+```
+Setup complete! Here's how to get started:
+
+  1. Add your first book:    bookcompanion add ~/path/to/book.epub
+  2. Quick overview:         bookcompanion add --quick ~/path/to/book.epub
+  3. Full summarization:     bookcompanion summarize <book_id>
+  4. Browse your library:    bookcompanion list
+  5. Search across books:    bookcompanion search "query"
+
+Run `bookcompanion --help` for all commands.
+```
 
 ### Backup & Restore
 
@@ -1307,6 +1360,23 @@ For the **fully async** processing mode:
 
 For a personal library of ~100 books: **1-15 GB total** — well within single Postgres capacity.
 
+### Processing Cost Estimates
+
+Estimated Claude API cost per book (via Claude Code CLI subscription). Costs vary by model and book length:
+
+| Operation | Model | Typical Cost (300-page book) |
+|-----------|-------|------------------------------|
+| Quick summary (single-pass) | Sonnet | ~$0.30-0.80 |
+| Section summarization (15 sections) | Sonnet | ~$1.00-2.50 |
+| Eval assertions (~16 assertions x 15 sections) | Sonnet | ~$1.50-3.00 |
+| Book-level summary | Sonnet | ~$0.20-0.50 |
+| Image captioning (10 images) | Sonnet | ~$0.50-1.00 |
+| External summary discovery | Sonnet | ~$0.10-0.20 |
+| **Total (full pipeline)** | **Sonnet** | **~$3.50-8.00** |
+| **Quick summary only** | **Sonnet** | **~$0.30-0.80** |
+
+*Note: Costs are approximate and depend on book length, section count, image count, and whether eval retries are needed. Claude Code CLI subscription may include usage credits that offset these costs. Embedding via Ollama is free (local).*
+
 ### Error Handling & Recovery
 
 - Failed parsing: Log error, mark book as `parse_failed`, allow retry via `bookcompanion add <file> --force`
@@ -1462,6 +1532,13 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 38 | Prompt comparison | Absolute scoring / Pairwise comparison | **Pairwise LLM-judge** | Relative judgments more reliable; eliminates calibration issues. |
 | 39 | Frontend server state | Pinia only / Pinia+Vue Query | **Pinia + Vue Query split** | Pinia for client state, Vue Query for server state with auto-caching. |
 | 40 | External summary discovery | Skip / Reference only / Improve summary / Validate | **Reference only (post-gen)** | Links+metadata only (copyright); non-blocking; avoids biasing AI summary. |
+| 41 | Quick summary mode | Skip / Single-pass / Fast map-reduce | **Single-pass if fits context, fast map-reduce otherwise** | Delivers rough book overview in ~2 min; stored as `quick_summary` separate from full `overall_summary`. |
+| 42 | Summary editability | Immutable / User-editable | **User-editable via $EDITOR** | `user_edited` flag prevents auto-regeneration overwrite. Same for concepts index. |
+| 43 | Annotation search | Skip / Index in search | **Index annotation notes+text in search_index** | source_type `annotation` enables "what did I note about X?" queries. |
+| 44 | Freeform notes | Separate system / Merge with annotations | **Merge: annotations with null text anchors** | Avoids duplicate system; all user commentary in one table. |
+| 45 | CLI output sharing | Pipe only / Add --copy and --export | **Add --copy (clipboard) and --export (file)** | Quick sharing of findings to docs/email/Slack. |
+| 46 | Search result grouping | Flat list / Grouped by book | **Grouped by book** | Top 2-3 per book with collapse; easier to scan across large libraries. |
+| 47 | Processing time estimate | Skip / Show estimate | **Show estimated time after parsing** | Based on section count x avg processing time; reduces wait anxiety. |
 
 ---
 
@@ -1482,6 +1559,10 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | Grusky et al., 2018 (NAACL) | Compression metrics | News summarization clusters at 10-20% compression. Optimal ratio is task-dependent. |
 | marker-pdf GitHub | PDF parsing | ML-based PDF to Markdown conversion with table and image support |
 | ebooklib documentation | EPUB parsing | Standard Python library for EPUB manipulation |
+
+### Documentation Deliverable: Sample Output
+
+Include sample output in `docs/` or README showing what a processed book looks like: sample book summary, section summary, concepts index, search results, and annotations. This allows evaluation of the tool's value before committing to full setup.
 
 ### Additional Research To Conduct (During Implementation)
 
