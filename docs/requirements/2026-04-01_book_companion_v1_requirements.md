@@ -1348,13 +1348,26 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 3 | Should embeddings be generated for original content, summaries, or both? | Affects search quality and storage | During search implementation — start with both, measure |
 | 4 | How to handle rate limiting if Claude Code CLI has usage caps? | May need queuing/throttling | During summarization implementation |
 | 5 | Optimal prompt templates for different book genres? | Affects summary quality | Iterative — use eval harness to compare |
+| 6 | How to handle Calibre ebook-convert CLI-only installation on different OSes? | Affects MOBI support onboarding | During setup — document per-OS installation |
+| 7 | Should the concepts index extraction use a separate prompt or be part of the summarization prompt? | Affects cost and quality | During implementation — test both approaches with eval harness |
+| 8 | How to handle books in languages other than English? | Affects parsing and summarization quality | Defer — V1 targets English only. Document as limitation. |
 
 ### Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | PDF parsing quality varies widely | High | Medium | Use marker-pdf with fallback to PyMuPDF. Allow manual section editing. |
-| LLM summarization inconsistency | Medium | High | Binary assertion battery with auto-retry. Prompt versioning for iteration. |
+| LLM summarization inconsistency | Medium | High | Binary assertion battery with auto-retry. Prompt versioning for iteration. Cross-summary consistency check. |
 | Postgres BLOB performance at scale | Low | Medium | Single user with ~100 books is well within limits. Can migrate to filesystem if needed. |
 | Claude Code CLI subprocess reliability | Medium | Medium | Configurable timeouts, retry logic, error logging. Interface allows swapping to direct API. |
 | Embedding model quality for domain content | Medium | Medium | nomic-embed-text is a solid default. Can swap models via Ollama without code changes. |
+| Cumulative context token bloat | Medium | Low | As more sections are processed, cumulative context grows. Mitigate by summarizing the cumulative context itself, keeping it to a fixed token budget. |
+| Cross-summary consistency cost | Low | Low | Generates 2 summary variants for faithfulness check. Doubles cost for this assertion. Can be made optional via config. |
+| Claude Code CLI requires internet | High | Medium | Summarization fails if offline. Document as requirement. LLM provider interface allows future swap to local Ollama for offline use. |
+
+### Constraints & Limitations (V1)
+
+- **English only**: Parsing and summarization optimized for English-language books
+- **Internet required**: Claude Code CLI needs network access for summarization (embedding via Ollama is local)
+- **Single user**: No authentication, no data isolation between users
+- **No real-time collaboration**: No shared annotations or collaborative features
