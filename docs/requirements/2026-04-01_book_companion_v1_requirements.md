@@ -67,6 +67,18 @@ Mixed non-fiction: business, self-help, technical, academic. Fiction is not supp
 4. **Resumption**: After a reading gap, it's hard to resume. Users need "summarize up to this point" capability.
 5. **Deep understanding**: Some passages need explanation or discussion beyond what the book provides.
 
+### Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Book** | A collection of Book Sections around a specific topic by one or more authors. Supported formats: EPUB, MOBI, PDF. |
+| **Book Section** | An individual high-level logical component within a book, typically referenced in the table of contents (e.g., chapter, part, appendix). Sections can be nested (Part → Chapter → Sub-section). |
+| **Library** | The collection of all books managed by Book Companion, with ability to add tags and filter/search. |
+| **Concepts Index** | A per-book structured glossary of key terms, frameworks, and models extracted during summarization. Grows as sections are processed. |
+| **Summary** | An LLM-generated abstractive summary of a book section or entire book. Evaluated by binary assertions for quality. |
+| **Annotation** | A user-created highlight, note, or cross-reference attached to a specific text span in content or summaries. |
+| **Eval Assertion** | A binary pass/fail test that evaluates a specific quality dimension of a generated summary. |
+
 ---
 
 ## 3. V1 Scope
@@ -79,7 +91,8 @@ Mixed non-fiction: business, self-help, technical, academic. Fiction is not supp
 - Generate book-level summaries from section summaries
 - Browse library, book details, and section content/summaries
 - Rich annotations (text highlights + notes + tags + cross-book links)
-- Hybrid search (BM25 + semantic) across all books
+- Concepts index per book (key terms, frameworks, models extracted during summarization)
+- Hybrid search (BM25 + semantic) across all books and concepts
 - CLI-first development, then Web + REST APIs
 - Dual processing mode: step-by-step (default) and fully async
 
@@ -92,6 +105,58 @@ Mixed non-fiction: business, self-help, technical, academic. Fiction is not supp
 - Framework/template/playbook extraction
 - Multi-user support / authentication
 - Mobile app
+
+### User Journeys
+
+**Journey 1: New Book Upload (Step-by-Step Mode)**
+
+```
+User uploads book file
+    → System detects format, checks for duplicates (SHA-256)
+    → System parses metadata (title, author) and presents for confirmation
+    → System detects structure (TOC → heuristics → LLM fallback)
+    → User reviews and confirms/edits section structure
+    → System segments content, extracts images, stores in DB
+    → System generates embeddings for content + metadata
+    → User triggers summarization: `bookcompanion summarize <id>`
+    → For each section:
+        → System generates summary with cumulative context from prior sections
+        → System extracts key concepts/frameworks into concepts index
+        → System runs binary assertion battery
+        → On critical failure: auto-retry (up to 2x)
+        → On non-critical failure: flag for review
+    → System generates book-level summary from all section summaries
+    → System generates embeddings for summaries
+    → Book is ready for browsing
+```
+
+**Journey 2: Returning User — Browse & Discover**
+
+```
+User lands on Library page
+    → Sees grid/list of books with covers, titles, tags
+    → Can filter by tag, author, or search
+    → Selects a book → Book Detail page
+        → Sees book metadata, overall summary, section list with 2-3 line descriptions
+        → Can read overall book summary
+        → Can select a section → Section Reader
+            → Views original content OR section summary (tabbed/side-by-side)
+            → Can create annotations (highlight text, add notes, tag)
+        → Can view all annotations for the book
+        → Can search within the book
+```
+
+**Journey 3: Cross-Book Search & Discovery**
+
+```
+User enters search query (e.g., "mental models for decision making")
+    → System runs hybrid search (BM25 + semantic via pgvector)
+    → Results ranked by RRF, showing:
+        → Source type labels (book title / section content / summary)
+        → Snippet with highlighted match
+        → Book + section context
+    → User clicks result → navigates to relevant section/summary
+```
 
 ---
 
@@ -239,13 +304,44 @@ For each book section, invoke Claude Code CLI with a structured prompt requestin
 - **Key quotes** (verbatim notable passages)
 - **Image references** (what images depict and their significance in context)
 
+**Cumulative context** (inspired by AI Reading Club's progressive summarization): When summarizing section N, the prompt includes a brief cumulative context from sections 1 to N-1:
+- List of key themes identified so far
+- Running concepts index (terms and frameworks encountered)
+- Brief reference to how the current section connects to prior content
+
+This produces more coherent summaries that reflect the book's narrative arc rather than treating each section in isolation.
+
+### Concepts Index Extraction
+
+During section summarization, the LLM also extracts structured entries for the **concepts index**:
+
+```json
+{
+  "concepts": [
+    {
+      "term": "System 1 / System 2",
+      "definition": "Two modes of thinking: fast/intuitive (System 1) vs slow/deliberate (System 2)",
+      "first_mentioned_section": 3,
+      "related_concepts": ["cognitive bias", "heuristics"]
+    }
+  ]
+}
+```
+
+The concepts index:
+- Grows as each section is processed
+- Is stored in a `concepts` table linked to the book
+- Supports search and cross-book concept discovery
+- Is included in the cumulative context for subsequent section summarization
+- Is displayed on the Book Detail page as a "Key Concepts" tab
+
 ### Phase 2: Book Summary
 
 Concatenate all section summaries and invoke Claude Code CLI requesting:
 
 - **Book thesis / main argument**
 - **Chapter-by-chapter overview** (2-3 lines each)
-- **Key frameworks and models** (aggregated across sections)
+- **Key frameworks and models** (aggregated from concepts index)
 - **Cross-cutting themes**
 
 ### Compression Ratios
@@ -313,6 +409,7 @@ Each summary is evaluated by a battery of independent assertions, each producing
 | `no_hallucinated_facts` | Summary does not contain claims absent from source |
 | `no_contradictions` | Summary does not contradict any source statements |
 | `accurate_quotes` | Any quotes in summary match source verbatim |
+| `cross_summary_consistency` | Generate a second summary variant; flag significant divergences between the two as potential hallucination signals (sample-and-compare technique) |
 
 **Completeness (Important — flag for user review on failure):**
 
@@ -434,18 +531,18 @@ Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgmen
                                 - section_content
                                 - section_summary
 
-┌────────────────────┐
-│  processing_jobs   │
-│                    │
-│ id (PK)           │
-│ book_id (FK)      │
-│ step              │ ← enum: parse, summarize, embed
-│ status            │ ← enum: pending, running, completed, failed
-│ progress          │ ← JSON: {current: 3, total: 12}
-│ error_message     │
-│ started_at        │
-│ completed_at      │
-└────────────────────┘
+┌────────────────────┐     ┌────────────────────┐
+│  processing_jobs   │     │     concepts       │
+│                    │     │                    │
+│ id (PK)           │     │ id (PK)           │
+│ book_id (FK)      │     │ book_id (FK)      │
+│ step              │     │ first_section_id   │ ← section where first mentioned
+│ status            │     │ term              │
+│ progress (JSON)   │     │ definition        │
+│ error_message     │     │ related_concepts  │ ← JSON array
+│ started_at        │     │ created_at        │
+│ completed_at      │     │ updated_at        │
+└────────────────────┘     └────────────────────┘
 ```
 
 ### Key Design Decisions
@@ -571,6 +668,10 @@ bookcompanion search "query" --book <id>    # Search within a book
 bookcompanion tag <book_id> <tag_name>      # Add tag to book
 bookcompanion tags                          # List all tags
 bookcompanion authors                       # List all authors
+
+# Concepts index
+bookcompanion concepts <book_id>            # Show concepts index for a book
+bookcompanion concepts search "term"        # Search concepts across all books
 
 # Processing & evaluation
 bookcompanion status <book_id>              # Processing status
@@ -1194,6 +1295,9 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 29 | Logging | A) Print statements, B) stdlib logging, C) structlog | **C) structlog** | JSON-formatted structured logs. Daily rotation. Per-book processing logs. |
 | 30 | Code quality | A) Black+flake8, B) Ruff | **B) Ruff** | Single tool for formatting + linting. Fast, by Astral (same as uv). |
 | 31 | Prompt templates | A) Hardcoded strings, B) External files, C) Jinja2 templates | **C) Jinja2 templates** | Versioned files with defined variable contracts. Enables prompt iteration without code changes. |
+| 32 | Cumulative context in summarization | A) Summarize sections independently, B) Include prior context | **B) Include cumulative context** | Inspired by AI Reading Club's progressive summarization. Produces more coherent summaries that reflect the book's narrative arc. Key themes + concepts index from prior sections passed to each prompt. |
+| 33 | Concepts index | A) Defer to V2, B) Extract during summarization | **B) Extract during V1 summarization** | Low incremental cost (extracted alongside summary). High value for non-fiction: frameworks, models, key terms searchable across books. Inspired by Dewey's term lookup feature. |
+| 34 | Faithfulness strengthening | A) Standard assertions only, B) Add cross-summary consistency | **B) Add sample-and-compare** | Generate 2 summary variants, flag divergences. Per Eugene Yan: consistency is the hardest dimension — even SOTA achieves only 60-75% accuracy. Extra LLM call is worth the quality improvement. |
 
 ---
 
@@ -1205,7 +1309,7 @@ These features are explicitly out of scope for V1 but inform the architecture to
 |--------|-------|-------------|
 | [Eugene Yan - Abstractive Summarization](https://eugeneyan.com/writing/abstractive/) | Summarization approaches | Hierarchical map-reduce is the standard for long documents. Extractive → abstractive pipeline can improve quality. |
 | [Eugene Yan - LLM Patterns](https://eugeneyan.com/writing/llm-patterns/) | LLM application patterns | RAG, evaluation, and guardrails patterns applicable to summarization pipeline |
-| [Eugene Yan - AI Reading Club](https://eugeneyan.com/writing/aireadingclub/) | Project inspiration | Community approach to book summarization with structured discussion |
+| [Eugene Yan - AI Reading Club / Dewey](https://eugeneyan.com/writing/aireadingclub/) | Project inspiration & patterns | **Deep analysis**: Dewey (aireadingclub.com) is an AI reading companion offering clarification, quizzes, recaps, term lookup, and anchored discussions. Key patterns adopted: (1) Progressive/cumulative summarization with position-aware context, (2) Concepts index as a living artifact growing per section, (3) Dual-context retrieval (local passage + book-level themes), (4) Anchored discussion/annotation history. Dewey's core insight: never summarize in isolation — always ground in both local passage and macro book structure. |
 | [Hamel Husain - Evals FAQ](https://hamel.dev/blog/posts/evals-faq/) | Evaluation methodology | Binary pass/fail assertions > rubric scoring. Start simple, iterate. |
 | [Hamel Husain - Field Guide](https://hamel.dev/blog/posts/field-guide/) | LLM application development | Practical patterns for building LLM apps with evaluation |
 | [Hamel Husain - LLM Judge](https://hamel.dev/blog/posts/llm-judge/) | LLM-as-judge patterns | How to use LLMs to evaluate other LLM outputs effectively |
