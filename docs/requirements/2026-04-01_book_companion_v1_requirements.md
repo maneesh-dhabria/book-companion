@@ -1,8 +1,8 @@
 # Book Companion - V1 Requirements Document
 
-**Version:** 2.0 (post review loops 1-7)
+**Version:** 3.0 (restructured)
 **Date:** 2026-04-01
-**Status:** Draft — Reviewed
+**Status:** Draft — Restructured
 **Source Document:** [Initial Thoughts](../2026-04-01_initial_thoughts.txt)
 
 ---
@@ -11,7 +11,7 @@
 
 1. [Project Overview](#1-project-overview)
 2. [Problem Statement](#2-problem-statement)
-3. [V1 Scope](#3-v1-scope)
+3. [V1 Scope & User Journeys](#3-v1-scope--user-journeys)
 4. [Architecture](#4-architecture)
 5. [Book Parsing Pipeline](#5-book-parsing-pipeline)
 6. [Summarization Pipeline](#6-summarization-pipeline)
@@ -20,18 +20,17 @@
 9. [Search](#9-search)
 10. [CLI Interface](#10-cli-interface)
 11. [Web Interface](#11-web-interface)
-12. [Configuration Management](#12-configuration-management)
+12. [Configuration & Operations](#12-configuration--operations)
 13. [Project Structure](#13-project-structure)
 14. [Tech Stack](#14-tech-stack)
 15. [Infrastructure & Deployment](#15-infrastructure--deployment)
 16. [External Dependencies & Setup](#16-external-dependencies--setup)
 17. [Non-Functional Requirements](#17-non-functional-requirements)
-18. [V2+ Deferred Features](#18-v2-deferred-features)
-19. [Decision Log](#19-decision-log)
-20. [Research Sources](#20-research-sources)
-21. [Open Questions & Risks](#21-open-questions--risks)
-
-*Note: Sections 17 includes sub-sections for Security, Testing, Logging, Dev Workflow, Data Export, and Prompt Templates added in review loops.*
+18. [Development](#18-development)
+19. [V2+ Deferred Features](#19-v2-deferred-features)
+20. [Decision Log](#20-decision-log)
+21. [Research Sources](#21-research-sources)
+22. [Open Questions & Risks](#22-open-questions--risks)
 
 ---
 
@@ -81,7 +80,7 @@ Mixed non-fiction: business, self-help, technical, academic. Fiction is not supp
 
 ---
 
-## 3. V1 Scope
+## 3. V1 Scope & User Journeys
 
 ### In Scope (V1)
 
@@ -160,6 +159,67 @@ User enters search query (e.g., "mental models for decision making")
     → User clicks result → navigates to relevant section/summary
 ```
 
+**Journey 4: Async Processing Mode**
+
+```
+User runs: bookcompanion add ~/books/mybook.epub --async
+    → System parses format, detects structure
+    → System auto-accepts detected TOC (no user review in async mode)
+    → System begins parsing, summarization, embedding in background
+    → CLI returns immediately: "Processing book (ID: 12). Run `bookcompanion status 12` to check."
+    → User checks later: bookcompanion status 12
+        → Shows: "Summarizing section 8/15: Chapter 7... (eval: 105/108 passed so far)"
+    → On completion: bookcompanion summary 12
+```
+
+**Journey 5: Annotation & Cross-Book Linking**
+
+```
+User reads a section in the Section Reader
+    → Highlights a text passage about "second-order thinking"
+    → Adds a note: "Similar to Kahneman's System 2"
+    → Tags the annotation: #mental-models, #decision-making
+    → Later: bookcompanion annotations --tag mental-models
+        → Sees annotations across multiple books tagged #mental-models
+    → Creates a cross-book link between this annotation and one in "Thinking, Fast and Slow"
+    → Cross-linked annotations are navigable from either book
+```
+
+**Journey 6: Summary Quality Review**
+
+```
+After summarization, system reports:
+    "Section 5: 14/16 assertions passed"
+    "  ✗ covers_frameworks: FAIL — source mentions OODA loop, not in summary"
+    "  ✗ not_generic: FAIL — summary could apply to any strategy book"
+    → User runs: bookcompanion eval 12 5 → sees full assertion results
+    → User chooses:
+        a) Accept as-is (no action needed)
+        b) Re-summarize: bookcompanion summarize 12 5
+        c) Re-summarize with higher detail: bookcompanion summarize 12 5 --detail detailed
+```
+
+**Journey 7: Book Deletion**
+
+```
+User runs: bookcompanion delete 12
+    → System warns: "This will delete 'Deep Work' and all related data. Continue? [y/N]"
+    → On confirm: deletes book + sections + summaries + annotations + tags + concepts
+      + embeddings + search index entries + external references + processing jobs
+    → "Book 'Deep Work' deleted."
+```
+
+**Journey 8: Book Re-import**
+
+```
+User runs: bookcompanion add ~/books/deep-work-v2.epub
+    → System detects SHA-256 match: "This book already exists (ID: 12). Re-import? [y/N]"
+    → On confirm: replaces parsed content and sections
+    → Preserves: annotations (relocated via text anchoring fallback), tags, manual metadata edits
+    → Marks all summaries as `stale`, deletes old embeddings
+    → "Book re-imported. Run `bookcompanion summarize 12` to regenerate summaries."
+```
+
 ---
 
 ## 4. Architecture
@@ -226,6 +286,7 @@ External:
 ```
 Upload → Format Detection → [MOBI: Convert to EPUB] → Format-Specific Parser
     → Markdown + Images → Structure Detection → User Review → DB Storage
+    → Image Captioning (pre-summarization, requires LLM)
 ```
 
 1. **Format detection**: File extension + magic bytes validation
@@ -378,30 +439,43 @@ If a summary fails quality assertions at the current ratio, the system automatic
 
 ### Claude Code CLI Integration
 
-Summaries are generated by invoking Claude Code CLI as a subprocess:
+Summaries are generated by invoking Claude Code CLI as a non-interactive subprocess:
 
 ```bash
 <cli_alias> -p "<prompt>" --output-format json --model sonnet --json-schema '<schema>'
 ```
 
-Configuration:
-```yaml
-llm:
-  cli_command: "claude-personal"   # Alias from ~/.zshrc
-  model: "sonnet"                   # Default model for summarization
-  max_budget_usd: 5.0              # Per-book budget cap
-  output_format: "json"
-  timeout_seconds: 300             # Per-section timeout
-```
-
-The CLI alias is configurable to support multiple Claude Code profiles.
+The CLI alias, model, budget cap, and timeout are all configurable — see [Section 12: Configuration](#12-configuration--operations) for the full schema. Multiple Claude Code profiles are supported via configurable aliases from `~/.zshrc`.
 
 ### Prompt Management
 
-- Prompts are stored as versioned template files in `backend/app/services/summarizer/prompts/`
-- Each prompt has a version identifier (e.g., `summarize_section_v1.txt`)
-- The prompt version used is recorded with each generated summary for traceability
-- Enables A/B testing different prompt strategies
+Prompts are stored as versioned Jinja2 templates in `backend/app/services/summarizer/prompts/`:
+
+```
+├── summarize_section_v1.txt
+├── summarize_book_v1.txt
+├── eval_faithfulness_v1.txt
+├── eval_completeness_v1.txt
+├── eval_coherence_v1.txt
+├── eval_format_v1.txt
+└── detect_structure_v1.txt
+```
+
+**Template variables:**
+
+| Variable | Available In | Description |
+|----------|-------------|-------------|
+| `{{ section_title }}` | Section prompts | Title of the current section |
+| `{{ section_content }}` | Section prompts | Full Markdown content of the section |
+| `{{ book_title }}` | All prompts | Book title |
+| `{{ book_author }}` | All prompts | Book author(s) |
+| `{{ compression_target }}` | Summarization prompts | Target compression percentage |
+| `{{ detail_level }}` | Summarization prompts | brief/standard/detailed |
+| `{{ all_section_summaries }}` | Book summary prompt | Concatenated section summaries |
+| `{{ source_text }}` | Eval prompts | Original content being evaluated |
+| `{{ summary_text }}` | Eval prompts | Summary being evaluated |
+
+**Conventions**: Version as `{purpose}_v{N}.txt`. Each summary records which prompt version generated it. Old versions are kept for reproducibility.
 
 ### Phase 3: External Summary Discovery
 
@@ -426,22 +500,7 @@ Book summary generated
 
 **What NOT to include**: Amazon reviews, SEO-generated summaries, affiliate marketing content, summaries with no attribution or original analysis.
 
-**Storage** (in `external_references` table):
-
-```
-┌──────────────────────────┐
-│   external_references    │
-│                          │
-│ id (PK)                 │
-│ book_id (FK)            │
-│ url                     │
-│ title                   │
-│ source_name             │ ← e.g., "Shortform", "Farnam Street", "Nat Eliason"
-│ snippet                 │ ← 1-2 sentence description of what this reference covers
-│ quality_notes           │ ← Why this reference was selected
-│ discovered_at           │
-└──────────────────────────┘
-```
+References are stored in the `external_references` table (see [Section 8: Data Model](#8-data-model) for schema).
 
 **User experience:**
 - Book Detail page shows an "External Summaries & Reviews" section with 4-5 curated links
@@ -556,10 +615,6 @@ The judge is asked: "Given the source text, which summary (A or B) is more faith
 - Relative judgments are easier than absolute ones
 - Smaller quality differences are detectable
 
-### Why Not ROUGE/BERTScore?
-
-Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgment for abstractive summaries (see Eugene Yan's analysis). LLM-as-judge with binary assertions is the current best practice for evaluating LLM-generated content.
-
 ---
 
 ## 8. Data Model
@@ -573,8 +628,9 @@ Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgmen
 │ id (PK)       │──M:N│ book_id (FK)   │N:1──│ id (PK)       │
 │ name          │     │ author_id (FK) │     │ title          │
 │ metadata      │     │ role           │     │ file_data (BLOB)│
-│ created_at    │     └────────────────┘     │ file_format    │
-└────────────────┘                           │ cover_image    │
+│ created_at    │     └────────────────┘     │ file_hash      │ ← SHA-256 for duplicate detection
+└────────────────┘                           │ file_format    │
+                                             │ cover_image    │
                                              │ status         │
                                              │ overall_summary│
                                              │ metadata (JSON)│
@@ -593,7 +649,7 @@ Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgmen
                                              │ depth          │
   taggable_type enum:                        │ content_md     │
   - book                                     │ summary_md     │
-  - book_section                             │ summary_status │
+  - book_section                             │ summary_status │ ← pending|running|completed|failed|stale
   - annotation                               │ summary_version│
                                              │ summary_eval   │ ← JSON: assertion results
                                              │ created_at     │
@@ -638,6 +694,19 @@ Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgmen
 │ started_at        │     │ created_at        │ where it was first introduced.
 │ completed_at      │     │ updated_at        │ concept_sections tracks all mentions.
 └────────────────────┘     └────────────────────┘
+
+┌──────────────────────────┐
+│   external_references    │
+│                          │
+│ id (PK)                 │
+│ book_id (FK)            │
+│ url                     │
+│ title                   │
+│ source_name             │ ← e.g., "Shortform", "Farnam Street"
+│ snippet                 │ ← 1-2 sentence description
+│ quality_notes           │
+│ discovered_at           │
+└──────────────────────────┘
 ```
 
 ### Key Design Decisions
@@ -736,8 +805,8 @@ Development follows CLI-first approach. All functionality is available via CLI b
 
 ```bash
 # Book management
-bookcompanion add <file_path>              # Upload + parse (step-by-step mode)
-bookcompanion add <file_path> --async      # Upload + parse + summarize (async)
+bookcompanion add <file_path>              # Upload + parse (step-by-step: user reviews TOC)
+bookcompanion add <file_path> --async      # Upload + parse + summarize + embed (auto-accepts TOC, runs in background)
 bookcompanion list                          # List all books
 bookcompanion list --tag <tag>              # Filter by tag
 bookcompanion list --author <name>          # Filter by author
@@ -869,7 +938,7 @@ Summarization complete. Run `bookcompanion summary 7` to read.
 
 ---
 
-## 12. Configuration Management
+## 12. Configuration & Operations
 
 ### Config File Location
 
@@ -888,7 +957,8 @@ database:
   url: "postgresql://bookcompanion:bookcompanion@localhost:5438/bookcompanion"
 
 llm:
-  cli_command: "claude-personal"       # Claude Code CLI alias from ~/.zshrc
+  provider: "claude_cli"               # Active provider: claude_cli | ollama | anthropic_api (future)
+  cli_command: "claude-personal"       # Claude Code CLI alias from ~/.zshrc (used when provider=claude_cli)
   model: "sonnet"                       # Default model for summarization
   max_budget_usd: 5.0                  # Per-book budget cap
   timeout_seconds: 300                 # Per-section timeout
@@ -958,6 +1028,29 @@ bookcompanion restore /path/to/backup.sql.gz
 bookcompanion backup list
 ```
 
+### Data Export
+
+```bash
+bookcompanion export [--format json|markdown] [--output /path/to/dir]
+bookcompanion export <book_id> [--format json|markdown]
+```
+
+**JSON export** includes: book metadata, section content, summaries, annotations, tags, eval results.
+
+**Markdown export** produces a directory structure:
+```
+export/
+├── Thinking Fast and Slow/
+│   ├── metadata.json
+│   ├── summary.md
+│   ├── sections/
+│   │   ├── 01_introduction.md
+│   │   ├── 01_introduction_summary.md
+│   │   └── ...
+│   └── annotations.md
+└── ...
+```
+
 ---
 
 ## 13. Project Structure
@@ -1016,14 +1109,14 @@ book-companion/
 ├── docs/
 │   ├── 2026-04-01_initial_thoughts.txt
 │   └── requirements/
-│       └── v1-requirements.md
+│       └── 2026-04-01_book_companion_v1_requirements.md
 ├── .gitignore
 └── CLAUDE.md
 ```
 
 ---
 
-## 13. Tech Stack
+## 14. Tech Stack
 
 | Component | Technology | Rationale |
 |-----------|-----------|-----------|
@@ -1164,7 +1257,17 @@ class ClaudeCodeCLIProvider(LLMProvider):
 # class AnthropicAPIProvider(LLMProvider): ...
 ```
 
-The active provider is selected via configuration. Swapping providers requires only a config change, no code changes.
+The active provider is selected via `llm.provider` in config. A factory function instantiates the correct provider:
+
+```python
+def create_llm_provider(config: Settings) -> LLMProvider:
+    match config.llm.provider:
+        case "claude_cli": return ClaudeCodeCLIProvider(config.llm.cli_command, config.llm.model, config.llm.timeout_seconds)
+        case "ollama": return OllamaProvider(config.embedding.ollama_url, config.llm.model)
+        # Future: case "anthropic_api": return AnthropicAPIProvider(...)
+```
+
+Swapping providers requires only a config change, no code changes.
 
 ### Async Processing & Progress Tracking
 
@@ -1236,6 +1339,18 @@ Even as a single-user local tool, the app processes untrusted files and runs she
 | **Path traversal** | File paths from uploads are sanitized. Backup/restore paths are validated. |
 | **Denial of service** | Budget caps on LLM usage. Configurable timeouts on all external calls. |
 
+### Logging & Observability
+
+- **Structured logging** via `structlog` for JSON-formatted output
+- **Log levels**: DEBUG (parser details), INFO (processing milestones), WARNING (eval failures), ERROR (crashes)
+- **Per-book processing log**: Structured log entries in `processing_jobs` with timing, step details, and error traces
+- **CLI verbosity**: `--verbose` flag increases log output. Default shows progress only.
+- **Log location**: `~/.config/bookcompanion/logs/` with daily rotation
+
+---
+
+## 18. Development
+
 ### Testing Strategy
 
 | Test Type | Scope | Tools |
@@ -1250,24 +1365,14 @@ Even as a single-user local tool, the app processes untrusted files and runs she
 - Fixtures: Small test EPUB/PDF files included in `tests/fixtures/`
 - CI: GitHub Actions running unit + integration tests on push
 
-**What to test first (priority order):**
-1. Parser correctness (does EPUB/PDF parsing produce expected Markdown?)
-2. Data model integrity (do cascading operations work correctly?)
-3. Search accuracy (do hybrid search results rank correctly?)
-4. CLI command flows (do commands produce expected output?)
-5. Eval assertion accuracy (do binary assertions catch known-bad summaries?)
-
-### Logging & Observability
-
-- **Structured logging** via Python's `logging` module with `structlog` for JSON-formatted output
-- **Log levels**: DEBUG (parser details), INFO (processing milestones), WARNING (eval failures), ERROR (crashes)
-- **Per-book processing log**: Each processing run creates a structured log entry in `processing_jobs` with timing, step details, and error traces
-- **CLI verbosity**: `--verbose` flag increases log output. Default shows progress only.
-- **Log location**: `~/.config/bookcompanion/logs/` with daily rotation
+**Test priority:**
+1. Parser correctness (EPUB/PDF → expected Markdown)
+2. Data model integrity (cascading operations)
+3. Search accuracy (hybrid search ranking)
+4. CLI command flows
+5. Eval assertion accuracy
 
 ### Development Workflow
-
-**Local development (outside Docker):**
 
 ```bash
 # Setup
@@ -1287,74 +1392,16 @@ uv run pytest                              # Run all tests
 uv run pytest tests/unit                   # Run unit tests only
 ```
 
-**Code quality tools:**
-- **Formatter**: `ruff format` (fast, opinionated)
-- **Linter**: `ruff check` (replaces flake8, isort, etc.)
+### Code Quality
+
+- **Formatter**: `ruff format`
+- **Linter**: `ruff check` (replaces flake8, isort)
 - **Type checking**: `mypy` (strict mode)
 - **Frontend**: `eslint` + `prettier` for Vue/TypeScript
 
-### Data Export
-
-Users can export their library data for portability:
-
-```bash
-# Export all data as JSON
-bookcompanion export [--format json|markdown] [--output /path/to/dir]
-
-# Export a specific book with all its data
-bookcompanion export <book_id> [--format json|markdown]
-```
-
-**JSON export** includes: book metadata, section content, summaries, annotations, tags, eval results.
-
-**Markdown export** produces a directory structure:
-```
-export/
-├── Thinking Fast and Slow/
-│   ├── metadata.json
-│   ├── summary.md                 # Book-level summary
-│   ├── sections/
-│   │   ├── 01_introduction.md     # Original content
-│   │   ├── 01_introduction_summary.md
-│   │   └── ...
-│   └── annotations.md             # All annotations formatted
-└── ...
-```
-
-### Prompt Template Structure
-
-Prompts are stored as Jinja2 templates with defined variable contracts:
-
-```
-backend/app/services/summarizer/prompts/
-├── summarize_section_v1.txt
-├── summarize_book_v1.txt
-├── eval_faithfulness_v1.txt
-├── eval_completeness_v1.txt
-├── eval_coherence_v1.txt
-├── eval_format_v1.txt
-└── detect_structure_v1.txt
-```
-
-**Template variables available:**
-
-| Variable | Available In | Description |
-|----------|-------------|-------------|
-| `{{ section_title }}` | Section prompts | Title of the current section |
-| `{{ section_content }}` | Section prompts | Full Markdown content of the section |
-| `{{ book_title }}` | All prompts | Book title |
-| `{{ book_author }}` | All prompts | Book author(s) |
-| `{{ compression_target }}` | Summarization prompts | Target compression percentage |
-| `{{ detail_level }}` | Summarization prompts | brief/standard/detailed |
-| `{{ all_section_summaries }}` | Book summary prompt | Concatenated section summaries |
-| `{{ source_text }}` | Eval prompts | Original content being evaluated |
-| `{{ summary_text }}` | Eval prompts | Summary being evaluated |
-
-**Version convention**: `{purpose}_v{N}.txt` — increment N when making changes. Old versions are kept for reproducibility.
-
 ---
 
-## 18. V2+ Deferred Features
+## 19. V2+ Deferred Features
 
 These features are explicitly out of scope for V1 but inform the architecture to ensure extensibility:
 
@@ -1371,54 +1418,54 @@ These features are explicitly out of scope for V1 but inform the architecture to
 
 ---
 
-## 19. Decision Log
+## 20. Decision Log
 
 | # | Decision | Options Considered | Choice | Rationale |
 |---|----------|-------------------|--------|-----------|
-| 1 | Architecture style | A) Layered monolith, B) Service + Worker (Redis), C) Event-driven pipeline | **A) Layered monolith** | Simplest to build and debug for single-user. Async via subprocess/threading gives 90% of worker benefits without Redis. |
-| 2 | LLM provider | A) Claude API direct, B) Claude Code CLI subprocess, C) Pluggable interface, D) Ollama-first | **B) Claude Code CLI subprocess** | User preference. Leverages existing subscription and profiles. CLI supports non-interactive mode (-p), JSON output, and JSON schema validation. |
-| 3 | Processing mode | A) Sync only, B) Async only, C) Dual mode | **C) Dual mode** | Step-by-step (default) for control, async for convenience. Same pipeline, different execution model. |
-| 4 | File storage | A) Local filesystem, B) Postgres BLOBs, C) Local FS + DB metadata | **B) Postgres BLOBs** | Simplest backup/restore story. Single `pg_dump` captures everything. Acceptable for single-user scale (~100 books). |
-| 5 | Content format | A) Markdown, B) HTML, C) Both | **A) Markdown** | Portable, renders in CLI and web, good LLM input format. All parsers output Markdown. |
-| 6 | Missing TOC handling | A) LLM only, B) Heuristics only, C) Manual, D) Heuristics + LLM fallback | **D) Heuristics first, LLM fallback** | Cost-effective: heuristics handle 70-80% of cases. LLM fallback for complex layouts. User confirms either way. |
-| 7 | Search approach | A) Keyword only, B) Semantic only, C) Hybrid BM25 + semantic | **C) Hybrid with RRF re-ranking** | Best of both worlds. BM25 for exact matches, semantic for conceptual queries. RRF is simple, effective, no ML needed. All in Postgres. |
-| 8 | Embedding provider | A) Cloud API, B) Local Ollama | **B) Local Ollama** | Free, private, no API costs. User already has Ollama running locally. nomic-embed-text provides good quality. |
-| 9 | Summary evaluation | A) ROUGE/BERTScore, B) LLM rubric scoring, C) Binary assertions | **C) Binary pass/fail assertions** | Per Hamel Husain's methodology. Binary tests are clearer, more actionable, easier to aggregate than rubric scores. Traditional metrics correlate poorly with human judgment for abstractive summaries. |
-| 10 | Compression ratio | A) Fixed 10-20%, B) Configurable with defaults | **B) Configurable with smart defaults** | Research shows optimal ratio varies by content type. Default ~20% for sections, ~30% for book-from-sections. Auto-retry with higher ratio if quality assertions fail. |
-| 11 | ORM | A) SQLAlchemy 2.0, B) SQLModel, C) Tortoise ORM | **A) SQLAlchemy 2.0** | Industry standard, async support, mature Alembic integration. SQLModel is simpler but less flexible. Tortoise has smaller ecosystem. |
-| 12 | CLI framework | A) Click, B) Typer, C) argparse | **B) Typer** | Built on Click with type-hint driven API. Less boilerplate, auto-generated help. |
-| 13 | Python package manager | A) pip, B) Poetry, C) uv | **C) uv** | Fastest, modern, good monorepo support. Actively developed by Astral (ruff team). |
-| 14 | Design system | A) Custom, B) Headless UI, C) PrimeVue, D) shadcn-vue | **A) Custom from scratch** | Maximum control, minimal dependencies. User preference. |
-| 15 | Annotation model | A) Section-level only, B) Text-level, C) Rich (text + tags + links) | **C) Rich annotations** | Cross-book linking enables personal knowledge graph. Polymorphic content_type supports annotations on content, summaries, and book-level summaries. |
-| 16 | PDF parser | A) PyMuPDF, B) pdfplumber, C) marker-pdf | **C) marker-pdf** | ML-based, best quality for complex layouts with tables and images. Falls back to PyMuPDF for simple text-only PDFs. |
-| 17 | Deployment | A) Local only, B) Local primary + cloud-ready, C) Cloud-native | **B) Local primary, cloud-ready** | Docker Compose for daily use, structured for easy cloud deployment if needed later. |
-| 18 | Primary interface | A) Web-first, B) CLI-first, C) Equal | **B) CLI-first, then equal** | Build and verify all functionality via CLI first. Service layer ensures feature parity when web is added. |
-| 19 | Config location | A) Project-local, B) XDG standard, C) Home directory | **B) XDG standard (~/.config/bookcompanion/)** | Follows platform conventions. Supports env var override. |
-| 20 | Annotation anchoring | A) Character offsets only, B) Text fingerprint only, C) Dual (offsets + stored text) | **C) Dual anchoring** | Offsets for speed, stored text as fallback. Handles re-parsing gracefully via fuzzy text search. |
-| 21 | Async progress tracking | A) Polling, B) WebSocket, C) Polling now + WebSocket later | **C) Polling now, WebSocket V2** | Polling is simpler, sufficient for single user. 5-second intervals are fine for progress tracking. |
-| 22 | Ollama in Docker vs host | A) Docker container, B) Use host Ollama | **B) Use host Ollama** | Already running locally. Avoids duplicate container. Backend connects via host.docker.internal. |
-| 23 | MOBI via Calibre | A) Full Calibre, B) ebook-convert CLI only, C) Drop MOBI support | **B) ebook-convert CLI only** | Only the CLI tool is needed, not the full Calibre GUI. Lighter dependency. |
-| 24 | Duplicate book handling | A) Reject, B) Replace, C) Warn + offer re-import | **C) Warn + offer re-import** | SHA-256 hash detection. Re-import preserves annotations/tags but marks summaries as stale. |
-| 25 | Long section handling | A) Fail, B) Truncate, C) Recursive sub-chunking | **C) Recursive sub-chunking** | Split at paragraph boundaries, summarize sub-chunks, merge. Transparent to user. |
-| 26 | Partial processing recovery | A) Restart from scratch, B) Resume from failure point | **B) Resume from failure point** | Skip completed sections, start from first pending/failed. `--force` for full re-run. |
-| 27 | CLI output rendering | A) Plain text, B) Rich Markdown, C) Rich + pager | **C) Rich + pager** | `rich` library for Markdown rendering, tables, progress bars. Pager for long content. JSON output for scripting. |
-| 28 | Subprocess safety | A) shell=True, B) List args (no shell) | **B) List args** | Prevents command injection. Prompts passed via stdin, not interpolated. |
-| 29 | Logging | A) Print statements, B) stdlib logging, C) structlog | **C) structlog** | JSON-formatted structured logs. Daily rotation. Per-book processing logs. |
-| 30 | Code quality | A) Black+flake8, B) Ruff | **B) Ruff** | Single tool for formatting + linting. Fast, by Astral (same as uv). |
-| 31 | Prompt templates | A) Hardcoded strings, B) External files, C) Jinja2 templates | **C) Jinja2 templates** | Versioned files with defined variable contracts. Enables prompt iteration without code changes. |
-| 32 | Cumulative context in summarization | A) Summarize sections independently, B) Include prior context | **B) Include cumulative context** | Inspired by AI Reading Club's progressive summarization. Produces more coherent summaries that reflect the book's narrative arc. Key themes + concepts index from prior sections passed to each prompt. |
-| 33 | Concepts index | A) Defer to V2, B) Extract during summarization | **B) Extract during V1 summarization** | Low incremental cost (extracted alongside summary). High value for non-fiction: frameworks, models, key terms searchable across books. Inspired by Dewey's term lookup feature. |
-| 34 | Faithfulness strengthening | A) Standard assertions only, B) Add cross-summary consistency | **B) Add sample-and-compare** | Generate 2 summary variants, flag divergences. Per Eugene Yan: consistency is the hardest dimension — even SOTA achieves only 60-75% accuracy. Extra LLM call is worth the quality improvement. |
-| 35 | Image captioning | A) Reference images by filename only, B) Generate captions via vision model | **B) Vision model captions** | Non-fiction diagrams/charts carry significant information. Captions are injected into Markdown before summarization so visual content is reflected in summaries. |
-| 36 | Specificity evaluation | A) Skip, B) Add specificity assertions | **B) Add `not_generic` + `preserves_author_terminology`** | Catches summaries generic enough to apply to any book. Preserving author's vocabulary is important for non-fiction where terminology carries specific meaning. |
-| 37 | Human eval baseline | A) Skip straight to automation, B) Bootstrap with human eval first | **B) Human eval first (non-negotiable)** | Per Hamel Husain: read 20-30 summaries, build golden test set of 10-15 chapters, calibrate LLM judge against human annotations at >80% agreement. |
-| 38 | Prompt comparison method | A) Absolute scoring, B) Pairwise comparison | **B) Pairwise LLM-judge comparison** | "Which summary is better?" is more reliable than scoring each 1-5. Eliminates calibration issues, detects smaller quality differences. |
-| 39 | Frontend server state | A) Pinia for everything, B) Pinia + TanStack Query | **B) Pinia + Vue Query split** | Pinia for client state (UI), Vue Query for server state (API data). Reduces boilerplate, prevents stale data bugs with automatic caching and background refetching. |
-| 40 | External summary discovery | A) Skip, B) Reference only (post-gen), C) Use to improve summary, D) Use as validation | **B) Reference only** | Search for external summaries after generating ours. Store links + metadata only (copyright). Non-blocking — book is usable without external refs. Avoids biasing AI summary with external perspectives. |
+| 1 | Architecture style | Layered monolith / Service+Worker / Event-driven | **Layered monolith** | Simplest for single-user; async via subprocess gives 90% of worker benefits without Redis. |
+| 2 | LLM provider | Claude API / Claude Code CLI / Pluggable / Ollama | **Claude Code CLI subprocess** | Leverages existing subscription and profiles; supports -p, JSON output, JSON schema. |
+| 3 | Processing mode | Sync / Async / Dual | **Dual mode** | Step-by-step (default) for control; async auto-accepts TOC and runs in background. |
+| 4 | File storage | Local FS / Postgres BLOBs / FS+DB metadata | **Postgres BLOBs** | Single `pg_dump` captures everything; acceptable at ~100 books. |
+| 5 | Content format | Markdown / HTML / Both | **Markdown** | Portable, renders in CLI and web, good LLM input. |
+| 6 | Missing TOC handling | LLM only / Heuristics / Manual / Heuristics+LLM | **Heuristics first, LLM fallback** | Heuristics handle 70-80% of cases; user confirms either way. |
+| 7 | Search approach | Keyword / Semantic / Hybrid | **Hybrid BM25+semantic with RRF** | BM25 for exact, semantic for conceptual; all in Postgres. |
+| 8 | Embedding provider | Cloud API / Local Ollama | **Local Ollama** | Free, private, already running; nomic-embed-text. |
+| 9 | Summary evaluation | ROUGE/BERTScore / LLM rubric / Binary assertions | **Binary pass/fail assertions** | Per Hamel Husain: binary tests are clearer and more actionable than rubrics or traditional metrics. |
+| 10 | Compression ratio | Fixed / Configurable | **Configurable with smart defaults** | ~20% sections, ~30% book; auto-retry at higher ratio on quality failure. |
+| 11 | ORM | SQLAlchemy 2.0 / SQLModel / Tortoise | **SQLAlchemy 2.0** | Industry standard, async, mature Alembic integration. |
+| 12 | CLI framework | Click / Typer / argparse | **Typer** | Type-hint driven, auto-generated help, less boilerplate. |
+| 13 | Python package manager | pip / Poetry / uv | **uv** | Fastest, modern, by Astral (ruff team). |
+| 14 | Design system | Custom / Headless UI / PrimeVue / shadcn-vue | **Custom from scratch** | Maximum control, minimal dependencies. User preference. |
+| 15 | Annotation model | Section-level / Text-level / Rich | **Rich (text + tags + cross-book links)** | Enables personal knowledge graph via polymorphic content_type. |
+| 16 | PDF parser | PyMuPDF / pdfplumber / marker-pdf | **marker-pdf** | ML-based, best for complex layouts; PyMuPDF fallback for simple PDFs. |
+| 17 | Deployment | Local only / Local+cloud-ready / Cloud-native | **Local primary, cloud-ready** | Docker Compose daily; structured for VPS/cloud later. |
+| 18 | Primary interface | Web-first / CLI-first / Equal | **CLI-first, then equal** | Verify functionality via CLI first; shared service layer. |
+| 19 | Config location | Project-local / XDG / Home dir | **XDG (~/.config/bookcompanion/)** | Platform conventions; env var override. |
+| 20 | Annotation anchoring | Offsets only / Text fingerprint / Dual | **Dual (offsets + stored text)** | Offsets for speed, stored text as re-parse fallback. |
+| 21 | Async progress tracking | Polling / WebSocket / Polling now+WS later | **Polling now, WebSocket V2** | Polling sufficient for single user. |
+| 22 | Ollama in Docker vs host | Docker container / Host | **Use host Ollama** | Already running; connects via host.docker.internal. |
+| 23 | MOBI via Calibre | Full Calibre / CLI only / Drop MOBI | **ebook-convert CLI only** | Lighter dependency than full GUI. |
+| 24 | Duplicate book handling | Reject / Replace / Warn+re-import | **Warn + offer re-import** | SHA-256 detection; preserves annotations/tags, marks summaries stale. |
+| 25 | Long section handling | Fail / Truncate / Recursive sub-chunking | **Recursive sub-chunking** | Split at paragraph boundaries, merge sub-chunk summaries. |
+| 26 | Partial processing recovery | Restart / Resume from failure | **Resume from failure point** | Skip completed sections; `--force` for full re-run. |
+| 27 | CLI output rendering | Plain text / Rich / Rich+pager | **Rich + pager** | Markdown rendering, tables, progress bars; `--format json` for scripting. |
+| 28 | Subprocess safety | shell=True / List args | **List args (no shell)** | Prevents command injection; prompts via stdin. |
+| 29 | Logging | Print / stdlib / structlog | **structlog** | JSON-formatted, daily rotation, per-book processing logs. |
+| 30 | Code quality | Black+flake8 / Ruff | **Ruff** | Single tool for formatting + linting; by Astral. |
+| 31 | Prompt templates | Hardcoded / External files / Jinja2 | **Jinja2 templates** | Versioned files with variable contracts; iterate without code changes. |
+| 32 | Cumulative context | Independent sections / Include prior context | **Include cumulative context** | Inspired by AI Reading Club; coherent summaries reflecting narrative arc. |
+| 33 | Concepts index | Defer V2 / Extract during summarization | **Extract during V1** | Low incremental cost, high value for non-fiction; inspired by Dewey. |
+| 34 | Faithfulness strengthening | Standard only / Add cross-summary check | **Add sample-and-compare** | Generate 2 variants, flag divergences; consistency is hardest dimension. |
+| 35 | Image captioning | Filename refs only / Vision model captions | **Vision model captions** | Diagrams carry key info; captions injected into Markdown pre-summarization. |
+| 36 | Specificity evaluation | Skip / Add assertions | **Add `not_generic` + `preserves_author_terminology`** | Catches generic summaries; preserves domain-specific vocabulary. |
+| 37 | Human eval baseline | Skip to automation / Bootstrap with human eval | **Human eval first** | Per Hamel: read 20-30 summaries, build golden set, calibrate judge at >80% agreement. |
+| 38 | Prompt comparison | Absolute scoring / Pairwise comparison | **Pairwise LLM-judge** | Relative judgments more reliable; eliminates calibration issues. |
+| 39 | Frontend server state | Pinia only / Pinia+Vue Query | **Pinia + Vue Query split** | Pinia for client state, Vue Query for server state with auto-caching. |
+| 40 | External summary discovery | Skip / Reference only / Improve summary / Validate | **Reference only (post-gen)** | Links+metadata only (copyright); non-blocking; avoids biasing AI summary. |
 
 ---
 
-## 20. Research Sources
+## 21. Research Sources
 
 ### Consulted During Requirements
 
@@ -1426,7 +1473,7 @@ These features are explicitly out of scope for V1 but inform the architecture to
 |--------|-------|-------------|
 | [Eugene Yan - Abstractive Summarization](https://eugeneyan.com/writing/abstractive/) | Summarization approaches | Hierarchical map-reduce is the standard for long documents. Extractive → abstractive pipeline can improve quality. |
 | [Eugene Yan - LLM Patterns](https://eugeneyan.com/writing/llm-patterns/) | LLM application patterns | RAG, evaluation, and guardrails patterns applicable to summarization pipeline |
-| [Eugene Yan - AI Reading Club / Dewey](https://eugeneyan.com/writing/aireadingclub/) | Project inspiration & patterns | **Deep analysis**: Dewey (aireadingclub.com) is an AI reading companion offering clarification, quizzes, recaps, term lookup, and anchored discussions. Key patterns adopted: (1) Progressive/cumulative summarization with position-aware context, (2) Concepts index as a living artifact growing per section, (3) Dual-context retrieval (local passage + book-level themes), (4) Anchored discussion/annotation history. Dewey's core insight: never summarize in isolation — always ground in both local passage and macro book structure. |
+| [Eugene Yan - AI Reading Club / Dewey](https://eugeneyan.com/writing/aireadingclub/) | Project inspiration & patterns | Adopted: (1) cumulative/progressive summarization, (2) concepts index as living artifact, (3) dual-context retrieval, (4) anchored discussions. Core insight: never summarize in isolation. |
 | [Hamel Husain - Evals FAQ](https://hamel.dev/blog/posts/evals-faq/) | Evaluation methodology | Binary pass/fail assertions > rubric scoring. Start simple, iterate. |
 | [Hamel Husain - Field Guide](https://hamel.dev/blog/posts/field-guide/) | LLM application development | Practical patterns for building LLM apps with evaluation |
 | [Hamel Husain - LLM Judge](https://hamel.dev/blog/posts/llm-judge/) | LLM-as-judge patterns | How to use LLMs to evaluate other LLM outputs effectively |
@@ -1445,7 +1492,7 @@ These features are explicitly out of scope for V1 but inform the architecture to
 
 ---
 
-## 21. Open Questions & Risks
+## 22. Open Questions & Risks
 
 ### Open Questions
 
