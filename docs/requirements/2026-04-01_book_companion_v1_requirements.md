@@ -1,6 +1,6 @@
 # Book Companion - V1 Requirements Document
 
-**Version:** 1.5 (post review loops 1-5)
+**Version:** 2.0 (post review loops 1-7)
 **Date:** 2026-04-01
 **Status:** Draft — Reviewed
 **Source Document:** [Initial Thoughts](../2026-04-01_initial_thoughts.txt)
@@ -245,6 +245,17 @@ Upload → Format Detection → [MOBI: Convert to EPUB] → Format-Specific Pars
 - API/CLI resolves image references when rendering content
 - Image metadata (dimensions, format, caption if available) stored alongside
 
+### Image Captioning via Vision Models
+
+Before summarization, images are processed separately to generate text descriptions:
+
+1. **Extract images** during parsing and store as BLOBs
+2. **Generate captions** by sending each image to a multimodal LLM (Claude with vision support via CLI) with context from surrounding text
+3. **Inject captions** into the Markdown content as `![Generated caption describing the diagram](blob:{uuid})` — replacing any generic alt text
+4. **Include in summarization**: The enriched Markdown (with descriptive image captions) is then passed to the summarization pipeline, ensuring visual content is reflected in summaries
+
+This is particularly important for non-fiction books where diagrams, frameworks, and charts carry significant information. Without this step, summaries would miss visual-only content.
+
 ### Title & Metadata Extraction
 
 - Parse title from: file metadata, EPUB OPF, PDF metadata, cover page OCR (fallback)
@@ -428,6 +439,13 @@ Each summary is evaluated by a battery of independent assertions, each producing
 | `logical_flow` | Ideas follow a logical progression |
 | `no_dangling_references` | No references to "above" or "below" that don't resolve |
 
+**Specificity (Important — flag for user review on failure):**
+
+| Assertion | Description |
+|-----------|-------------|
+| `not_generic` | Summary contains claims and details specific to THIS book/section — not generic enough to apply to any book on the topic |
+| `preserves_author_terminology` | Summary uses the author's key terms and vocabulary rather than generic paraphrasing |
+
 **Format (Advisory):**
 
 | Assertion | Description |
@@ -461,6 +479,30 @@ bookcompanion eval compare --book <id> --section <id> --ratios 10,20,30
 ```
 
 Generates summaries at multiple compression ratios for the same section and displays assertion results side-by-side. This is an on-demand development/tuning tool, not part of the default pipeline.
+
+### Human Evaluation Baseline (Bootstrapping Step)
+
+Per Hamel Husain's methodology, **automated evals must be bootstrapped with human evaluation**:
+
+1. **Before automating anything**: Read 20-30 generated summaries manually and annotate what's good/bad
+2. **Build a golden test set**: Curate 10-15 chapters of varying difficulty (short/long, technical/narrative, with/without frameworks) as a fixed eval corpus
+3. **Calibrate the LLM judge**: Run automated assertions on the golden set, verify that the judge agrees with your human annotations at >80% agreement rate
+4. **Periodic re-validation**: Every 5-10 prompt iterations, manually review a sample to catch judge drift
+
+This is a non-negotiable bootstrapping step — you cannot automate what you haven't defined through human judgment first.
+
+### Pairwise Comparison for Prompt Iteration
+
+When A/B testing different summarization prompts, use **pairwise LLM-judge comparison** rather than scoring each independently:
+
+```bash
+bookcompanion eval compare-prompts --book <id> --section <id> --prompt-a v1 --prompt-b v2
+```
+
+The judge is asked: "Given the source text, which summary (A or B) is more faithful/complete/specific?" This is more reliable and sensitive than absolute scoring because:
+- It eliminates score calibration issues
+- Relative judgments are easier than absolute ones
+- Smaller quality differences are detectable
 
 ### Why Not ROUGE/BERTScore?
 
@@ -761,10 +803,13 @@ Summarization complete. Run `bookcompanion summary 7` to read.
 ### Frontend Architecture
 
 - Vue 3 with Composition API and TypeScript
-- Pinia for state management
+- Pinia for client-side state management (UI state, user preferences)
+- TanStack Query (Vue Query) for server state management (API data caching, deduplication, background refetching)
 - Vue Router for navigation
 - Axios/fetch for API communication
 - Vite for build tooling
+
+**Pinia vs Vue Query split**: Pinia manages client-only state (UI toggles, selected filters, theme). Vue Query manages server-sourced data (book lists, summaries, search results) with automatic caching, staleness tracking, and background refetching. This reduces boilerplate and prevents stale data bugs.
 
 ---
 
@@ -942,6 +987,7 @@ book-companion/
 | **PDF parsing** | marker-pdf | ML-based PDF to Markdown. Best quality for complex layouts |
 | **MOBI parsing** | Calibre (ebook-convert) | Convert MOBI to EPUB, then process as EPUB |
 | **Frontend framework** | Vue 3 (Composition API) | As specified. TypeScript, Pinia, Vue Router |
+| **Server state** | TanStack Query (Vue Query) | API data caching, deduplication, background refetching. Reduces Pinia boilerplate for server data. |
 | **CSS** | Tailwind CSS | As specified. Utility-first, custom design system |
 | **Build tool** | Vite | Fast HMR, Vue 3 native support |
 | **CLI output** | rich | Terminal Markdown rendering, tables, progress bars, pager integration |
@@ -1307,6 +1353,11 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 32 | Cumulative context in summarization | A) Summarize sections independently, B) Include prior context | **B) Include cumulative context** | Inspired by AI Reading Club's progressive summarization. Produces more coherent summaries that reflect the book's narrative arc. Key themes + concepts index from prior sections passed to each prompt. |
 | 33 | Concepts index | A) Defer to V2, B) Extract during summarization | **B) Extract during V1 summarization** | Low incremental cost (extracted alongside summary). High value for non-fiction: frameworks, models, key terms searchable across books. Inspired by Dewey's term lookup feature. |
 | 34 | Faithfulness strengthening | A) Standard assertions only, B) Add cross-summary consistency | **B) Add sample-and-compare** | Generate 2 summary variants, flag divergences. Per Eugene Yan: consistency is the hardest dimension — even SOTA achieves only 60-75% accuracy. Extra LLM call is worth the quality improvement. |
+| 35 | Image captioning | A) Reference images by filename only, B) Generate captions via vision model | **B) Vision model captions** | Non-fiction diagrams/charts carry significant information. Captions are injected into Markdown before summarization so visual content is reflected in summaries. |
+| 36 | Specificity evaluation | A) Skip, B) Add specificity assertions | **B) Add `not_generic` + `preserves_author_terminology`** | Catches summaries generic enough to apply to any book. Preserving author's vocabulary is important for non-fiction where terminology carries specific meaning. |
+| 37 | Human eval baseline | A) Skip straight to automation, B) Bootstrap with human eval first | **B) Human eval first (non-negotiable)** | Per Hamel Husain: read 20-30 summaries, build golden test set of 10-15 chapters, calibrate LLM judge against human annotations at >80% agreement. |
+| 38 | Prompt comparison method | A) Absolute scoring, B) Pairwise comparison | **B) Pairwise LLM-judge comparison** | "Which summary is better?" is more reliable than scoring each 1-5. Eliminates calibration issues, detects smaller quality differences. |
+| 39 | Frontend server state | A) Pinia for everything, B) Pinia + TanStack Query | **B) Pinia + Vue Query split** | Pinia for client state (UI), Vue Query for server state (API data). Reduces boilerplate, prevents stale data bugs with automatic caching and background refetching. |
 
 ---
 
