@@ -752,7 +752,9 @@ The judge is asked: "Given the source text, which summary (A or B) is more faith
 
 8. **Freeform notes as annotations**: Annotations with `text_start`/`text_end`/`selected_text` set to null serve as freeform section-level or book-level notes (not anchored to specific text). This avoids a separate notes system — all user commentary lives in the `annotations` table regardless of whether it's text-anchored or freeform.
 
-9. **User-edited summaries**: `summary_md` can be edited by the user. A `user_edited` boolean flag on `book_sections` prevents auto-regeneration from overwriting manual edits. Same pattern applies to concepts index entries.
+9. **Single-operation annotation creation**: Annotations are created with all fields in one atomic operation — `content_type`, `content_id`, `text_start`/`text_end` (optional), `selected_text` (optional), `note`, `tags` (array), `linked_anno_id` (optional). The CLI `annotate` command and future API endpoint accept all of these in a single call. This enables the web annotation toolbar (select text → annotate + tag + link in one action) without requiring multiple round-trips.
+
+10. **User-edited summaries**: `summary_md` can be edited by the user. A `user_edited` boolean flag on `book_sections` prevents auto-regeneration from overwriting manual edits. Same pattern applies to concepts index entries.
 
 ---
 
@@ -820,8 +822,30 @@ Embedding generation is the final step in both the parse and summarize pipelines
 
 - Global search across all books
 - Scoped search within a specific book
-- Filter results by source type (title, content, summary)
+- Filter results by source type (title, content, summary, annotation, concept)
 - Filter by tags or authors
+
+### Unified Search Service
+
+The search service returns results **grouped by source type** in a single query response:
+
+```python
+# Single search call returns grouped results
+{
+  "query": "mental models",
+  "results": {
+    "books": [...],           # Title/author matches
+    "sections": [...],        # Content + summary matches
+    "concepts": [...],        # Term + definition matches
+    "annotations": [...]      # Note + selected text matches
+  },
+  "total_count": 24
+}
+```
+
+This grouped response serves both:
+- **CLI**: `bookcompanion search` displays results grouped by book (with source type labels)
+- **Web (future)**: Cmd+K command palette shows instant grouped suggestions, full results page uses the same data
 
 ---
 
@@ -1328,7 +1352,24 @@ For the **fully async** processing mode:
 
 - **CLI**: The `bookcompanion add --async` command starts processing in a background thread and returns immediately. Progress is polled via `bookcompanion status <book_id>`.
 - **Web UI**: Processing status is tracked in the `processing_jobs` table. The frontend polls the status endpoint at regular intervals (e.g., every 5 seconds) to update the progress UI. WebSocket support can be added in V2 for real-time updates.
-- **Progress granularity**: The `processing_jobs.progress` JSON field stores `{current: N, total: M, current_step: "Summarizing Chapter 3"}` for detailed progress display.
+- **Progress granularity**: The `processing_jobs.progress` JSON field stores detailed per-section status:
+
+```json
+{
+  "current": 7,
+  "total": 15,
+  "current_step": "Summarizing Chapter 7: Overconfidence",
+  "estimated_remaining_seconds": 240,
+  "sections": [
+    {"id": 1, "title": "Introduction", "status": "completed", "eval": {"passed": 16, "total": 16}},
+    {"id": 2, "title": "Part I: Two Systems", "status": "completed", "eval": {"passed": 15, "total": 16, "failures": ["covers_examples"]}},
+    {"id": 7, "title": "Part III: Overconfidence", "status": "running"},
+    {"id": 8, "title": "Ch 19: Illusion of Understanding", "status": "pending"}
+  ]
+}
+```
+
+This enables both the CLI progress display (with estimated time and per-section eval results) and the future web progress card.
 
 ---
 
