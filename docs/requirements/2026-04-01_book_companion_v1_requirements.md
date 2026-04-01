@@ -92,6 +92,7 @@ Mixed non-fiction: business, self-help, technical, academic. Fiction is not supp
 - Browse library, book details, and section content/summaries
 - Rich annotations (text highlights + notes + tags + cross-book links)
 - Concepts index per book (key terms, frameworks, models extracted during summarization)
+- External summary/review discovery (4-5 curated links per book, post-generation)
 - Hybrid search (BM25 + semantic) across all books and concepts
 - CLI-first development, then Web + REST APIs
 - Dual processing mode: step-by-step (default) and fully async
@@ -126,6 +127,7 @@ User uploads book file
         → On critical failure: auto-retry (up to 2x)
         → On non-critical failure: flag for review
     → System generates book-level summary from all section summaries
+    → System searches web for external summaries/reviews, stores 4-5 curated links
     → System generates embeddings for summaries
     → Book is ready for browsing
 ```
@@ -400,6 +402,56 @@ The CLI alias is configurable to support multiple Claude Code profiles.
 - Each prompt has a version identifier (e.g., `summarize_section_v1.txt`)
 - The prompt version used is recorded with each generated summary for traceability
 - Enables A/B testing different prompt strategies
+
+### Phase 3: External Summary Discovery
+
+After book-level summary generation, a **post-processing step** searches for existing external summaries and reviews of the book. This is a reference-only step — external content does not influence the generated summary.
+
+**Pipeline:**
+
+```
+Book summary generated
+    → Claude Code CLI searches the web for: "{book title} {author} book summary review"
+    → Agent evaluates results for quality and relevance
+    → Selects top 4-5 references (or fewer if unavailable)
+    → Stores metadata + links in external_references table
+```
+
+**Quality sources to prioritize** (in order):
+1. **Dedicated summary services**: Shortform, Blinkist, getAbstract
+2. **Notable reviewer blogs**: Nat Eliason (natbooks.co), Derek Sivers (sive.rs/book), Farnam Street (fs.blog)
+3. **Publisher/author summaries**: Official book pages, author's own summary posts
+4. **Quality blog posts/articles**: Medium, Substack, personal blogs with substantive reviews
+5. **Academic reviews**: For technical/academic books — journal reviews, conference reviews
+
+**What NOT to include**: Amazon reviews, SEO-generated summaries, affiliate marketing content, summaries with no attribution or original analysis.
+
+**Storage** (in `external_references` table):
+
+```
+┌──────────────────────────┐
+│   external_references    │
+│                          │
+│ id (PK)                 │
+│ book_id (FK)            │
+│ url                     │
+│ title                   │
+│ source_name             │ ← e.g., "Shortform", "Farnam Street", "Nat Eliason"
+│ snippet                 │ ← 1-2 sentence description of what this reference covers
+│ quality_notes           │ ← Why this reference was selected
+│ discovered_at           │
+└──────────────────────────┘
+```
+
+**User experience:**
+- Book Detail page shows an "External Summaries & Reviews" section with 4-5 curated links
+- CLI: `bookcompanion references <book_id>` lists external references
+- If no quality external summaries are found, the section simply shows "No external summaries found for this book"
+
+**Key constraints:**
+- Store **links and metadata only**, not full external content (copyright)
+- This step is non-blocking — if the search fails or finds nothing, the book is still fully usable
+- Can be re-run: `bookcompanion discover-references <book_id>` to refresh external references
 
 ---
 
@@ -716,6 +768,10 @@ bookcompanion authors                       # List all authors
 # Concepts index
 bookcompanion concepts <book_id>            # Show concepts index for a book
 bookcompanion concepts search "term"        # Search concepts across all books
+
+# External references
+bookcompanion references <book_id>          # List external summary/review links
+bookcompanion discover-references <book_id> # Re-run external summary discovery
 
 # Processing & evaluation
 bookcompanion status <book_id>              # Processing status
@@ -1358,6 +1414,7 @@ These features are explicitly out of scope for V1 but inform the architecture to
 | 37 | Human eval baseline | A) Skip straight to automation, B) Bootstrap with human eval first | **B) Human eval first (non-negotiable)** | Per Hamel Husain: read 20-30 summaries, build golden test set of 10-15 chapters, calibrate LLM judge against human annotations at >80% agreement. |
 | 38 | Prompt comparison method | A) Absolute scoring, B) Pairwise comparison | **B) Pairwise LLM-judge comparison** | "Which summary is better?" is more reliable than scoring each 1-5. Eliminates calibration issues, detects smaller quality differences. |
 | 39 | Frontend server state | A) Pinia for everything, B) Pinia + TanStack Query | **B) Pinia + Vue Query split** | Pinia for client state (UI), Vue Query for server state (API data). Reduces boilerplate, prevents stale data bugs with automatic caching and background refetching. |
+| 40 | External summary discovery | A) Skip, B) Reference only (post-gen), C) Use to improve summary, D) Use as validation | **B) Reference only** | Search for external summaries after generating ours. Store links + metadata only (copyright). Non-blocking — book is usable without external refs. Avoids biasing AI summary with external perspectives. |
 
 ---
 
