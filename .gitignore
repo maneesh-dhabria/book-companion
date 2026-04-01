@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Node / Vue
+node_modules/
+.npm
+.pnpm-store/
+*.tsbuildinfo
+.nuxt/
+.output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.sql.bak
+*.dump
+
+# Logs
+*.log
+logs/
+
+# Coverage & Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+
+# OS
+Thumbs.db
+
+# Uploaded books (user data)
+uploads/
+storage/
+
+# LLM cache/artifacts
+.claude/

@@ -1,0 +1,73 @@
+I want to create an app (web + cli) that takes a book as an input and then helps me summarize the book
+
+Book formats to be supported - epub, mobi, pdf
+
+Uploading a new book User Journey
+1- User uploads a book which whose title is parsed from (file name, cover, markup, etc.) and an entry is created in books database
+2- Application parses and organizes the content from the book in accordance with its table of contents (parts, sections, chapters, etc.) and saves the content for each parsed "book section" as a row linked to the original book and sorted as per original book content structure
+3- For each book section the application creates a summary using an LLM (use subagents from general purpose coding agents like claude code / codex). This summary is persisted for each book section
+4- The application then creates an overall summary of the book based on the summaries of each book section which is persisted against the book
+5- The user can then go thru book section wise summary or overall summary to get an understanding of the book
+6- The user can add annotations / highlights to original content / summaries, etc. which are also persisted
+
+
+Returning User Journey
+1- User lands on the library page where they see the list of books. 
+2- The user can search / filter by tags and find the specific book they are interested in
+3- The user gets in to the book details page where they can see the book sections with a 2-3 line description of each book section
+3.1 - The user can select a book section and go deeper
+3.2 - The user can also select and read the overall book summary 
+3.3 - The user can just read their own annotations / highlights
+3.4 - The user can search within 
+
+Some other features to consider
+- Summarize the book until a point (for effectiely resuming a book after a gap)
+- Select a text and ask the LLM to explain, discuss, summarize, etc. that particular section in context
+- Creating simulations / quizzes for each book section
+- Creating Summarization modes: Summarize book in N tweets (280 characters per tweet), Summarize book using only diagrams
+- Extract frameworks, templates, playbooks (with examples if available) from the book
+- Global sematic search across multiple books
+
+
+Things to consider
+- Its important to retain images / diagrams from the original text since they add a lot of context. We need to come up with a parsing solution that ensures images are not missed
+- The summarization methodology, prompt & evals becomes super important and hence we need to figure out best practices here
+
+Research Links (Some useful resources to consider for research while forming the approach. Please try and find similar ones as part of your research)
+- https://eugeneyan.com/writing/abstractive/
+- https://hamel.dev/blog/posts/evals-faq/
+- https://hamel.dev/blog/posts/field-guide/
+- https://hamel.dev/blog/posts/llm-judge/
+- https://eugeneyan.com/writing/llm-patterns/
+
+Open Questions
+- How will parsing the book work? 
+- What is the format in which we extract content - markdown?
+- How do we preserve images in the book during extraction?
+- How do we verify the accuracy + comprehensiveness of summaries?
+- Should we restrict the length of summaries or keep it open ended? What is the best approach to summarization for a book chapter with both markup text + text content + images
+
+Tech Stack Preference
+- Python FastAPI for backend, REST APIs, CLI
+- Postgres for database
+- Vue3 with composition API, tailwind css, vue router, pinia, Typescript for Web Frontend
+- Create a simple design system + components using tailwind css + vue3 that we can reuse
+- Monorepo
+- git for version control
+- Docker compose for development and deployment
+- LLM: Use claude code agents to do the summarization tasks locally and then save it to the database. Create interface in such a way that we can extend this to local ollama / cloud LLMs in future
+
+Terms
+- Book Section - Individual high level logical component within a book that is typically referenced in the table of contents (if it exists)
+- Book - Collection of Book Sections around a specific topic by one or more authors
+- Library - Collection of books with ability to add tags and filter / search
+
+
+User Pain Points that we are trying to solve
+- Skim thru a book quickly to understand its core ideas, frameworks etc. in a very short span of time
+- Search for a concept / framework across multiple books and find relevant advice
+- Go deeper on something mentioned in a book you don't understand using LLMs as a companion
+
+
+This project is loosely inspired from - https://eugeneyan.com/writing/aireadingclub/
+Please study it in detail and help me shape the requirements
