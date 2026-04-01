@@ -1,8 +1,8 @@
 # Book Companion - V1 Requirements Document
 
-**Version:** 1.0
+**Version:** 1.5 (post review loops 1-5)
 **Date:** 2026-04-01
-**Status:** Draft
+**Status:** Draft — Reviewed
 **Source Document:** [Initial Thoughts](../2026-04-01_initial_thoughts.txt)
 
 ---
@@ -530,18 +530,19 @@ Traditional metrics (ROUGE, BERTScore, BLEU) correlate poorly with human judgmen
   - book_summary                - section_title
                                 - section_content
                                 - section_summary
+                                - concept
 
-┌────────────────────┐     ┌────────────────────┐
-│  processing_jobs   │     │     concepts       │
-│                    │     │                    │
-│ id (PK)           │     │ id (PK)           │
-│ book_id (FK)      │     │ book_id (FK)      │
-│ step              │     │ first_section_id   │ ← section where first mentioned
+┌────────────────────┐     ┌────────────────────┐     ┌─────────────────────┐
+│  processing_jobs   │     │     concepts       │     │  concept_sections   │
+│                    │     │                    │     │                     │
+│ id (PK)           │     │ id (PK)           │──M:N│ concept_id (FK)     │
+│ book_id (FK)      │     │ book_id (FK)      │     │ section_id (FK)     │
+│ step              │     │ first_section_id   │     └─────────────────────┘
 │ status            │     │ term              │
-│ progress (JSON)   │     │ definition        │
-│ error_message     │     │ related_concepts  │ ← JSON array
-│ started_at        │     │ created_at        │
-│ completed_at      │     │ updated_at        │
+│ progress (JSON)   │     │ definition        │ A concept can appear in multiple
+│ error_message     │     │ related_concepts  │ sections. first_section_id tracks
+│ started_at        │     │ created_at        │ where it was first introduced.
+│ completed_at      │     │ updated_at        │ concept_sections tracks all mentions.
 └────────────────────┘     └────────────────────┘
 ```
 
@@ -583,6 +584,7 @@ All searchable content is indexed in the `search_index` table with both:
 | `section_title` | Section titles |
 | `section_content` | Original section content (chunked into ~512-token overlapping segments) |
 | `section_summary` | Section summaries (chunked if needed) |
+| `concept` | Concept term + definition from concepts index |
 
 ### Search Query Flow
 
@@ -688,6 +690,10 @@ bookcompanion init                          # First-time setup (DB, migrations, 
 bookcompanion backup [--output path]        # Full database backup (pg_dump)
 bookcompanion restore <backup_file>         # Restore from backup
 bookcompanion backup list                   # List available backups
+
+# Export
+bookcompanion export [--format json|markdown] [--output /path/to/dir]
+bookcompanion export <book_id> [--format json|markdown]
 ```
 
 ### Step-by-Step Flow Example
@@ -938,6 +944,9 @@ book-companion/
 | **Frontend framework** | Vue 3 (Composition API) | As specified. TypeScript, Pinia, Vue Router |
 | **CSS** | Tailwind CSS | As specified. Utility-first, custom design system |
 | **Build tool** | Vite | Fast HMR, Vue 3 native support |
+| **CLI output** | rich | Terminal Markdown rendering, tables, progress bars, pager integration |
+| **Logging** | structlog | Structured JSON logging with daily rotation |
+| **Prompt templates** | Jinja2 | Versioned prompt templates with defined variable contracts |
 | **Containerization** | Docker Compose | As specified. Local dev and deployment |
 
 ---
