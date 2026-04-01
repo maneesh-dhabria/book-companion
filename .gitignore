@@ -60,3 +60,4 @@ storage/
 
 # LLM cache/artifacts
 .claude/
+.superpowers/
