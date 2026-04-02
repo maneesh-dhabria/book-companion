@@ -195,7 +195,22 @@ If an individual section summarization fails (LLM timeout, parsing error):
 5. Failed sections retain their previous `default_summary_id` (unchanged)
 6. Book-level summary is still generated using available section summaries, with a note about missing sections
 
-### 3.10 Summarize Progress Display
+### 3.10 Model Selection
+
+The LLM model is determined in this priority order:
+1. `--model` flag on `summarize` command (e.g., `--model opus`)
+2. `llm.model` from config (default: `"sonnet"`)
+
+The selected model is stored in `summary.model_used` for provenance.
+
+### 3.11 Eval Integration
+
+- `eval_json` on the summary row is populated when the `eval` command is run, **not** automatically after summarization.
+- The `eval` command in V1.1 takes a `--summary-id` flag to evaluate a specific summary: `bookcompanion eval <book_id> [--summary-id <id>]`
+- Without `--summary-id`, it evaluates the default summary for each section.
+- Eval results are written to both `summary.eval_json` (inline) and `eval_traces` table (detailed per-assertion audit trail with `summary_id` FK).
+
+### 3.12 Summarize Progress Display
 
 ```
 Summarizing 8 sections with preset "practitioner_bullets"...
@@ -575,12 +590,13 @@ Single Alembic migration file. No backward compatibility layer.
 2. **Add** `default_summary_id` FK column to `books` (nullable, FK -> `summary.id`, SET NULL on delete)
 3. **Add** `default_summary_id` FK column to `book_sections` (nullable, FK -> `summary.id`, SET NULL on delete)
 4. **Add** `derived_from` JSON column to `book_sections` (nullable)
-5. **Drop** columns from `book_sections`: `summary_md`, `summary_status`, `summary_version`, `summary_model`, `summary_eval`, `user_edited`
-6. **Drop** columns from `books`: `overall_summary`, `overall_summary_eval`
-7. **Drop** `SummaryStatus` enum type from database
-8. **Add** `summary_id` FK column to `eval_traces` (nullable, FK -> `summary.id`, SET NULL on delete)
-9. **Truncate** `eval_traces` table
-10. Create indexes on `summary` table per [section 4.6](#46-indexes)
+5. **Drop** index `ix_book_sections_summary_status` (depends on `summary_status` column)
+6. **Drop** columns from `book_sections`: `summary_md`, `summary_status`, `summary_version`, `summary_model`, `summary_eval`, `user_edited`
+7. **Drop** columns from `books`: `overall_summary`, `overall_summary_eval`
+8. **Drop** `SummaryStatus` enum type from database
+9. **Add** `summary_id` FK column to `eval_traces` (nullable, FK -> `summary.id`, SET NULL on delete)
+10. **Truncate** `eval_traces` table
+11. Create indexes on `summary` table per [section 4.6](#46-indexes)
 
 ### 10.2 Prompt System Migration
 
@@ -805,10 +821,11 @@ These apply identically regardless of facets:
 
 | Command | Changes |
 |---------|---------|
-| `summarize` | New flags: `--preset`, `--style`, `--audience`, `--compression`, `--content-focus`. Removes `--detail`. Skips already-summarized sections by default. `--force` re-summarizes all. Warns on concurrent runs. |
+| `summarize` | New flags: `--preset`, `--style`, `--audience`, `--compression`, `--content-focus`, `--model` (override LLM model). Removes `--detail`. Skips already-summarized sections by default. `--force` re-summarizes all. Warns on concurrent runs. |
 | `summary <book_id> [section_id]` | Reads from `summaries` table via `default_summary_id`. Shows helpful error when no summary exists. |
 | `show` | New columns: ID, Chars, Compression, Eval, Images. Quality summary line. Adaptive column hiding. |
 | `add` | Structure detection shows chars + tokens per section, quality warnings, suggested actions, interactive editing REPL. `--quick` aliased to add + summarize with `executive_brief` preset. |
+| `eval` | New `--summary-id` flag to evaluate a specific summary. Without it, evaluates default summaries. Writes to both `summary.eval_json` and `eval_traces` with `summary_id` FK. |
 | `--help` (all) | Common Workflows section on main help. 2-3 examples per subcommand. |
 
 ### 13.3 Preset Create — Detailed Behavior
