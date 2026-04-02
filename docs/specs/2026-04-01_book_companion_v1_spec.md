@@ -100,7 +100,7 @@ Features should be implemented in this order due to dependencies:
        processing_jobs, search_index, eval_traces
 
 3. Book Parsing Pipeline
-   └── Format detection → EPUB parser → PDF parser ��� MOBI parser →
+   └── Format detection → EPUB parser → PDF parser → MOBI parser →
        Structure detection → Content segmentation → DB storage
    Dependencies: Data model
 
@@ -227,7 +227,7 @@ class SummarizerService:
 
 class SearchService:
     def __init__(self, db: AsyncSession, embedding: EmbeddingService, config: Settings): ...
-    async def search(self, query: str, book_id: int | None, source_types: list[str] | None, limit: int = 20) -> SearchResults: ...
+    async def search(self, query: str, book_id: int | None, source_types: list[str] | None, limit: int = 20) -> GroupedSearchResults: ...
 
 class EvalService:
     def __init__(self, db: AsyncSession, llm: LLMProvider, config: Settings): ...
@@ -660,8 +660,8 @@ class ExternalReference(Base):
 
 - Use Alembic with autogenerate from SQLAlchemy models
 - Migration naming: `NNNN_descriptive_name.py` (e.g., `0001_initial_schema.py`)
-- Phase 1 creates: books, authors, book_authors, book_sections, images, search_index, processing_jobs, eval_traces
-- Phase 2 adds: tags, taggables, annotations, concepts, concept_sections, external_references
+- Phase 1 creates: books, authors, book_authors, book_sections, images, search_index, processing_jobs, eval_traces, concepts, concept_sections (concepts extracted during summarization)
+- Phase 2 adds: tags, taggables, annotations, external_references
 - All migrations are idempotent and support rollback
 - Run `alembic upgrade head` on `bookcompanion init` and auto-check on every CLI invocation
 
