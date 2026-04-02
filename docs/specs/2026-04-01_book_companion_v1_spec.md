@@ -533,11 +533,13 @@ class Taggable(Base):
 
 
 class Annotation(Base):
+    """Polymorphic annotation model. content_type + content_id allow annotations on
+    section content, section summaries, or book-level summaries without separate tables."""
     __tablename__ = "annotations"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    section_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("book_sections.id", ondelete="CASCADE"), nullable=False)
     content_type: Mapped[ContentType] = mapped_column(Enum(ContentType), nullable=False)
+    content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)  # FK to book_sections.id or books.id
     text_start: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Character offset
     text_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
     selected_text: Mapped[str | None] = mapped_column(Text, nullable=True)  # Stored for re-anchoring
@@ -547,10 +549,13 @@ class Annotation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    section: Mapped["BookSection"] = relationship(back_populates="annotations")
+    # Note: No FK constraint on content_id — polymorphic resolution via content_type:
+    #   section_content → book_sections.id
+    #   section_summary → book_sections.id
+    #   book_summary → books.id
 
     __table_args__ = (
-        Index("ix_annotations_section", "section_id"),
+        Index("ix_annotations_content", "content_type", "content_id"),
     )
 
 
@@ -984,6 +989,8 @@ async def invoke_cli(self, prompt: str, model: str | None = None,
     ]
     if json_schema:
         cmd.extend(["--json-schema", json.dumps(json_schema)])
+    if self.max_budget_usd:
+        cmd.extend(["--max-budget-usd", str(self.max_budget_usd)])
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -1018,6 +1025,39 @@ Prompts stored as Jinja2 templates in `backend/app/services/summarizer/prompts/`
 ├── eval_format_v1.txt
 └── discover_references_v1.txt
 ```
+
+**Phase 2 prompt** (`discover_references_v1.txt`):
+
+```jinja2
+Search the web for existing summaries and reviews of "{{ book_title }}" by {{ book_author }}.
+
+Find 4-5 high-quality external references. Prioritize (in order):
+1. Dedicated summary services: Shortform, Blinkist, getAbstract
+2. Notable reviewer blogs: Nat Eliason, Derek Sivers, Farnam Street
+3. Publisher/author summaries
+4. Quality blog posts with substantive reviews
+5. Academic reviews (for technical/academic books)
+
+Do NOT include: Amazon reviews, SEO-generated summaries, affiliate marketing content.
+
+For each reference, return: url, title, source_name, snippet (1-2 sentences).
+Output as JSON array.
+```
+
+### Processing Cost Estimates (Reference)
+
+Approximate Claude API cost per book (via CLI subscription):
+
+| Operation | Model | Typical Cost (300-page book) |
+|-----------|-------|------------------------------|
+| Quick summary (single-pass) | Sonnet | ~$0.30-0.80 |
+| Section summarization (15 sections) | Sonnet | ~$1.00-2.50 |
+| Eval assertions (16 x 15 sections) | Sonnet | ~$1.50-3.00 |
+| Book-level summary | Sonnet | ~$0.20-0.50 |
+| Image captioning (10 images) | Sonnet | ~$0.50-1.00 |
+| **Total (full pipeline)** | **Sonnet** | **~$3.50-8.00** |
+
+*Note: Costs are approximate. Embedding via Ollama is free (local).*
 
 Conventions:
 - Version as `{purpose}_v{N}.txt`
@@ -1268,9 +1308,11 @@ class SearchResult:
     highlight: str  # Snippet with match context
 
 @dataclass
-class SearchResults:
+class GroupedSearchResults:
+    """Results grouped by book for CLI display. Each book group contains
+    top 2-3 results with 'and N more...' collapse."""
     query: str
-    results: list[SearchResult]
+    books: dict[int, list[SearchResult]]  # book_id → results for that book
     total_count: int
 ```
 
@@ -1367,10 +1409,18 @@ bookcompanion tags                          # List all tags
 # === Concepts ===
 bookcompanion concepts <book_id>            # Show concepts index
 bookcompanion concepts search "term"        # Search concepts across all books
+bookcompanion concepts edit <book_id>       # Edit concepts in $EDITOR (marks as user_edited)
 
 # === External References ===
 bookcompanion references <book_id>          # List external references
 bookcompanion discover-references <book_id> # Run/re-run external discovery
+
+# === Search (Phase 2 additions) ===
+bookcompanion search "query" --tag <tag>    # Filter by tag
+bookcompanion search "query" --annotations-only  # Search only annotations/notes
+
+# === Eval (Phase 2 additions) ===
+bookcompanion eval compare-prompts --book <id> --section <id> --prompt-a v1 --prompt-b v2
 
 # === Metadata Editing ===
 bookcompanion edit <book_id> --title "..." --author "..."
@@ -1875,6 +1925,8 @@ llm:
   quick_summary_model: "sonnet"         # Model for quick summary mode
   timeout_seconds: 300                  # Per-operation timeout
   max_retries: 2                        # Auto-retry on critical eval failures
+  max_budget_usd: 5.0                  # Per-book budget cap (passed as --max-budget-usd to CLI)
+  cross_summary_consistency: true       # Enable cross-summary faithfulness check (doubles cost for that assertion)
 
 summarization:
   default_detail_level: "standard"      # brief | standard | detailed
@@ -2336,7 +2388,12 @@ These are sourced from Project Gutenberg and included in `tests/fixtures/`. Smal
 | 22 | CLI profiles | Single+model flag / Multiple profiles / Single fixed | **Single profile, model flag** | One CLI alias, `--model` flag for per-operation model selection. |
 | 23 | Async processing | multiprocessing / threading / daemon / nohup | **multiprocessing (fork)** | Survives terminal close. Status via DB polling. Simple, robust. |
 | 24 | Spec structure | One spec phased / Separate per phase / Phase 1 detailed | **One spec, Phase 1+2** | Single document, features tagged by phase. No web UI in this spec. |
-| 25-47 | (Inherited from requirements) | See [requirements decision log](../requirements/2026-04-01_book_companion_v1_requirements.md#20-decision-log) | — | All prior decisions from requirements document are carried forward unless overridden above. |
+| 25 | Tag filtering phase | Phase 1 / Phase 2 | **Phase 2** | Tags are a Phase 2 feature. All tag-related filtering (search --tag, list --tag) moves to Phase 2 for consistent phasing. |
+| 26 | Pairwise prompt comparison | Phase 1 / Phase 2 | **Phase 2** | Development/tuning tool. Basic `eval compare --ratios` covers most Phase 1 needs. |
+| 27 | Eval enabled config | Persistent config / CLI flag only | **CLI flag only** | `--skip-eval` on summarize command. Evals should run by default; skipping is a conscious per-run choice. |
+| 28 | Annotation model | Direct FK / Polymorphic | **Polymorphic (content_type + content_id)** | Enables annotations on section content, section summaries, AND book-level summaries without separate tables. |
+| 29 | Concepts extraction phase | Phase 1 during summarization / Phase 2 only | **Extraction in Phase 1, CLI commands in Phase 2** | Concepts are extracted as part of summarization prompts. Dedicated browse/search commands are Phase 2. |
+| 30-47 | (Inherited from requirements) | See [requirements decision log](../requirements/2026-04-01_book_companion_v1_requirements.md#20-decision-log) | — | All prior decisions from requirements document are carried forward unless overridden above. |
 
 ---
 
@@ -2357,6 +2414,24 @@ These are sourced from Project Gutenberg and included in `tests/fixtures/`. Smal
 ### Sources from Requirements (Carried Forward)
 
 All sources listed in the [requirements research section](../requirements/2026-04-01_book_companion_v1_requirements.md#21-research-sources) apply to this spec.
+
+### Documentation Deliverable: Sample Output
+
+Include sample output in `docs/sample-output/` showing what a processed book looks like:
+- Sample book summary (from a public domain test book)
+- Sample section summary with eval results
+- Sample concepts index
+- Sample search results
+- Sample CLI output for key commands
+
+This allows evaluation of the tool's value before committing to full setup.
+
+### Additional Research To Conduct During Implementation
+
+- Optimal chunking strategies for embedding (size, overlap, semantic chunking)
+- nomic-embed-text vs other Ollama embedding models for book content
+- Claude Code CLI error handling and edge cases in subprocess mode
+- Effective prompt patterns for different non-fiction genres
 
 ---
 
