@@ -13,6 +13,24 @@
 
 ---
 
+## Prerequisites
+
+Before starting implementation, ensure these are installed and working:
+
+| Dependency | Install Command | Verify |
+|-----------|----------------|--------|
+| Python 3.12+ | Already installed (system) | `python3 --version` |
+| uv | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `uv --version` |
+| Docker + Compose | [Docker Desktop](https://docker.com/products/docker-desktop/) | `docker --version && docker compose version` |
+| Ollama | `brew install ollama && ollama serve` | `curl http://localhost:11434/api/tags` |
+| Ollama model | `ollama pull nomic-embed-text` | Included in above |
+| Calibre | `brew install --cask calibre` | `ebook-convert --version` |
+| Claude Code CLI | Already installed | `claude --version` |
+
+**Port requirements:** PostgreSQL will use port 5438. Ollama uses 11434 (already running).
+
+---
+
 ## Table of Contents
 
 1. [Decision Log](#decision-log)
@@ -3094,19 +3112,33 @@ git commit -m "feat: add image captioning service with non-blocking failure hand
 
 Create each template as specified in Spec Sections 6-8. Files:
 
-- `summarize_section_v1.txt` — Section summarization with cumulative context, concepts extraction, image captions (spec lines 902-970)
-- `summarize_book_v1.txt` — Book-level summary from section summaries (spec lines 1039-1068)
-- `quick_summary_v1.txt` — Single-pass quick book overview (spec lines 876-896)
+- `summarize_section_v1.txt` — Section summarization with cumulative context, concepts extraction, image captions (spec Section 7 "Section Summarization")
+- `summarize_book_v1.txt` — Book-level summary from section summaries (spec Section 7 "Book Summary")
+- `quick_summary_v1.txt` — Single-pass quick book overview (spec Section 7 "Quick Summary Mode")
 - `detect_structure_v1.txt` — LLM-assisted TOC detection (already created in Task 14)
-- `caption_image_v1.txt` — Image captioning prompt
+- `caption_image_v1.txt` — Image captioning prompt (spec Section 6 "Image Captioning")
 - `eval_faithfulness_v1.txt` — `no_hallucinated_facts`, `no_contradictions`, `accurate_quotes`, `cross_summary_consistency`
 - `eval_completeness_v1.txt` — `covers_main_argument`, `covers_key_concepts`, `covers_frameworks`, `covers_examples`
 - `eval_coherence_v1.txt` — `standalone_readable`, `logical_flow`, `no_dangling_references`
 - `eval_specificity_v1.txt` — `not_generic`, `preserves_author_terminology`
 - `eval_format_v1.txt` — `has_key_concepts`, `reasonable_length`, `image_refs_preserved`
-- `discover_references_v1.txt` — External reference discovery (Phase 2, spec lines 1122-1136)
+- `discover_references_v1.txt` — External reference discovery (Phase 2, spec Section 7 "Prompt Management")
 
 Each template uses Jinja2 syntax with variables matching the spec. Copy prompt content verbatim from the spec.
+
+**IMPORTANT:** The `summarize_section_v1.txt` JSON output schema must include a `concepts` array for concept extraction during summarization (spec Section 7 "Concepts Extraction"):
+```json
+{
+  "key_concepts": [...],
+  "detailed_summary": "...",
+  "frameworks": [...],
+  "key_quotes": [...],
+  "concepts": [
+    {"term": "...", "definition": "...", "related_concepts": ["..."]}
+  ]
+}
+```
+This is how concepts get extracted in Phase 1 — as part of the summarization JSON output, not a separate call.
 
 - [ ] **Step 2: Verify templates render without errors**
 
@@ -3968,14 +4000,39 @@ def auto_check_migrations(settings: Settings) -> None:
     """Spec requirement: auto-check migrations on every CLI invocation.
     Run a lightweight check — compare alembic head vs current. Log warning if behind."""
     import subprocess
-    result = subprocess.run(
-        ["uv", "run", "alembic", "current"],
-        capture_output=True, text=True, timeout=5,
-    )
-    if "head" not in result.stdout:
-        import structlog
-        structlog.get_logger().warning("database_migrations_behind",
-            hint="Run: bookcompanion init")
+    try:
+        result = subprocess.run(
+            ["uv", "run", "alembic", "current"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if "head" not in result.stdout:
+            import structlog
+            structlog.get_logger().warning("database_migrations_behind",
+                hint="Run: bookcompanion init")
+    except Exception:
+        pass  # Don't block CLI on migration check failure
+
+
+async def check_db_health(settings: Settings) -> bool:
+    """Quick DB connection health check. Returns False if DB unreachable.
+    Spec Section 12: DB connection failure → immediate error with connection details."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import text
+    engine = create_async_engine(settings.database.url)
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception as e:
+        from rich.console import Console
+        Console().print(
+            f"[red]Database connection failed:[/red] {e}\n"
+            f"Connection URL: {settings.database.url}\n"
+            f"Check: docker compose ps"
+        )
+        return False
+    finally:
+        await engine.dispose()
 
 
 def get_settings() -> Settings:
@@ -4083,6 +4140,28 @@ def print_success(message: str):
 
 def print_empty_state(message: str):
     console.print(Panel(message, style="dim"))
+
+
+# Global format flag — set in main callback
+_output_format: str = "text"
+
+
+def set_output_format(fmt: str):
+    global _output_format
+    _output_format = fmt
+
+
+def should_json() -> bool:
+    return _output_format == "json"
+
+
+def print_json_or_table(data: list[dict] | dict, table_fn):
+    """If --format json, print JSON. Otherwise use the provided table function."""
+    if should_json():
+        import json
+        console.print(json.dumps(data, indent=2, default=str))
+    else:
+        table_fn()
 ```
 
 - [ ] **Step 4: Commit**
@@ -4756,7 +4835,7 @@ git commit -m "test: add E2E CLI flow tests"
 
 - [ ] **Step 1: Add Phase 2 models to `models.py`**
 
-Add models from spec lines 583-670: `Tag`, `Taggable`, `Annotation`, `ExternalReference` (Concept and ConceptSection are already in Phase 1).
+Add Phase 2 models from spec Section 5 "Phase 2 Models": `Tag`, `Taggable`, `Annotation`, `ExternalReference` (Concept and ConceptSection are already in Phase 1).
 
 - [ ] **Step 2: Generate and run migration**
 
