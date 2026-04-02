@@ -164,7 +164,38 @@ Default behavior: **skip sections that already have a summary with the same pres
 
 `--force` appends new summary rows and updates `default_summary_id` for all sections and the book.
 
-### 3.8 Summarize Progress Display
+### 3.8 Book-Level Summary Template
+
+The `base/summarize_book.txt` template receives all section summaries (not original content) and produces a book-level summary. It uses the same facet fragments as the section template.
+
+```jinja
+{# base/summarize_book.txt #}
+You are creating a book-level summary of "{{ book_title }}" by {{ author }}.
+This summary synthesizes {{ section_count }} section summaries below.
+
+{% include "fragments/audience/" + audience + ".txt" %}
+{% include "fragments/content_focus/" + content_focus + ".txt" %}
+{% include "fragments/style/" + style + ".txt" %}
+{% include "fragments/compression/" + compression + ".txt" %}
+
+## Section summaries
+{% for section in sections %}
+### {{ section.title }}
+{{ section.summary }}
+{% endfor %}
+```
+
+### 3.9 Summarize Error Handling
+
+If an individual section summarization fails (LLM timeout, parsing error):
+1. Log the error with section details
+2. Mark the section as failed in progress display: `[3/8] Five Forces Framework ✗ (timeout after 300s)`
+3. **Continue** to the next section (do not abort the entire run)
+4. At the end, report: `✓ Done. 6 section summaries generated. 2 failed (sections #3, #7).`
+5. Failed sections retain their previous `default_summary_id` (unchanged)
+6. Book-level summary is still generated using available section summaries, with a note about missing sections
+
+### 3.10 Summarize Progress Display
 
 ```
 Summarizing 8 sections with preset "practitioner_bullets"...
@@ -495,8 +526,10 @@ Section #3 "Five Forces Framework" — 2 summaries:
 
 ### 8.3 `summary set-default <summary_id>`
 
-- Validates `content_type` + `content_id` matches target section/book
-- Updates the `default_summary_id` FK on the section or book
+- Looks up the summary row by ID. Reads `content_type` to determine if it's a section or book summary.
+- For `content_type=section`: sets `BookSection.default_summary_id` where `BookSection.id == summary.content_id`
+- For `content_type=book`: sets `Book.default_summary_id` where `Book.id == summary.content_id`
+- Validates the target entity exists: `Error: Section #999 not found (summary references a deleted section).`
 - **Triggers synchronous re-embedding** for `source_type=SECTION_SUMMARY` search index entries (< 2s with local Ollama)
 - Validates the summary_id exists: `Error: Summary #999 not found.`
 
@@ -759,6 +792,10 @@ These apply identically regardless of facets:
 | `summary <book_id> [section_id]` | Read the default summary for a book or section |
 | `read <book_id> <section_id> [--with-summary]` | Read original section content, optionally with default summary |
 | `edit sections <book_id>` | Interactive section merge/split/reorder/delete (post-save) |
+
+**Typer registration:** `preset` and `summary` are registered as Typer sub-apps via `app.add_typer()` in `backend/app/cli/main.py`. New command files: `cli/commands/preset.py`, `cli/commands/summary_cmds.py`, `cli/commands/edit.py`, `cli/commands/read.py`.
+
+**deps.py wiring:** New services (PresetService, SectionEditService, QualityService, SummaryService) are added to `get_services()` with try/except for graceful degradation.
 
 ### 13.2 Modified Commands
 
