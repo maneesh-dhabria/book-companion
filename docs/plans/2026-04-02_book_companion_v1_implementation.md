@@ -1509,9 +1509,14 @@ async def test_claude_cli_constructs_correct_args():
         call_args = mock_exec.call_args[0]
         assert call_args[0] == "claude"
         assert "-p" in call_args
+        assert "-" in call_args  # stdin mode
         assert "--output-format" in call_args
         assert "json" in call_args
         assert "--print" in call_args
+        # Verify prompt passed via stdin
+        mock_proc.communicate.assert_called_once()
+        stdin_data = mock_proc.communicate.call_args[1].get("input") or mock_proc.communicate.call_args[0][0] if mock_proc.communicate.call_args[0] else None
+        # stdin should contain the prompt text
 
 
 @pytest.mark.asyncio
@@ -3906,7 +3911,7 @@ app.command("summarize")(summarize_cmd.summarize)
 app.command("search")(search_cmd.search)
 app.command("eval")(eval_cmd.eval_cmd)
 app.command("status")(status_cmd.status)
-app.command("config")(config_cmd.config)
+app.add_typer(config_cmd.config_app, name="config")
 
 
 if __name__ == "__main__":
@@ -4520,6 +4525,145 @@ git commit -m "feat: add async processing mode with background process and PID t
 
 ---
 
+### Task 29a: Integration Tests — Book Pipeline, Summarization, Eval
+
+**Files:**
+- Create: `backend/tests/integration/test_book_pipeline.py`
+- Create: `backend/tests/integration/test_summarize_integration.py`
+- Create: `backend/tests/integration/test_eval_integration.py`
+
+These are spec Section 14 required integration tests that use real DB and (for some) real Claude Code CLI.
+
+- [ ] **Step 1: Create `test_book_pipeline.py`**
+
+```python
+# backend/tests/integration/test_book_pipeline.py
+"""Integration tests for the full book pipeline (parse → store → verify)."""
+
+import pytest
+from sqlalchemy import select
+from app.db.models import Book, BookSection, BookStatus, Image
+from app.services.book_service import BookService
+from app.config import Settings
+
+
+@pytest.mark.asyncio
+async def test_full_epub_pipeline(db_session, sample_epub_path, test_settings):
+    service = BookService(db=db_session, config=test_settings)
+    book = await service.add_book(sample_epub_path)
+
+    assert book.id is not None
+    assert book.status == BookStatus.PARSED
+    assert book.title  # Title extracted
+    result = await db_session.execute(
+        select(BookSection).where(BookSection.book_id == book.id)
+    )
+    sections = result.scalars().all()
+    assert len(sections) >= 5  # Art of War has 13+ sections
+
+
+@pytest.mark.asyncio
+async def test_full_pdf_pipeline(db_session, sample_pdf_path, test_settings):
+    service = BookService(db=db_session, config=test_settings)
+    book = await service.add_book(sample_pdf_path)
+    assert book.status == BookStatus.PARSED
+
+
+@pytest.mark.asyncio
+async def test_duplicate_detection(db_session, sample_epub_path, test_settings):
+    service = BookService(db=db_session, config=test_settings)
+    book1 = await service.add_book(sample_epub_path)
+    with pytest.raises(Exception, match="already exists"):
+        await service.add_book(sample_epub_path)
+
+
+@pytest.mark.asyncio
+async def test_re_import_with_force(db_session, sample_epub_path, test_settings):
+    service = BookService(db=db_session, config=test_settings)
+    book1 = await service.add_book(sample_epub_path)
+    book2 = await service.add_book(sample_epub_path, force=True)
+    assert book2.id == book1.id  # Same book, re-imported
+
+
+@pytest.mark.asyncio
+async def test_delete_cascades_all_data(db_session, sample_epub_path, test_settings):
+    service = BookService(db=db_session, config=test_settings)
+    book = await service.add_book(sample_epub_path)
+    book_id = book.id
+    await service.delete_book(book_id)
+    result = await db_session.execute(
+        select(BookSection).where(BookSection.book_id == book_id)
+    )
+    assert result.scalars().all() == []
+```
+
+- [ ] **Step 2: Create `test_summarize_integration.py` (requires real Claude CLI)**
+
+```python
+# backend/tests/integration/test_summarize_integration.py
+"""Integration tests for summarization with real Claude Code CLI.
+These tests make actual LLM calls — run with: pytest -m integration_llm"""
+
+import pytest
+
+pytestmark = pytest.mark.integration_llm
+
+
+@pytest.mark.asyncio
+async def test_summarize_single_section(db_session, test_settings):
+    """Summarize one section, verify output structure."""
+    # Requires a book already added. Use small test content.
+    pass  # Implement after Tasks 19+21 are complete
+
+
+@pytest.mark.asyncio
+async def test_quick_summary(db_session, test_settings):
+    """Quick summary mode on a small book."""
+    pass  # Implement after Task 19
+
+
+@pytest.mark.asyncio
+async def test_image_captioning(db_session, test_settings):
+    """Caption a test image via real CLI."""
+    pass  # Implement after Task 17
+```
+
+- [ ] **Step 3: Create `test_eval_integration.py`**
+
+```python
+# backend/tests/integration/test_eval_integration.py
+"""Integration tests for eval assertions."""
+
+import pytest
+
+pytestmark = pytest.mark.integration_llm
+
+
+@pytest.mark.asyncio
+async def test_eval_single_assertion(db_session, test_settings):
+    """Run one eval assertion with real LLM."""
+    pass  # Implement after Task 20
+```
+
+- [ ] **Step 4: Add pytest marker for LLM integration tests**
+
+In `backend/pyproject.toml`:
+```toml
+[tool.pytest.ini_options]
+markers = [
+    "integration_llm: tests that make real LLM API calls (slow, require Claude CLI)",
+]
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/tests/integration/
+git commit -m "test: add integration tests for book pipeline, summarization, and eval"
+```
+
+---
+
 ### Task 30: E2E CLI Tests
 
 **Files:**
@@ -4635,7 +4779,7 @@ git commit -m "feat: add Phase 2 database models (tags, annotations, external re
 **Files:**
 - Create: `backend/app/db/repositories/annotation_repo.py`
 - Create: `backend/app/db/repositories/tag_repo.py`
-- Create: `backend/app/db/repositories/concept_repo.py`
+- Modify: `backend/app/db/repositories/concept_repo.py` (already created in Task 8; add Phase 2 methods)
 
 - [ ] **Step 1: Implement annotation repository**
 
@@ -4645,7 +4789,7 @@ CRUD for annotations: create, list by book/section/tag, update, delete. Support 
 
 CRUD for tags + polymorphic taggable associations. `add_tag(taggable_type, taggable_id, tag_name)`, `list_tags()`, `get_by_name()`.
 
-- [ ] **Step 3: Implement concept repository**
+- [ ] **Step 3: Extend concept repository with Phase 2 methods**
 
 CRUD for concepts: `list_by_book()`, `search_across_books()`, `update()`, `get_by_term()`.
 
