@@ -459,7 +459,7 @@ bookcompanion summary compare <id1> <id2>
 ```bash
 bookcompanion summary set-default <summary_id>
 ```
-Changes which summary is the active default for a section or book.
+Changes which summary is the active default for a section or book. Validates that the summary's `content_type` + `content_id` matches the target section/book. Triggers search index re-embedding for `source_type=SECTION_SUMMARY` automatically.
 
 **Show specific summary with provenance:**
 ```bash
@@ -592,6 +592,7 @@ eval_trace (modified)
 | `bookcompanion preset list` | List available presets with descriptions |
 | `bookcompanion preset show <name>` | Show facet values for a preset |
 | `bookcompanion preset create <name>` | Interactive creation: prompts for description, then each facet with available values (e.g., `Style [bullet_points/narrative/...]:`) defaulting to system default. Saves YAML to `prompts/presets/<name>.yaml`. |
+| `bookcompanion preset delete <name>` | Delete a user-created preset. System presets (`system: true`) are protected: `Error: Cannot delete system preset "practitioner_bullets".` |
 | `bookcompanion summary list <book_id> [section_id]` | List all summaries for a book or section |
 | `bookcompanion summary compare <id1> <id2>` | Side-by-side comparison of two summaries |
 | `bookcompanion summary set-default <summary_id>` | Set the active default summary |
