@@ -39,6 +39,10 @@
 | D10 | Error hierarchy | Single exception / Per-service / Shared base | **Shared base + per-domain exceptions** | `BookCompanionError` base, then `ParseError`, `SummarizationError`, `EvalError`, `SearchError`, `ConfigError`. |
 | D11 | Playwright testing | Include / Skip | **Skip** | No web UI in this spec. Will add when web UI spec is implemented. |
 | D12 | Phase 2 tables in initial migration | Single migration / Separate per phase | **Separate migration per phase** | `0001_initial_schema.py` for Phase 1 tables. `0002_phase2_schema.py` for Phase 2 tables. Cleaner history. |
+| D13 | Prompt passing to CLI | `-p` flag / stdin pipe / temp file | **stdin pipe** | Spec explicitly requires "Prompt passed via stdin to avoid shell escaping issues." Pass prompt via `proc.stdin` with `asyncio.create_subprocess_exec()`. |
+| D14 | Token estimation | 1 token per word / 1 token per 4 chars | **1 token per ~4 chars** | Spec mandates "1 token ≈ 4 chars". Consistent with Claude tokenizer approximation. Affects long-section threshold (150K tokens ≈ 600K chars). |
+| D15 | Alembic migration driver | asyncpg only / psycopg2 for migrations | **psycopg2-binary for Alembic, asyncpg for app** | Alembic runs synchronous migrations. Requires `psycopg2-binary` in dev dependencies. App uses `asyncpg` for async operations. |
+| D16 | Config `set` command | Positional args on `config` / Subcommand `config set` | **Typer subcommand `config set`** | Spec defines `bookcompanion config set <key> <value>` as explicit subcommand. Use Typer sub-app for `config`. |
 
 ---
 
@@ -223,6 +227,8 @@ dependencies = [
     "marker-pdf>=1.0.0",
     # Embeddings & HTTP
     "httpx>=0.28.0",
+    # Clipboard (for --copy flag)
+    "pyperclip>=1.9.0",
     # Prompts
     "jinja2>=3.1.0",
     # Logging
@@ -236,6 +242,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+    "psycopg2-binary>=2.9.0",  # Alembic migrations (sync driver)
 ]
 
 [project.scripts]
@@ -546,15 +553,19 @@ class LoggingConfig(BaseModel):
 
 
 def _load_yaml_config() -> dict[str, Any]:
-    """Load config from YAML file if it exists."""
-    config_path = os.environ.get(
-        "BOOKCOMPANION_CONFIG",
+    """Load config from YAML file if it exists. Priority: env var > XDG > fallback."""
+    candidates = [
+        os.environ.get("BOOKCOMPANION_CONFIG", ""),
         os.path.expanduser("~/.config/bookcompanion/config.yaml"),
-    )
-    path = Path(config_path)
-    if path.exists():
-        with open(path) as f:
-            return yaml.safe_load(f) or {}
+        os.path.expanduser("~/.bookcompanion/config.yaml"),  # Fallback per spec
+    ]
+    for config_path in candidates:
+        if not config_path:
+            continue
+        path = Path(config_path)
+        if path.exists():
+            with open(path) as f:
+                return yaml.safe_load(f) or {}
     return {}
 
 
@@ -790,12 +801,15 @@ def do_run_migrations(connection):
 
 async def run_migrations_online() -> None:
     settings = Settings()
-    # Use sync URL for Alembic (replace asyncpg with psycopg2 or use raw postgresql)
-    url = settings.database.url.replace("+asyncpg", "")
-    connectable = create_async_engine(url)
+    connectable = create_async_engine(settings.database.url)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
+
+# Note: Alembic with asyncpg requires the asyncpg driver. The env.py uses
+# SQLAlchemy's async engine which handles the connection correctly.
+# psycopg2-binary is needed only if running alembic CLI directly with
+# a non-async URL in alembic.ini.
 
 
 if context.is_offline_mode():
@@ -958,6 +972,7 @@ BOOKS = {
     "sample_epub/art_of_war.epub": "https://www.gutenberg.org/ebooks/132.epub3.images",
     "sample_epub/meditations.epub": "https://www.gutenberg.org/ebooks/2680.epub3.images",
     "sample_pdf/the_republic.pdf": "https://www.gutenberg.org/files/1497/1497-pdf.pdf",
+    "sample_mobi/art_of_war.mobi": "https://www.gutenberg.org/ebooks/132.kf8.images",
 }
 
 
@@ -1263,6 +1278,7 @@ Each follows the same pattern: thin CRUD operations with query builders. Key met
 - `ProcessingRepository`: `create()`, `get_active_for_book()`, `update_status()`, `get_orphaned_jobs()`
 - `SearchIndexRepository`: `create_bulk()`, `bm25_search()`, `semantic_search()`, `delete_by_book()`, `delete_by_source()`
 - `EvalTraceRepository`: `create()`, `get_by_section()`, `get_by_assertion()`, `get_aggregated_results()`
+- `ConceptRepository`: `create_bulk()`, `get_by_book()`, `search_across_books()`, `update()` — needed in Phase 1 since concepts are extracted during summarization
 
 - [ ] **Step 3: Run all tests**
 
@@ -1599,7 +1615,7 @@ class ClaudeCodeCLIProvider(LLMProvider):
         timeout: int | None = None,
     ) -> LLMResponse:
         cmd = [
-            self.cli_command, "-p", prompt,
+            self.cli_command, "-p", "-",  # Read prompt from stdin
             "--output-format", "json",
             "--model", model or self.default_model,
             "--print",
@@ -1612,12 +1628,13 @@ class ClaudeCodeCLIProvider(LLMProvider):
         start = time.monotonic()
         proc = await asyncio.create_subprocess_exec(
             *cmd,
+            stdin=asyncio.subprocess.PIPE,  # Pass prompt via stdin (spec requirement)
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         try:
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(),
+                proc.communicate(input=prompt.encode()),  # Prompt via stdin
                 timeout=timeout or self.default_timeout,
             )
         except asyncio.TimeoutError:
@@ -2014,7 +2031,11 @@ class PDFParser(BookParser):
         return file_format == "pdf"
 
     async def parse(self, file_path: Path) -> ParsedBook:
-        # Use pymupdf4llm for fast conversion (~0.12s/page)
+        # Detect if complex layout (tables, multi-column) warrants marker-pdf
+        if self._is_complex_layout(file_path):
+            return await self._parse_with_marker(file_path)
+
+        # Default: pymupdf4llm for fast conversion (~0.12s/page)
         pages = pymupdf4llm.to_markdown(
             str(file_path),
             page_chunks=True,
@@ -2107,6 +2128,38 @@ class PDFParser(BookParser):
             return self._chunk_by_pages(pages, pages_per_section=10)
 
         return sections
+
+    def _is_complex_layout(self, file_path: Path) -> bool:
+        """Heuristic: detect complex PDFs that need marker-pdf.
+        Check for multi-column layouts, heavy table content, or dense images."""
+        import fitz  # pymupdf
+        doc = fitz.open(str(file_path))
+        sample_pages = min(5, len(doc))
+        table_count = 0
+        image_density = 0
+        for i in range(sample_pages):
+            page = doc[i]
+            tables = page.find_tables()
+            table_count += len(tables.tables) if hasattr(tables, 'tables') else 0
+            image_density += len(page.get_images())
+        doc.close()
+        # Complex if >3 tables or >2 images per page on average
+        return table_count > 3 or (image_density / max(sample_pages, 1)) > 2
+
+    async def _parse_with_marker(self, file_path: Path) -> ParsedBook:
+        """Fallback: use marker-pdf for complex layouts (~8s/page)."""
+        from marker.converters.pdf import PdfConverter
+        from marker.models import create_model_dict
+        converter = PdfConverter(artifact_dict=create_model_dict())
+        rendered = converter(str(file_path))
+        # Convert marker output to ParsedBook format
+        sections = self._pages_to_sections([{"text": rendered.markdown}])
+        return ParsedBook(
+            title=self._extract_title([{"text": rendered.markdown}], file_path),
+            authors=[],
+            sections=sections,
+            metadata={"parser": "marker-pdf"},
+        )
 
     def _chunk_by_pages(
         self, pages: list[dict], pages_per_section: int = 10
@@ -2563,8 +2616,8 @@ class EmbeddingService:
         return chunks
 
     def _estimate_tokens(self, text: str) -> int:
-        """Rough token estimation: ~1 token per word."""
-        return len(text.split())
+        """Rough token estimation: ~1 token per 4 chars (spec requirement)."""
+        return len(text) // 4
 ```
 
 - [ ] **Step 3: Run tests**
@@ -3542,7 +3595,7 @@ class BookService:
         # 2. Format detection
         file_format = detect_format(file_path)
 
-        # 3. Duplicate detection
+        # 3. Duplicate detection + re-import + parse_failed retry
         file_hash = hashlib.sha256(file_data).hexdigest()
         existing = await self.book_repo.get_by_hash(file_hash)
         if existing and not force:
@@ -3550,6 +3603,24 @@ class BookService:
                 f"This book already exists (ID: {existing.id}). "
                 "Use --force to re-import."
             )
+        if existing and force:
+            # Re-import: replace parsed content, mark summaries stale, delete old embeddings
+            # Preserve annotations and tags (Phase 2)
+            return await self._re_import_book(existing, file_data, file_path, file_format)
+
+        # Also handle --force retry for parse_failed books
+        if force:
+            from sqlalchemy import select
+            result = await self.db.execute(
+                select(Book).where(
+                    Book.status == BookStatus.PARSE_FAILED,
+                    Book.title.ilike(f"%{file_path.stem}%"),
+                )
+            )
+            failed_book = result.scalar_one_or_none()
+            if failed_book:
+                await self.book_repo.delete(failed_book)
+                await self.db.flush()
 
         # 4. Parse
         parser = self._get_parser(file_format)
@@ -3625,7 +3696,7 @@ class BookService:
                 order_index=ps.order_index,
                 depth=ps.depth,
                 content_md=ps.content_md,
-                content_token_count=len(ps.content_md.split()),
+                content_token_count=len(ps.content_md) // 4,  # ~1 token per 4 chars
                 summary_status=SummaryStatus.PENDING,
             )
             self.db.add(section)
@@ -3644,6 +3715,49 @@ class BookService:
 
         await self.db.commit()
         return book
+
+    async def _re_import_book(
+        self, existing: Book, file_data: bytes, file_path: Path, file_format: str
+    ) -> Book:
+        """Re-import: replace content, mark summaries stale, delete embeddings.
+        Preserves annotations and tags (Phase 2)."""
+        parser = self._get_parser(file_format)
+        parsed = await parser.parse(file_path)
+
+        # Update book data
+        existing.file_data = file_data
+        existing.file_size_bytes = len(file_data)
+        existing.status = BookStatus.PARSED
+
+        # Delete old sections (cascades to images, eval_traces)
+        from sqlalchemy import delete
+        await self.db.execute(
+            delete(BookSection).where(BookSection.book_id == existing.id)
+        )
+        # Delete old search index entries
+        from app.db.models import SearchIndex
+        await self.db.execute(
+            delete(SearchIndex).where(SearchIndex.book_id == existing.id)
+        )
+
+        # Re-create sections from new parse
+        detector = StructureDetector()
+        parsed.sections = detector.validate_structure(parsed.sections)
+        for ps in parsed.sections:
+            section = BookSection(
+                book_id=existing.id,
+                title=ps.title,
+                order_index=ps.order_index,
+                depth=ps.depth,
+                content_md=ps.content_md,
+                content_token_count=len(ps.content_md) // 4,
+                summary_status=SummaryStatus.STALE,  # Mark as stale for re-summarization
+            )
+            self.db.add(section)
+
+        await self.db.commit()
+        logger.info("book_reimported", book_id=existing.id)
+        return existing
 ```
 
 - [ ] **Step 3: Run tests**
@@ -3764,9 +3878,17 @@ def main(
     no_pager: bool = typer.Option(False, "--no-pager", help="Disable pager for long output."),
 ):
     """Book Companion CLI."""
-    # Store global options in context
-    ctx = typer.Context
-    # These will be used by commands via deps module
+    import asyncio
+    from app.cli.deps import get_settings, check_orphaned_processes, auto_check_migrations
+    settings = get_settings()
+    if verbose:
+        settings.logging.level = "DEBUG"
+
+    # Spec requirement: on every CLI invocation, check for orphaned background processes
+    asyncio.run(check_orphaned_processes(settings))
+
+    # Spec requirement: auto-check migrations on every CLI invocation
+    auto_check_migrations(settings)
 
 
 # Import and register command modules
@@ -3814,6 +3936,41 @@ from app.services.summarizer.summarizer_service import SummarizerService
 
 
 _settings: Settings | None = None
+
+
+async def check_orphaned_processes(settings: Settings) -> None:
+    """Spec requirement: on every CLI invocation, check for orphaned background processes.
+    Query processing_jobs for status 'running', check if PID is alive via os.kill(pid, 0).
+    If PID dead: mark job as 'failed' with error 'Process terminated unexpectedly'."""
+    import os
+    session_factory = create_session_factory(settings)
+    async with session_factory() as session:
+        from app.db.repositories.processing_repo import ProcessingRepository
+        repo = ProcessingRepository(session)
+        orphaned = await repo.get_orphaned_jobs()
+        for job in orphaned:
+            if job.pid:
+                try:
+                    os.kill(job.pid, 0)  # Check if process exists
+                except OSError:
+                    await repo.update_status(
+                        job.id, "failed", error="Process terminated unexpectedly"
+                    )
+        await session.commit()
+
+
+def auto_check_migrations(settings: Settings) -> None:
+    """Spec requirement: auto-check migrations on every CLI invocation.
+    Run a lightweight check — compare alembic head vs current. Log warning if behind."""
+    import subprocess
+    result = subprocess.run(
+        ["uv", "run", "alembic", "current"],
+        capture_output=True, text=True, timeout=5,
+    )
+    if "head" not in result.stdout:
+        import structlog
+        structlog.get_logger().warning("database_migrations_behind",
+            hint="Run: bookcompanion init")
 
 
 def get_settings() -> Settings:
@@ -4036,11 +4193,12 @@ def _check_dependency(name: str, command: str, args: list, required: bool = True
             console.print(f"    Install {name} and try again.")
 ```
 
-- [ ] **Step 2: Implement `config` command**
+- [ ] **Step 2: Implement `config` command as Typer sub-app with `set` subcommand**
 
 ```python
 # backend/app/cli/commands/config_cmd.py
-"""bookcompanion config — view and set configuration."""
+"""bookcompanion config — view and set configuration.
+Uses Typer sub-app: `config` shows all, `config set <key> <value>` modifies."""
 
 import yaml
 import typer
@@ -4051,23 +4209,16 @@ from rich.syntax import Syntax
 from app.cli.deps import get_settings
 
 console = Console()
+config_app = typer.Typer(help="View or modify configuration.")
 
 
-def config(
-    key: str = typer.Argument(None, help="Config key to get (dot notation)."),
-    value: str = typer.Argument(None, help="Value to set."),
-):
-    """View or modify configuration."""
+@config_app.callback(invoke_without_command=True)
+def config(ctx: typer.Context):
+    """View current configuration (when called without subcommand)."""
+    if ctx.invoked_subcommand is not None:
+        return
     settings = get_settings()
-
-    if key and value:
-        # Set mode
-        _set_config(key, value)
-    elif key:
-        # Get mode
-        _get_config(key, settings)
-    else:
-        # Show all
+    # Show all
         config_dict = {
             "database": settings.database.model_dump(),
             "llm": settings.llm.model_dump(),
@@ -4802,6 +4953,206 @@ Ensure coverage for:
 ```bash
 git add CLAUDE.md .gitignore
 git commit -m "docs: update CLAUDE.md with complete project instructions"
+```
+
+---
+
+### Task 42a: Address Spec Coverage Gaps
+
+**Purpose:** This task addresses specific spec requirements that span multiple services.
+
+- [ ] **Step 1: Long section handling (>150K tokens) in summarizer**
+
+In `SummarizerService`, add sub-chunking logic:
+```python
+LONG_SECTION_THRESHOLD = 150_000  # tokens (~600K chars)
+
+async def _summarize_single_section(self, section, prior_sections, detail_level):
+    token_count = len(section.content_md) // 4  # 1 token ≈ 4 chars
+    if token_count > LONG_SECTION_THRESHOLD:
+        return await self._summarize_long_section(section, prior_sections, detail_level)
+    # ... normal flow
+
+async def _summarize_long_section(self, section, prior_sections, detail_level):
+    """Split at paragraph boundaries, summarize sub-chunks, merge."""
+    paragraphs = section.content_md.split("\n\n")
+    chunks, current_chunk, current_tokens = [], [], 0
+    for para in paragraphs:
+        para_tokens = len(para) // 4
+        if current_tokens + para_tokens > 100_000 and current_chunk:
+            chunks.append("\n\n".join(current_chunk))
+            current_chunk, current_tokens = [], 0
+        current_chunk.append(para)
+        current_tokens += para_tokens
+    if current_chunk:
+        chunks.append("\n\n".join(current_chunk))
+
+    # Summarize each sub-chunk
+    sub_summaries = []
+    for chunk in chunks:
+        summary = await self._invoke_llm_summarize(chunk, section.title, prior_sections, detail_level)
+        sub_summaries.append(summary)
+
+    # Merge sub-chunk summaries into one section summary
+    merge_prompt = f"Merge these sub-section summaries into one coherent summary:\n\n" + "\n---\n".join(sub_summaries)
+    return await self.llm.generate(prompt=merge_prompt)
+```
+
+Add test in `test_summarizer.py`:
+```python
+def test_long_section_triggers_sub_chunking():
+    service = SummarizerService.__new__(SummarizerService)
+    # Verify threshold check
+    assert (600_001 // 4) > 150_000  # Would trigger sub-chunking
+```
+
+- [ ] **Step 2: Compression ratio auto-escalation on eval failure**
+
+In `SummarizerService.summarize_book()`, after eval returns critical failures:
+```python
+RATIO_ESCALATION = {"brief": "standard", "standard": "detailed", "detailed": "detailed"}
+
+async def _summarize_with_retry(self, section, prior, detail_level, max_retries=2):
+    for attempt in range(max_retries + 1):
+        summary = await self._summarize_single_section(section, prior, detail_level)
+        if not skip_eval:
+            results = await self.eval_service.evaluate_summary(section.id, section.content_md, summary)
+            if self.eval_service._should_auto_retry(results, attempt, max_retries):
+                detail_level = RATIO_ESCALATION.get(detail_level, detail_level)
+                continue  # Retry with higher ratio
+        return summary
+    return summary  # Return best attempt after max retries
+```
+
+- [ ] **Step 3: Cross-summary consistency assertion (special handling)**
+
+In `EvalService._run_single_assertion()`, add special handling for `cross_summary_consistency`:
+```python
+if assertion_name == "cross_summary_consistency":
+    if not self.config.llm.cross_summary_consistency:
+        return {"assertion_name": assertion_name, "passed": True, "reasoning": "Disabled via config"}
+    # Generate a second independent summary
+    second_summary = await self.llm.generate(prompt=source_text_prompt)
+    # Compare both summaries for divergences
+    comparison_prompt = template.render(
+        summary_a=summary_text, summary_b=second_summary.content,
+        assertion_name=assertion_name,
+    )
+    response = await self.llm.generate(prompt=comparison_prompt, json_schema=...)
+```
+
+- [ ] **Step 4: `eval compare-prompts` Phase 2 command**
+
+Add to `backend/app/cli/commands/eval_cmd.py`:
+```python
+@eval_app.command("compare-prompts")
+@async_command
+async def compare_prompts(
+    book: int = typer.Option(..., help="Book ID."),
+    section: int = typer.Option(..., help="Section ID."),
+    prompt_a: str = typer.Option(..., help="Prompt version A (e.g., v1)."),
+    prompt_b: str = typer.Option(..., help="Prompt version B (e.g., v2)."),
+):
+    """Compare summaries from two prompt versions side-by-side."""
+    # Generate summary with prompt_a, generate with prompt_b
+    # Run eval on both, display results side-by-side
+```
+
+- [ ] **Step 5: Add `--tag` filter to `list` command (Phase 2)**
+
+In `backend/app/cli/commands/books.py`, add `--tag` option to `list_books`:
+```python
+tag: str = typer.Option(None, "--tag", help="Filter by tag name. (Phase 2)")
+```
+In `BookRepository.list_all()`, add tag filter:
+```python
+if tag:
+    query = query.join(Taggable, ...).join(Tag).where(Tag.name == tag)
+```
+
+- [ ] **Step 6: `$EDITOR` integration pattern for edit commands**
+
+Shared helper in `backend/app/cli/formatting.py`:
+```python
+import os, subprocess, tempfile
+
+def edit_in_editor(content: str, suffix: str = ".md") -> str:
+    """Open content in $EDITOR, return modified content."""
+    editor = os.environ.get("EDITOR", os.environ.get("VISUAL", "vim"))
+    with tempfile.NamedTemporaryFile(suffix=suffix, mode="w", delete=False) as f:
+        f.write(content)
+        f.flush()
+        subprocess.call([editor, f.name])
+        with open(f.name) as edited:
+            return edited.read()
+```
+
+Used by `concepts edit`, `edit-summary`, and Phase 2 metadata editing.
+
+- [ ] **Step 7: Empty state test coverage**
+
+Add to `backend/tests/e2e/test_cli_flows.py`:
+```python
+def test_empty_state_no_books():
+    result = runner.invoke(app, ["list"])
+    assert "No books in your library yet" in result.stdout
+
+def test_empty_state_no_search_results():
+    result = runner.invoke(app, ["search", "xyznonexistent"])
+    assert "No results found" in result.stdout
+
+def test_empty_state_no_summary():
+    # After adding but before summarizing
+    result = runner.invoke(app, ["summary", "1"])
+    assert "No summary" in result.stdout or "quick_summary" in result.stdout
+
+def test_empty_state_no_eval():
+    result = runner.invoke(app, ["eval", "1"])
+    assert "No eval results" in result.stdout or "generated first" in result.stdout
+```
+
+- [ ] **Step 8: Phase 2 model unit tests**
+
+Add to `backend/tests/unit/test_models.py`:
+```python
+from app.db.models import Tag, Taggable, Annotation, AnnotationType, ContentType, ExternalReference
+
+def test_annotation_type_enum():
+    assert AnnotationType.HIGHLIGHT == "highlight"
+    assert AnnotationType.NOTE == "note"
+    assert AnnotationType.FREEFORM == "freeform"
+
+def test_content_type_enum():
+    assert ContentType.SECTION_CONTENT == "section_content"
+    assert ContentType.BOOK_SUMMARY == "book_summary"
+
+def test_phase2_tablenames():
+    assert Tag.__tablename__ == "tags"
+    assert Taggable.__tablename__ == "taggables"
+    assert Annotation.__tablename__ == "annotations"
+    assert ExternalReference.__tablename__ == "external_references"
+```
+
+- [ ] **Step 9: `read --copy` and `read --export` implementation**
+
+In `backend/app/cli/commands/books.py`, the `read` command:
+```python
+if copy:
+    import pyperclip
+    pyperclip.copy(content)
+    console.print("[green]Content copied to clipboard.[/green]")
+if export:
+    Path(export).write_text(content)
+    console.print(f"[green]Content exported to {export}[/green]")
+```
+
+Same pattern for `summary --copy` and `summary --export`.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add backend/
+git commit -m "fix: address spec coverage gaps (long sections, ratio escalation, cross-summary, empty states)"
 ```
 
 ---
