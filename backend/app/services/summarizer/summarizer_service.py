@@ -7,8 +7,11 @@ import jinja2
 import structlog
 
 from app.db.models import BookSection, SummaryStatus
-from app.services.summarizer.llm_provider import LLMProvider, LLMResponse
+from app.services.summarizer.llm_provider import LLMProvider
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, undefer
+
+from app.db.models import Image
 
 logger = structlog.get_logger()
 
@@ -29,10 +32,11 @@ RATIO_ESCALATION = {"brief": "standard", "standard": "detailed", "detailed": "de
 
 
 class SummarizerService:
-    def __init__(self, db: AsyncSession, llm: LLMProvider, config):
+    def __init__(self, db: AsyncSession, llm: LLMProvider, config, captioner=None):
         self.db = db
         self.llm = llm
         self.config = config
+        self.captioner = captioner
         self._jinja_env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(PROMPTS_DIR))
         )
@@ -59,6 +63,7 @@ class SummarizerService:
         result = await self.db.execute(
             select(BookSection)
             .where(BookSection.book_id == book_id)
+            .options(selectinload(BookSection.images).undefer(Image.data))
             .order_by(BookSection.order_index)
         )
         sections = list(result.scalars().all())
@@ -101,7 +106,12 @@ class SummarizerService:
         logger.info("book_summarization_complete", book_id=book_id, sections=len(sections))
 
     async def summarize_section(
-        self, book_id: int, section_id: int, detail_level: str | None = None
+        self,
+        book_id: int,
+        section_id: int,
+        detail_level: str | None = None,
+        model: str | None = None,
+        force: bool = False,
     ) -> str:
         """Summarize a single section."""
         from sqlalchemy import select
@@ -109,7 +119,9 @@ class SummarizerService:
         detail_level = detail_level or self.config.summarization.default_detail_level
 
         result = await self.db.execute(
-            select(BookSection).where(BookSection.id == section_id)
+            select(BookSection)
+            .options(selectinload(BookSection.images).undefer(Image.data))
+            .where(BookSection.id == section_id)
         )
         section = result.scalar_one_or_none()
         if not section:
@@ -122,6 +134,7 @@ class SummarizerService:
                 BookSection.book_id == book_id,
                 BookSection.order_index < section.order_index,
             )
+            .options(selectinload(BookSection.images).undefer(Image.data))
             .order_by(BookSection.order_index)
         )
         prior = list(result.scalars().all())
@@ -222,6 +235,9 @@ class SummarizerService:
 
         content = section.content_md or ""
 
+        # Get image captions for this section
+        image_captions = await self._get_image_captions(section)
+
         # Handle long sections via sub-chunking
         token_estimate = len(content) // 4
         if token_estimate > MAX_SECTION_TOKENS:
@@ -237,6 +253,7 @@ class SummarizerService:
                 cumulative_context=cumulative_context,
                 compression_target=compression_target,
                 detail_level=detail_level,
+                image_captions=image_captions,
             )
         except jinja2.TemplateNotFound:
             # Fallback prompt if template not found
@@ -303,7 +320,7 @@ class SummarizerService:
         return response.content
 
     def _build_cumulative_context(self, prior_sections: list) -> str:
-        """Build compact context from prior section summaries."""
+        """Build compact context from prior section summaries, including key image refs."""
         if not prior_sections:
             return ""
 
@@ -311,16 +328,81 @@ class SummarizerService:
         for s in prior_sections:
             title = getattr(s, "title", "Untitled")
             summary = getattr(s, "summary_md", None) or ""
-            # Truncate each summary to keep context compact
             if len(summary) > 500:
                 summary = summary[:500] + "..."
             lines.append(f"- {title}: {summary}")
+
+            # Include key image refs from prior sections
+            images = getattr(s, "images", None) or []
+            for img in images:
+                if getattr(img, "relevance", None) == "key" and getattr(img, "caption", None):
+                    lines.append(f"  [Image: {img.caption}]")
 
         return "\n".join(lines)
 
     def _get_compression_target(self, detail_level: str) -> int:
         """Map detail level to compression ratio percentage."""
         return COMPRESSION_TARGETS.get(detail_level, 20)
+
+    async def _get_image_captions(self, section) -> list[dict]:
+        """Get image captions for a section. Captions uncaptioned images if captioner available.
+
+        Returns list of {"caption": str, "relevance": str, "image_id": int}
+        for non-decorative images.
+        """
+        from app.services.summarizer.image_captioner import should_skip_image, compute_content_hash
+
+        images = section.images or []
+        if not images:
+            return []
+
+        # Check config toggle
+        if hasattr(self.config, 'images') and not self.config.images.captioning_enabled:
+            return []
+
+        captions = []
+        for img in images:
+            # Skip pre-filtered decorative images
+            if should_skip_image(
+                data=img.data, width=img.width, height=img.height, filename=img.filename
+            ):
+                continue
+
+            # Use existing caption if available
+            if img.caption and img.relevance:
+                if img.relevance in ("key", "supplementary"):
+                    captions.append({
+                        "caption": img.caption,
+                        "relevance": img.relevance,
+                        "image_id": img.id,
+                    })
+                continue
+
+            # Caption via LLM if captioner available
+            if self.captioner:
+                # Compute content hash if not set
+                if not img.content_hash:
+                    img.content_hash = compute_content_hash(img.data)
+
+                result = await self.captioner.caption_image(
+                    image_data=img.data,
+                    mime_type=img.mime_type,
+                    context=f"Section: {section.title}",
+                    alt_text=img.alt_text,
+                )
+                img.caption = result["caption"]
+                img.caption_model = "claude-vision"
+                img.relevance = result["relevance"]
+                await self.db.flush()  # Persist immediately for crash safety
+
+                if img.relevance in ("key", "supplementary"):
+                    captions.append({
+                        "caption": result["caption"],
+                        "relevance": result["relevance"],
+                        "image_id": img.id,
+                    })
+
+        return captions
 
     async def _generate_book_summary(self, book, sections: list[BookSection]) -> str:
         """Reduce step: combine section summaries into overall book summary."""
@@ -345,3 +427,25 @@ class SummarizerService:
 
         response = await self.llm.generate(prompt=prompt)
         return response.content
+
+    async def generate_book_summary(self, book_id: int) -> str:
+        """Generate book-level summary from section summaries."""
+        from sqlalchemy import select
+        from app.db.models import Book
+
+        result = await self.db.execute(select(Book).where(Book.id == book_id))
+        book = result.scalar_one_or_none()
+        if not book:
+            raise ValueError(f"Book not found: {book_id}")
+
+        result = await self.db.execute(
+            select(BookSection)
+            .where(BookSection.book_id == book_id)
+            .options(selectinload(BookSection.images).undefer(Image.data))
+            .order_by(BookSection.order_index)
+        )
+        sections = list(result.scalars().all())
+        summary = await self._generate_book_summary(book, sections)
+        book.overall_summary = summary
+        await self.db.commit()
+        return summary

@@ -214,6 +214,35 @@ class SearchService:
             query=query, books=dict(books), total_count=len(results)
         )
 
+    # --- Image Caption Indexing ---
+
+    async def index_image_captions(self, section, book_id: int) -> None:
+        """Index non-decorative image captions for search discovery."""
+        images = getattr(section, 'images', None) or []
+        captions = [
+            f"[Image: {img.caption}]"
+            for img in images
+            if img.relevance in ("key", "supplementary") and img.caption
+        ]
+        if not captions:
+            return
+
+        caption_text = "\n".join(captions)
+        chunks = self.embedding_service._split_into_chunks(caption_text)
+        for idx, chunk in enumerate(chunks):
+            embedding = await self.embedding_service.embed_text(chunk)
+            entry = SearchIndex(
+                source_type=SourceType.SECTION_CONTENT,
+                source_id=section.id,
+                book_id=book_id,
+                chunk_text=chunk,
+                chunk_index=idx + 1000,  # Offset to avoid collision with regular chunks
+                embedding=embedding,
+                tsvector=func.to_tsvector("english", chunk),
+            )
+            self.session.add(entry)
+        await self.session.flush()
+
     # --- Phase 2: Annotation & Concept Indexing ---
 
     async def index_annotation(self, annotation: "Annotation", book_id: int) -> None:

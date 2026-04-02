@@ -27,9 +27,10 @@ Include 2-3 verbatim notable passages from the source that capture the section's
 
 {% if image_captions %}
 ### Visual Content
-The section contains images/diagrams. Describe their significance:
-{% for caption in image_captions %}
-- {{ caption }}
+The section contains the following images/diagrams. Integrate **key** images into your summary by describing what they show and why they matter to the argument. Mention **supplementary** images only if they add meaningful context. When referencing an image, include a markdown image ref: ![brief description](image:ID).
+
+{% for img in image_captions %}
+- [{{ img.relevance }}] (image:{{ img.image_id }}) {{ img.caption }}
 {% endfor %}
 {% endif %}
 

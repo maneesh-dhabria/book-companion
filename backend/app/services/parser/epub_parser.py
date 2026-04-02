@@ -62,6 +62,31 @@ class EPUBParser(BookParser):
                 return item.get_content()
         return None
 
+    def _extract_alt_text(self, html_content: str) -> dict[str, str]:
+        """Extract alt-text from img tags. Returns {filename: alt_text}."""
+        import re
+
+        alt_map: dict[str, str] = {}
+        # Match img tags with src and alt attributes (in either order)
+        for match in re.finditer(
+            r'<img[^>]+src=["\']([^"\']+)["\'][^>]*alt=["\']([^"\']+)["\']',
+            html_content,
+        ):
+            src, alt = match.group(1), match.group(2).strip()
+            if alt and alt.lower() not in ("image", "figure", "img", ""):
+                filename = src.split("/")[-1]
+                alt_map[filename] = alt
+        # Also match alt before src
+        for match in re.finditer(
+            r'<img[^>]+alt=["\']([^"\']+)["\'][^>]*src=["\']([^"\']+)["\']',
+            html_content,
+        ):
+            alt, src = match.group(1).strip(), match.group(2)
+            if alt and alt.lower() not in ("image", "figure", "img", ""):
+                filename = src.split("/")[-1]
+                alt_map[filename] = alt
+        return alt_map
+
     def _extract_sections(
         self, book: epub.EpubBook, toc: list
     ) -> list[ParsedSection]:
@@ -74,13 +99,23 @@ class EPUBParser(BookParser):
             md = markdownify(html, heading_style="ATX", strip=["script", "style"])
             content_map[item.get_name()] = md.strip()
 
+        # Build alt-text map from raw HTML
+        alt_text_map: dict[str, str] = {}
+        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+            html = item.get_content().decode("utf-8", errors="replace")
+            alt_map = self._extract_alt_text(html)
+            alt_text_map.update(alt_map)
+
         # Build image map for later reference
         image_map: dict[str, ParsedImage] = {}
         for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
-            image_map[item.get_name()] = ParsedImage(
+            filename = item.get_name()
+            short_name = filename.split("/")[-1]
+            image_map[filename] = ParsedImage(
                 data=item.get_content(),
                 mime_type=item.media_type,
-                filename=item.get_name(),
+                filename=filename,
+                alt_text=alt_text_map.get(short_name),
             )
 
         self._walk_toc(toc, content_map, image_map, sections, order_counter=[0], depth=0)

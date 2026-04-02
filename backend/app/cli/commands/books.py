@@ -189,13 +189,18 @@ async def show(
             table.add_column("Title")
             table.add_column("Status")
             table.add_column("Tokens", justify="right")
+            table.add_column("Images", justify="right")
 
             for section in book.sections:
+                img_count = len(section.images) if section.images else 0
+                captioned = sum(1 for i in (section.images or []) if i.caption) if img_count else 0
+                img_display = f"{captioned}/{img_count}" if img_count else "—"
                 table.add_row(
                     str(section.order_index + 1),
                     section.title,
                     section.summary_status.value if section.summary_status else "pending",
                     str(section.content_token_count or "—"),
+                    img_display,
                 )
             console.print(table)
 

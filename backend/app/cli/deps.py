@@ -133,6 +133,7 @@ async def get_services():
         try:
             from app.services.summarizer.summarizer_service import SummarizerService
             from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
+            from app.services.summarizer.image_captioner import ImageCaptioner
 
             llm = ClaudeCodeCLIProvider(
                 cli_command=settings.llm.cli_command,
@@ -141,7 +142,12 @@ async def get_services():
                 max_budget_usd=settings.llm.max_budget_usd,
             )
             services["llm"] = llm
-            services["summarizer"] = SummarizerService(db=session, llm=llm, config=settings)
+            captioner = (
+                ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
+            )
+            services["summarizer"] = SummarizerService(
+                db=session, llm=llm, config=settings, captioner=captioner
+            )
         except ImportError:
             pass
 

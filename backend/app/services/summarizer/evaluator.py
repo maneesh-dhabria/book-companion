@@ -50,11 +50,11 @@ class EvalService:
         )
 
     async def evaluate_summary(
-        self, section_id: int, source_text: str, summary_text: str
+        self, section_id: int, source_text: str, summary_text: str, image_count: int = 0,
     ) -> dict[str, dict]:
         """Run all 16 assertions in parallel. Returns {assertion_name: {passed, reasoning}}."""
         tasks = [
-            self._run_single_assertion(name, source_text, summary_text, section_id)
+            self._run_single_assertion(name, source_text, summary_text, section_id, image_count=image_count)
             for name in ASSERTION_REGISTRY
         ]
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
@@ -73,6 +73,7 @@ class EvalService:
         source_text: str,
         summary_text: str,
         section_id: int,
+        image_count: int = 0,
     ) -> dict:
         meta = ASSERTION_REGISTRY[assertion_name]
 
@@ -107,6 +108,7 @@ class EvalService:
                     summary_text=summary_text,
                     summary_a=summary_text,
                     summary_b=second_summary,
+                    image_count=image_count,
                 )
             except jinja2.TemplateNotFound:
                 prompt = (
@@ -121,6 +123,7 @@ class EvalService:
                 assertion_name=assertion_name,
                 source_text=source_text,
                 summary_text=summary_text,
+                image_count=image_count,
             )
 
         response = await self.llm.generate(

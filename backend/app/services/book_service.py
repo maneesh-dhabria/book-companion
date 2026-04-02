@@ -162,6 +162,7 @@ class BookService:
                     filename=pi.filename,
                     width=pi.width,
                     height=pi.height,
+                    alt_text=getattr(pi, 'alt_text', None),
                 )
                 self.db.add(image)
 

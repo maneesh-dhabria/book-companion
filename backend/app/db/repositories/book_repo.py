@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Author, Book, BookAuthor, BookStatus
+from app.db.models import Author, Book, BookAuthor, BookSection, BookStatus
 
 
 class BookRepository:
@@ -19,7 +19,10 @@ class BookRepository:
     async def get_by_id(self, book_id: int) -> Book | None:
         result = await self.session.execute(
             select(Book)
-            .options(selectinload(Book.authors), selectinload(Book.sections))
+            .options(
+                selectinload(Book.authors),
+                selectinload(Book.sections).selectinload(BookSection.images),
+            )
             .where(Book.id == book_id)
         )
         return result.scalar_one_or_none()

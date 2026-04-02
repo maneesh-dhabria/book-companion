@@ -12,6 +12,7 @@ class ParsedImage:
     filename: str | None = None
     width: int | None = None
     height: int | None = None
+    alt_text: str | None = None
 
 
 @dataclass

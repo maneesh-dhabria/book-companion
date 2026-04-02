@@ -42,6 +42,10 @@ class SearchConfig(BaseModel):
     default_limit: int = 20
 
 
+class ImageConfig(BaseModel):
+    captioning_enabled: bool = True
+
+
 class StorageConfig(BaseModel):
     max_file_size_mb: int = 200
 
@@ -81,6 +85,7 @@ class Settings(BaseSettings):
     summarization: SummarizationConfig = SummarizationConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()
     search: SearchConfig = SearchConfig()
+    images: ImageConfig = ImageConfig()
     storage: StorageConfig = StorageConfig()
     logging: LoggingConfig = LoggingConfig()
 

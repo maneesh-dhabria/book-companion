@@ -20,6 +20,9 @@ List all named frameworks, models, and methodologies from across the book.
 ### Cross-Cutting Themes
 Identify 3-5 themes that recur across multiple sections.
 
+### Key Visual Content
+If any chapter summaries reference diagrams, frameworks, charts, or other visual content (via `![...](image:...)` refs), select **only the most important visuals** across the entire book — those central to the book's core argument or that represent major frameworks. For each selected visual, describe it and explain its significance to the book's thesis. Preserve the `![...](image:...)` markdown refs so they can be resolved later. If no visual content is referenced in the chapter summaries, omit this section entirely.
+
 ### Who Should Read This
 One paragraph on who would benefit most from this book and why.
 

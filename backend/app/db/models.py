@@ -20,7 +20,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -72,6 +72,12 @@ class SourceType(str, enum.Enum):
     SECTION_SUMMARY = "section_summary"
     CONCEPT = "concept"
     ANNOTATION = "annotation"
+
+
+class ImageRelevance(str, enum.Enum):
+    KEY = "key"
+    SUPPLEMENTARY = "supplementary"
+    DECORATIVE = "decorative"
 
 
 class ContentType(str, enum.Enum):
@@ -218,13 +224,16 @@ class Image(Base):
         ForeignKey("book_sections.id", ondelete="CASCADE"),
         nullable=False,
     )
-    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    data: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
     mime_type: Mapped[str] = mapped_column(String(50), nullable=False)
     filename: Mapped[str | None] = mapped_column(String(500), nullable=True)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
     caption_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    relevance: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    alt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

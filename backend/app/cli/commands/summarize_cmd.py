@@ -24,6 +24,9 @@ async def summarize(
     skip_eval: bool = typer.Option(
         False, "--skip-eval", help="Skip eval assertions (faster)."
     ),
+    skip_images: bool = typer.Option(
+        False, "--skip-images", help="Skip image captioning during summarization."
+    ),
 ):
     """Generate or regenerate summaries via LLM."""
     async with get_services() as svc:
@@ -31,6 +34,9 @@ async def summarize(
         if not summarizer:
             print_error("Summarizer service not available. Service layer may not be implemented yet.")
             raise typer.Exit(1)
+
+        if skip_images:
+            summarizer.captioner = None
 
         book_service = svc.get("book_service")
         if not book_service:
@@ -63,6 +69,21 @@ async def summarize(
                     console.print("Running eval assertions...")
                     await svc["eval"].evaluate_section(book_id, section_id)
                     print_success("Eval complete.")
+
+                # Index image captions in search
+                search_svc = svc.get("search")
+                if search_svc:
+                    try:
+                        section_obj = next(
+                            (s for s in (book.sections or []) if s.id == section_id),
+                            None,
+                        )
+                        if section_obj:
+                            await search_svc.index_image_captions(
+                                section_obj, book_id
+                            )
+                    except Exception:
+                        pass  # Non-blocking
             except Exception as e:
                 print_error(f"Summarization failed: {e}")
                 raise typer.Exit(1)
@@ -110,6 +131,34 @@ async def summarize(
                         console.print(
                             f"  [yellow]Warning: Section '{section.title}' failed: {e}[/yellow]"
                         )
+
+                    # Report image stats
+                    section_images = getattr(section, 'images', None) or []
+                    if section_images:
+                        key_count = sum(
+                            1 for i in section_images
+                            if getattr(i, 'relevance', None) == 'key'
+                        )
+                        supp_count = sum(
+                            1 for i in section_images
+                            if getattr(i, 'relevance', None) == 'supplementary'
+                        )
+                        skipped = len(section_images) - key_count - supp_count
+                        console.print(
+                            f"  [dim]Images: {len(section_images)} found, "
+                            f"{key_count} key, {supp_count} supplementary, "
+                            f"{skipped} skipped[/dim]"
+                        )
+
+                    # Index image captions in search
+                    search_svc = svc.get("search")
+                    if search_svc and section_images:
+                        try:
+                            await search_svc.index_image_captions(
+                                section, book_id
+                            )
+                        except Exception:
+                            pass  # Non-blocking
 
                     progress.update(task, advance=1)
 
