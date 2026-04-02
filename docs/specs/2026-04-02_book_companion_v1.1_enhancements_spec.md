@@ -281,6 +281,19 @@ bookcompanion edit sections <book_id>
 
 Same REPL commands as pre-save, **except**: no `undo` (operations commit to DB immediately). Each operation is wrapped in a **transaction** — if it fails mid-way, the entire operation rolls back.
 
+**Initial display on entry:**
+```
+Current structure (8 sections):
+  #  ID  Title                        Chars    Summary
+  1  20  Introduction                 14,500   ✓ practitioner_bullets
+  2  21    What Is Competition?       36,200   ✓ practitioner_bullets
+  3  22    Five Forces Framework      24,100   ✓ academic_detailed
+  4  23  What Is Strategy?            28,900   ✓ practitioner_bullets
+  ...
+
+Edit sections> 
+```
+
 **Downstream effects:**
 - Merged/split sections are new rows with `default_summary_id = NULL`
 - New sections store `derived_from` JSON (e.g., `[3, 4, 5]`) for provenance
@@ -472,7 +485,13 @@ Section #3 "Five Forces Framework" — 2 summaries:
 
 - Metadata header for each summary (preset, model, compression, eval score)
 - Side-by-side display if terminal >= 120 columns; sequential otherwise
-- **Concept diff**: deterministic extraction of bold/header terms and named entities via regex. Shows terms present in one but missing from the other.
+- **Concept diff**: deterministic extraction via regex:
+  - Bold terms: `\*\*([^*]+)\*\*`
+  - Header terms: `^#{1,6}\s+(.+)$`
+  - Capitalized multi-word phrases (likely named entities): `\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b`
+  - Shows terms present in one but missing from the other as "Only in #42" / "Only in #58" lists.
+- **Cross-section comparison**: Allowed. No validation that both summaries are for the same section — useful for comparing summaries across different sections or books.
+- **Book-level summaries**: `summary list <book_id> --book-level` shows detailed list of book-level summaries only (same format as section-level detailed list).
 
 ### 8.3 `summary set-default <summary_id>`
 
@@ -664,6 +683,28 @@ eval_traces (modified)
 | + summary_id (FK, nullable)     |
 +---------------------------------+
 ```
+
+### 11.6 Service Layer Changes
+
+| Service | Change |
+|---------|--------|
+| **SummarizerService** | Replace monolithic template loading with faceted fragment composition. Accept preset/facets parameters. Write to `summaries` table instead of `BookSection.summary_md`. Implement idempotent skip logic. |
+| **PresetService** (new) | Load, validate, create, delete preset YAML files. Resolve facet overrides. Validate fragment file existence. |
+| **SectionEditService** (new) | In-memory merge/split/reorder/delete for pre-save. DB-backed operations for post-save with per-operation transactions. |
+| **QualityService** (new) | Run deterministic quality checks on parsed sections. Generate suggested actions. |
+| **SummaryService** (new) | CRUD for summary log queries (list, compare, set-default, show). Concept diff extraction. |
+| **EvalService** | Read `facets_used` from summary row to adapt assertion thresholds. Link eval traces to `summary_id`. |
+| **EmbeddingService** | Re-embed on `set-default` changes (synchronous, called by SummaryService). |
+| **BookService** | Update status derivation. Remove `overall_summary`/`overall_summary_eval` writes. |
+
+### 11.7 Repository Layer Changes
+
+| Repository | Change |
+|------------|--------|
+| **SummaryRepository** (new) | `create()`, `get_by_id()`, `list_by_book()`, `list_by_content()`, `get_latest_by_content_and_facets()` (for idempotent skip). Use `selectinload()` as needed. |
+| **BookRepository** | Add `default_summary_id` to updates. Remove `overall_summary` writes. |
+| **SectionRepository** | Add `default_summary_id`, `derived_from`. Remove summary-related field writes. Add bulk `delete_by_ids()`, `reindex_order()`. |
+| **EvalTraceRepository** | Add `summary_id` to creates. |
 
 ---
 
