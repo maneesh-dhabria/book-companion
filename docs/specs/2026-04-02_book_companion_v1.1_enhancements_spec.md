@@ -164,6 +164,21 @@ Default behavior: **skip sections that already have a summary with the same pres
 
 `--force` appends new summary rows and updates `default_summary_id` for all sections and the book.
 
+### 3.8 Summarize Progress Display
+
+```
+Summarizing 8 sections with preset "practitioner_bullets"...
+  [1/8] Introduction                  ✓  (12s, 18.2%)
+  [2/8] What Is Competition?          ✓  (28s, 21.5%)
+  [3/8] What Is Strategy?             ⊘  skipped (already summarized)
+  ...
+  [8/8] Continuity                    ✓  (8s, 19.1%)
+Generating book-level summary...     ✓  (15s)
+✓ Done. 7 section summaries + 1 book summary generated. 1 skipped.
+```
+
+Each line shows: index, section title, status (✓/✗/⊘), elapsed time, and compression ratio. Skipped sections (idempotent) show `⊘ skipped`.
+
 ### 3.8 Config Changes
 
 | Setting | V1 | V1.1 |
@@ -419,6 +434,7 @@ Skip this section? [Y/n/force-all]
 ```
 
 - `--force` flag bypasses all quality gates
+- `force-all` response in the interactive prompt skips warnings for all remaining sections in this run
 - Sections with errors (empty, 0 chars) are auto-skipped with a message
 
 ---
@@ -465,9 +481,21 @@ Section #3 "Five Forces Framework" — 2 summaries:
 - **Triggers synchronous re-embedding** for `source_type=SECTION_SUMMARY` search index entries (< 2s with local Ollama)
 - Validates the summary_id exists: `Error: Summary #999 not found.`
 
-### 8.4 `summary show <summary_id>`
+### 8.4 `summary <book_id> [section_id]` (Read Default)
 
-Displays summary markdown plus full provenance: preset, facets used, model, input/output tokens, character counts, eval results, timestamp.
+Reads and displays the default summary for a book or section.
+
+- **`summary <book_id>`**: Shows the book-level default summary (from `Book.default_summary_id`).
+- **`summary <book_id> <section_id>`**: Shows the section's default summary (from `BookSection.default_summary_id`).
+- **No summary exists**: Display helpful error: `No summary for section #3 "Five Forces Framework". Run: bookcompanion summarize 3 14 --preset practitioner_bullets`
+
+### 8.5 `summary show <summary_id>`
+
+Displays a specific summary (by summary table ID) with full provenance: preset, facets used, model, input/output tokens, character counts, compression ratio, eval results, timestamp.
+
+### 8.6 `read <book_id> <section_id> [--with-summary]`
+
+Displays the original section content. With `--with-summary`, appends the default summary below a separator for side-by-side reading.
 
 ---
 
@@ -687,6 +715,8 @@ These apply identically regardless of facets:
 | `summary compare <id1> <id2>` | Side-by-side comparison with concept diff |
 | `summary set-default <summary_id>` | Set active default summary; triggers sync re-embedding |
 | `summary show <summary_id>` | Show summary with full provenance metadata |
+| `summary <book_id> [section_id]` | Read the default summary for a book or section |
+| `read <book_id> <section_id> [--with-summary]` | Read original section content, optionally with default summary |
 | `edit sections <book_id>` | Interactive section merge/split/reorder/delete (post-save) |
 
 ### 13.2 Modified Commands
@@ -722,6 +752,8 @@ $ bookcompanion preset create my_preset \
 ```
 
 Missing facets in non-interactive mode default to the system default preset's values.
+
+**Duplicate name handling:** If a preset with the same name already exists: `Error: Preset "my_preset" already exists. Use a different name or delete it first with: bookcompanion preset delete my_preset`
 
 ### 13.4 Preset List — Display Format
 
