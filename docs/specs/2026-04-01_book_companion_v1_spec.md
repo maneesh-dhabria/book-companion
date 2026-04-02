@@ -265,7 +265,20 @@ class LLMResponse(BaseModel):
     latency_ms: int
 
 class ClaudeCodeCLIProvider(LLMProvider):
-    """Invokes Claude Code CLI as a subprocess."""
+    """Invokes Claude Code CLI as a subprocess.
+
+    Implementation options (in order of preference):
+    1. claude-agent-sdk (PyPI: claude-agent-sdk) — official Python SDK that
+       handles JSONL protocol, streaming, and error handling. Evaluate first.
+    2. Raw asyncio.create_subprocess_exec() — fallback if SDK doesn't support
+       alias/profile switching.
+
+    IMPORTANT: Shell aliases (e.g., 'claude-personal') may NOT resolve in
+    non-interactive subprocess shells. The cli_command config should be either:
+    - A full binary path (e.g., /Users/user/.local/bin/claude)
+    - A symlink that resolves without shell alias expansion
+    - The bare 'claude' command if it's on PATH
+    """
 
     def __init__(self, cli_command: str, default_model: str, default_timeout: int): ...
 
@@ -700,9 +713,9 @@ Book DELETE →
 
 | Format | Library | Notes |
 |--------|---------|-------|
-| EPUB | `ebooklib` + `markdownify` | Extract TOC from toc.ncx/nav.xhtml, content as HTML, convert to Markdown |
+| EPUB | `ebooklib` + `markdownify` | Extract TOC from toc.ncx/nav.xhtml, content as HTML, convert to Markdown. Pin version — not actively maintained. |
 | MOBI | `calibre` (ebook-convert CLI) | Convert MOBI to EPUB first via `ebook-convert`, then process as EPUB |
-| PDF | `marker-pdf` | ML-based PDF to Markdown. Fallback to `PyMuPDF` for simple text-only PDFs |
+| PDF | `pymupdf4llm` (default) / `marker-pdf` (complex) | **pymupdf4llm** is the default: ~0.12s/page, meets <2 min parsing target. **marker-pdf** (ML-based, ~8s/page) is used only for complex layouts (tables, multi-column, heavy images) detected by heuristics. See Decision Log #31. |
 
 ### Parser Interface
 
@@ -1999,7 +2012,7 @@ database:
 
 llm:
   provider: "claude_cli"                # Active provider: claude_cli (only option in V1)
-  cli_command: "claude"                 # Claude Code CLI command/alias
+  cli_command: "claude"                 # Claude Code CLI binary path (NOT a shell alias — aliases don't resolve in subprocess)
   model: "sonnet"                       # Default model for summarization + evals
   quick_summary_model: "sonnet"         # Model for quick summary mode
   timeout_seconds: 300                  # Per-operation timeout
@@ -2263,7 +2276,7 @@ book-companion/
 | Embedding | Ollama (nomic-embed-text, local) |
 | LLM | Claude Code CLI (subprocess) |
 | EPUB parsing | ebooklib + markdownify |
-| PDF parsing | marker-pdf (fallback: PyMuPDF) |
+| PDF parsing | pymupdf4llm (default), marker-pdf (complex layouts) |
 | MOBI parsing | Calibre ebook-convert |
 | CLI output | rich |
 | Logging | structlog |
@@ -2472,7 +2485,9 @@ These are sourced from Project Gutenberg and included in `tests/fixtures/`. Smal
 | 27 | Eval enabled config | Persistent config / CLI flag only | **CLI flag only** | `--skip-eval` on summarize command. Evals should run by default; skipping is a conscious per-run choice. |
 | 28 | Annotation model | Direct FK / Polymorphic | **Polymorphic (content_type + content_id)** | Enables annotations on section content, section summaries, AND book-level summaries without separate tables. |
 | 29 | Concepts extraction phase | Phase 1 during summarization / Phase 2 only | **Extraction in Phase 1, CLI commands in Phase 2** | Concepts are extracted as part of summarization prompts. Dedicated browse/search commands are Phase 2. |
-| 30-47 | (Inherited from requirements) | See [requirements decision log](../requirements/2026-04-01_book_companion_v1_requirements.md#20-decision-log) | — | All prior decisions from requirements document are carried forward unless overridden above. |
+| 30 | PDF parser default | marker-pdf / pymupdf4llm / Docling | **pymupdf4llm default, marker-pdf for complex** | marker-pdf is ~8s/page (40 min for 300 pages) — violates <2 min target. pymupdf4llm is 0.12s/page (36 sec). Use marker-pdf only for complex layouts. |
+| 31 | CLI subprocess approach | Raw subprocess / claude-agent-sdk / Popen | **Evaluate claude-agent-sdk first** | Official Python SDK handles JSONL protocol. Falls back to raw subprocess if SDK lacks alias support. |
+| 32-47 | (Inherited from requirements) | See [requirements decision log](../requirements/2026-04-01_book_companion_v1_requirements.md#20-decision-log) | — | All prior decisions from requirements document are carried forward unless overridden above. |
 
 ---
 
@@ -2489,6 +2504,13 @@ These are sourced from Project Gutenberg and included in `tests/fixtures/`. Smal
 | pgvector docs | Vector search | HNSW index type recommended for production. Supports cosine, L2, inner product ops |
 | Ollama API docs | Embedding generation | `/api/embeddings` endpoint for nomic-embed-text. 768-dim output |
 | Hamel Husain eval methodology | Binary assertions | Pass/fail > rubric scoring. Bootstrap with human eval. Trace storage for improvement |
+| pymupdf4llm benchmarks | PDF parsing speed | 0.12s/page vs marker-pdf's 8s/page. Good Markdown output for simple layouts |
+| claude-agent-sdk (PyPI) | CLI subprocess | Official Python SDK for Claude Code CLI. Handles JSONL protocol, streaming. |
+| BooookScore (ICLR 2024) | Book summarization eval | Purpose-built coherence evaluation for book-length summaries. 8 error types. Reference-free. |
+| DeepEval (confident-ai) | Eval framework | pytest-like LLM eval framework. 60+ metrics. Consider as test runner wrapper. |
+| NexusSum (ACL 2025) | Summarization | Multi-agent hierarchical framework. SOTA on BookSum. Output length control relevant. |
+| vue-reader (jinhuan138) | Vue reading UI | Highlight/annotation patterns, component architecture reference for future web UI. |
+| ParadeDB pg_search | BM25 in Postgres | Rust-based BM25 extension. Alternative to tsvector if true BM25 scoring needed. |
 
 ### Sources from Requirements (Carried Forward)
 
