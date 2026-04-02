@@ -336,7 +336,7 @@ Edit sections>
 ```
 2 sections modified. Would you like to resummarize affected sections now? [Y/n]
 ```
-- **Yes (default):** Summarize new sections with book's last-used preset (or system default), then regenerate book summary.
+- **Yes (default):** Summarize new sections with the book's last-used preset, then regenerate book summary. The "last-used preset" is determined by querying the most recent summary row for this book (`ORDER BY created_at DESC LIMIT 1`) and reading its `preset_name`. Falls back to `summarization.default_preset` from config if no prior summaries exist.
 - **No:** Sections stay with `default_summary_id = NULL`, displayed as "Pending" in `show`.
 
 ### 5.3 Split Heading UX
@@ -356,7 +356,11 @@ Split at all headings? [Y/n] or enter heading numbers (e.g., 1,3):
 
 If no sub-headings detected: `No sub-headings detected in section 3. Use --at-char <position> or --at-paragraph <position> to split manually.`
 
-### 5.4 Edge Case: Zero Sections
+### 5.4 Paragraph Boundary Split
+
+`split 3 --at-paragraph 5000` finds the nearest double-newline (`\n\n`) to character position 5000 and splits there. If the nearest paragraph boundary is within 500 chars of the target, use it. Otherwise, fall back to exact character split with a warning: `No paragraph boundary near position 5000. Splitting at exact position.`
+
+### 5.5 Edge Case: Zero Sections
 
 If all sections are deleted, the user must re-parse: `Error: Book has no sections. Re-parse with: bookcompanion add <path>`
 
@@ -951,6 +955,10 @@ Regenerating book-level summary...  ✓ (15s)
 | **Eval adaptations** | `test_reasonable_length_by_compression` | `brief`/`standard`/`detailed` produce correct threshold ranges. Tweet thread override. |
 | **Config migration** | `test_removed_config_keys_ignored` | Old config keys (`default_detail_level`, `prompt_version`) don't cause errors. |
 | **Idempotent summarization** | `test_skip_already_summarized` | Section with matching preset+facets is skipped. `--force` overrides. |
+| **REPL command parsing** | `test_parse_merge`, `test_parse_split`, `test_parse_delete`, `test_parse_move` | Parse REPL input strings into structured commands. Edge cases: quoted titles, comma-separated IDs, invalid input. |
+| **Concept diff extraction** | `test_concept_diff` | Extract bold terms, headers, capitalized phrases from two summaries. Verify diff correctly shows unique terms in each. |
+| **Paragraph boundary split** | `test_split_at_paragraph` | Given content and a target char position, find the nearest `\n\n` boundary and split there. Test edge cases: position at start, end, within paragraph. |
+| **Book validation** | `test_invalid_book_id_errors` | Summary list, summarize, edit for nonexistent book_id returns clear error. |
 
 ### 15.2 Integration Tests
 
