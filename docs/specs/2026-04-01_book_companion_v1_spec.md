@@ -11,19 +11,21 @@
 
 1. [Overview & Goals](#1-overview--goals)
 2. [Scope & Phasing](#2-scope--phasing)
-3. [Architecture](#3-architecture)
-4. [Data Model & Database Design](#4-data-model--database-design)
-5. [Book Parsing Pipeline](#5-book-parsing-pipeline)
-6. [Summarization Pipeline](#6-summarization-pipeline)
-7. [Quality Evaluation (Evals)](#7-quality-evaluation-evals)
-8. [Search](#8-search)
-9. [CLI Interface](#9-cli-interface)
-10. [Configuration & Operations](#10-configuration--operations)
-11. [Infrastructure & Deployment](#11-infrastructure--deployment)
-12. [Verification & Testing Plan](#12-verification--testing-plan)
-13. [Decision Log](#13-decision-log)
-14. [Research Sources](#14-research-sources)
-15. [Open Questions & Risks](#15-open-questions--risks)
+3. [Glossary](#3-glossary)
+4. [Architecture](#4-architecture)
+5. [Data Model & Database Design](#5-data-model--database-design)
+6. [Book Parsing Pipeline](#6-book-parsing-pipeline)
+7. [Summarization Pipeline](#7-summarization-pipeline)
+8. [Quality Evaluation (Evals)](#8-quality-evaluation-evals)
+9. [Search](#9-search)
+10. [CLI Interface](#10-cli-interface)
+11. [Configuration & Operations](#11-configuration--operations)
+12. [Error Handling, Security & Non-Functional Requirements](#12-error-handling-security--non-functional-requirements)
+13. [Infrastructure & Deployment](#13-infrastructure--deployment)
+14. [Verification & Testing Plan](#14-verification--testing-plan)
+15. [Decision Log](#15-decision-log)
+16. [Research Sources](#16-research-sources)
+17. [Open Questions & Risks](#17-open-questions--risks)
 
 ---
 
@@ -50,6 +52,8 @@ Qualitative self-use: the tool is successful when it replaces the user's current
 ## 2. Scope & Phasing
 
 This spec covers **Phase 1** and **Phase 2** of the CLI-only tool. The web UI and REST API are out of scope and will be specified in a separate design document.
+
+> **Note on concepts index**: Concept extraction happens during Phase 1 summarization (it's part of the summarization prompt output). However, dedicated concepts CLI commands (`concepts <book_id>`, `concepts search`, `concepts edit`) are Phase 2. In Phase 1, extracted concepts are stored in the DB but only surfaced through search results.
 
 ### Phase 1: Core Pipeline (CLI)
 
@@ -92,7 +96,25 @@ Upload, parse, summarize, evaluate, and search books via CLI.
 
 ---
 
-## 3. Architecture
+## 3. Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Book** | A non-fiction work in EPUB, MOBI, or PDF format uploaded to the system |
+| **Book Section** | A logical component within a book (chapter, part, appendix). Sections can be nested via parent_id |
+| **Library** | The collection of all books managed by Book Companion |
+| **Concepts Index** | Per-book structured glossary of key terms, frameworks, and models extracted during summarization |
+| **Summary** | LLM-generated abstractive summary of a book section or entire book |
+| **Annotation** | User-created highlight, note, or cross-reference attached to content or summaries (Phase 2) |
+| **Eval Assertion** | A binary pass/fail test evaluating a specific quality dimension of a generated summary |
+| **Eval Trace** | Complete record of an eval assertion execution: prompt, response, result, metadata |
+| **Cumulative Context** | Compact summary of prior sections included when summarizing section N for coherence |
+| **Quick Summary** | Rough single-pass book-level summary generated in ~2 min, separate from the full pipeline |
+| **RRF** | Reciprocal Rank Fusion — algorithm merging BM25 and semantic search rankings |
+
+---
+
+## 4. Architecture
 
 ### Approach: Layered Monolith, CLI-Only, Host-Native
 
@@ -247,7 +269,7 @@ The `processing_jobs` table tracks progress. `bookcompanion status <book_id>` qu
 
 ---
 
-## 4. Data Model & Database Design
+## 5. Data Model & Database Design
 
 ### SQLAlchemy Models
 
@@ -396,7 +418,8 @@ class BookSection(Base):
     book: Mapped["Book"] = relationship(back_populates="sections")
     parent: Mapped["BookSection | None"] = relationship(remote_side=[id])
     images: Mapped[list["Image"]] = relationship(back_populates="section", cascade="all, delete-orphan")
-    annotations: Mapped[list["Annotation"]] = relationship(back_populates="section", cascade="all, delete-orphan")
+    # Phase 2: annotations relationship added via migration
+    # annotations: Mapped[list["Annotation"]] = relationship(back_populates="section", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_book_sections_book_id_order", "book_id", "order_index"),
@@ -612,7 +635,7 @@ Book DELETE →
 
 ---
 
-## 5. Book Parsing Pipeline
+## 6. Book Parsing Pipeline
 
 ### Supported Formats & Libraries
 
@@ -685,6 +708,13 @@ class MOBIParser(BookParser): ...  # Delegates to EPUBParser after conversion
    - Tier 1: Parse embedded TOC (EPUB toc.ncx/nav.xhtml, PDF bookmarks)
    - Tier 2: Heuristic detection (heading patterns, font sizes, numbering)
    - Tier 3: LLM-assisted (send first ~5000 tokens to Claude Code CLI)
+     Prompt (`detect_structure_v1.txt`):
+     ```
+     Analyze the following text from the beginning of a book. Identify the
+     chapter/section structure. Return a JSON array of sections with title
+     and approximate character offset. Look for: numbered chapters, named
+     parts, heading patterns, topic transitions.
+     ```
    - Record which tier was used
 
 5. User Review (step-by-step mode only)
@@ -743,7 +773,7 @@ User can edit parsed metadata via `bookcompanion edit <book_id> --title "..." --
 
 ---
 
-## 6. Summarization Pipeline
+## 7. Summarization Pipeline
 
 ### Approach: Hierarchical Map-Reduce with Cumulative Context
 
@@ -768,6 +798,30 @@ bookcompanion add --quick <file_path>
 6. Quick summary model configurable separately via `llm.quick_summary_model`
 
 Quick summary skips: section-level processing, eval assertions, concepts extraction, cumulative context, image captioning.
+
+**Prompt template** (`quick_summary_v1.txt`):
+
+```jinja2
+You are creating a quick overview summary of the book "{{ book_title }}" by {{ book_author }}.
+
+{{ book_content }}
+
+## Instructions
+
+Create a concise but informative overview of this book. Include:
+
+### Main Thesis
+What is this book fundamentally about? (2-3 sentences)
+
+### Key Ideas (5-10 bullet points)
+The most important concepts, arguments, and frameworks in the book.
+
+### Who Should Read This
+One sentence on who would benefit from reading this book.
+
+This is a rough overview, not a detailed summary. Prioritize breadth over depth.
+Output as JSON matching the provided schema.
+```
 
 ### Section Summarization (Phase 1 - Map)
 
@@ -983,7 +1037,7 @@ If summarization fails midway (e.g., on section 7 of 12):
 
 ---
 
-## 7. Quality Evaluation (Evals)
+## 8. Quality Evaluation (Evals)
 
 ### Approach: Full Binary Assertion Battery with Trace Storage
 
@@ -1122,7 +1176,7 @@ Referenced as a separate activity (not detailed in this spec):
 
 ---
 
-## 8. Search
+## 9. Search
 
 ### Hybrid Search: BM25 + Semantic + Reciprocal Rank Fusion
 
@@ -1232,7 +1286,7 @@ class SearchResults:
 
 ---
 
-## 9. CLI Interface
+## 10. CLI Interface
 
 ### Installation
 
@@ -1275,6 +1329,9 @@ bookcompanion summarize <book_id> <section_id> --detail detailed  # Higher compr
 bookcompanion search "query"                # Hybrid search across all books
 bookcompanion search "query" --book <id>    # Search within a book
 bookcompanion search "query" --source <type>  # Filter: content|summary
+
+# === Authors ===
+bookcompanion authors                       # List all authors with book counts
 
 # === Processing & Evaluation ===
 bookcompanion status <book_id>              # Processing status + progress
@@ -1702,6 +1759,19 @@ Options:
   --help            Show this message and exit.
 ```
 
+#### `bookcompanion authors`
+
+```
+Usage: bookcompanion authors [OPTIONS]
+
+  List all authors in the library with their book counts.
+
+Options:
+  --help  Show this message and exit.
+
+Output columns: Author Name, Book Count, Book Titles
+```
+
 #### `bookcompanion config`
 
 ```
@@ -1780,7 +1850,7 @@ bookcompanion restore BACKUP_FILE         Restore from backup
 
 ---
 
-## 10. Configuration & Operations
+## 11. Configuration & Operations
 
 ### Config File Location
 
@@ -1863,7 +1933,75 @@ structlog.configure(
 
 ---
 
-## 11. Infrastructure & Deployment
+## 12. Error Handling, Security & Non-Functional Requirements
+
+### Error Handling & Recovery
+
+| Failure Scenario | Behavior | Recovery |
+|-----------------|----------|----------|
+| **Parse failure** (corrupted file, unsupported content) | Mark book as `parse_failed`, log error with details | `bookcompanion add <file> --force` to retry |
+| **Structure detection failure** (no TOC, heuristics fail) | Fall through to LLM tier. If LLM also fails, create single flat section with all content | User can re-import or manually accept flat structure |
+| **MOBI conversion failure** (Calibre error) | Log error, suggest user convert manually or try different file | Provide error message with Calibre version info |
+| **Summarization timeout** (Claude CLI >300s) | Mark section as `summary_failed`, log timeout | `bookcompanion summarize <book_id>` resumes from failed section |
+| **Summarization LLM error** (CLI crash, rate limit) | Mark section as `summary_failed`, store error | Auto-resume on next `summarize` call. Exponential backoff not needed (user-triggered) |
+| **Critical eval failure** (faithfulness) | Auto-retry summary with adjusted prompt (up to 2x) | If still failing: mark `summary_failed`, user can retry with `--detail detailed` |
+| **Embedding failure** (Ollama down) | Log error, skip embedding step | `bookcompanion summarize <book_id>` re-runs embedding for un-embedded content |
+| **DB connection failure** | Immediate error with connection details | Check Docker container: `docker compose ps` |
+| **Background process crash** (async mode) | Process exits, PID removed. Job stays `running` in DB | `bookcompanion status` detects orphaned job (PID no longer running), marks as `failed` |
+| **Disk full during BLOB storage** | Transaction rollback, error message | Free disk space, retry |
+
+### Orphan Process Detection
+
+On every CLI invocation, check for orphaned background processes:
+1. Query `processing_jobs` for status `running`
+2. For each, check if PID is still alive: `os.kill(pid, 0)`
+3. If PID dead: mark job as `failed` with error "Process terminated unexpectedly"
+
+### Security Considerations
+
+| Concern | Mitigation |
+|---------|-----------|
+| **File upload validation** | Verify magic bytes match claimed format. Enforce max file size (200MB configurable). Reject files that fail format detection. |
+| **CLI command injection** | `subprocess.run()` with list args (no `shell=True`). Prompt content passed via stdin, not interpolated into command string. CLI alias from config, not user input. |
+| **SQL injection** | SQLAlchemy ORM with parameterized queries. No raw SQL string interpolation. |
+| **Path traversal** | File paths from uploads sanitized via `Path.resolve()`. Backup/restore paths validated. |
+| **Resource exhaustion** | Configurable timeouts on all external calls. Max file size limit. Background process count limited to 1 per book. |
+
+### Performance Targets
+
+| Operation | Target | Notes |
+|-----------|--------|-------|
+| Book parsing (300-page EPUB) | < 2 minutes | Excluding image captioning |
+| Section summarization | 30-60 seconds per section | Dependent on Claude Code CLI |
+| Quick summary | ~2 minutes total | Single-pass for under-context-limit books |
+| Hybrid search | < 500ms | pgvector HNSW + tsvector GIN indexes |
+| Embedding generation (per chunk) | < 1 second | Local Ollama |
+| CLI startup time | < 500ms | To first output (excluding DB operations) |
+
+### Storage Estimates (per book)
+
+| Content | Size Estimate |
+|---------|--------------|
+| Original file (BLOB) | 1-50 MB |
+| Extracted images | 5-100 MB |
+| Markdown content | 200 KB - 2 MB |
+| Summaries | 50-500 KB |
+| Eval traces | 100 KB - 1 MB (16 assertions x response text) |
+| Embeddings | ~50 KB (768-dim vectors) |
+| **Total per book** | **~10-150 MB** |
+
+For ~100 books: **1-15 GB total** — within single PostgreSQL capacity.
+
+### Data Integrity
+
+- All processing is idempotent — re-running summarization replaces existing summaries
+- Database transactions for multi-step operations (e.g., re-import)
+- `processing_jobs` table tracks state for retry on failure
+- Full backup via `pg_dump` (single Postgres with all data)
+
+---
+
+## 13. Infrastructure & Deployment
 
 ### Docker Compose (PostgreSQL only)
 
@@ -2005,7 +2143,7 @@ book-companion/
 
 ---
 
-## 12. Verification & Testing Plan
+## 14. Verification & Testing Plan
 
 ### Testing Strategy Overview
 
@@ -2027,7 +2165,7 @@ book-companion/
 
 ### Phase 1: Detailed Test Plan
 
-#### 5.1 Book Parsing
+#### 6.1 Book Parsing
 
 **Unit Tests** (`test_epub_parser.py`, `test_pdf_parser.py`):
 
@@ -2054,7 +2192,7 @@ book-companion/
 | `test_re_import_preserves_data` | Re-import book, verify annotations/tags preserved, summaries marked stale |
 | `test_delete_cascades` | Delete book, verify all related records removed |
 
-#### 6.1 Summarization
+#### 7.1 Summarization
 
 **Unit Tests** (`test_summarizer.py`):
 
@@ -2078,7 +2216,7 @@ book-companion/
 | `test_image_captioning` | Caption a test image via CLI, verify caption quality |
 | `test_cli_timeout_handling` | Verify graceful timeout handling |
 
-#### 7.1 Evaluation
+#### 8.1 Evaluation
 
 **Unit Tests** (`test_evaluator.py`):
 
@@ -2091,7 +2229,7 @@ book-companion/
 | `test_retry_limit_respected` | Verify max 2 retries, then mark as failed |
 | `test_eval_aggregation` | Verify summary_eval JSON aggregates all assertion results |
 
-#### 8.1 Search
+#### 9.1 Search
 
 **Unit Tests** (`test_search.py`):
 
@@ -2112,7 +2250,7 @@ book-companion/
 | `test_embedding_lifecycle` | Verify embeddings created/deleted at correct trigger points |
 | `test_search_after_re_import` | Verify search works correctly after book re-import |
 
-#### 9.1 CLI
+#### 10.1 CLI
 
 **E2E Tests** (`test_cli_flows.py`):
 
@@ -2170,7 +2308,7 @@ These are sourced from Project Gutenberg and included in `tests/fixtures/`. Smal
 
 ---
 
-## 13. Decision Log
+## 15. Decision Log
 
 | # | Decision | Options Considered | Choice | Rationale |
 |---|----------|-------------------|--------|-----------|
@@ -2202,7 +2340,7 @@ These are sourced from Project Gutenberg and included in `tests/fixtures/`. Smal
 
 ---
 
-## 14. Research Sources
+## 16. Research Sources
 
 ### Consulted During Spec Creation
 
@@ -2222,7 +2360,7 @@ All sources listed in the [requirements research section](../requirements/2026-0
 
 ---
 
-## 15. Open Questions & Risks
+## 17. Open Questions & Risks
 
 ### Open Questions
 
