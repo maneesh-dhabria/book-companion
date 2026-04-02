@@ -157,6 +157,25 @@ If no preset or facets specified, the system default preset is used (configurabl
 - Fragments must be self-contained — no references to other fragments.
 - Test the shipped system presets (5 presets) as known-good combinations. Arbitrary facet combinations are supported but not guaranteed tested.
 
+#### Preset Validation & Error Handling
+
+- On `summarize`, preset YAML is loaded and each facet value is checked against existing fragment files. If a fragment file is missing (e.g., `style: haiku` but no `fragments/style/haiku.txt`), fail fast with: `Error: Fragment not found: fragments/style/haiku.txt. Available styles: bullet_points, narrative, ...`
+- If `--preset` names a nonexistent preset: `Error: Preset "foo" not found. Run "bookcompanion preset list" to see available presets.`
+- If both `--preset` and individual facet flags are provided, the explicit flags override the preset values for those facets.
+- If neither `--preset` nor any facet flags are provided, use `summarization.default_preset` from config.
+
+#### Quick Summary Interaction
+
+The `quick_summary` code path (single-pass, `quick_summary_v1.txt`) remains **independent** of the preset system. It is a fundamentally different approach (full-book single pass vs. map-reduce per section). The `--quick` flag on `add` continues to work as in V1. Presets apply only to the `summarize` command's map-reduce pipeline.
+
+#### Config Changes
+
+| Setting | Old (V1) | New (V1.1) |
+|---------|----------|------------|
+| `summarization.default_detail_level` | `"standard"` | **Removed.** Replaced by `compression` facet in default preset. |
+| `summarization.prompt_version` | `"v1"` | **Removed.** Prompt templates are now faceted fragments; versioning is per-fragment file. |
+| `summarization.default_preset` | — | **New.** Name of the default preset (e.g., `"practitioner_bullets"`). |
+
 ---
 
 ### 2.2 Summary Log (Append-Only)
@@ -170,6 +189,7 @@ New `summary` table that stores every generated summary as an immutable log entr
 | `id` | BigInteger, PK | Auto-increment |
 | `content_type` | Enum: `section`, `book`, `concept`, `annotation` | What was summarized (extensible) |
 | `content_id` | BigInteger | ID of the summarized content |
+| `book_id` | BigInteger, FK → `Book.id` | Parent book — enables efficient "all summaries for this book" queries without joining through `BookSection` |
 | `preset_name` | String, nullable | Which preset was used, if any |
 | `facets_used` | JSON | `{style, audience, compression, content_focus}` — exact values |
 | `prompt_text_sent` | Text | Fully rendered prompt (frozen snapshot) |
@@ -198,6 +218,7 @@ New `summary` table that stores every generated summary as an immutable log entr
 #### Indexes
 
 - `(content_type, content_id)` — query all summaries for a given section/book
+- `book_id` — query all summaries across a book
 - `created_at` — chronological ordering
 
 ---
@@ -394,7 +415,7 @@ Section #2 "What Is Strategy?" — 3 summaries:
 bookcompanion summary compare <id1> <id2>
 ```
 - Shows both summaries with metadata header (preset, model, compression, eval score)
-- Highlights key concepts present in one but missing from the other
+- Concept diff is **deterministic**: extract bold/header terms and named entities via simple regex (not LLM-based), show terms present in one but missing from the other
 - Uses terminal columns for side-by-side if width allows, sequential otherwise
 
 **Set default summary:**
@@ -493,6 +514,7 @@ summary (DB table, append-only)
 │ id (PK)                    │
 │ content_type (enum)        │
 │ content_id (BigInt)        │
+│ book_id (FK → Book.id)     │
 │ preset_name (nullable)     │
 │ facets_used (JSON)         │
 │ prompt_text_sent (Text)    │
@@ -603,6 +625,10 @@ eval_trace (modified)
 | 9 | **V1 migration strategy** | (A) Backward-compatible migration preserving data (B) Clean migration, drop old data | B | Simpler migration code. No compatibility layer to maintain. Books retain parsed structure; only summaries (cheap to regenerate) are lost. |
 | 10 | **Detail level abstraction** | (A) Keep as separate dimension (B) Merge into preset taxonomy (C) Rename to `compression` facet | C | `detail_level` (brief/standard/detailed) maps directly to compression ratio. Making it a facet alongside style/audience/content_focus is more consistent and composable. |
 | 11 | **Profile naming** | (A) `summary_profile` (B) `prompt_profile` (C) `summary_preset` | C | "Preset" communicates the right mental model — a saved configuration to apply, like Handbrake/Lightroom presets. "Profile" is ambiguous (profile of the summary? of the user?). |
+| 12 | **Facet dimensions** | (A) 4 dimensions: style, compression, audience, content_focus (B) Fewer (merge audience + content_focus) (C) More (add tone, length_unit, etc.) | A | 4 dimensions cover the independent axes users care about without combinatorial explosion. Audience and content_focus are distinct: audience determines framing/language, content_focus determines what to include/exclude. Additional dimensions like tone can be added later as new fragment folders. |
+| 13 | **Preset file format** | (A) YAML (B) TOML (C) JSON | A | YAML is human-readable, supports comments, and is already familiar in the Python ecosystem. TOML is more strict but less readable for nested structures. JSON doesn't support comments. |
+| 14 | **Summary compare approach** | (A) LLM-based concept diff (B) Deterministic regex extraction of bold terms/headers (C) Full semantic diff | B | Deterministic extraction is fast, free, and reproducible. LLM-based diff adds cost for a feature that should be instant. Semantic diff is overkill — users can read both summaries side-by-side. |
+| 15 | **`book_id` on summary table** | (A) Only `content_type` + `content_id` (polymorphic) (B) Add denormalized `book_id` FK | B | Enables efficient "all summaries for this book" queries without joining through `BookSection`. Every summary belongs to a book regardless of content type. Small denormalization cost, large query benefit. |
 
 ---
 
