@@ -265,7 +265,7 @@ Add Section ID, Characters, Compression ratio, and Eval columns. Title column us
 - **`#`**: Flat integer index (1, 2, 3...) — sequential, no hierarchical numbering
 - **`ID`**: Database section ID — required for CLI commands (`summarize <book_id> <section_id>`)
 - **`Title`**: Indented by `depth * 2 spaces` to show hierarchy
-- **`Status`**: Summary status (`Completed`, `Pending`, `Running`, `Failed`)
+- **`Status`**: Derived from `default_summary_id` — `Completed` (has default summary), `Pending` (no default summary, i.e. NULL). Not a stored enum; the old `SummaryStatus` enum on `BookSection` is dropped in V1.1.
 - **`Chars`**: Content character count, formatted with commas
 - **`Compression`**: `summary_char_count / input_char_count * 100` as percentage. Shows `—` when no summary exists.
 - **`Eval`**: Pass/total assertion count (e.g., `14/16`). Shows `—` when no eval run.
@@ -423,7 +423,8 @@ No backward compatibility layer. Drop old columns, create new tables, re-summari
 4. **Add** `derived_from` JSON column to `BookSection` (nullable, for merge/split provenance)
 5. **Drop** columns from `BookSection`: `summary_md`, `summary_status`, `summary_version`, `summary_model`, `summary_eval`, `user_edited`
 6. **Drop** columns from `Book`: `overall_summary`, `overall_summary_eval`
-7. **Truncate** `eval_trace` table
+7. **Add** `summary_id` FK column to `EvalTrace` (nullable, FK → `summary.id`)
+8. **Truncate** `eval_trace` table
 
 #### Prompt System Migration
 
@@ -436,6 +437,14 @@ No backward compatibility layer. Drop old columns, create new tables, re-summari
 - All existing books retain their parsed structure, sections, and content
 - All existing summaries are deleted — users re-summarize using the new preset system
 - Eval traces are cleared — re-run evals after re-summarization
+
+#### Downstream Model Updates
+
+- **`BookStatus` enum:** The `SUMMARIZING` and `COMPLETED` states remain but their meaning updates. `COMPLETED` = all sections have a non-null `default_summary_id` AND book has a non-null `default_summary_id`. `SUMMARIZING` = at least one section is currently being processed.
+- **`SummaryStatus` enum:** Dropped. Section status is derived from `default_summary_id` (NULL = pending, non-null = completed). Running/failed states are tracked via `ProcessingJob`.
+- **`SearchIndex` impact:** When a section's default summary changes (via `set-default` or re-summarization), search embeddings for `source_type=SECTION_SUMMARY` must be regenerated for that section. The `summarize` command should trigger re-embedding automatically.
+- **`EvalTrace` table:** Add `summary_id` FK column (nullable, FK → `summary.id`). New eval runs link to the specific summary row. Existing traces are truncated during migration. The `eval_json` on the `summary` log provides inline eval results; `EvalTrace` provides the detailed per-assertion audit trail.
+- **`--force` flag with presets:** `--force` means "re-summarize all sections regardless of whether they already have a summary with this or any preset." It does not delete existing summary log entries — it appends new ones and updates `default_summary_id`.
 
 ---
 
@@ -465,6 +474,12 @@ See [2.2](#22-summary-log-append-only) for full schema.
 | Drop | `summary_model` | — |
 | Drop | `summary_eval` | — |
 | Drop | `user_edited` | — |
+
+### Modified: `EvalTrace`
+
+| Change | Field | Type |
+|--------|-------|------|
+| Add | `summary_id` | BigInteger, FK → `summary.id`, nullable |
 
 ### ER Diagram
 
@@ -497,9 +512,14 @@ summary (DB table, append-only)
         │              │
  ┌──────────┐   ┌──────────────┐
  │   Book   │   │ BookSection  │
- │          │   │              │
- │ + derived_from (JSON, nullable)
- └──────────┘   └──────────────┘
+ └──────────┘   │ + derived_from│
+                └──────────────┘
+
+eval_trace (modified)
+┌────────────────────────────┐
+│ ...existing fields...      │
+│ + summary_id (FK, nullable)│
+└────────────────────────────┘
 ```
 
 ---
