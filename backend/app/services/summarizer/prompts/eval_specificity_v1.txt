@@ -1,0 +1,26 @@
+You are evaluating the specificity of a book summary.
+
+## Source Text
+{{ source_text }}
+
+## Summary
+{{ summary_text }}
+
+## Task: {{ assertion_name }}
+
+{% if assertion_name == "not_generic" %}
+Determine whether the summary contains details specific to THIS book and section, or whether it could apply to almost any book on the topic.
+
+If the summary is specific: respond with {"passed": true, "reasoning": "The summary includes details unique to this source, such as [examples]."}
+
+If the summary is too generic: respond with {"passed": false, "reasoning": "The summary is overly generic and could describe any book on this topic. It lacks specific details like [what's missing]."}
+
+{% elif assertion_name == "preserves_author_terminology" %}
+Check whether the summary uses the author's specific terminology, names, and phrases rather than replacing them with generic paraphrases.
+
+If author terminology is preserved: respond with {"passed": true, "reasoning": "The summary uses the author's key terms including [examples]."}
+
+If terminology is lost: respond with {"passed": false, "reasoning": "The summary replaces the author's terminology with generic language. For example, the author uses [term] but the summary says [generic phrase].", "lost_terms": ["term1"]}
+{% endif %}
+
+Output as JSON.

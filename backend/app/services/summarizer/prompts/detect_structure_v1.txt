@@ -1,0 +1,3 @@
+Analyze the following text from the beginning of a book. Identify the chapter/section structure. Return a JSON array of sections with title and approximate character offset. Look for: numbered chapters, named parts, heading patterns, topic transitions.
+
+{{ book_text }}

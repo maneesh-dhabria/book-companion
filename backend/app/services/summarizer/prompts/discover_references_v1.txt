@@ -1,0 +1,13 @@
+Search the web for existing summaries and reviews of "{{ book_title }}" by {{ book_author }}.
+
+Find 4-5 high-quality external references. Prioritize (in order):
+1. Dedicated summary services: Shortform, Blinkist, getAbstract
+2. Notable reviewer blogs: Nat Eliason, Derek Sivers, Farnam Street
+3. Publisher/author summaries
+4. Quality blog posts with substantive reviews
+5. Academic reviews (for technical/academic books)
+
+Do NOT include: Amazon reviews, SEO-generated summaries, affiliate marketing content.
+
+For each reference, return: url, title, source_name, snippet (1-2 sentences).
+Output as JSON array.

@@ -1,0 +1,35 @@
+You are evaluating the coherence of a book summary.
+
+## Summary
+{{ summary_text }}
+
+{% if source_text %}
+## Source Text (for reference)
+{{ source_text }}
+{% endif %}
+
+## Task: {{ assertion_name }}
+
+{% if assertion_name == "standalone_readable" %}
+Read the summary without referring to the source text. Determine whether it makes sense on its own, without needing to have read the original.
+
+If the summary is self-contained and readable: respond with {"passed": true, "reasoning": "The summary reads well as a standalone document."}
+
+If the summary requires external context: respond with {"passed": false, "reasoning": "The summary references [X] without explanation, making it unclear without the source."}
+
+{% elif assertion_name == "logical_flow" %}
+Evaluate whether the ideas in the summary follow a logical progression. Check for abrupt transitions, disconnected paragraphs, or jumbled ordering.
+
+If the flow is logical: respond with {"passed": true, "reasoning": "The summary follows a clear logical progression."}
+
+If the flow is poor: respond with {"passed": false, "reasoning": "The summary has poor flow: [specific issue]."}
+
+{% elif assertion_name == "no_dangling_references" %}
+Check for unresolvable references such as "as mentioned above," "see below," "the previous chapter," or similar phrases that point to content not present in the summary.
+
+If no dangling references: respond with {"passed": true, "reasoning": "No unresolvable references found."}
+
+If dangling references exist: respond with {"passed": false, "reasoning": "The summary contains dangling references: [specific examples].", "dangling_refs": ["ref1"]}
+{% endif %}
+
+Output as JSON.

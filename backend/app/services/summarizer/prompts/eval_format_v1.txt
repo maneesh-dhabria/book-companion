@@ -1,0 +1,45 @@
+You are evaluating the format and structure of a book summary.
+
+## Summary
+{{ summary_text }}
+
+{% if source_text %}
+## Source Text (for reference)
+{{ source_text }}
+{% endif %}
+
+## Task: {{ assertion_name }}
+
+{% if assertion_name == "has_key_concepts" %}
+Check whether the summary contains a "Key Concepts" section or equivalent structured list of main ideas.
+
+If key concepts section exists: respond with {"passed": true, "reasoning": "The summary includes a key concepts section with [N] items."}
+
+If missing: respond with {"passed": false, "reasoning": "The summary does not contain a key concepts section or equivalent."}
+
+{% elif assertion_name == "reasonable_length" %}
+The target compression ratio is {{ compression_target }}% of the source length. The source is approximately {{ source_length }} characters. Check if the summary length is within +/- 20% of the target.
+
+Expected summary length: approximately {{ expected_length }} characters ({{ compression_target }}% of {{ source_length }}).
+Acceptable range: {{ min_length }} to {{ max_length }} characters.
+Actual summary length: {{ summary_length }} characters.
+
+If within range: respond with {"passed": true, "reasoning": "Summary length ({{ summary_length }} chars) is within the acceptable range."}
+
+If outside range: respond with {"passed": false, "reasoning": "Summary length ({{ summary_length }} chars) is outside the acceptable range of {{ min_length }}-{{ max_length }} chars."}
+
+{% elif assertion_name == "image_refs_preserved" %}
+Check whether images/diagrams referenced in the source text are noted in the summary.
+
+{% if image_count == 0 %}
+No images in the source. Respond with {"passed": true, "reasoning": "No images in source to reference."}
+{% else %}
+The source contains {{ image_count }} image(s). Check if they are acknowledged in the summary.
+
+If images are referenced: respond with {"passed": true, "reasoning": "The summary acknowledges visual content from the source."}
+
+If images are ignored: respond with {"passed": false, "reasoning": "The source contains {{ image_count }} image(s) but the summary does not reference any visual content."}
+{% endif %}
+{% endif %}
+
+Output as JSON.

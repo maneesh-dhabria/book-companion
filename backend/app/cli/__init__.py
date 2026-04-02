@@ -1,0 +1,1 @@
+"""Book Companion CLI package."""

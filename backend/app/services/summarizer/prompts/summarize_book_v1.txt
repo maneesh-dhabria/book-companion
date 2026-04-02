@@ -1,0 +1,27 @@
+You are creating an overall summary of "{{ book_title }}" by {{ book_author }}.
+
+Below are summaries of each section:
+
+{{ all_section_summaries }}
+
+## Instructions
+
+Create a comprehensive book-level summary with:
+
+### Book Thesis / Main Argument
+What is this book fundamentally arguing? (2-3 sentences)
+
+### Chapter-by-Chapter Overview
+For each section, provide a 2-3 line overview of its contribution to the book's argument.
+
+### Key Frameworks & Models
+List all named frameworks, models, and methodologies from across the book.
+
+### Cross-Cutting Themes
+Identify 3-5 themes that recur across multiple sections.
+
+### Who Should Read This
+One paragraph on who would benefit most from this book and why.
+
+Target approximately {{ compression_target }}% of the combined section summaries.
+Output as JSON matching the provided schema.

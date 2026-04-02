@@ -1,0 +1,19 @@
+You are creating a quick overview summary of the book "{{ book_title }}" by {{ book_author }}.
+
+{{ book_content }}
+
+## Instructions
+
+Create a concise but informative overview of this book. Include:
+
+### Main Thesis
+What is this book fundamentally about? (2-3 sentences)
+
+### Key Ideas (5-10 bullet points)
+The most important concepts, arguments, and frameworks in the book.
+
+### Who Should Read This
+One sentence on who would benefit from reading this book.
+
+This is a rough overview, not a detailed summary. Prioritize breadth over depth.
+Output as JSON matching the provided schema.

@@ -61,3 +61,18 @@ storage/
 # LLM cache/artifacts
 .claude/
 .superpowers/
+
+# Test fixtures (downloaded books)
+backend/tests/fixtures/sample_epub/*.epub
+backend/tests/fixtures/sample_pdf/*.pdf
+backend/tests/fixtures/sample_mobi/*.mobi
+
+# Backups
+backups/
+*.backup.sql
+
+# Config files (user-specific)
+config.yaml
+
+# uv
+uv.lock

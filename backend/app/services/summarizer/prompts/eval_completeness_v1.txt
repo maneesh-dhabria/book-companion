@@ -1,0 +1,40 @@
+You are evaluating the completeness of a book summary.
+
+## Source Text
+{{ source_text }}
+
+## Summary
+{{ summary_text }}
+
+## Task: {{ assertion_name }}
+
+{% if assertion_name == "covers_main_argument" %}
+Determine whether the summary captures the section's primary thesis or main argument.
+
+If the main argument is covered: respond with {"passed": true, "reasoning": "The summary captures the main argument: [brief description]."}
+
+If the main argument is missing: respond with {"passed": false, "reasoning": "The source's main argument is [X] but the summary does not address it."}
+
+{% elif assertion_name == "covers_key_concepts" %}
+Identify the major concepts discussed in the source text. Check whether each appears in the summary.
+
+If all major concepts are covered: respond with {"passed": true, "reasoning": "All key concepts are represented in the summary."}
+
+If concepts are missing: respond with {"passed": false, "reasoning": "The following key concepts from the source are missing from the summary.", "missing_concepts": ["concept1", "concept2"]}
+
+{% elif assertion_name == "covers_frameworks" %}
+Identify any named frameworks, models, or methodologies in the source text. Check if they appear in the summary.
+
+If all frameworks are covered or none exist in source: respond with {"passed": true, "reasoning": "All frameworks from the source are included in the summary."}
+
+If frameworks are missing: respond with {"passed": false, "reasoning": "The following frameworks are discussed in the source but missing from the summary.", "missing_frameworks": ["framework1"]}
+
+{% elif assertion_name == "covers_examples" %}
+Identify key supporting examples in the source text. Check whether they are referenced in the summary.
+
+If key examples are referenced: respond with {"passed": true, "reasoning": "Key supporting examples are included in the summary."}
+
+If important examples are missing: respond with {"passed": false, "reasoning": "The source includes important examples that are not reflected in the summary.", "missing_examples": ["example1"]}
+{% endif %}
+
+Output as JSON.
