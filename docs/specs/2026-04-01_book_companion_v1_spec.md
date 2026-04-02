@@ -86,6 +86,60 @@ Upload, parse, summarize, evaluate, and search books via CLI.
 | Metadata editing | Edit title, author; accept/reject section structure |
 | Summary editing | Edit summaries in $EDITOR with user_edited protection |
 
+### Phase 1 Implementation Order
+
+Features should be implemented in this order due to dependencies:
+
+```
+1. Infrastructure & Config
+   └── Docker Compose (PostgreSQL), config system (pydantic-settings),
+       Alembic migrations, bookcompanion init
+
+2. Data Model (Phase 1 tables)
+   └── books, authors, book_authors, book_sections, images,
+       processing_jobs, search_index, eval_traces
+
+3. Book Parsing Pipeline
+   └── Format detection → EPUB parser → PDF parser ��� MOBI parser →
+       Structure detection → Content segmentation → DB storage
+   Dependencies: Data model
+
+4. Embedding Service
+   └── Ollama integration, chunking, search_index population
+   Dependencies: Data model, parsed content
+
+5. Search Service
+   └── BM25 + semantic + RRF fusion
+   Dependencies: Embedding service, search_index
+
+6. LLM Provider (Claude Code CLI)
+   └── Subprocess invocation, timeout handling, JSON parsing
+   Dependencies: Config
+
+7. Image Captioning
+   └── Extract images → CLI vision → store captions → inject into Markdown
+   Dependencies: LLM provider, parsed images
+
+8. Summarization Pipeline
+   └── Section summarization (with cumulative context) → Book summary →
+       Quick summary mode → Partial recovery
+   Dependencies: LLM provider, image captioning, parsed content
+
+9. Eval Service
+   └── 16 assertions → trace storage → auto-retry → aggregation
+   Dependencies: LLM provider, summarization
+
+10. CLI Layer
+    └── All Phase 1 commands as thin wrappers over services
+    Dependencies: All services
+
+11. Async Processing Mode
+    └── Background process, PID tracking, status polling
+    Dependencies: Full pipeline working synchronously first
+```
+
+Each step includes its verification tests (see Section 14).
+
 ### Explicitly Out of Scope (This Spec)
 
 - Web UI (Vue 3 SPA) — separate design document
@@ -903,6 +957,30 @@ Output as JSON matching the provided schema.
 }
 ```
 
+### Concepts Extraction (Phase 1 summarization, Phase 2 CLI)
+
+During section summarization, the prompt also requests structured concept entries. These are included in the summarization JSON output:
+
+```json
+{
+  "key_concepts": [...],
+  "detailed_summary": "...",
+  "frameworks": [...],
+  "key_quotes": [...],
+  "concepts": [
+    {
+      "term": "System 1 / System 2",
+      "definition": "Two modes of thinking: fast/intuitive (System 1) vs slow/deliberate (System 2)",
+      "related_concepts": ["cognitive bias", "heuristics"]
+    }
+  ]
+}
+```
+
+In **Phase 1**: Concepts are extracted and stored in the `concepts` table during summarization. They appear in search results (indexed in `search_index` with `source_type=concept`).
+
+In **Phase 2**: Dedicated CLI commands (`concepts <book_id>`, `concepts search`, `concepts edit`) provide direct access. The concepts index is also included in cumulative context for subsequent sections.
+
 ### Cumulative Context
 
 When summarizing section N, include a compact context from sections 1..N-1:
@@ -1269,7 +1347,7 @@ class EmbeddingService:
 ```python
 async def search(self, query: str, book_id: int | None = None,
                  source_types: list[SourceType] | None = None,
-                 limit: int = 20) -> SearchResults:
+                 limit: int = 20) -> GroupedSearchResults:
     # 1. Generate query embedding
     query_embedding = await self.embedding_service.embed_text(query)
 
@@ -1598,8 +1676,9 @@ Options:
              Skips section-level summarization, evals, and concepts extraction.
   --async    Parse + summarize + embed in background. Auto-accepts detected
              structure. Returns immediately with book ID.
-  --force    Re-import even if duplicate detected (replaces content, marks
-             summaries stale).
+  --force    Two uses: (1) Re-import even if duplicate detected (replaces
+             content, marks summaries stale). (2) Retry a previously failed
+             parse (overwrite parse_failed book).
   --help     Show this message and exit.
 
 Supported formats: .epub, .mobi, .pdf
