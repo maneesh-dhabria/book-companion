@@ -6,12 +6,10 @@ from pathlib import Path
 import jinja2
 import structlog
 
-from app.db.models import BookSection, SummaryStatus
+from app.db.models import BookSection, Image, SummaryStatus
 from app.services.summarizer.llm_provider import LLMProvider
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, undefer
-
-from app.db.models import Image
 
 logger = structlog.get_logger()
 
@@ -347,10 +345,13 @@ class SummarizerService:
     async def _get_image_captions(self, section) -> list[dict]:
         """Get image captions for a section. Captions uncaptioned images if captioner available.
 
+        Uses caption_section_images for batch processing with dedup.
+        Only loads image binary data for images that pass metadata pre-filter.
+
         Returns list of {"caption": str, "relevance": str, "image_id": int}
         for non-decorative images.
         """
-        from app.services.summarizer.image_captioner import should_skip_image, compute_content_hash
+        from app.services.summarizer.image_captioner import compute_content_hash
 
         images = section.images or []
         if not images:
@@ -360,15 +361,11 @@ class SummarizerService:
         if hasattr(self.config, 'images') and not self.config.images.captioning_enabled:
             return []
 
+        # Collect already-captioned non-decorative images
         captions = []
-        for img in images:
-            # Skip pre-filtered decorative images
-            if should_skip_image(
-                data=img.data, width=img.width, height=img.height, filename=img.filename
-            ):
-                continue
+        needs_captioning = []
 
-            # Use existing caption if available
+        for img in images:
             if img.caption and img.relevance:
                 if img.relevance in ("key", "supplementary"):
                     captions.append({
@@ -378,29 +375,47 @@ class SummarizerService:
                     })
                 continue
 
-            # Caption via LLM if captioner available
+            # Only attempt captioning if captioner available
             if self.captioner:
-                # Compute content hash if not set
+                # Compute content hash if not set (requires data)
                 if not img.content_hash:
                     img.content_hash = compute_content_hash(img.data)
 
-                result = await self.captioner.caption_image(
-                    image_data=img.data,
-                    mime_type=img.mime_type,
-                    context=f"Section: {section.title}",
-                    alt_text=img.alt_text,
-                )
-                img.caption = result["caption"]
-                img.caption_model = "claude-vision"
-                img.relevance = result["relevance"]
-                await self.db.flush()  # Persist immediately for crash safety
+                needs_captioning.append({
+                    "id": img.id,
+                    "data": img.data,
+                    "mime_type": img.mime_type,
+                    "width": img.width,
+                    "height": img.height,
+                    "filename": img.filename,
+                    "alt_text": img.alt_text,
+                    "content_hash": img.content_hash,
+                    "existing_caption": None,
+                    "existing_relevance": None,
+                })
 
-                if img.relevance in ("key", "supplementary"):
-                    captions.append({
-                        "caption": result["caption"],
-                        "relevance": result["relevance"],
-                        "image_id": img.id,
-                    })
+        # Batch caption uncaptioned images (handles pre-filter + dedup)
+        if needs_captioning and self.captioner:
+            results = await self.captioner.caption_section_images(
+                images=needs_captioning,
+                section_context=f"Section: {section.title}",
+            )
+            # Persist results to DB
+            img_map = {img.id: img for img in images}
+            for img_id, result in results.items():
+                if img_id in img_map:
+                    orm_img = img_map[img_id]
+                    orm_img.caption = result["caption"]
+                    orm_img.caption_model = "claude-vision"
+                    orm_img.relevance = result["relevance"]
+                    await self.db.flush()
+
+                    if result["relevance"] in ("key", "supplementary"):
+                        captions.append({
+                            "caption": result["caption"],
+                            "relevance": result["relevance"],
+                            "image_id": img_id,
+                        })
 
         return captions
 
@@ -415,9 +430,15 @@ class SummarizerService:
 
         try:
             template = self._jinja_env.get_template("summarize_book_v1.txt")
+            authors = getattr(book, "authors", None) or []
+            author_str = ", ".join(
+                a.name for a in authors
+            ) if authors else "Unknown"
             prompt = template.render(
                 book_title=book.title,
-                section_summaries=combined,
+                book_author=author_str,
+                all_section_summaries=combined,
+                compression_target=20,
             )
         except jinja2.TemplateNotFound:
             prompt = (
