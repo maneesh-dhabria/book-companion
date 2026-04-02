@@ -205,8 +205,9 @@ New `summary` table that stores every generated summary as an immutable log entr
 
 #### Relationships
 
-- `Book.default_summary_id` → FK to `summary.id` (nullable). The "active" book-level summary.
-- `BookSection.default_summary_id` → FK to `summary.id` (nullable). The "active" section summary.
+- `Book.default_summary_id` → FK to `summary.id` (nullable, SET NULL on delete). The "active" book-level summary.
+- `BookSection.default_summary_id` → FK to `summary.id` (nullable, SET NULL on delete). The "active" section summary.
+- `summary.book_id` → FK to `Book.id` (CASCADE on delete). When a book is deleted, all its summary log entries are deleted.
 - `summary.preset_name` is a string reference, not a FK — presets are YAML files, not DB rows. The log is self-contained regardless of whether the preset still exists.
 
 #### Behavior
@@ -214,6 +215,15 @@ New `summary` table that stores every generated summary as an immutable log entr
 - Every summarization run **appends** rows. Never overwrites.
 - The most recent summary is auto-set as default unless the user has manually overridden.
 - The log is self-contained: `prompt_text_sent` + `facets_used` + `model_used` fully capture what produced the summary, independent of any preset file.
+- **Concurrent runs:** If a user starts a second `summarize` run while one is in progress, the CLI checks for active `ProcessingJob` rows and warns: `A summarization is already running for this book (PID: 1234). Run anyway? [y/N]`. Both runs append independently to the log; the last to complete sets `default_summary_id`.
+- **Storage:** `prompt_text_sent` can be 50-100KB+ per row. For a personal library of ~100 books × 20 sections × 3 summaries = ~6,000 rows × ~75KB = ~450MB. Acceptable for a personal PostgreSQL instance. No compression or truncation needed.
+
+#### Eval Assertions and Presets
+
+Eval assertions that depend on output format must adapt to the facets used:
+- `reasonable_length`: Target compression range is read from `facets_used.compression`, not hardcoded. A `tweet_thread` summary at `brief` compression is expected to be much shorter than a `narrative` at `detailed`.
+- `has_key_concepts`: For `content_focus=key_concepts`, expect fewer but more focused concepts. For `full_coverage`, expect comprehensive concept lists.
+- Other assertions (faithfulness, coherence, specificity) apply universally regardless of facets.
 
 #### Indexes
 
@@ -239,9 +249,19 @@ After structure detection and quality analysis (see [2.5](#25-extraction-quality
 
 **Flow:**
 1. Display structure with quality metrics and suggested actions (see [2.5](#25-extraction-quality-validation))
-2. User applies suggestions or customizes
-3. Display updated structure after each operation
-4. Prompt for more changes or accept: `More changes, or accept? [accept/edit]`
+2. Prompt: `Apply suggested actions? [Y/n/customize]`
+3. After applying (or skipping) suggestions, enter interactive loop:
+   ```
+   Edit sections> merge 3,4 "Combined Chapter"
+   ✓ Merged sections 3-4 into "Combined Chapter"
+
+   [Updated structure displayed]
+
+   Edit sections> done
+   ✓ Structure accepted. 7 sections will be saved.
+   ```
+4. Commands available in the loop: `merge`, `split`, `move`, `delete`, `undo` (reverts last operation), `show` (redisplay structure), `done` (accept and exit)
+5. `Ctrl+C` or `done` exits the loop
 
 Since this is pre-save, no DB cleanup is needed — operations modify in-memory section list.
 
@@ -565,7 +585,8 @@ eval_trace (modified)
 
 | Command | Changes |
 |---------|---------|
-| `bookcompanion summarize` | New flags: `--preset`, `--style`, `--audience`, `--compression`, `--content-focus`. Removes `--detail` (replaced by `--compression`). |
+| `bookcompanion summarize` | New flags: `--preset`, `--style`, `--audience`, `--compression`, `--content-focus`. Removes `--detail` (replaced by `--compression`). Warns on concurrent runs. |
+| `bookcompanion summary <book_id> [section_id]` | Now reads from `summary` table via `default_summary_id` instead of `BookSection.summary_md`. |
 | `bookcompanion show` | New columns: ID, Chars, Compression, Eval. Title indentation for hierarchy. Quality summary line. |
 | `bookcompanion add` | Structure detection shows chars + tokens per section, inline quality warnings, suggested actions, interactive editing loop. |
 | `bookcompanion --help` | Adds "Common Workflows" section with use-case examples. |
