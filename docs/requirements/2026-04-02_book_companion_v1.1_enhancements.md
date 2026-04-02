@@ -9,24 +9,43 @@
 
 ## Table of Contents
 
-1. [Motivation](#1-motivation)
-2. [Feature Areas](#2-feature-areas)
-   - [2.1 Summary Presets & Faceted Prompt Composition](#21-summary-presets--faceted-prompt-composition)
-   - [2.2 Summary Log (Append-Only)](#22-summary-log-append-only)
-   - [2.3 Section Merge, Split & Reorder](#23-section-merge-split--reorder)
-   - [2.4 Enhanced CLI Display & Help](#24-enhanced-cli-display--help)
-   - [2.5 Extraction Quality Validation](#25-extraction-quality-validation)
-   - [2.6 Summary Comparison & Quality Visibility](#26-summary-comparison--quality-visibility)
-   - [2.7 Clean Migration from V1](#27-clean-migration-from-v1)
-3. [Data Model Changes](#3-data-model-changes)
-4. [CLI Command Summary](#4-cli-command-summary)
-5. [Industry Research & Recommendations](#5-industry-research--recommendations)
-6. [Decision Log](#6-decision-log)
-7. [Sources Consulted](#7-sources-consulted)
+1. [Glossary](#1-glossary)
+2. [Motivation](#2-motivation)
+3. [Not in Scope](#3-not-in-scope)
+4. [Feature Areas](#4-feature-areas)
+   - [4.1 Summary Presets & Faceted Prompt Composition](#41-summary-presets--faceted-prompt-composition)
+   - [4.2 Summary Log (Append-Only)](#42-summary-log-append-only)
+   - [4.3 Section Merge, Split & Reorder](#43-section-merge-split--reorder)
+   - [4.4 Enhanced CLI Display & Help](#44-enhanced-cli-display--help)
+   - [4.5 Extraction Quality Validation](#45-extraction-quality-validation)
+   - [4.6 Summary Comparison & Quality Visibility](#46-summary-comparison--quality-visibility)
+   - [4.7 Clean Migration from V1](#47-clean-migration-from-v1)
+5. [End-to-End User Journey](#5-end-to-end-user-journey)
+6. [Data Model Changes](#6-data-model-changes)
+7. [CLI Command Summary](#7-cli-command-summary)
+8. [Industry Research & Recommendations](#8-industry-research--recommendations)
+9. [Decision Log](#9-decision-log)
+10. [Sources Consulted](#10-sources-consulted)
 
 ---
 
-## 1. Motivation
+## 1. Glossary
+
+Terms introduced in V1.1 that build on V1 concepts:
+
+| Term | Definition |
+|------|-----------|
+| **Preset** | A named, saved combination of facet values (stored as a YAML file). Analogous to Handbrake encoding presets or Lightroom photo presets. Applies to the `summarize` command. |
+| **Facet** | One independent dimension of summarization configuration. V1.1 defines four facets: output style, compression, audience, and content focus. Each facet has a set of allowed values, each backed by a Jinja2 fragment file. |
+| **Fragment** | A short (2-4 sentence) Jinja2 template file that provides instructions for one facet value. Fragments are composed into a full prompt by the base template via `{% include %}`. |
+| **Summary log** | The append-only `summary` database table. Every generated summary is a row; rows are never overwritten or deleted (except on book deletion). |
+| **Default summary** | The active summary for a section or book, pointed to by `default_summary_id` FK. Users can change the default via `summary set-default`. |
+| **Content type** | A polymorphic enum (`section`, `book`, `concept`, `annotation`) identifying what kind of content a summary row describes. Used with `content_id` to form a polymorphic association. |
+| **Derived from** | A JSON field on `BookSection` storing the IDs of original sections that were merged or split to create it. Lightweight provenance without full event sourcing. |
+
+---
+
+## 2. Motivation
 
 After using Book Companion V1 with several books (including "Understanding Michael Porter"), the following pain points emerged:
 
@@ -39,9 +58,23 @@ After using Book Companion V1 with several books (including "Understanding Micha
 
 ---
 
-## 2. Feature Areas
+## 3. Not in Scope
 
-### 2.1 Summary Presets & Faceted Prompt Composition
+The following are explicitly out of scope for V1.1:
+
+- **Prompt quality optimization:** Fixing the surface-level summary issue (e.g., improving concept density, addressing the Understanding Michael Porter observations) is a separate workstream. This doc provides the structural foundation (presets, facets, summary log) that the prompt work will build on.
+- **Web UI / REST API changes:** V1.1 is CLI-only. The web UI and API will be updated in a future phase to expose presets, summary comparison, and section editing.
+- **New eval assertions:** The existing 16-assertion battery is retained. Adding new assertions (e.g., BooookScore coherence checks, DeepEval coverage metrics) is future work.
+- **Multi-language support:** English-only, same as V1.
+- **Authentication / multi-user:** Single-user, same as V1.
+- **Annotation or tagging changes:** The annotation and tag systems are unaffected by V1.1.
+- **Export format changes:** Existing export functionality is unaffected; it reads from `default_summary_id` instead of `summary_md` but output formats remain the same.
+
+---
+
+## 4. Feature Areas
+
+### 4.1 Summary Presets & Faceted Prompt Composition
 
 Replace the monolithic prompt template system with composable faceted fragments. Each summarization dimension is an independent Jinja2 fragment file. Presets are YAML files that name a tested combination of facet values.
 
@@ -153,7 +186,7 @@ If no preset or facets specified, the system default preset is used (configurabl
 
 #### Fragment Design Constraints
 
-- Each fragment should be **2-4 sentences** — short and non-contradictory to minimize prompt interference (see [Microsoft ISE research](#5-industry-research--recommendations) on stacking constraints).
+- Each fragment should be **2-4 sentences** — short and non-contradictory to minimize prompt interference (see [Microsoft ISE research](#8-industry-research--recommendations) on stacking constraints).
 - Fragments must be self-contained — no references to other fragments.
 - Test the shipped system presets (5 presets) as known-good combinations. Arbitrary facet combinations are supported but not guaranteed tested.
 
@@ -178,7 +211,7 @@ The `quick_summary` code path (single-pass, `quick_summary_v1.txt`) remains **in
 
 ---
 
-### 2.2 Summary Log (Append-Only)
+### 4.2 Summary Log (Append-Only)
 
 New `summary` table that stores every generated summary as an immutable log entry with full provenance. Replaces the current single `BookSection.summary_md` field.
 
@@ -233,13 +266,13 @@ Eval assertions that depend on output format must adapt to the facets used:
 
 ---
 
-### 2.3 Section Merge, Split & Reorder
+### 4.3 Section Merge, Split & Reorder
 
 Allow users to restructure book sections both during initial parsing (pre-save in the `add` flow) and after the book is stored (post-save editing).
 
 #### During `add` (Pre-Save)
 
-After structure detection and quality analysis (see [2.5](#25-extraction-quality-validation)), before accepting, the user enters an interactive editing loop:
+After structure detection and quality analysis (see [4.5](#45-extraction-quality-validation)), before accepting, the user enters an interactive editing loop:
 
 **Operations:**
 - **Merge:** `merge 3,4,5 "Combined Chapter Title"` — combine sections into one, concatenating content in order
@@ -248,7 +281,7 @@ After structure detection and quality analysis (see [2.5](#25-extraction-quality
 - **Delete:** `delete 7,8` — remove unwanted sections (copyright, indices, etc.)
 
 **Flow:**
-1. Display structure with quality metrics and suggested actions (see [2.5](#25-extraction-quality-validation))
+1. Display structure with quality metrics and suggested actions (see [4.5](#45-extraction-quality-validation))
 2. Prompt: `Apply suggested actions? [Y/n/customize]`
 3. After applying (or skipping) suggestions, enter interactive loop:
    ```
@@ -288,7 +321,7 @@ Same operations as pre-save, but with downstream impact:
 
 ---
 
-### 2.4 Enhanced CLI Display & Help
+### 4.4 Enhanced CLI Display & Help
 
 #### `show` Command Improvements
 
@@ -306,7 +339,7 @@ Add Section ID, Characters, Compression ratio, and Eval columns. Title column us
 - **`#`**: Flat integer index (1, 2, 3...) — sequential, no hierarchical numbering
 - **`ID`**: Database section ID — required for CLI commands (`summarize <book_id> <section_id>`)
 - **`Title`**: Indented by `depth * 2 spaces` to show hierarchy
-- **`Status`**: Derived from `default_summary_id` — `Completed` (has default summary), `Pending` (no default summary, i.e. NULL). Not a stored enum; the old `SummaryStatus` enum on `BookSection` is dropped in V1.1.
+- **`Status`**: Derived, not stored. `Completed` = `default_summary_id` is non-null. `Pending` = `default_summary_id` is NULL. `Running` / `Failed` = read from active `ProcessingJob` for this section. The old `SummaryStatus` enum on `BookSection` is dropped in V1.1.
 - **`Chars`**: Content character count, formatted with commas
 - **`Compression`**: `summary_char_count / input_char_count * 100` as percentage. Shows `—` when no summary exists.
 - **`Eval`**: Pass/total assertion count (e.g., `14/16`). Shows `—` when no eval run.
@@ -353,7 +386,7 @@ Each subcommand's `--help` output includes 2-3 example invocations showing commo
 
 ---
 
-### 2.5 Extraction Quality Validation
+### 4.5 Extraction Quality Validation
 
 Deterministic heuristics (no LLM calls) to assess content extraction quality. Runs automatically during parsing. Surfaces warnings during `add` and `show`. Acts as a soft gate before summarization.
 
@@ -386,7 +419,7 @@ Apply suggested actions? [Y/n/customize]
 
 - **Yes (default):** Apply all suggestions automatically
 - **No:** Skip suggestions, accept structure as-is
-- **Customize:** Enter the interactive merge/split/delete loop (see [2.3](#23-section-merge-split--reorder)) with suggestions pre-populated as a starting point
+- **Customize:** Enter the interactive merge/split/delete loop (see [4.3](#43-section-merge-split--reorder)) with suggestions pre-populated as a starting point
 
 #### Soft Gate on Summarization
 
@@ -410,7 +443,7 @@ Quality: 7/8 sections OK. 1 warning (section #3: possibly truncated)
 
 ---
 
-### 2.6 Summary Comparison & Quality Visibility
+### 4.6 Summary Comparison & Quality Visibility
 
 CLI commands for browsing, comparing, and managing multiple summaries per section.
 
@@ -469,13 +502,13 @@ Displays the summary markdown along with full metadata: preset, facets used, mod
 
 ---
 
-### 2.7 Clean Migration from V1
+### 4.7 Clean Migration from V1
 
 No backward compatibility layer. Drop old columns, create new tables, re-summarize from scratch.
 
 #### Database Migration Steps
 
-1. **Create** `summary` table (schema per [2.2](#22-summary-log-append-only))
+1. **Create** `summary` table (schema per [4.2](#42-summary-log-append-only))
 2. **Add** `default_summary_id` FK column to `Book` (nullable, FK → `summary.id`)
 3. **Add** `default_summary_id` FK column to `BookSection` (nullable, FK → `summary.id`)
 4. **Add** `derived_from` JSON column to `BookSection` (nullable, for merge/split provenance)
@@ -487,7 +520,7 @@ No backward compatibility layer. Drop old columns, create new tables, re-summari
 #### Prompt System Migration
 
 - Delete monolithic V1 templates (`summarize_section_v1.txt`, `summarize_book_v1.txt`)
-- Create faceted base templates + fragment files (per [2.1](#21-summary-presets--faceted-prompt-composition))
+- Create faceted base templates + fragment files (per [4.1](#41-summary-presets--faceted-prompt-composition))
 - Create 5 system preset YAML files
 
 #### User Impact
@@ -506,11 +539,112 @@ No backward compatibility layer. Drop old columns, create new tables, re-summari
 
 ---
 
-## 3. Data Model Changes
+## 5. End-to-End User Journey
+
+A complete workflow showing how the V1.1 features compose, from adding a new book to choosing the best summary:
+
+```
+# 1. Add a new book — quality checks and section editing happen here
+$ bookcompanion add ~/books/understanding-michael-porter.epub
+
+Parsing "understanding-michael-porter.epub"...
+Title: Understanding Michael Porter
+Author: Joan Magretta
+Format: EPUB
+
+Detected structure (12 sections):
+  1.  Introduction                    14,500 chars  ~3,200 tokens
+  2.  What Is Competition?            36,200 chars  ~8,100 tokens
+  3.    The Five Forces Framework     24,100 chars  ~5,400 tokens
+  4.  What Is Strategy?               28,900 chars  ~6,400 tokens
+  5.    Creating Value                18,300 chars  ~4,100 tokens
+  6.    Trade-offs                    22,700 chars  ~5,100 tokens
+  7.    Fit                           19,800 chars  ~4,400 tokens
+  8.  Continuity                       8,200 chars  ~1,800 tokens
+  9.  Copyright Notice                     0 chars      ~0 tokens  ✗ empty
+  10. About the Author                   450 chars    ~100 tokens  ⚠ non-content
+  11. Also by Joan Magretta            1,200 chars    ~270 tokens  ⚠ non-content
+  12. Index                           12,400 chars  ~2,800 tokens  ⚠ non-content
+
+Suggested actions:
+  • Delete sections 9, 10, 11, 12 — detected as non-content
+
+Apply suggested actions? [Y/n/customize] Y
+✓ Deleted 4 sections.
+
+  [Updated structure: 8 sections]
+
+Edit sections> done
+✓ Structure accepted. Book saved (ID: 3). 8 sections parsed and stored.
+
+# 2. Check the parsed book
+$ bookcompanion show 3
+
+  #  ID  Title                        Status   Chars    Compression  Eval   Images
+  1  20  Introduction                 Pending  14,500   —            —      —
+  2  21    What Is Competition?       Pending  36,200   —            —      2/3
+  3  22    The Five Forces Framework  Pending  24,100   —            —      1/2
+  4  23  What Is Strategy?            Pending  28,900   —            —      —
+  5  24    Creating Value             Pending  18,300   —            —      —
+  6  25    Trade-offs                 Pending  22,700   —            —      1/1
+  7  26    Fit                        Pending  19,800   —            —      —
+  8  27  Continuity                   Pending   8,200   —            —      —
+
+# 3. Summarize with a preset
+$ bookcompanion summarize 3 --preset practitioner_bullets
+
+Summarizing 8 sections with preset "practitioner_bullets"...
+  [1/8] Introduction                  ✓  (12s, 18.2%)
+  [2/8] What Is Competition?          ✓  (28s, 21.5%)
+  ...
+  [8/8] Continuity                    ✓  (8s, 19.1%)
+Generating book-level summary...     ✓  (15s)
+✓ Done. 8 section summaries + 1 book summary generated.
+
+# 4. Read a section summary
+$ bookcompanion summary 3 22
+
+[Displays the practitioner-focused bullet point summary of "The Five Forces Framework"]
+
+# 5. Not satisfied — try a different preset for one section
+$ bookcompanion summarize 3 22 --preset academic_detailed
+
+Summarizing section #3 "The Five Forces Framework" with preset "academic_detailed"...
+  ✓ (45s, 31.2%)
+
+# 6. Compare the two summaries
+$ bookcompanion summary list 3 22
+
+Section #3 "The Five Forces Framework" — 2 summaries:
+
+  ID  Preset                Model   Compression  Chars   Eval    Created
+  42  practitioner_bullets  sonnet  21.5%        5,200   14/16   2026-04-02 10:30
+  58  academic_detailed     opus    31.2%        7,500   15/16   2026-04-02 10:45
+
+  ★ Default: #58
+
+$ bookcompanion summary compare 42 58
+
+[Side-by-side comparison with concept diff showing academic version
+ includes "positioning maps", "activity systems" missing from practitioner version]
+
+# 7. Set the academic version as default for this section
+$ bookcompanion summary set-default 58
+✓ Default summary for section #3 updated to #58.
+
+# 8. Search across the library
+$ bookcompanion search "five forces competitive advantage"
+
+[Results grouped by book, searching across summaries and original content]
+```
+
+---
+
+## 6. Data Model Changes
 
 ### New Table: `summary`
 
-See [2.2](#22-summary-log-append-only) for full schema.
+See [4.2](#42-summary-log-append-only) for full schema.
 
 ### Modified: `Book`
 
@@ -583,7 +717,7 @@ eval_trace (modified)
 
 ---
 
-## 4. CLI Command Summary
+## 7. CLI Command Summary
 
 ### New Commands
 
@@ -612,7 +746,7 @@ eval_trace (modified)
 
 ---
 
-## 5. Industry Research & Recommendations
+## 8. Industry Research & Recommendations
 
 ### Summarization Architecture
 
@@ -635,7 +769,7 @@ eval_trace (modified)
 
 | Pattern | Source | Adoption |
 |---------|--------|----------|
-| **Faceted fragments + preset shortcuts** | Handbrake/Lightroom preset model, mdx-prompt, PromptLayer Jinja2 guidance | **Adopted** as the core architecture for [2.1](#21-summary-presets--faceted-prompt-composition). |
+| **Faceted fragments + preset shortcuts** | Handbrake/Lightroom preset model, mdx-prompt, PromptLayer Jinja2 guidance | **Adopted** as the core architecture for [4.1](#41-summary-presets--faceted-prompt-composition). |
 | **Canonical fragment ordering** | arXiv 2504.02052 — Role → Directive → Context → Examples → Output Format → Constraints | **Adopted** as: Role → Audience → Content Focus → Style → Compression. |
 | **Prompt interference risk** | Microsoft ISE research on stacking constraints | **Mitigated** by keeping fragments short (2-4 sentences) and testing system presets. |
 
@@ -649,7 +783,7 @@ eval_trace (modified)
 
 ---
 
-## 6. Decision Log
+## 9. Decision Log
 
 | # | Decision | Options Considered | Choice | Rationale |
 |---|----------|--------------------|--------|-----------|
@@ -671,7 +805,7 @@ eval_trace (modified)
 
 ---
 
-## 7. Sources Consulted
+## 10. Sources Consulted
 
 ### Existing Codebase (Explored)
 
