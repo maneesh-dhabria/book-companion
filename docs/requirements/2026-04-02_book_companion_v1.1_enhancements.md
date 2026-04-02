@@ -243,7 +243,7 @@ After structure detection and quality analysis (see [2.5](#25-extraction-quality
 
 **Operations:**
 - **Merge:** `merge 3,4,5 "Combined Chapter Title"` — combine sections into one, concatenating content in order
-- **Split:** `split 3 --at-heading` (auto-detect sub-headings) or `split 3 --at-char 5000` (manual split point)
+- **Split:** `split 3 --at-heading` (auto-detect sub-headings) or `split 3 --at-char 5000` (manual split point). If `--at-heading` finds no sub-headings: `No sub-headings detected in section 3. Use --at-char <position> to split manually.`
 - **Reorder:** `move 5 --after 2`
 - **Delete:** `delete 7,8` — remove unwanted sections (copyright, indices, etc.)
 
@@ -260,7 +260,7 @@ After structure detection and quality analysis (see [2.5](#25-extraction-quality
    Edit sections> done
    ✓ Structure accepted. 7 sections will be saved.
    ```
-4. Commands available in the loop: `merge`, `split`, `move`, `delete`, `undo` (reverts last operation), `show` (redisplay structure), `done` (accept and exit)
+4. Commands available in the loop: `merge`, `split`, `move`, `delete`, `undo` (reverts the single last operation — one level only), `show` (redisplay structure), `done` (accept and exit)
 5. `Ctrl+C` or `done` exits the loop
 
 Since this is pre-save, no DB cleanup is needed — operations modify in-memory section list.
@@ -320,17 +320,19 @@ Show character count and estimated token count per section. Inline quality warni
 Detected structure (8 sections):
   1. Introduction                    14,500 chars  ~3,200 tokens
   2. What Is Strategy?               36,200 chars  ~8,100 tokens
-     2.1 Five Forces Framework       24,100 chars  ~5,400 tokens
-  3. Trade-offs                         120 chars   ~30 tokens   ⚠ possibly truncated
-  4. Copyright Notice                    0 chars    ~0 tokens    ✗ empty section
-  5. About the Author                  450 chars   ~100 tokens   ⚠ non-content
+  3.   Five Forces Framework         24,100 chars  ~5,400 tokens
+  4. Trade-offs                         120 chars   ~30 tokens   ⚠ possibly truncated
+  5. Copyright Notice                    0 chars    ~0 tokens    ✗ empty section
+  6. About the Author                  450 chars   ~100 tokens   ⚠ non-content
 
 Suggested actions:
-  • Delete sections 4, 5 — detected as non-content (copyright, author bio)
-  • Merge section 3 into section 2 — section 3 appears truncated (120 chars)
+  • Delete sections 5, 6 — detected as non-content (copyright, author bio)
+  • Merge section 4 into section 2 — section 4 appears truncated (120 chars)
 
 Apply suggested actions? [Y/n/customize]
 ```
+
+Numbering is flat (1, 2, 3...) with title indentation showing hierarchy — consistent with the `show` command.
 
 #### Help Text with Use-Case Examples
 
@@ -419,6 +421,21 @@ CLI commands for browsing, comparing, and managing multiple summaries per sectio
 bookcompanion summary list <book_id> [section_id]
 ```
 
+Without `section_id`, shows a per-section summary count overview:
+```
+Book: "Understanding Michael Porter" — 12 summaries across 5 sections
+
+  #   ID   Title                        Summaries   Default Preset
+  1   12   Introduction                 2           practitioner_bullets
+  2   13     What Is Strategy?          3           practitioner_bullets
+  3   14     Five Forces Framework      2           academic_detailed
+  4   15     Strategic Positioning       0           —
+  5   16   Trade-offs                   2           practitioner_bullets
+
+  Book-level summaries: 3 (default: #78, practitioner_bullets)
+```
+
+With `section_id`, shows detailed summary list for that section:
 ```
 Section #2 "What Is Strategy?" — 3 summaries:
 
@@ -574,7 +591,7 @@ eval_trace (modified)
 |---------|-------------|
 | `bookcompanion preset list` | List available presets with descriptions |
 | `bookcompanion preset show <name>` | Show facet values for a preset |
-| `bookcompanion preset create <name>` | Interactive creation of a new preset |
+| `bookcompanion preset create <name>` | Interactive creation: prompts for description, then each facet with available values (e.g., `Style [bullet_points/narrative/...]:`) defaulting to system default. Saves YAML to `prompts/presets/<name>.yaml`. |
 | `bookcompanion summary list <book_id> [section_id]` | List all summaries for a book or section |
 | `bookcompanion summary compare <id1> <id2>` | Side-by-side comparison of two summaries |
 | `bookcompanion summary set-default <summary_id>` | Set the active default summary |
