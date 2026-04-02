@@ -1,138 +1,158 @@
-# Book Companion
+# CLAUDE.md
 
-Personal CLI tool for book summarization and knowledge extraction.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Structure
+Book Companion is a personal CLI tool for non-fiction book summarization and knowledge extraction. It parses EPUB/MOBI/PDF books, generates LLM-powered section and book summaries via Claude Code CLI subprocess, evaluates quality with a 16-assertion battery, and provides hybrid search (BM25 + semantic + RRF fusion) across a PostgreSQL + pgvector library. Layered monolith: Typer CLI → async service layer → SQLAlchemy 2.0 repositories → PostgreSQL 16.
 
-- `backend/` -- Python backend (CLI + services)
-- `backend/app/` -- Application code
-  - `app/cli/` -- Typer CLI commands (thin wrappers over services)
-  - `app/cli/commands/` -- Individual command modules
-  - `app/db/` -- SQLAlchemy models, session management, repositories
-  - `app/services/` -- Business logic layer
-  - `app/services/summarizer/` -- LLM summarization + eval
-  - `app/services/parser/` -- Book parsing (EPUB, PDF, MOBI)
-- `backend/tests/` -- Test suite (unit, integration, e2e)
-- `docs/` -- Specifications and documentation
+## Tech Stack
 
-## Quick Start
+- Python 3.12+, uv (package manager), hatchling (build)
+- Typer + Rich (CLI), pydantic-settings (config), structlog (logging)
+- SQLAlchemy 2.0 async (`asyncpg`), Alembic (migrations), pgvector
+- PostgreSQL 16 + pgvector in Docker (port 5438)
+- Ollama (`nomic-embed-text`, port 11434) for local embeddings
+- Claude Code CLI as subprocess for LLM calls (stdin prompt, JSON output)
+- ebooklib + markdownify (EPUB), pymupdf4llm (PDF), Calibre ebook-convert (MOBI)
+- Jinja2 prompt templates, pytest + pytest-asyncio
 
-```bash
-cd backend
-uv sync --dev                    # Install dependencies
-uv run bookcompanion init        # First-time setup (DB, migrations, embedding model)
-uv run bookcompanion add ~/books/book.epub   # Add a book
-uv run bookcompanion summarize 1             # Generate summaries
-uv run bookcompanion list                    # Browse library
-```
+## Commands
 
-## Development Commands
+All commands run from `backend/`:
 
 ```bash
-cd backend
-uv sync --dev                    # Install dependencies
-uv run pytest                    # Run all tests
-uv run pytest tests/unit/        # Run unit tests only
-uv run pytest tests/integration/ # Run integration tests only
-uv run pytest tests/e2e/         # Run end-to-end CLI tests
-uv run pytest -m "not integration_llm"  # Skip tests needing real LLM
-uv run ruff check .              # Lint
-uv run ruff format --check .     # Format check
-uv run mypy app/                 # Type check
+# Dev
+uv sync --dev                          # Install all dependencies
+uv run bookcompanion --help            # CLI help
+uv run bookcompanion init              # First-time setup (Docker, migrations, Ollama)
+
+# Test
+uv run python -m pytest tests/                    # Full suite (78 tests)
+uv run python -m pytest tests/unit/ -v             # Unit tests only
+uv run python -m pytest tests/integration/ -v      # Integration (needs running DB)
+uv run python -m pytest tests/e2e/ -v              # E2E CLI tests
+uv run python -m pytest tests/unit/test_config.py::test_default_settings -v  # Single test
+uv run python -m pytest -m "not integration_llm"   # Skip tests needing real Claude CLI
+uv run python -m pytest --cov=app --cov-report=term-missing  # With coverage
+
+# Lint
+uv run ruff check .                    # Lint
+uv run ruff format --check .           # Format check
+uv run ruff format .                   # Auto-format
+
+# Database
+docker compose up -d                              # Start PostgreSQL (from repo root)
+docker compose down -v                            # Destroy and recreate DB
+uv run alembic upgrade head                       # Run migrations
+uv run alembic revision --autogenerate -m "desc"  # Generate migration after model changes
+BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion_test uv run alembic upgrade head  # Migrate test DB
+
+# Fixtures
+python3 tests/fixtures/download_fixtures.py       # Download Gutenberg test books
 ```
 
-## CLI Command Reference
+## Architecture
 
-### Phase 1 (Core Pipeline)
+```
+CLI Command (Typer)
+  │  @async_command wraps asyncio.run()
+  ▼
+deps.get_services()  →  yields dict of services sharing one AsyncSession
+  │
+  ▼
+Service Layer (async)
+  ├── BookService         — parse, store, lifecycle orchestration
+  ├── SummarizerService   — map-reduce: section summaries → book summary
+  ├── EvalService         — 16 assertions in parallel, EvalTrace storage
+  ├── SearchService       — BM25 (tsvector) + semantic (cosine) + RRF fusion
+  ├── EmbeddingService    — Ollama HTTP, semaphore-limited (5 concurrent)
+  └── [Phase 2]           — annotation, tag, concept, export, backup, reference
+  │
+  ▼
+Repository Layer (thin query builders)
+  │  selectinload() for eager relationship loading
+  ▼
+SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
+```
+
+### Key Patterns
+
+- **Constructor DI**: Services receive `AsyncSession`, `LLMProvider`, `Settings` via constructor. Wired in `cli/deps.py:get_services()`.
+- **Async-first**: Everything is async. CLI boundary uses `asyncio.run()`. No sync DB access.
+- **Eager loading required**: `expire_on_commit=False` on sessions means lazy-loaded relationships break after commit. Every repo query must use `selectinload()` for relationships accessed after the query.
+- **LLM via subprocess**: `ClaudeCodeCLIProvider` invokes `claude -p - --output-format json --print` with prompt piped via stdin. JSON schema for structured output via `--json-schema`.
+- **Prompt versioning**: Jinja2 templates in `app/services/summarizer/prompts/` named `{purpose}_v{N}.txt`. Loaded via `jinja2.FileSystemLoader`. Version controlled in `Settings.summarization.prompt_version`.
+- **Graceful degradation**: Service imports in `deps.py` are wrapped in try/except — commands work even if some services aren't fully implemented.
+
+### Domain Terms
+
+| Term | Meaning |
+|------|---------|
+| Section | Chapter/part of a book (`BookSection` model) |
+| Cumulative context | Summaries of prior sections passed to LLM for coherence |
+| Detail level | Compression ratio: brief (10%), standard (20%), detailed (30%) |
+| Assertion | One eval check (e.g., `no_hallucinated_facts`). 16 total across 5 categories. |
+| RRF | Reciprocal Rank Fusion — merges BM25 and semantic search rankings |
+| Processing job | Background task tracked in DB with PID for orphan detection |
+
+## Code Style
+
+- Imports: `from app.db.models import Book, BookStatus` (absolute from `app` root)
+- Services: async methods, receive deps via constructor, no global state
+- Repositories: thin query builders only, no business logic. Return model instances.
+- CLI commands: thin wrappers that call `async with get_services() as svc:` then delegate to services
+- Enums: `class BookStatus(str, enum.Enum)` — stored as strings in DB, comparable with `==`
+- Exceptions: inherit from `BookCompanionError` in `app/exceptions.py`
+- Logging: `structlog.get_logger()` at module level, structured key-value events
+
+## Gotchas
+
+1. **Lazy loading after commit crashes**: Accessing `book.sections` or `book.authors` after `session.commit()` raises `MissingGreenlet`. Fix: use `selectinload()` in repo queries, or re-fetch via `get_by_id()` after commit.
+2. **Config test pollution**: The e2e `config set` test writes to `~/.config/bookcompanion/config.yaml`. Unit config tests must clean this up (see `tests/unit/test_config.py` `clean_env` fixture).
+3. **Integration tests commit to real DB**: `book_service.add_book()` calls `session.commit()`. Integration tests must clean up via explicit DELETE statements (not rollback), using the `clean_db` fixture pattern.
+4. **Two `async_command` decorators exist**: One in `cli/deps.py` (used by Phase 1 commands) and one in `cli/async_utils.py` (used by some Phase 2 commands). Both wrap `asyncio.run()` identically.
+5. **Every CLI invocation runs orphan checks + migration checks**: Both are non-blocking (failures silently caught), but they hit the DB. Set `--verbose` for debug logs.
+6. **Alembic uses async engine**: `alembic/env.py` runs `asyncio.run(run_migrations_online())`. The `alembic.ini` URL is only used for offline mode.
+7. **Test DB must be created manually**: `CREATE DATABASE bookcompanion_test` with `CREATE EXTENSION vector` — not handled by Alembic.
+8. **pgvector import in migrations**: Auto-generated migrations reference `pgvector.sqlalchemy.vector.VECTOR`. Must manually fix to `from pgvector.sqlalchemy import Vector` and use `Vector(dim=768)`.
+
+## Extended Docs
+
+| Path | Description |
+|------|-------------|
+| `docs/specs/2026-04-01_book_companion_v1_spec.md` | V1 spec: models, CLI signatures, eval assertions, search algorithm |
+| `docs/requirements/2026-04-01_book_companion_v1_requirements.md` | Product requirements |
+| `docs/plans/2026-04-02_book_companion_v1_implementation.md` | 43-task implementation plan with complete code |
+| `backend/tests/fixtures/README.md` | How to download Gutenberg test books |
+
+## Workflows
+
+### Adding a new CLI command
+1. Create `backend/app/cli/commands/my_cmd.py` with `@async_command` decorated function
+2. Wire service dependencies via `async with get_services() as svc:`
+3. Register in `backend/app/cli/main.py`: `app.command("my-cmd")(my_cmd.my_function)`
+4. Add to `cli/deps.py:get_services()` if the command needs a new service
+
+### Adding a new prompt version
+1. Copy existing template: `cp prompts/summarize_section_v1.txt prompts/summarize_section_v2.txt`
+2. Edit the new template
+3. Update `Settings.summarization.prompt_version` default or use: `bookcompanion config set summarization.prompt_version v2`
+4. Update template loading in the relevant service to use `f"summarize_section_{version}.txt"`
+
+### Running a book through the full pipeline
 ```bash
-bookcompanion init                          # First-time setup
-bookcompanion add <file_path>               # Upload + parse
-bookcompanion add <file_path> --quick       # Parse + quick summary
-bookcompanion add <file_path> --async       # Background processing
-bookcompanion list [--recent] [--author X] [--status X] [--tag X]
-bookcompanion show <book_id>                # Book details
-bookcompanion read <book_id> [section_id] [--with-summary] [--copy] [--export FILE]
-bookcompanion summary <book_id> [section_id] [--copy] [--export FILE]
-bookcompanion summarize <book_id> [section_id] [--force] [--detail X] [--skip-eval]
-bookcompanion search "query" [--book ID] [--source TYPE] [--tag TAG] [--annotations-only]
-bookcompanion authors                       # List authors
-bookcompanion eval <book_id> [section_id]   # Show eval results
-bookcompanion status <book_id>              # Processing status
-bookcompanion config                        # Show config
-bookcompanion config set <key> <value>      # Set config value
-bookcompanion delete <book_id> [--yes]      # Delete with confirmation
+bookcompanion add path/to/book.epub          # Parse + store (step-by-step TOC review)
+bookcompanion summarize <book_id>            # LLM summarize all sections + book
+bookcompanion eval <book_id>                 # View eval assertion results
+bookcompanion search "query"                 # Hybrid search across library
+bookcompanion export book <book_id> --format markdown  # Export
 ```
 
-### Phase 2 (Annotations, Concepts, Enrichment)
+### Fresh database setup
 ```bash
-bookcompanion annotate add <book_id> <section_id> [--text X] [--note X] [--tag X] [--type X]
-bookcompanion annotate list [book_id] [--tag X] [--type X]
-bookcompanion tag add <book_id> <tag_name> [--color X]
-bookcompanion tag list
-bookcompanion tag remove <book_id> <tag_name>
-bookcompanion concepts list <book_id>       # Show concepts index
-bookcompanion concepts search "term"        # Search across books
-bookcompanion concepts edit <book_id>       # Edit in $EDITOR
-bookcompanion export book <book_id> [--format json|markdown] [--output FILE]
-bookcompanion export library [--format json|markdown] [--output FILE]
-bookcompanion backup create [--output FILE]
-bookcompanion backup list
-bookcompanion backup restore <file> [--yes]
-bookcompanion references list <book_id>     # Show external references
-bookcompanion references discover <book_id> # LLM-powered discovery
-bookcompanion edit metadata <book_id> [--title X] [--author X]
-bookcompanion edit summary <book_id> [section_id]  # Edit in $EDITOR
-bookcompanion eval-compare compare-prompts --book ID --section ID --prompt-a v1 --prompt-b v2
+docker compose down -v && docker compose up -d
+sleep 5
+docker exec bookcompanion-db psql -U bookcompanion -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker exec bookcompanion-db psql -U bookcompanion -c "CREATE DATABASE bookcompanion_test OWNER bookcompanion;"
+docker exec bookcompanion-db psql -U bookcompanion -d bookcompanion_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+cd backend && uv run alembic upgrade head
 ```
-
-## Key Conventions
-
-- All services are async and receive dependencies via constructor injection
-- CLI commands are thin wrappers -- business logic lives in services
-- SQLAlchemy 2.0 declarative style with `mapped_column`
-- Prompts are Jinja2 templates in `app/services/summarizer/prompts/`
-- Tests use a separate `bookcompanion_test` database
-- Config via pydantic-settings: env vars > YAML config file > defaults
-- Config file locations: `$BOOKCOMPANION_CONFIG` > `~/.config/bookcompanion/config.yaml`
-
-## Database Migration Workflow
-
-```bash
-cd backend
-# Generate a new migration after model changes
-uv run alembic revision --autogenerate -m "description"
-# Apply migrations
-uv run alembic upgrade head
-# Downgrade
-uv run alembic downgrade -1
-```
-
-## Prompt Template Conventions
-
-- Templates live in `app/services/summarizer/prompts/`
-- Use Jinja2 syntax with versioned filenames: `summarize_section_v1.txt`
-- Variables: `section_title`, `section_content`, `cumulative_context`, etc.
-- All LLM calls go through `LLMProvider` (supports Claude Code CLI subprocess)
-
-## Configuration Override Patterns
-
-Precedence: environment variables > YAML config file > defaults
-
-```bash
-# Override via env vars
-export BOOKCOMPANION_DATABASE__URL="postgresql+asyncpg://..."
-export BOOKCOMPANION_LLM__MODEL="opus"
-
-# Override via config file (~/.config/bookcompanion/config.yaml)
-# database:
-#   url: "postgresql+asyncpg://..."
-# llm:
-#   model: "opus"
-```
-
-## Infrastructure
-
-- PostgreSQL 16 + pgvector runs in Docker (port 5438)
-- Ollama runs on host (port 11434) with nomic-embed-text
-- Claude Code CLI runs on host for LLM calls
-- Backups stored at `~/.config/bookcompanion/backups/`
