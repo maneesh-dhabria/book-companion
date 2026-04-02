@@ -327,6 +327,8 @@ bookcompanion edit sections <book_id>
 
 Same REPL commands as pre-save, **except**: no `undo` (operations commit to DB immediately). Each operation is wrapped in a **transaction** — if it fails mid-way, the entire operation rolls back.
 
+> **Deviation from requirements:** Requirements list `undo` for both pre-save and post-save. Per clarification, undo is pre-save only — post-save operations commit immediately, and implementing undo would require deferred DB writes for marginal benefit. Users get a confirmation prompt before each destructive action instead.
+
 **Initial display on entry:**
 ```
 Current structure (8 sections):
@@ -572,6 +574,8 @@ Displays the original section content. With `--with-summary`, appends the defaul
 
 ## 9. Quick Summary Deprecation
 
+> **Deviation from requirements:** Requirements state quick_summary "remains independent." This spec deprecates it per clarification with the product owner — the preset system (`--preset executive_brief`) provides the same fast-summary workflow with better provenance tracking.
+
 - The `quick_summary` single-pass code path is deprecated.
 - `--quick` flag on `add` becomes an alias: runs `add` then `summarize --preset executive_brief`.
 - `Book.quick_summary` column is retained (not dropped in migration) but no longer written to.
@@ -586,7 +590,7 @@ Single Alembic migration file. No backward compatibility layer.
 
 ### 10.1 Migration Steps
 
-1. **Create** `summary` table (schema per [section 4](#4-summary-log-append-only))
+1. **Create** `summaries` table (schema per [section 4](#4-summary-log-append-only))
 2. **Add** `default_summary_id` FK column to `books` (nullable, FK -> `summary.id`, SET NULL on delete)
 3. **Add** `default_summary_id` FK column to `book_sections` (nullable, FK -> `summary.id`, SET NULL on delete)
 4. **Add** `derived_from` JSON column to `book_sections` (nullable)
@@ -596,7 +600,7 @@ Single Alembic migration file. No backward compatibility layer.
 8. **Drop** `SummaryStatus` enum type from database
 9. **Add** `summary_id` FK column to `eval_traces` (nullable, FK -> `summary.id`, SET NULL on delete)
 10. **Truncate** `eval_traces` table
-11. Create indexes on `summary` table per [section 4.6](#46-indexes)
+11. Create indexes on `summaries` table per [section 4.6](#46-indexes)
 
 ### 10.2 Prompt System Migration
 
@@ -1063,7 +1067,7 @@ def test_system_preset_renders(preset_name):
 
 | # | Decision | Options Considered | Choice | Rationale |
 |---|----------|--------------------|--------|-----------|
-| 1 | Summary storage model | (A) New `summary` table with polymorphic content_type+content_id (B) JSON array in existing field (C) Event log | A | Clean relational model. Polymorphic pattern already used in Annotation. |
+| 1 | Summary storage model | (A) New `summaries` table with polymorphic content_type+content_id (B) JSON array in existing field (C) Event log | A | Clean relational model. Polymorphic pattern already used in Annotation. |
 | 2 | Content type enum scope | (A) All 4 types now (B) Only section+book (C) Extensible string | A | Include concept+annotation as reserved values. Avoids future migration to alter enum. |
 | 3 | Prompt storage | (A) Inline in summary table (B) Separate table (C) File reference | A | Simple, self-contained. ~450MB for 6K rows acceptable for personal PostgreSQL. |
 | 4 | Preset storage | (A) YAML files in repo (B) DB table (C) ~/.config/ | A | Version controlled, visible, portable. DB adds complexity without benefit until web UI. |
