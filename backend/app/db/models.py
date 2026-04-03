@@ -19,7 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
 
@@ -344,7 +344,7 @@ class Summary(Base):
         BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     preset_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    facets_used: Mapped[dict] = mapped_column(JSON, nullable=False)
+    facets_used: Mapped[dict] = mapped_column(JSONB, nullable=False)
     prompt_text_sent: Mapped[str] = mapped_column(Text, nullable=False)
     model_used: Mapped[str] = mapped_column(String(100), nullable=False)
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)

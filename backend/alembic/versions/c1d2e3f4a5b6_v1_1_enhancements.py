@@ -7,6 +7,7 @@ Create Date: 2026-04-03
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
 revision = "c1d2e3f4a5b6"
@@ -35,7 +36,7 @@ def upgrade() -> None:
         sa.Column("content_id", sa.BigInteger(), nullable=False),
         sa.Column("book_id", sa.BigInteger(), sa.ForeignKey("books.id", ondelete="CASCADE"), nullable=False),
         sa.Column("preset_name", sa.String(200), nullable=True),
-        sa.Column("facets_used", sa.JSON(), nullable=False),
+        sa.Column("facets_used", JSONB(), nullable=False),
         sa.Column("prompt_text_sent", sa.Text(), nullable=False),
         sa.Column("model_used", sa.String(100), nullable=False),
         sa.Column("input_tokens", sa.Integer(), nullable=True),
