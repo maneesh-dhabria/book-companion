@@ -324,12 +324,13 @@ async def add(
                                 )
                         # else 'n' — accept as-is
 
-            if not issues:
-                if not typer.confirm("\nAccept this structure?", default=True):
-                    console.print(
-                        "Structure rejected. Use --force to re-import with different parsing."
-                    )
-                    raise typer.Exit(0)
+            if not issues and not typer.confirm(
+                "\nAccept this structure?", default=True
+            ):
+                console.print(
+                    "Structure rejected. Use --force to re-import with different parsing."
+                )
+                raise typer.Exit(0)
 
         print_success(f"\nBook saved (ID: {book.id}). {section_count} sections parsed and stored.")
 
