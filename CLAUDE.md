@@ -48,6 +48,19 @@ BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@loc
 
 # Fixtures
 python3 tests/fixtures/download_fixtures.py       # Download Gutenberg test books
+
+# V1.1 CLI Commands
+uv run bookcompanion preset list              # List all presets
+uv run bookcompanion preset show <name>        # Show preset details
+uv run bookcompanion preset create <name>      # Create user preset
+uv run bookcompanion preset delete <name>      # Delete user preset
+uv run bookcompanion summary read <book_id> [section_id]  # Read default summary
+uv run bookcompanion summary list <book_id>    # List all summaries
+uv run bookcompanion summary compare <id1> <id2>  # Compare summaries
+uv run bookcompanion summary set-default <id>  # Set default summary
+uv run bookcompanion summary show <id>         # Show summary with metadata
+uv run bookcompanion read <book_id> <section_id> [--with-summary]  # Read section content
+uv run bookcompanion edit sections <book_id>   # Interactive section editing
 ```
 
 ## Architecture
@@ -65,6 +78,10 @@ Service Layer (async)
   ├── EvalService         — 16 assertions in parallel, EvalTrace storage
   ├── SearchService       — BM25 (tsvector) + semantic (cosine) + RRF fusion
   ├── EmbeddingService    — Ollama HTTP, semaphore-limited (5 concurrent)
+  ├── PresetService        — Load/validate/create/delete YAML presets
+  ├── QualityService       — 10 deterministic extraction quality checks
+  ├── SummaryService       — List, compare, set-default, concept diff
+  ├── SectionEditService   — Merge/split/reorder/delete (memory + DB)
   └── [Phase 2]           — annotation, tag, concept, export, backup, reference
   │
   ▼
@@ -80,7 +97,7 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 - **Async-first**: Everything is async. CLI boundary uses `asyncio.run()`. No sync DB access.
 - **Eager loading required**: `expire_on_commit=False` on sessions means lazy-loaded relationships break after commit. Every repo query must use `selectinload()` for relationships accessed after the query.
 - **LLM via subprocess**: `ClaudeCodeCLIProvider` invokes `claude -p - --output-format json --print` with prompt piped via stdin. JSON schema for structured output via `--json-schema`.
-- **Prompt versioning**: Jinja2 templates in `app/services/summarizer/prompts/` named `{purpose}_v{N}.txt`. Loaded via `jinja2.FileSystemLoader`. Version controlled in `Settings.summarization.prompt_version`.
+- **Faceted prompts**: Jinja2 base templates include fragment files based on 4 facet dimensions. Preset YAML files define named combinations. `PresetService.resolve_facets()` merges preset + CLI overrides.
 - **Graceful degradation**: Service imports in `deps.py` are wrapped in try/except — commands work even if some services aren't fully implemented.
 
 ### Domain Terms
@@ -93,6 +110,11 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 | Assertion | One eval check (e.g., `no_hallucinated_facts`). 16 total across 5 categories. |
 | RRF | Reciprocal Rank Fusion — merges BM25 and semantic search rankings |
 | Processing job | Background task tracked in DB with PID for orphan detection |
+| Preset | Named facet combination (YAML file) for summarization |
+| Facet | One of 4 dimensions: style, audience, compression, content_focus |
+| Fragment | Jinja2 template snippet for one facet value |
+| Summary Log | Append-only summaries table (replaces inline summary_md) |
+| Default Summary | The active summary for a section/book (default_summary_id FK) |
 
 ## Code Style
 
@@ -114,6 +136,9 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 6. **Alembic uses async engine**: `alembic/env.py` runs `asyncio.run(run_migrations_online())`. The `alembic.ini` URL is only used for offline mode.
 7. **Test DB must be created manually**: `CREATE DATABASE bookcompanion_test` with `CREATE EXTENSION vector` — not handled by Alembic.
 8. **pgvector import in migrations**: Auto-generated migrations reference `pgvector.sqlalchemy.vector.VECTOR`. Must manually fix to `from pgvector.sqlalchemy import Vector` and use `Vector(dim=768)`.
+9. **`SummaryStatus` enum removed in V1.1**: Replaced by `default_summary_id` FK pattern.
+10. **`summary_md` removed from `BookSection`**: Summaries now live in `summaries` table.
+11. **`overall_summary` removed from `Book`**: Use `default_summary_id` to point to a Summary row.
 
 ## Extended Docs
 
@@ -140,10 +165,12 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 
 ### Running a book through the full pipeline
 ```bash
-bookcompanion add path/to/book.epub          # Parse + store (step-by-step TOC review)
-bookcompanion summarize <book_id>            # LLM summarize all sections + book
-bookcompanion eval <book_id>                 # View eval assertion results
-bookcompanion search "query"                 # Hybrid search across library
+bookcompanion add path/to/book.epub           # Parse + store (quality checks + section editing)
+bookcompanion summarize <book_id> --preset practitioner_bullets  # Summarize with preset
+bookcompanion summary list <book_id>          # View summary log
+bookcompanion summary read <book_id>          # Read default book summary
+bookcompanion eval <book_id>                  # View eval assertion results
+bookcompanion search "query"                  # Hybrid search across library
 bookcompanion export book <book_id> --format markdown  # Export
 ```
 
