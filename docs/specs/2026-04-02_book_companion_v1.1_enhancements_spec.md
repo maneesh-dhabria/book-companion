@@ -36,7 +36,7 @@
 | **Preset** | A named YAML file storing a combination of facet values. Analogous to Handbrake encoding presets. Applies to the `summarize` command. |
 | **Facet** | One independent dimension of summarization config. V1.1 defines four: output style, compression, audience, content focus. Each backed by a Jinja2 fragment file. |
 | **Fragment** | A short (2-4 sentence) Jinja2 template file providing instructions for one facet value. Composed into a full prompt by the base template via `{% include %}`. |
-| **Summary log** | The append-only `summary` database table. Every generated summary is a row; rows are never overwritten or deleted (except on book deletion). |
+| **Summary log** | The append-only `summaries` database table. Every generated summary is a row; rows are never overwritten or deleted (except on book deletion). |
 | **Default summary** | The active summary for a section or book, pointed to by `default_summary_id` FK. Changeable via `summary set-default`. |
 | **Content type** | Enum (`section`, `book`, `concept`, `annotation`) identifying what a summary row describes. Used with `content_id` for polymorphic association. All 4 values defined upfront; `concept` and `annotation` are reserved for Phase 2. |
 | **Derived from** | JSON field on `BookSection` storing IDs of original sections that were merged/split to create it. |
@@ -225,7 +225,7 @@ Generating book-level summary...     ✓  (15s)
 
 Each line shows: index, section title, status (✓/✗/⊘), elapsed time, and compression ratio. Skipped sections (idempotent) show `⊘ skipped`.
 
-### 3.8 Config Changes
+### 3.13 Config Changes
 
 | Setting | V1 | V1.1 |
 |---------|-----|------|
@@ -233,9 +233,9 @@ Each line shows: index, section title, status (✓/✗/⊘), elapsed time, and c
 | `summarization.prompt_version` | `"v1"` | **Removed.** Versioning is per-fragment file. |
 | `summarization.default_preset` | — | **New.** Default preset name (e.g., `"practitioner_bullets"`). |
 
-### 3.9 Quick Summary Independence
+### 3.14 Performance
 
-The `quick_summary` code path is **deprecated** in V1.1. The `--quick` flag on `add` becomes an alias that runs `add` followed by `summarize` with the `executive_brief` preset. The `quick_summary` column on `Book` is retained but no longer written to by new code. The `QUICK_SUMMARY` processing step enum value is retained for backward compatibility.
+Section summarization runs sequentially (one LLM call at a time) to respect rate limits and keep cumulative context coherent. For a 20-section book at ~20s/section, expect ~7-8 minutes total. The book-level summary adds ~15s. No parallelization in V1.1 — cumulative context depends on prior sections completing in order.
 
 ---
 
@@ -264,9 +264,9 @@ The `quick_summary` code path is **deprecated** in V1.1. The `--quick` flag on `
 
 ### 4.2 Relationships
 
-- `Book.default_summary_id` -> FK to `summary.id` (nullable, SET NULL on delete)
-- `BookSection.default_summary_id` -> FK to `summary.id` (nullable, SET NULL on delete)
-- `summary.book_id` -> FK to `Book.id` (CASCADE). Book deletion cascades to all summary rows.
+- `Book.default_summary_id` -> FK to `summaries.id` (nullable, SET NULL on delete)
+- `BookSection.default_summary_id` -> FK to `summaries.id` (nullable, SET NULL on delete)
+- `summaries.book_id` -> FK to `books.id` (CASCADE). Book deletion cascades to all summary rows.
 - `preset_name` is a string, not a FK — the log is self-contained regardless of whether the preset still exists.
 
 ### 4.3 Behavior
@@ -586,7 +586,7 @@ Displays the original section content. With `--with-summary`, appends the defaul
 
 ## 10. Clean Migration from V1
 
-Single Alembic migration file. No backward compatibility layer.
+Single Alembic migration file. No backward compatibility layer. **No downgrade path** — dropping columns with data is irreversible. The `downgrade()` function should raise `NotImplementedError("V1.1 migration is not reversible")`.
 
 ### 10.1 Migration Steps
 
@@ -1068,45 +1068,25 @@ def test_system_preset_renders(preset_name):
 | # | Decision | Options Considered | Choice | Rationale |
 |---|----------|--------------------|--------|-----------|
 | 1 | Summary storage model | (A) New `summaries` table with polymorphic content_type+content_id (B) JSON array in existing field (C) Event log | A | Clean relational model. Polymorphic pattern already used in Annotation. |
-| 2 | Content type enum scope | (A) All 4 types now (B) Only section+book (C) Extensible string | A | Include concept+annotation as reserved values. Avoids future migration to alter enum. |
-| 3 | Prompt storage | (A) Inline in summary table (B) Separate table (C) File reference | A | Simple, self-contained. ~450MB for 6K rows acceptable for personal PostgreSQL. |
-| 4 | Preset storage | (A) YAML files in repo (B) DB table (C) ~/.config/ | A | Version controlled, visible, portable. DB adds complexity without benefit until web UI. |
-| 5 | Prompt composition | (A) Monolithic templates (B) Composable Jinja2 fragments (C) DSPy programmatic | B | 4 dimensions x values = 135+ monolithic templates. Jinja2 matches existing infrastructure. |
-| 6 | Fragment loading | (A) Native {% include %} (B) Custom load function (C) Pre-compose in Python | A | Standard Jinja2. TemplateNotFound is clear enough. |
-| 7 | Preset FK in summary log | Nullable string + facets_used JSON + prompt_text_sent | String | Log must be self-contained regardless of preset changes. |
-| 8 | Section merge/split timing | (A) During add only (B) Post-save only (C) Both | C | Pre-save is zero-cost. Post-save needed for corrections. |
-| 9 | Section mutation strategy | (A) In-place with derived_from (B) Soft delete (C) Event sourcing | A | Hard delete originals, store derived_from. Soft deletes add query complexity. |
-| 10 | Undo scope | (A) Both pre and post-save (B) Pre-save only (C) Both with multi-level | B | Post-save commits immediately with confirmation prompts. Undo in post-save requires deferred DB writes — complex for marginal benefit. |
-| 11 | Orphaned summary handling | (A) Keep original content_id (B) Set to NULL (C) Cascade delete | A | Historical reference retained. Section won't exist on join but summary is self-contained. |
-| 12 | Extraction quality gate | (A) Warn only (B) Soft gate with --force (C) Hard gate | B | Soft gate balances safety with flexibility. |
-| 13 | Quality check approach | (A) LLM-based (B) Deterministic heuristics (C) Hybrid | B | Regex, char counts, 3-gram Jaccard are fast, free, reproducible. |
-| 14 | Overlap algorithm | (A) Character 3-gram Jaccard (B) Sentence overlap (C) Unspecified | A | Simple, fast, well-understood. Jaccard >0.8 = duplicate. |
-| 15 | V1 migration strategy | (A) Backward-compatible (B) Clean, drop old data | B | Simpler migration. Books retain structure; summaries cheap to regenerate. |
-| 16 | Migration structure | (A) Single Alembic revision (B) Split 2-3 (C) One per feature | A | Atomic upgrade/downgrade. All changes are interdependent. |
-| 17 | Summarize re-run behavior | (A) Skip already-summarized (B) Always append (C) Ask per section | A | Default skip saves LLM cost. --force overrides. |
-| 18 | --force scope | Includes both sections and book-level summary | Both | Complete refresh. |
-| 19 | Quick summary | (A) Keep independent (B) Store in log (C) Deprecate | C | Users can use --preset executive_brief. --quick aliased. |
-| 20 | Empty state (no summary) | (A) Helpful error + suggestion (B) Offer to summarize (C) Just error | A | Shows exact command to run. Not overly aggressive. |
-| 21 | Display adaptive columns | (A) Auto-adapt to width (B) Always show all (C) --compact flag | A | Progressive hiding: Images < 120, Eval < 100, Compression < 80. |
-| 22 | Re-embedding on set-default | (A) Synchronous (B) Background (C) Manual | A | Single section < 2s with Ollama. Simple, predictable. |
-| 23 | Summary delete | (A) No delete (B) With confirmation (C) Soft delete | A | Append-only is absolute. Only book deletion removes summaries. |
-| 24 | Split options | --at-heading, --at-char, --at-paragraph | All 3 | --at-paragraph splits at nearest paragraph boundary. |
-| 25 | Split heading UX | (A) Present headings, user chooses (B) Auto-split all (C) First only | A | Show headings, user picks. Avoids creating too many small sections. |
-| 26 | ProcessingJob changes | (A) Extend with preset fields (B) Use as-is (C) Replace | B | Already tracks book_id + PID + status. Preset info in summary log. |
-| 27 | Images column | Existing V1 display | V1 data | Image extraction already exists. Show command just displays counts. |
-| 28 | Preset create modes | (A) Interactive only (B) Both interactive + flags (C) Non-interactive only | B | Interactive default, flags for scripting and testing. |
-| 29 | Fragment validation test | (A) Dedicated test (B) Implicit via integration | A | Catches broken presets before runtime. Renders each preset with mock data. |
-| 30 | Eval detail in spec | (A) Detail all adaptations (B) Flag + principles (C) Defer | A | Specified per-assertion in section 12. |
-| 31 | Encoding threshold | >1% U+FFFD characters | 1% | Catches significant issues without false positives. |
-| 32 | ID type for summary table | (A) Match existing (B) BigInteger (C) UUID | B | Append-only table could grow large. BigInteger is appropriate. |
-| 33 | Preset list display | (A) Full table with facets (B) Name + description (C) Grouped | A | Complete at a glance. All 4 facet values shown. |
-| 34 | Post-save transaction | (A) Per operation (B) Entire session (C) Default | A | Each merge/split/delete atomic. Failed operation rolls back cleanly. |
-| 35 | Compare layout threshold | 120 columns for side-by-side | 120 | Each summary gets ~55 cols. Sequential below 120. |
-| 36 | E2E test approach | Full pipeline E2E | One test | Covers complete user journey from add to search. |
-| 37 | Health check command | (A) Extend init (B) New doctor (C) None | C | Fragment validation at summarize time. DB via alembic. No dedicated command. |
-| 38 | Zero sections guard | Error with helpful message | Error | Prevent deletion of all sections + error if summarize called with 0 sections. |
-| 39 | Summary enum naming | `SummaryContentType` | New enum | Avoids collision with existing `ContentType` used by Annotation. |
-| 40 | Facet dimensions | (A) 4 dims (B) Fewer (C) More | A | Style, compression, audience, content_focus cover independent axes. Extensible by adding new fragment folders. |
+| 2 | Content type enum scope | (A) All 4 types now (B) Only section+book (C) Extensible string | A | Include concept+annotation as reserved. Avoids future migration to alter enum. |
+| 3 | Prompt storage | (A) Inline in summary table (B) Separate table (C) File reference | A | Self-contained. ~450MB for 6K rows acceptable for personal PostgreSQL. |
+| 4 | Preset storage | (A) YAML in repo (B) DB table (C) ~/.config/ | A | Version controlled, portable. DB adds complexity without benefit until web UI. |
+| 5 | Prompt composition | (A) Monolithic templates (B) Composable Jinja2 fragments (C) DSPy | B | 4 dims x values = 135+ monolithic templates. Jinja2 matches existing infrastructure. |
+| 6 | Section mutation strategy | (A) Hard delete + derived_from (B) Soft delete (C) Event sourcing | A | Soft deletes add query complexity; event sourcing is overkill for personal tool. |
+| 7 | Undo scope | (A) Both pre+post-save (B) Pre-save only (C) Multi-level | B | Post-save commits immediately. Undo requires deferred writes — complex for marginal benefit. |
+| 8 | Quality gate | (A) Warn only (B) Soft gate + --force (C) Hard gate | B | Balances safety with flexibility. Prevents wasted LLM spend on bad input. |
+| 9 | V1 migration | (A) Backward-compatible (B) Clean break | B | Simpler migration. Books retain structure; summaries cheap to regenerate. |
+| 10 | Summarize re-run | (A) Skip matching (B) Always append (C) Ask per section | A | Default skip saves LLM cost. --force overrides. |
+| 11 | Quick summary | (A) Keep independent (B) Store in log (C) Deprecate | C | --preset executive_brief replaces it. --quick aliased. Deviation from requirements. |
+| 12 | Summary delete | (A) No delete (B) With confirmation (C) Soft delete | A | Append-only is absolute. Trustworthy log. |
+| 13 | Re-embedding on set-default | (A) Synchronous (B) Background (C) Manual | A | Single section < 2s with Ollama. Simple, predictable. |
+| 14 | Orphaned summaries | (A) Keep content_id (B) NULL it (C) Cascade delete | A | Historical reference retained. Summary is self-contained. |
+| 15 | Post-save transactions | (A) Per operation (B) Entire session (C) Default | A | Each merge/split/delete atomic. Failed operation rolls back cleanly. |
+| 16 | Overlap algorithm | Character 3-gram Jaccard > 0.8 | 3-gram Jaccard | Simple, fast, reproducible. |
+| 17 | Summary enum naming | `SummaryContentType` vs reusing `ContentType` | New enum | Avoids collision with existing `ContentType` used by Annotation. |
+| 18 | Compare layout | (A) Side-by-side >= 120 cols (B) Always sequential | A | 120 cols gives ~55 per summary. Sequential fallback below. |
+| 19 | Split options | --at-heading, --at-char, --at-paragraph | All 3 | --at-paragraph is most user-friendly for manual splits. |
+| 20 | Preset create modes | (A) Interactive only (B) Both + flags (C) Non-interactive | B | Interactive default, flags for scripting and testing. |
 
 ---
 
