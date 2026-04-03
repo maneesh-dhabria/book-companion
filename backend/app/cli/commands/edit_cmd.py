@@ -1,6 +1,7 @@
 """CLI commands for metadata and summary editing (Phase 2)."""
 
 import typer
+from rich.table import Table
 from sqlalchemy import select
 
 from app.cli.deps import async_command, get_services
@@ -143,3 +144,189 @@ async def edit_summary(
                 print_success(f"Book {book_id} summary updated.")
             else:
                 console.print("No changes detected.")
+
+
+@edit_app.command("sections")
+@async_command
+async def edit_sections(
+    book_id: int = typer.Argument(..., help="Book ID."),
+):
+    """Interactive section merge/split/reorder/delete (post-save)."""
+    async with get_services() as svc:
+        book_service = svc.get("book_service")
+        if not book_service:
+            print_error("Book service not available.")
+            raise typer.Exit(1)
+
+        section_edit_svc = svc.get("section_edit")
+        if not section_edit_svc:
+            print_error("Section edit service not available.")
+            raise typer.Exit(1)
+
+        try:
+            book = await book_service.get_book(book_id)
+        except Exception:
+            book = None
+
+        if not book:
+            print_error(f"Book {book_id} not found.")
+            raise typer.Exit(1)
+
+        if not book.sections:
+            print_error("No sections found for this book.")
+            raise typer.Exit(1)
+
+        # Display current structure
+        console.print(f'\n[bold]{book.title}[/bold] — {len(book.sections)} sections\n')
+        _show_db_sections(book.sections)
+
+        console.print(
+            "\n[bold]Section Editor[/bold] — commands: "
+            "show, merge 1,2 [\"title\"], split <id> --at-char <pos>, "
+            "delete 1,2 (by section ID), move <id> --after <id>, done"
+        )
+
+        from app.exceptions import SectionEditError
+        from app.services.section_edit_service import parse_command
+
+        modified = False
+
+        while True:
+            try:
+                raw = typer.prompt("edit>", default="done")
+            except (KeyboardInterrupt, EOFError):
+                console.print("\nAborted.")
+                break
+
+            try:
+                cmd = parse_command(raw)
+            except SectionEditError as e:
+                print_error(str(e))
+                continue
+
+            if cmd.action == "done":
+                break
+
+            if cmd.action == "show":
+                book = await book_service.get_book(book_id)
+                _show_db_sections(book.sections or [])
+                continue
+
+            if cmd.action == "undo":
+                console.print(
+                    "Undo not available in DB mode. Changes are applied immediately."
+                )
+                continue
+
+            if cmd.action == "delete":
+                section_ids = cmd.indices
+                names = []
+                for s in (book.sections or []):
+                    if s.id in section_ids:
+                        names.append(f"{s.id}: {s.title}")
+                if not names:
+                    print_error("No matching section IDs found.")
+                    continue
+                if typer.confirm(f"Delete {', '.join(names)}?", default=False):
+                    try:
+                        count = await section_edit_svc.db_delete(book_id, section_ids)
+                        await svc["session"].flush()
+                        console.print(f"Deleted {count} section(s).")
+                        modified = True
+                        book = await book_service.get_book(book_id)
+                        _show_db_sections(book.sections or [])
+                    except SectionEditError as e:
+                        print_error(str(e))
+                continue
+
+            if cmd.action == "merge":
+                section_ids = cmd.indices
+                if typer.confirm(
+                    f"Merge section IDs {section_ids} into one?", default=True
+                ):
+                    try:
+                        merged = await section_edit_svc.db_merge(
+                            book_id, section_ids, cmd.title
+                        )
+                        await svc["session"].flush()
+                        console.print(f'Merged into: "{merged.title}"')
+                        modified = True
+                        book = await book_service.get_book(book_id)
+                        _show_db_sections(book.sections or [])
+                    except SectionEditError as e:
+                        print_error(str(e))
+                continue
+
+            if cmd.action == "split":
+                section_id = cmd.indices[0]
+                try:
+                    if cmd.split_mode == "char":
+                        parts = await section_edit_svc.db_split_at_char(
+                            book_id, section_id, cmd.split_value
+                        )
+                    else:
+                        print_error(
+                            "Only --at-char split is available in DB mode. "
+                            "Use: split <id> --at-char <pos>"
+                        )
+                        continue
+                    await svc["session"].flush()
+                    console.print(f"Split into {len(parts)} sections.")
+                    modified = True
+                    book = await book_service.get_book(book_id)
+                    _show_db_sections(book.sections or [])
+                except SectionEditError as e:
+                    print_error(str(e))
+                continue
+
+            if cmd.action == "move":
+                section_id = cmd.indices[0]
+                after_id = cmd.target_after if cmd.target_after != 0 else None
+                try:
+                    await section_edit_svc.db_move(book_id, section_id, after_id)
+                    await svc["session"].flush()
+                    console.print("Moved.")
+                    modified = True
+                    book = await book_service.get_book(book_id)
+                    _show_db_sections(book.sections or [])
+                except SectionEditError as e:
+                    print_error(str(e))
+                continue
+
+            print_error(f"Unknown command: {cmd.action}")
+
+        if modified:
+            summarizer = svc.get("summarizer")
+            if summarizer and typer.confirm(
+                "\nStructure changed. Re-summarize affected sections?",
+                default=False,
+            ):
+                console.print(
+                    f"Run: bookcompanion summarize {book_id} --force "
+                    "to regenerate summaries."
+                )
+
+
+def _show_db_sections(sections):
+    """Display DB sections as a table."""
+    table = Table()
+    table.add_column("#", style="cyan")
+    table.add_column("ID", style="dim")
+    table.add_column("Title")
+    table.add_column("Status")
+    table.add_column("Chars", justify="right")
+    for s in sections:
+        status = (
+            "[green]Completed[/green]"
+            if s.default_summary_id
+            else "[yellow]Pending[/yellow]"
+        )
+        char_count = len(s.content_md) if s.content_md else 0
+        table.add_row(
+            str(s.order_index + 1),
+            str(s.id),
+            s.title,
+            status,
+            f"{char_count:,}",
+        )
+    console.print(table)

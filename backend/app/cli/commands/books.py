@@ -20,6 +20,104 @@ from app.cli.formatting import (
 console = Console()
 
 
+def _display_section_table(sections, title="Sections"):
+    """Display a table of SectionItem objects (used by REPL)."""
+    table = Table(title=title)
+    table.add_column("#", style="cyan")
+    table.add_column("Title")
+    table.add_column("Depth", justify="right")
+    table.add_column("Chars", justify="right")
+    for s in sections:
+        table.add_row(str(s.index), s.title, str(s.depth), f"{s.char_count:,}")
+    console.print(table)
+
+
+def _run_edit_repl(edit_service):
+    """Run the interactive section editing REPL. Returns True if user finished with 'done'."""
+    from app.exceptions import SectionEditError
+    from app.services.section_edit_service import parse_command
+
+    console.print(
+        "\n[bold]Section Editor[/bold] — commands: "
+        "show, merge 1,2 [\"title\"], split <n> --at-heading, "
+        "delete 1,2, move <n> --after <m>, undo, done"
+    )
+
+    while True:
+        try:
+            raw = typer.prompt("edit>", default="done")
+        except (KeyboardInterrupt, EOFError):
+            console.print("\nAborted.")
+            return False
+
+        try:
+            cmd = parse_command(raw)
+        except SectionEditError as e:
+            print_error(str(e))
+            continue
+
+        if cmd.action == "done":
+            return True
+
+        if cmd.action == "show":
+            _display_section_table(edit_service.get_sections())
+            continue
+
+        if cmd.action == "undo":
+            if edit_service.undo():
+                console.print("Undone.")
+                _display_section_table(edit_service.get_sections())
+            else:
+                console.print("Nothing to undo.")
+            continue
+
+        if cmd.action == "delete":
+            try:
+                count = edit_service.delete(cmd.indices)
+                console.print(f"Deleted {count} section(s).")
+                _display_section_table(edit_service.get_sections())
+            except SectionEditError as e:
+                print_error(str(e))
+            continue
+
+        if cmd.action == "merge":
+            try:
+                merged = edit_service.merge(cmd.indices, cmd.title)
+                console.print(f'Merged into: "{merged.title}" ({merged.char_count:,} chars)')
+                _display_section_table(edit_service.get_sections())
+            except SectionEditError as e:
+                print_error(str(e))
+            continue
+
+        if cmd.action == "split":
+            try:
+                if cmd.split_mode == "heading":
+                    parts = edit_service.split_at_headings(cmd.indices[0])
+                elif cmd.split_mode == "char":
+                    parts = edit_service.split_at_char(cmd.indices[0], cmd.split_value)
+                elif cmd.split_mode == "paragraph":
+                    parts = edit_service.split_at_paragraph(cmd.indices[0], cmd.split_value)
+                else:
+                    print_error(f"Unknown split mode: {cmd.split_mode}")
+                    continue
+                console.print(f"Split into {len(parts)} sections.")
+                _display_section_table(edit_service.get_sections())
+            except SectionEditError as e:
+                print_error(str(e))
+            continue
+
+        if cmd.action == "move":
+            try:
+                edit_service.move(cmd.indices[0], cmd.target_after or 0)
+                console.print("Moved.")
+                _display_section_table(edit_service.get_sections())
+            except SectionEditError as e:
+                print_error(str(e))
+            continue
+
+        print_error(f"Unknown command: {cmd.action}")
+
+
 @async_command
 async def add(
     file_path: Path = typer.Argument(..., help="Path to the book file."),
@@ -69,9 +167,169 @@ async def add(
                 indent = "  " * (section.depth + 1)
                 console.print(f"{indent}{section.order_index + 1}. {section.title}")
 
-            if not typer.confirm("\nAccept this structure?", default=True):
-                console.print("Structure rejected. Use --force to re-import with different parsing.")
-                raise typer.Exit(0)
+            # Quality checks on detected sections
+            quality_svc = svc.get("quality")
+            issues = []
+            if quality_svc:
+                section_dicts = [
+                    {
+                        "index": s.order_index,
+                        "title": s.title,
+                        "content": s.content_md or "",
+                        "depth": s.depth,
+                        "image_count": len(s.images) if s.images else 0,
+                    }
+                    for s in (book.sections or [])
+                ]
+                issues = quality_svc.check_sections(section_dicts)
+
+                if issues:
+                    console.print(f"\n[yellow]Quality issues ({len(issues)}):[/yellow]")
+                    for issue in issues:
+                        severity_style = {
+                            "error": "red",
+                            "warning": "yellow",
+                            "info": "dim",
+                        }.get(issue.severity, "")
+                        console.print(
+                            f"  [{severity_style}]{issue.severity.upper()}[/{severity_style}] "
+                            f"Section {issue.section_index}: {issue.message}"
+                        )
+
+                    actions = quality_svc.suggested_actions(issues)
+                    if actions:
+                        console.print("\n[bold]Suggested actions:[/bold]")
+                        for action in actions:
+                            console.print(f"  - {action}")
+
+                        choice = typer.prompt(
+                            "\nApply suggested actions? [Y/n/customize]",
+                            default="Y",
+                        ).strip().lower()
+
+                        if choice == "y":
+                            # Auto-delete non-content sections
+                            delete_indices = [
+                                i.section_index
+                                for i in issues
+                                if i.suggested_action == "delete"
+                                and i.severity in ("error", "warning")
+                            ]
+                            if delete_indices:
+                                section_edit_svc = svc.get("section_edit")
+                                if section_edit_svc:
+                                    # Map order_index to section IDs
+                                    idx_to_id = {
+                                        s.order_index: s.id
+                                        for s in (book.sections or [])
+                                    }
+                                    ids_to_delete = [
+                                        idx_to_id[idx]
+                                        for idx in delete_indices
+                                        if idx in idx_to_id
+                                    ]
+                                    if ids_to_delete:
+                                        count = await section_edit_svc.db_delete(
+                                            book.id, ids_to_delete
+                                        )
+                                        await svc["session"].flush()
+                                        console.print(
+                                            f"Deleted {count} non-content section(s)."
+                                        )
+                                        # Reload book
+                                        book = await book_service.get_book(book.id)
+                                        section_count = (
+                                            len(book.sections) if book.sections else 0
+                                        )
+
+                        elif choice == "customize":
+                            # Enter interactive REPL with in-memory mode
+                            section_edit_svc = svc.get("section_edit")
+                            if section_edit_svc:
+                                from app.services.section_edit_service import SectionItem
+
+                                items = [
+                                    SectionItem(
+                                        index=s.order_index + 1,
+                                        id=s.id,
+                                        title=s.title,
+                                        content=s.content_md or "",
+                                        depth=s.depth,
+                                        char_count=len(s.content_md or ""),
+                                    )
+                                    for s in (book.sections or [])
+                                ]
+                                section_edit_svc.init_memory_mode(items)
+                                _display_section_table(items)
+
+                                if _run_edit_repl(section_edit_svc):
+                                    # Apply edits back to DB
+                                    final_sections = section_edit_svc.get_sections()
+                                    original_ids = {s.id for s in (book.sections or [])}
+                                    final_ids = {
+                                        s.id for s in final_sections if s.id is not None
+                                    }
+
+                                    # Delete removed sections
+                                    removed_ids = [
+                                        sid
+                                        for sid in original_ids
+                                        if sid not in final_ids and sid is not None
+                                    ]
+                                    if removed_ids:
+                                        from app.db.repositories.section_repo import (
+                                            SectionRepository,
+                                        )
+
+                                        repo = SectionRepository(svc["session"])
+                                        await repo.delete_by_ids(removed_ids)
+
+                                    # Create new sections (merged/split - id is None)
+                                    from app.db.models import BookSection
+
+                                    for item in final_sections:
+                                        if item.id is None:
+                                            new_section = BookSection(
+                                                book_id=book.id,
+                                                title=item.title,
+                                                order_index=item.index - 1,
+                                                depth=item.depth,
+                                                content_md=item.content,
+                                                content_token_count=item.char_count // 4,
+                                                derived_from=item.derived_from,
+                                            )
+                                            svc["session"].add(new_section)
+
+                                    await svc["session"].flush()
+
+                                    # Reindex
+                                    from app.db.repositories.section_repo import (
+                                        SectionRepository,
+                                    )
+
+                                    repo = SectionRepository(svc["session"])
+                                    await repo.reindex_order(book.id)
+
+                                    # Reload
+                                    book = await book_service.get_book(book.id)
+                                    section_count = (
+                                        len(book.sections) if book.sections else 0
+                                    )
+                                    console.print(
+                                        f"Applied edits. {section_count} sections."
+                                    )
+                            else:
+                                console.print(
+                                    "Section edit service not available."
+                                )
+                        # else 'n' — accept as-is
+
+            if not issues:
+                if not typer.confirm("\nAccept this structure?", default=True):
+                    console.print(
+                        "Structure rejected. Use --force to re-import with different parsing."
+                    )
+                    raise typer.Exit(0)
 
         print_success(f"\nBook saved (ID: {book.id}). {section_count} sections parsed and stored.")
 
@@ -182,27 +440,88 @@ async def show(
         console.print(f"Format: {book.file_format.upper()}")
         console.print(f"Created: {book.created_at}")
 
+        # Quality check
+        quality_svc = svc.get("quality")
+        if quality_svc and book.sections:
+            section_dicts = [
+                {
+                    "index": s.order_index,
+                    "title": s.title,
+                    "content": s.content_md or "",
+                    "depth": s.depth,
+                    "image_count": len(s.images) if s.images else 0,
+                }
+                for s in book.sections
+            ]
+            issues = quality_svc.check_sections(section_dicts)
+            ok_count = len(book.sections) - len(
+                {i.section_index for i in issues if i.severity in ("error", "warning")}
+            )
+            warning_count = len(issues)
+            console.print(
+                f"Quality: {ok_count}/{len(book.sections)} sections OK. "
+                f"{warning_count} warning(s)"
+            )
+
         if book.sections:
+            # Determine terminal width for adaptive columns
+            term_width = console.width or 80
+            wide_mode = term_width >= 100
+
             console.print(f"\n[bold]Sections ({len(book.sections)}):[/bold]")
             table = Table()
             table.add_column("#", style="cyan")
+            table.add_column("ID", style="dim")
             table.add_column("Title")
             table.add_column("Status")
-            table.add_column("Tokens", justify="right")
-            table.add_column("Images", justify="right")
+            table.add_column("Chars", justify="right")
+            if wide_mode:
+                table.add_column("Compression", justify="right")
+                table.add_column("Eval", justify="right")
+
+            # Pre-fetch summaries for compression/eval if wide mode
+            summary_service = svc.get("summary_service") if wide_mode else None
 
             for section in book.sections:
-                img_count = len(section.images) if section.images else 0
-                captioned = sum(1 for i in (section.images or []) if i.caption) if img_count else 0
-                img_display = f"{captioned}/{img_count}" if img_count else "—"
-                summary_status = "summarized" if section.default_summary_id else "pending"
-                table.add_row(
+                summary_status = (
+                    "[green]Completed[/green]"
+                    if section.default_summary_id
+                    else "[yellow]Pending[/yellow]"
+                )
+                char_count = len(section.content_md) if section.content_md else 0
+
+                row = [
                     str(section.order_index + 1),
+                    str(section.id),
                     section.title,
                     summary_status,
-                    str(section.content_token_count or "—"),
-                    img_display,
-                )
+                    f"{char_count:,}",
+                ]
+
+                if wide_mode:
+                    compression = "-"
+                    eval_display = "-"
+                    if section.default_summary_id and summary_service:
+                        try:
+                            summary = await summary_service.get_by_id(
+                                section.default_summary_id
+                            )
+                            if summary and summary.summary_md and char_count > 0:
+                                ratio = len(summary.summary_md) / char_count
+                                compression = f"{ratio:.0%}"
+                            if summary and summary.eval_json:
+                                passed = sum(
+                                    1
+                                    for v in summary.eval_json.values()
+                                    if v is True
+                                )
+                                total = len(summary.eval_json)
+                                eval_display = f"{passed}/{total}"
+                        except Exception:
+                            pass
+                    row.extend([compression, eval_display])
+
+                table.add_row(*row)
             console.print(table)
 
 

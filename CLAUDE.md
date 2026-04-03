@@ -156,3 +156,7 @@ docker exec bookcompanion-db psql -U bookcompanion -c "CREATE DATABASE bookcompa
 docker exec bookcompanion-db psql -U bookcompanion -d bookcompanion_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 cd backend && uv run alembic upgrade head
 ```
+
+### Session logging & changelog
+- Before ending a significant session (meaningful work done, not trivial fixes), offer to run `/session-log` to capture learnings
+- After merging to main, run `/changelog` to record user-facing changes

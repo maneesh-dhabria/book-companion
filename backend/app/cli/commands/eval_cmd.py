@@ -16,8 +16,9 @@ eval_app = typer.Typer(help="Evaluation commands.")
 async def eval_cmd(
     book_id: int = typer.Argument(..., help="Book ID."),
     section_id: int = typer.Argument(None, help="Section ID for detailed results."),
+    summary_id: int = typer.Option(None, "--summary-id", help="Evaluate a specific summary."),
 ):
-    """Show evaluation results."""
+    """Show or run evaluation results."""
     async with get_services() as svc:
         book_service = svc.get("book_service")
         if not book_service:
@@ -34,6 +35,71 @@ async def eval_cmd(
             raise typer.Exit(1)
 
         session = svc["session"]
+
+        # --summary-id mode: evaluate a specific summary
+        if summary_id is not None:
+            summary_service = svc.get("summary_service")
+            eval_service = svc.get("eval")
+            if not summary_service:
+                print_error("Summary service not available.")
+                raise typer.Exit(1)
+            if not eval_service:
+                print_error("Eval service not available.")
+                raise typer.Exit(1)
+
+            try:
+                summary = await summary_service.get_by_id(summary_id)
+            except Exception as e:
+                print_error(str(e))
+                raise typer.Exit(1) from None
+
+            # Get source text
+            from app.db.models import SummaryContentType
+
+            source_text = ""
+            target_section_id = None
+            if summary.content_type == SummaryContentType.SECTION:
+                section = next(
+                    (s for s in (book.sections or []) if s.id == summary.content_id),
+                    None,
+                )
+                if section:
+                    source_text = section.content_md or ""
+                    target_section_id = section.id
+
+            console.print(f"Running eval on summary #{summary_id}...")
+            results = await eval_service.evaluate_summary(
+                section_id=target_section_id or 0,
+                source_text=source_text,
+                summary_text=summary.summary_md,
+                facets_used=summary.facets_used,
+                summary_id=summary.id,
+            )
+
+            # Store eval_json on the summary
+            passed_count = sum(1 for r in results.values() if r.get("passed"))
+            total_count = len(results)
+            summary.eval_json = {
+                "passed": passed_count,
+                "total": total_count,
+                "assertions": results,
+            }
+            await session.flush()
+
+            # Display results
+            table = Table(title=f"Eval Results — Summary #{summary_id}")
+            table.add_column("Assertion")
+            table.add_column("Result")
+            table.add_column("Reasoning")
+
+            for name, result in results.items():
+                result_str = (
+                    "[green]PASS[/green]" if result.get("passed") else "[red]FAIL[/red]"
+                )
+                table.add_row(name, result_str, (result.get("reasoning") or "")[:100])
+            console.print(table)
+            print_success(f"Eval complete: {passed_count}/{total_count} passed.")
+            return
 
         if section_id is not None:
             # Detailed per-assertion results for a section
@@ -68,22 +134,42 @@ async def eval_cmd(
                 )
             console.print(table)
         else:
-            # Summary across all sections
+            # Summary across all sections — read eval_json from default summaries
             sections = book.sections or []
             if not sections:
                 print_empty_state("No sections found.")
                 return
 
-            # TODO: V1.1 — fetch eval data from Summary table eval_json field
+            summary_service = svc.get("summary_service")
+
             table = Table(title=f"Eval Summary — {book.title}")
             table.add_column("Section")
             table.add_column("Pass Rate")
             table.add_column("Status")
 
             for section in sections:
-                # TODO: V1.1 — load eval_json from linked Summary
-                rate = "—"
-                status = "[dim]Not evaluated[/dim]"
+                if section.default_summary_id and summary_service:
+                    try:
+                        summary = await summary_service.get_by_id(section.default_summary_id)
+                        eval_data = summary.eval_json
+                        if eval_data and isinstance(eval_data, dict):
+                            passed = eval_data.get("passed", 0)
+                            total = eval_data.get("total", 0)
+                            rate = f"{passed}/{total}"
+                            status = (
+                                "[green]Passed[/green]"
+                                if passed == total
+                                else "[yellow]Partial[/yellow]"
+                            )
+                        else:
+                            rate = "—"
+                            status = "[dim]Not evaluated[/dim]"
+                    except Exception:
+                        rate = "—"
+                        status = "[dim]Error loading[/dim]"
+                else:
+                    rate = "—"
+                    status = "[dim]Not evaluated[/dim]"
                 table.add_row(section.title[:50], rate, status)
             console.print(table)
 
@@ -111,13 +197,14 @@ async def compare_prompts(
             raise typer.Exit(1)
 
         try:
-            book_obj = await book_service.get_book(book)
+            await book_service.get_book(book)
         except Exception:
             print_error(f"Book {book} not found.")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
         # Get the section
         from sqlalchemy import select
+
         from app.db.models import BookSection
 
         session = svc["session"]
@@ -136,7 +223,7 @@ async def compare_prompts(
             )
         except Exception as e:
             print_error(f"Failed to generate summary A: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
         console.print(f"Generating summary with prompt version {prompt_b}...")
         try:
@@ -145,7 +232,7 @@ async def compare_prompts(
             )
         except Exception as e:
             print_error(f"Failed to generate summary B: {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
         # Display side-by-side
         from rich.columns import Columns
@@ -175,8 +262,16 @@ async def compare_prompts(
                 results_b = await eval_service.evaluate_summary(section, source_text, summary_b)
 
                 for name in results_a:
-                    pass_a = "[green]PASS[/green]" if results_a[name].get("passed") else "[red]FAIL[/red]"
-                    pass_b = "[green]PASS[/green]" if results_b.get(name, {}).get("passed") else "[red]FAIL[/red]"
+                    pass_a = (
+                        "[green]PASS[/green]"
+                        if results_a[name].get("passed")
+                        else "[red]FAIL[/red]"
+                    )
+                    pass_b = (
+                        "[green]PASS[/green]"
+                        if results_b.get(name, {}).get("passed")
+                        else "[red]FAIL[/red]"
+                    )
                     table.add_row(name, pass_a, pass_b)
 
                 console.print(table)

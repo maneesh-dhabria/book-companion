@@ -7,7 +7,16 @@ from app import __version__
 
 app = typer.Typer(
     name="bookcompanion",
-    help="Book Companion - Personal book summarization and knowledge extraction tool.",
+    help="""Book Companion - Personal book summarization and knowledge extraction tool.
+
+Common Workflows:
+  Read a section summary      bookcompanion summary read <book_id> <section_id>
+  Compare with original       bookcompanion read <book_id> <section_id> --with-summary
+  Search across library       bookcompanion search "competitive advantage"
+  Re-summarize with preset    bookcompanion summarize <book_id> --preset academic_detailed
+  Compare two summaries       bookcompanion summary compare <id1> <id2>
+  Export book summary         bookcompanion export book <book_id> --format markdown
+  Edit section structure      bookcompanion edit sections <book_id>""",
     no_args_is_help=True,
 )
 console = Console()
