@@ -49,12 +49,34 @@ class EvalService:
             loader=jinja2.FileSystemLoader(str(PROMPTS_DIR))
         )
 
+    def _get_compression_range(self, facets: dict) -> tuple[float, float]:
+        """Return expected compression % range based on facets."""
+        compression = facets.get("compression", "standard")
+        style = facets.get("style", "narrative")
+        if style == "tweet_thread":
+            return (2.0, 8.0)
+        ranges = {
+            "brief": (5.0, 15.0),
+            "standard": (15.0, 25.0),
+            "detailed": (25.0, 40.0),
+        }
+        return ranges.get(compression, (15.0, 25.0))
+
     async def evaluate_summary(
-        self, section_id: int, source_text: str, summary_text: str, image_count: int = 0,
+        self,
+        section_id: int,
+        source_text: str,
+        summary_text: str,
+        image_count: int = 0,
+        facets_used: dict | None = None,
+        summary_id: int | None = None,
     ) -> dict[str, dict]:
         """Run all 16 assertions in parallel. Returns {assertion_name: {passed, reasoning}}."""
         tasks = [
-            self._run_single_assertion(name, source_text, summary_text, section_id, image_count=image_count)
+            self._run_single_assertion(
+                name, source_text, summary_text, section_id,
+                image_count=image_count, summary_id=summary_id,
+            )
             for name in ASSERTION_REGISTRY
         ]
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
@@ -74,6 +96,7 @@ class EvalService:
         summary_text: str,
         section_id: int,
         image_count: int = 0,
+        summary_id: int | None = None,
     ) -> dict:
         meta = ASSERTION_REGISTRY[assertion_name]
 
@@ -146,6 +169,7 @@ class EvalService:
         # Store trace
         trace = EvalTrace(
             section_id=section_id,
+            summary_id=summary_id,
             assertion_name=assertion_name,
             assertion_category=meta["category"],
             passed=parsed.get("passed", False),

@@ -217,6 +217,34 @@ async def get_services():
             pass
 
         try:
+            from app.services.preset_service import PresetService
+
+            services["preset"] = PresetService()
+        except ImportError:
+            pass
+
+        try:
+            from app.services.quality_service import QualityService
+
+            services["quality"] = QualityService()
+        except ImportError:
+            pass
+
+        try:
+            from app.services.summary_service import SummaryService
+
+            services["summary_service"] = SummaryService(session)
+        except ImportError:
+            pass
+
+        try:
+            from app.services.section_edit_service import SectionEditService
+
+            services["section_edit"] = SectionEditService(session)
+        except ImportError:
+            pass
+
+        try:
             from app.services.backup_service import BackupService
 
             services["backup"] = BackupService(settings)

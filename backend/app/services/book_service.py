@@ -104,6 +104,22 @@ class BookService:
     async def get_book(self, book_id: int) -> Book | None:
         return await self.book_repo.get_by_id(book_id)
 
+    async def update_book_status(self, book_id: int) -> None:
+        """Derive status from default_summary_id state."""
+        book = await self.book_repo.get_by_id(book_id)
+        if not book:
+            raise StorageError(f"Book not found: {book_id}")
+        sections = book.sections or []
+        all_summarized = all(s.default_summary_id is not None for s in sections)
+        book_summarized = book.default_summary_id is not None
+        if all_summarized and book_summarized:
+            book.status = BookStatus.COMPLETED
+        elif book.status not in (
+            BookStatus.PARSING, BookStatus.PARSE_FAILED, BookStatus.UPLOADING,
+        ):
+            book.status = BookStatus.PARSED
+        await self.db.flush()
+
     async def list_authors(self) -> list[tuple]:
         return await self.author_repo.list_with_book_counts()
 

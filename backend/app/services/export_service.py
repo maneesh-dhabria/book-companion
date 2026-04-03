@@ -4,9 +4,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     Annotation,
@@ -16,6 +15,7 @@ from app.db.models import (
     ExternalReference,
 )
 from app.db.repositories.book_repo import BookRepository
+from app.db.repositories.summary_repo import SummaryRepository
 from app.exceptions import BookCompanionError
 
 
@@ -27,6 +27,7 @@ class ExportService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.book_repo = BookRepository(session)
+        self.summary_repo = SummaryRepository(session)
 
     async def export_book(
         self, book_id: int, fmt: str = "json", output_path: str | None = None
@@ -108,24 +109,40 @@ class ExportService:
 
         authors = [a.name for a in book.authors] if book.authors else []
 
-        # TODO: V1.1 — load summaries from Summary table
+        # Load book-level summary from Summary table
+        book_summary_md = None
+        if book.default_summary_id:
+            book_summary = await self.summary_repo.get_by_id(book.default_summary_id)
+            if book_summary:
+                book_summary_md = book_summary.summary_md
+        if not book_summary_md:
+            book_summary_md = book.quick_summary
+
+        # Load section summaries
+        section_data = []
+        for s in sections:
+            section_summary_md = None
+            if s.default_summary_id:
+                sec_summary = await self.summary_repo.get_by_id(s.default_summary_id)
+                if sec_summary:
+                    section_summary_md = sec_summary.summary_md
+            section_data.append({
+                "id": s.id,
+                "title": s.title,
+                "order_index": s.order_index,
+                "depth": s.depth,
+                "has_summary": s.default_summary_id is not None,
+                "summary_md": section_summary_md,
+            })
+
         return {
             "id": book.id,
             "title": book.title,
             "authors": authors,
             "status": book.status.value if book.status else None,
-            "quick_summary": book.quick_summary,
+            "quick_summary": book_summary_md,
             "created_at": book.created_at.isoformat() if book.created_at else None,
-            "sections": [
-                {
-                    "id": s.id,
-                    "title": s.title,
-                    "order_index": s.order_index,
-                    "depth": s.depth,
-                    "has_summary": s.default_summary_id is not None,
-                }
-                for s in sections
-            ],
+            "sections": section_data,
             "concepts": [
                 {
                     "id": c.id,
@@ -200,6 +217,9 @@ class ExportService:
                     lines.append(
                         f"{indent}- **{section['title']}** ({status})"
                     )
+                    if section.get("summary_md"):
+                        for line in section["summary_md"].split("\n"):
+                            lines.append(f"{indent}  {line}")
                 lines.append("")
 
             # Concepts
