@@ -393,6 +393,8 @@ def downgrade() -> None:
 
 - [ ] **Step 9: Run migration on dev and test databases**
 
+**Rollback note:** This migration drops columns with data and is NOT reversible. Before running on dev, back up the database: `docker exec bookcompanion-db pg_dump -U bookcompanion bookcompanion > backup_pre_v1.1.sql`. All existing summaries and eval traces will be deleted.
+
 ```bash
 cd backend
 uv run alembic upgrade head
@@ -407,6 +409,15 @@ Grep for `SummaryStatus` and update all imports. Key files:
 - `app/cli/commands/summarize_cmd.py`: Remove `summary_status` checks
 - `app/cli/commands/eval_cmd.py`: Remove `summary_eval` references
 - `app/cli/commands/edit_cmd.py`: Update `edit summary` to use `summaries` table
+
+Also update existing test files that reference removed fields:
+- `tests/unit/test_summarizer.py`: Remove `SummaryStatus` references, update assertions that check `section.summary_md`
+- `tests/unit/test_models.py`: Remove `SummaryStatus` instantiation tests
+- `tests/integration/test_summarize_integration.py`: Update to use `summaries` table
+- `tests/integration/test_db_operations.py`: Remove `summary_md` field references
+- `tests/e2e/test_cli_flows.py`: Update CLI output expectations
+
+**Important:** Run `uv run ruff check . 2>&1 | head -30` after these changes to catch any remaining import errors.
 
 - [ ] **Step 11: Write unit tests for new models and config**
 
@@ -2362,6 +2373,10 @@ class SectionEditService:
         return True
 
     # --- DB-Backed Operations (post-save) ---
+    # NOTE: All DB operations must also clean up search index entries for deleted sections.
+    # Use SearchService.delete_by_source(SourceType.SECTION_CONTENT, section_id) and
+    # SearchService.delete_by_source(SourceType.SECTION_SUMMARY, section_id) for each deleted section.
+    # Pass search_service as optional constructor param: SectionEditService(session, search_service=None).
 
     async def db_merge(self, book_id: int, section_ids: list[int], title: str | None = None) -> BookSection:
         """Merge sections in DB. Atomic transaction."""
@@ -3538,8 +3553,30 @@ async def summarize(
 
         # Single section mode
         if section_id is not None:
-            console.print(f'Summarizing section {section_id} with preset "{preset_label}"...')
-            # ... delegate to summarizer with facets
+            section = next((s for s in (book.sections or []) if s.id == section_id), None)
+            if not section:
+                print_error(f"Section {section_id} not found.")
+                raise typer.Exit(1)
+            console.print(f'Summarizing section #{section_id} "{section.title}" with preset "{preset_label}"...')
+            import time
+            start = time.monotonic()
+            summary = await summarizer._summarize_single_section(
+                book_id=book_id, section=section, facets=facets,
+                preset_name=resolved_preset, model=model,
+                cumulative_context="",
+            )
+            await summarizer._section_repo.update_default_summary(section_id, summary.id)
+            elapsed = int(time.monotonic() - start)
+            comp = summary.summary_char_count / summary.input_char_count * 100 if summary.input_char_count else 0
+            console.print(f"  [green]\\u2713[/green]  ({elapsed}s, {comp:.1f}%)")
+
+            if not skip_eval and svc.get("eval"):
+                console.print("Running eval assertions...")
+                await svc["eval"].evaluate_summary(
+                    section_id=section_id, source_text=section.content_md or "",
+                    summary_text=summary.summary_md, facets_used=facets, summary_id=summary.id,
+                )
+                print_success("Eval complete.")
             return
 
         # Soft gate: warn on sections with quality issues (spec 7.3)
