@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.db.models import Author, Book, BookSection, BookStatus, SummaryStatus
+from app.db.models import Author, Book, BookSection, BookStatus
 
 
 @pytest.mark.asyncio
@@ -50,7 +50,6 @@ async def test_create_book_sections(db_session):
             depth=1,
             content_md=f"Content for chapter {i}",
             content_token_count=100,
-            summary_status=SummaryStatus.PENDING,
         )
         for i in range(3)
     ]

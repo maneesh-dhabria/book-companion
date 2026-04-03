@@ -195,21 +195,15 @@ async def show(
                 img_count = len(section.images) if section.images else 0
                 captioned = sum(1 for i in (section.images or []) if i.caption) if img_count else 0
                 img_display = f"{captioned}/{img_count}" if img_count else "—"
+                summary_status = "summarized" if section.default_summary_id else "pending"
                 table.add_row(
                     str(section.order_index + 1),
                     section.title,
-                    section.summary_status.value if section.summary_status else "pending",
+                    summary_status,
                     str(section.content_token_count or "—"),
                     img_display,
                 )
             console.print(table)
-
-        if book.overall_summary_eval:
-            console.print("\n[bold]Eval Summary:[/bold]")
-            eval_data = book.overall_summary_eval
-            if isinstance(eval_data, dict):
-                for k, v in eval_data.items():
-                    console.print(f"  {k}: {v}")
 
 
 @async_command
@@ -290,14 +284,15 @@ async def read(
         content_parts = []
         for section in sections:
             content = section.content_md or ""
-            if with_summary and section.summary_md:
+            # TODO: V1.1 — with_summary should load from Summary table
+            if with_summary and section.default_summary_id:
                 from rich.columns import Columns
                 from rich.panel import Panel
 
                 cols = Columns(
                     [
                         Panel(content[:2000], title=f"{section.title} — Content"),
-                        Panel(section.summary_md[:2000], title=f"{section.title} — Summary"),
+                        Panel("(summary in Summary table)", title=f"{section.title} — Summary"),
                     ],
                     equal=True,
                 )

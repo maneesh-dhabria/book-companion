@@ -67,12 +67,13 @@ async def edit_summary(
     book_id: int = typer.Argument(..., help="Book ID."),
     section_id: int = typer.Argument(None, help="Section ID. Omit for book-level summary."),
 ):
-    """Edit a summary in $EDITOR. Marks as user_edited=True."""
+    """Edit a summary in $EDITOR."""
+    # TODO: V1.1 — rewrite to load/save via Summary table
     async with get_services() as svc:
         session = svc["session"]
 
         if section_id:
-            from app.db.models import BookSection
+            from app.db.models import BookSection, Summary
 
             result = await session.execute(
                 select(BookSection).where(BookSection.id == section_id)
@@ -82,25 +83,31 @@ async def edit_summary(
                 print_error(f"Section {section_id} not found.")
                 raise typer.Exit(1)
 
-            if not section.summary_md:
+            if not section.default_summary_id:
                 print_error(
                     f"No summary for section {section_id}. "
                     f"Run `bookcompanion summarize {book_id}` first."
                 )
                 raise typer.Exit(1)
 
-            edited = edit_in_editor(section.summary_md, suffix=".md")
-            if edited.strip() != section.summary_md.strip():
-                section.summary_md = edited
-                section.user_edited = True
+            # Load summary from Summary table
+            result = await session.execute(
+                select(Summary).where(Summary.id == section.default_summary_id)
+            )
+            summary_obj = result.scalar_one_or_none()
+            if not summary_obj:
+                print_error("Summary record not found.")
+                raise typer.Exit(1)
+
+            edited = edit_in_editor(summary_obj.summary_md, suffix=".md")
+            if edited.strip() != summary_obj.summary_md.strip():
+                summary_obj.summary_md = edited
                 await session.flush()
-                print_success(
-                    f"Section {section_id} summary updated (marked as user_edited)."
-                )
+                print_success(f"Section {section_id} summary updated.")
             else:
                 console.print("No changes detected.")
         else:
-            from app.db.models import Book
+            from app.db.models import Book, Summary
             from app.db.repositories.book_repo import BookRepository
 
             book_repo = BookRepository(session)
@@ -109,17 +116,29 @@ async def edit_summary(
                 print_error(f"Book {book_id} not found.")
                 raise typer.Exit(1)
 
-            summary = book.overall_summary or book.quick_summary
-            if not summary:
+            summary_obj = None
+            if book.default_summary_id:
+                result = await session.execute(
+                    select(Summary).where(Summary.id == book.default_summary_id)
+                )
+                summary_obj = result.scalar_one_or_none()
+                summary_text = summary_obj.summary_md if summary_obj else None
+            else:
+                summary_text = book.quick_summary
+
+            if not summary_text:
                 print_error(
                     f"No summary for book {book_id}. "
                     f"Run `bookcompanion summarize {book_id}` first."
                 )
                 raise typer.Exit(1)
 
-            edited = edit_in_editor(summary, suffix=".md")
-            if edited.strip() != summary.strip():
-                book.overall_summary = edited
+            edited = edit_in_editor(summary_text, suffix=".md")
+            if edited.strip() != summary_text.strip():
+                if book.default_summary_id and summary_obj:
+                    summary_obj.summary_md = edited
+                else:
+                    book.quick_summary = edited
                 await session.flush()
                 print_success(f"Book {book_id} summary updated.")
             else:

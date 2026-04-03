@@ -95,7 +95,7 @@ async def status(
         if sections:
             completed = sum(
                 1 for s in sections
-                if s.summary_status and s.summary_status.value == "completed"
+                if s.default_summary_id is not None
             )
             total = len(sections)
             console.print(f"\nSection progress: {completed}/{total} summarized")

@@ -6,7 +6,7 @@ from pathlib import Path
 import jinja2
 import structlog
 
-from app.db.models import BookSection, Image, SummaryStatus
+from app.db.models import BookSection, Image
 from app.services.summarizer.llm_provider import LLMProvider
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, undefer
@@ -48,7 +48,8 @@ class SummarizerService:
         model: str | None = None,
     ) -> None:
         """Orchestrate full book summarization using map-reduce."""
-        detail_level = detail_level or self.config.summarization.default_detail_level
+        # TODO: V1.1 — this method will be rewritten to use SummaryService + presets
+        detail_level = detail_level or "standard"
 
         from sqlalchemy import select
         from app.db.models import Book
@@ -69,15 +70,10 @@ class SummarizerService:
         # Map step: summarize each section with cumulative context
         completed = []
         for section in sections:
-            if section.user_edited:
+            # TODO: V1.1 — check default_summary_id instead of removed fields
+            if not force and section.default_summary_id is not None:
                 completed.append(section)
                 continue
-            if not force and section.summary_status == SummaryStatus.COMPLETED:
-                completed.append(section)
-                continue
-
-            section.summary_status = SummaryStatus.RUNNING
-            await self.db.flush()
 
             try:
                 summary = await self._summarize_with_retry(
@@ -86,11 +82,9 @@ class SummarizerService:
                     detail_level=detail_level,
                     skip_eval=skip_eval,
                 )
-                section.summary_md = summary
-                section.summary_status = SummaryStatus.COMPLETED
-                section.summary_version = self.config.summarization.prompt_version
+                # TODO: V1.1 — store via SummaryService instead of direct field writes
+                logger.info("section_summarized", section_id=section.id)
             except Exception as e:
-                section.summary_status = SummaryStatus.FAILED
                 logger.error("section_summarization_failed", section_id=section.id, error=str(e))
 
             await self.db.flush()
@@ -98,7 +92,7 @@ class SummarizerService:
 
         # Reduce step: generate overall book summary
         book_summary = await self._generate_book_summary(book, completed)
-        book.overall_summary = book_summary
+        # TODO: V1.1 — store via SummaryService instead of book.overall_summary
         await self.db.commit()
 
         logger.info("book_summarization_complete", book_id=book_id, sections=len(sections))
@@ -114,7 +108,8 @@ class SummarizerService:
         """Summarize a single section."""
         from sqlalchemy import select
 
-        detail_level = detail_level or self.config.summarization.default_detail_level
+        # TODO: V1.1 — this method will be rewritten to use SummaryService + presets
+        detail_level = detail_level or "standard"
 
         result = await self.db.execute(
             select(BookSection)
@@ -140,8 +135,7 @@ class SummarizerService:
         summary = await self._summarize_single_section(
             section=section, prior_sections=prior, detail_level=detail_level
         )
-        section.summary_md = summary
-        section.summary_status = SummaryStatus.COMPLETED
+        # TODO: V1.1 — store via SummaryService instead of direct field writes
         await self.db.commit()
         return summary
 
@@ -421,10 +415,12 @@ class SummarizerService:
 
     async def _generate_book_summary(self, book, sections: list[BookSection]) -> str:
         """Reduce step: combine section summaries into overall book summary."""
+        # TODO: V1.1 — fetch summaries from Summary table instead of section fields
         section_summaries = []
         for s in sections:
-            if s.summary_md:
-                section_summaries.append(f"## {s.title}\n{s.summary_md}")
+            summary_md = getattr(s, "summary_md", None)
+            if summary_md:
+                section_summaries.append(f"## {s.title}\n{summary_md}")
 
         combined = "\n\n".join(section_summaries)
 
@@ -467,6 +463,6 @@ class SummarizerService:
         )
         sections = list(result.scalars().all())
         summary = await self._generate_book_summary(book, sections)
-        book.overall_summary = summary
+        # TODO: V1.1 — store via SummaryService instead of book.overall_summary
         await self.db.commit()
         return summary

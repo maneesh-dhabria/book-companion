@@ -39,14 +39,6 @@ class BookStatus(str, enum.Enum):
     PARSE_FAILED = "parse_failed"
 
 
-class SummaryStatus(str, enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    STALE = "stale"
-
-
 class ProcessingStep(str, enum.Enum):
     PARSE = "parse"
     SUMMARIZE = "summarize"
@@ -92,6 +84,13 @@ class AnnotationType(str, enum.Enum):
     FREEFORM = "freeform"
 
 
+class SummaryContentType(str, enum.Enum):
+    SECTION = "section"
+    BOOK = "book"
+    CONCEPT = "concept"        # Reserved for Phase 2
+    ANNOTATION = "annotation"  # Reserved for Phase 2
+
+
 # --- Models ---
 
 
@@ -120,12 +119,15 @@ class Book(Base):
     file_format: Mapped[str] = mapped_column(String(10), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     cover_image: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    default_summary_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    )
     status: Mapped[BookStatus] = mapped_column(
         Enum(BookStatus), default=BookStatus.UPLOADING
     )
     quick_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    overall_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    overall_summary_eval: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -185,14 +187,12 @@ class BookSection(Base):
     depth: Mapped[int] = mapped_column(Integer, default=0)
     content_md: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    summary_md: Mapped[str | None] = mapped_column(Text, nullable=True)
-    summary_status: Mapped[SummaryStatus] = mapped_column(
-        Enum(SummaryStatus), default=SummaryStatus.PENDING
+    default_summary_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
     )
-    summary_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    summary_eval: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    summary_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    user_edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    derived_from: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -211,7 +211,6 @@ class BookSection(Base):
 
     __table_args__ = (
         Index("ix_book_sections_book_id_order", "book_id", "order_index"),
-        Index("ix_book_sections_summary_status", "summary_status"),
     )
 
 
@@ -307,6 +306,11 @@ class EvalTrace(Base):
         ForeignKey("book_sections.id", ondelete="CASCADE"),
         nullable=False,
     )
+    summary_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("summaries.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     assertion_name: Mapped[str] = mapped_column(String(100), nullable=False)
     assertion_category: Mapped[str] = mapped_column(String(50), nullable=False)
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -325,6 +329,39 @@ class EvalTrace(Base):
     __table_args__ = (
         Index("ix_eval_traces_section", "section_id"),
         Index("ix_eval_traces_assertion", "assertion_name", "passed"),
+    )
+
+
+class Summary(Base):
+    __tablename__ = "summaries"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    content_type: Mapped[SummaryContentType] = mapped_column(
+        Enum(SummaryContentType), nullable=False
+    )
+    content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    book_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+    )
+    preset_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    facets_used: Mapped[dict] = mapped_column(JSON, nullable=False)
+    prompt_text_sent: Mapped[str] = mapped_column(Text, nullable=False)
+    model_used: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    input_char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    summary_char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    summary_md: Mapped[str] = mapped_column(Text, nullable=False)
+    eval_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_summaries_content", "content_type", "content_id"),
+        Index("ix_summaries_book_id", "book_id"),
+        Index("ix_summaries_created_at", "created_at"),
     )
 
 

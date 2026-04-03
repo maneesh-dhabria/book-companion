@@ -15,7 +15,6 @@ from app.db.models import (
     ProcessingStep,
     SearchIndex,
     SourceType,
-    SummaryStatus,
 )
 
 
@@ -23,11 +22,6 @@ def test_book_status_enum():
     assert BookStatus.UPLOADING == "uploading"
     assert BookStatus.COMPLETED == "completed"
     assert BookStatus.PARSE_FAILED == "parse_failed"
-
-
-def test_summary_status_enum():
-    assert SummaryStatus.PENDING == "pending"
-    assert SummaryStatus.STALE == "stale"
 
 
 def test_processing_step_enum():
@@ -121,3 +115,33 @@ def test_external_reference_model():
     )
     assert ref.url == "https://example.com/review"
     assert ref.source_name == "Example Blog"
+
+
+# --- V1.1 Model Tests ---
+
+
+def test_summary_content_type_enum():
+    from app.db.models import SummaryContentType
+    assert SummaryContentType.SECTION.value == "section"
+    assert SummaryContentType.BOOK.value == "book"
+    assert SummaryContentType.CONCEPT.value == "concept"
+    assert SummaryContentType.ANNOTATION.value == "annotation"
+
+
+def test_summary_model_instantiation():
+    from app.db.models import Summary, SummaryContentType
+    s = Summary(
+        content_type=SummaryContentType.SECTION,
+        content_id=1, book_id=1,
+        facets_used={"style": "bullet_points", "audience": "practitioner",
+                     "compression": "standard", "content_focus": "frameworks_examples"},
+        prompt_text_sent="test prompt", model_used="sonnet",
+        input_char_count=1000, summary_char_count=200, summary_md="# Test summary",
+    )
+    assert s.content_type == SummaryContentType.SECTION
+    assert s.preset_name is None
+
+
+def test_summary_status_enum_removed():
+    import app.db.models as models
+    assert not hasattr(models, "SummaryStatus")

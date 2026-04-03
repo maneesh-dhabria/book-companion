@@ -74,30 +74,16 @@ async def eval_cmd(
                 print_empty_state("No sections found.")
                 return
 
-            has_evals = any(s.summary_eval for s in sections)
-            if not has_evals:
-                print_empty_state(
-                    f"No eval results for \"{book.title}\". "
-                    f"Run: bookcompanion summarize {book_id}"
-                )
-                return
-
+            # TODO: V1.1 — fetch eval data from Summary table eval_json field
             table = Table(title=f"Eval Summary — {book.title}")
             table.add_column("Section")
             table.add_column("Pass Rate")
             table.add_column("Status")
 
             for section in sections:
-                eval_data = section.summary_eval
-                if eval_data and isinstance(eval_data, dict):
-                    passed = eval_data.get("passed", 0)
-                    total = eval_data.get("total", 0)
-                    rate = f"{passed}/{total}"
-                    status = "[green]OK[/green]" if passed == total else "[yellow]Issues[/yellow]"
-                else:
-                    rate = "—"
-                    status = "[dim]Not evaluated[/dim]"
-
+                # TODO: V1.1 — load eval_json from linked Summary
+                rate = "—"
+                status = "[dim]Not evaluated[/dim]"
                 table.add_row(section.title[:50], rate, status)
             console.print(table)
 

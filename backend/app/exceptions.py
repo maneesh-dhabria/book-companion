@@ -31,3 +31,15 @@ class EmbeddingError(BookCompanionError):
 
 class StorageError(BookCompanionError):
     """Database/storage errors."""
+
+
+class PresetError(BookCompanionError):
+    """Preset-related errors (not found, validation, protected)."""
+
+
+class SectionEditError(BookCompanionError):
+    """Section editing errors (merge, split, reorder, delete)."""
+
+
+class SummaryError(BookCompanionError):
+    """Summary-related errors (not found, set-default)."""

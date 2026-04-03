@@ -7,7 +7,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.db.models import Book, BookSection, BookStatus, Image, SummaryStatus
+from app.db.models import Book, BookSection, BookStatus, Image
 from app.db.repositories.book_repo import AuthorRepository, BookRepository
 from app.exceptions import ParseError, StorageError
 from app.services.parser.base import BookParser, ParsedBook
@@ -149,7 +149,6 @@ class BookService:
                 depth=ps.depth,
                 content_md=ps.content_md,
                 content_token_count=len(ps.content_md) // 4,
-                summary_status=SummaryStatus.PENDING,
             )
             self.db.add(section)
             await self.db.flush()
@@ -205,7 +204,6 @@ class BookService:
                 depth=ps.depth,
                 content_md=ps.content_md,
                 content_token_count=len(ps.content_md) // 4,
-                summary_status=SummaryStatus.STALE,
             )
             self.db.add(section)
 

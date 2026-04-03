@@ -108,13 +108,13 @@ class ExportService:
 
         authors = [a.name for a in book.authors] if book.authors else []
 
+        # TODO: V1.1 — load summaries from Summary table
         return {
             "id": book.id,
             "title": book.title,
             "authors": authors,
             "status": book.status.value if book.status else None,
             "quick_summary": book.quick_summary,
-            "overall_summary": book.overall_summary,
             "created_at": book.created_at.isoformat() if book.created_at else None,
             "sections": [
                 {
@@ -122,9 +122,7 @@ class ExportService:
                     "title": s.title,
                     "order_index": s.order_index,
                     "depth": s.depth,
-                    "summary_md": s.summary_md,
-                    "summary_status": s.summary_status.value if s.summary_status else None,
-                    "user_edited": s.user_edited,
+                    "has_summary": s.default_summary_id is not None,
                 }
                 for s in sections
             ],
@@ -187,11 +185,7 @@ class ExportService:
             lines.append("")
 
             # Book summary
-            if book.get("overall_summary"):
-                lines.append("### Book Summary")
-                lines.append(book["overall_summary"])
-                lines.append("")
-            elif book.get("quick_summary"):
+            if book.get("quick_summary"):
                 lines.append("### Quick Summary")
                 lines.append(book["quick_summary"])
                 lines.append("")
@@ -202,14 +196,10 @@ class ExportService:
                 lines.append("")
                 for section in book["sections"]:
                     indent = "  " * section.get("depth", 0)
+                    status = "summarized" if section.get("has_summary") else "pending"
                     lines.append(
-                        f"{indent}- **{section['title']}** "
-                        f"({section.get('summary_status', 'pending')})"
+                        f"{indent}- **{section['title']}** ({status})"
                     )
-                    if section.get("summary_md"):
-                        for sline in section["summary_md"].split("\n"):
-                            lines.append(f"{indent}  {sline}")
-                        lines.append("")
                 lines.append("")
 
             # Concepts

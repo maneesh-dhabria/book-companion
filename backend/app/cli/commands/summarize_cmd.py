@@ -106,7 +106,7 @@ async def summarize(
                 task = progress.add_task("Summarizing...", total=len(sections))
 
                 for section in sections:
-                    if not force and section.summary_status and section.summary_status.value == "completed":
+                    if not force and section.default_summary_id is not None:
                         progress.update(task, advance=1)
                         continue
 
@@ -198,24 +198,28 @@ async def summary(
 
         if section_id is not None:
             # Section summary
+            # TODO: V1.1 — fetch from Summary table via default_summary_id
             sections = [s for s in (book.sections or []) if s.id == section_id]
             if not sections:
                 print_error(f"Section {section_id} not found.")
                 raise typer.Exit(1)
 
             section = sections[0]
-            if not section.summary_md:
+            if not section.default_summary_id:
                 print_empty_state(
                     f"No summary for section '{section.title}' yet. "
                     f"Run: bookcompanion summarize {book_id}"
                 )
                 return
 
-            content = f"## {section.title}\n\n{section.summary_md}"
+            # TODO: V1.1 — load summary_md from Summary table
+            content = f"## {section.title}\n\n(summary available via Summary table)"
         else:
             # Book-level summary
-            if book.overall_summary:
-                content = f"# {book.title}\n\n{book.overall_summary}"
+            # TODO: V1.1 — fetch from Summary table via default_summary_id
+            if book.default_summary_id:
+                # TODO: V1.1 — load summary_md from Summary table
+                content = f"# {book.title}\n\n(summary available via Summary table)"
             elif book.quick_summary:
                 content = f"# {book.title} (Quick Summary)\n\n{book.quick_summary}"
             else:

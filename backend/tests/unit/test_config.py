@@ -50,7 +50,7 @@ def test_default_settings():
     assert settings.search.rrf_k == 60
     assert settings.search.default_limit == 20
     assert settings.storage.max_file_size_mb == 200
-    assert settings.summarization.default_detail_level == "standard"
+    assert settings.summarization.default_preset == "practitioner_bullets"
 
 
 def test_env_var_override():
@@ -70,3 +70,11 @@ def test_config_file_loading(tmp_path):
     os.environ["BOOKCOMPANION_CONFIG"] = str(config_file)
     settings = Settings()
     assert settings.llm.model == "opus"
+
+
+def test_summarization_default_preset():
+    """V1.1: SummarizationConfig uses default_preset instead of default_detail_level."""
+    settings = Settings()
+    assert settings.summarization.default_preset == "practitioner_bullets"
+    assert not hasattr(settings.summarization, "default_detail_level")
+    assert not hasattr(settings.summarization, "prompt_version")

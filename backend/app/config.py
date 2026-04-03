@@ -25,8 +25,7 @@ class LLMConfig(BaseModel):
 
 
 class SummarizationConfig(BaseModel):
-    default_detail_level: str = "standard"  # brief | standard | detailed
-    prompt_version: str = "v1"
+    default_preset: str = "practitioner_bullets"
     eval_prompt_version: str = "v1"
 
 
