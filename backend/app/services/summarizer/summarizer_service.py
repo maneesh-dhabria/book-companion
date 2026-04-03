@@ -1,32 +1,26 @@
 """Summarizer service — section + book summarization orchestration."""
 
 import json
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 import jinja2
 import structlog
-
-from app.db.models import BookSection, Image
-from app.services.summarizer.llm_provider import LLMProvider
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, undefer
+
+from app.db.models import BookSection, Summary, SummaryContentType
+from app.db.repositories.book_repo import BookRepository
+from app.db.repositories.section_repo import SectionRepository
+from app.db.repositories.summary_repo import SummaryRepository
+from app.services.summarizer.llm_provider import LLMProvider
 
 logger = structlog.get_logger()
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
-# Compression ratio targets by detail level (percentage of original)
-COMPRESSION_TARGETS = {
-    "brief": 10,
-    "standard": 20,
-    "detailed": 30,
-}
-
 # Max tokens before sub-chunking is triggered
 MAX_SECTION_TOKENS = 150_000
-
-# Auto-escalation: if eval fails, increase detail level
-RATIO_ESCALATION = {"brief": "standard", "standard": "detailed", "detailed": "detailed"}
 
 
 class SummarizerService:
@@ -38,303 +32,246 @@ class SummarizerService:
         self._jinja_env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(PROMPTS_DIR))
         )
+        self._summary_repo = SummaryRepository(db)
+        self._section_repo = SectionRepository(db)
+        self._book_repo = BookRepository(db)
 
     async def summarize_book(
         self,
         book_id: int,
+        preset_name: str | None = None,
+        facets: dict[str, str] | None = None,
         force: bool = False,
-        detail_level: str | None = None,
-        skip_eval: bool = False,
         model: str | None = None,
-    ) -> None:
-        """Orchestrate full book summarization using map-reduce."""
-        # TODO: V1.1 — this method will be rewritten to use SummaryService + presets
-        detail_level = detail_level or "standard"
-
-        from sqlalchemy import select
-        from app.db.models import Book
-
-        result = await self.db.execute(select(Book).where(Book.id == book_id))
-        book = result.scalar_one_or_none()
-        if not book:
-            raise ValueError(f"Book not found: {book_id}")
-
-        result = await self.db.execute(
-            select(BookSection)
-            .where(BookSection.book_id == book_id)
-            .options(selectinload(BookSection.images).undefer(Image.data))
-            .order_by(BookSection.order_index)
-        )
-        sections = list(result.scalars().all())
-
-        # Map step: summarize each section with cumulative context
-        completed = []
-        for section in sections:
-            # TODO: V1.1 — check default_summary_id instead of removed fields
-            if not force and section.default_summary_id is not None:
-                completed.append(section)
-                continue
-
-            try:
-                summary = await self._summarize_with_retry(
-                    section=section,
-                    prior_sections=completed,
-                    detail_level=detail_level,
-                    skip_eval=skip_eval,
-                )
-                # TODO: V1.1 — store via SummaryService instead of direct field writes
-                logger.info("section_summarized", section_id=section.id)
-            except Exception as e:
-                logger.error("section_summarization_failed", section_id=section.id, error=str(e))
-
-            await self.db.flush()
-            completed.append(section)
-
-        # Reduce step: generate overall book summary
-        book_summary = await self._generate_book_summary(book, completed)
-        # TODO: V1.1 — store via SummaryService instead of book.overall_summary
-        await self.db.commit()
-
-        logger.info("book_summarization_complete", book_id=book_id, sections=len(sections))
-
-    async def summarize_section(
-        self,
-        book_id: int,
-        section_id: int,
-        detail_level: str | None = None,
-        model: str | None = None,
-        force: bool = False,
-    ) -> str:
-        """Summarize a single section."""
-        from sqlalchemy import select
-
-        # TODO: V1.1 — this method will be rewritten to use SummaryService + presets
-        detail_level = detail_level or "standard"
-
-        result = await self.db.execute(
-            select(BookSection)
-            .options(selectinload(BookSection.images).undefer(Image.data))
-            .where(BookSection.id == section_id)
-        )
-        section = result.scalar_one_or_none()
-        if not section:
-            raise ValueError(f"Section not found: {section_id}")
-
-        # Get prior sections for context
-        result = await self.db.execute(
-            select(BookSection)
-            .where(
-                BookSection.book_id == book_id,
-                BookSection.order_index < section.order_index,
-            )
-            .options(selectinload(BookSection.images).undefer(Image.data))
-            .order_by(BookSection.order_index)
-        )
-        prior = list(result.scalars().all())
-
-        summary = await self._summarize_single_section(
-            section=section, prior_sections=prior, detail_level=detail_level
-        )
-        # TODO: V1.1 — store via SummaryService instead of direct field writes
-        await self.db.commit()
-        return summary
-
-    async def quick_summary(self, book_id: int) -> str:
-        """Quick single-pass summary of the entire book."""
-        from sqlalchemy import select
-        from app.db.models import Book
-
-        result = await self.db.execute(select(Book).where(Book.id == book_id))
-        book = result.scalar_one_or_none()
-        if not book:
-            raise ValueError(f"Book not found: {book_id}")
-
-        result = await self.db.execute(
-            select(BookSection)
-            .where(BookSection.book_id == book_id)
-            .order_by(BookSection.order_index)
-        )
-        sections = list(result.scalars().all())
-
-        # Concatenate all content (truncated if too long)
-        all_content = "\n\n".join(
-            f"## {s.title}\n{s.content_md or ''}" for s in sections
-        )
-        # Truncate to ~100K chars (~25K tokens)
-        if len(all_content) > 100_000:
-            all_content = all_content[:100_000] + "\n\n[truncated]"
-
-        response = await self.llm.generate(
-            prompt=f"Provide a comprehensive summary of this book:\n\n{all_content}",
-            model=self.config.llm.quick_summary_model,
-        )
-        book.quick_summary = response.content
-        await self.db.commit()
-        return response.content
-
-    async def _summarize_with_retry(
-        self,
-        section: BookSection,
-        prior_sections: list[BookSection],
-        detail_level: str,
         skip_eval: bool = False,
-        max_retries: int = 2,
-    ) -> str:
-        """Summarize with auto-retry and compression ratio escalation on eval failure."""
-        current_detail = detail_level
-        summary = ""
-        for attempt in range(max_retries + 1):
-            summary = await self._summarize_single_section(
-                section=section,
-                prior_sections=prior_sections,
-                detail_level=current_detail,
-            )
-            if skip_eval:
-                return summary
+        on_section_complete: Callable | None = None,
+        on_section_skip: Callable | None = None,
+        on_section_fail: Callable | None = None,
+    ) -> dict:
+        """Orchestrate full book summarization using map-reduce with faceted prompts."""
+        facets = facets or {}
 
-            # Run eval if evaluator is available
-            try:
-                from app.services.summarizer.evaluator import EvalService
+        sections = await self._section_repo.get_by_book_id(book_id)
+        total = len(sections)
 
-                eval_service = EvalService(self.db, self.llm, self.config)
-                results = await eval_service.evaluate_summary(
-                    section.id, section.content_md or "", summary
+        completed = 0
+        skipped = 0
+        failed: list[int] = []
+        cumulative_parts: list[str] = []
+
+        for i, section in enumerate(sections):
+            # Idempotency: skip if a summary already exists for these facets
+            if not force:
+                existing = await self._summary_repo.get_latest_by_content_and_facets(
+                    SummaryContentType.SECTION, section.id, facets
                 )
-                if eval_service._should_auto_retry(results, attempt, max_retries):
-                    current_detail = RATIO_ESCALATION.get(current_detail, current_detail)
-                    logger.info(
-                        "eval_retry_escalation",
-                        section_id=section.id,
-                        attempt=attempt + 1,
-                        new_detail=current_detail,
+                if existing:
+                    skipped += 1
+                    # Still add to cumulative context
+                    cumulative_parts.append(
+                        f"- {section.title}: {existing.summary_md[:500]}..."
+                        if len(existing.summary_md) > 500
+                        else f"- {section.title}: {existing.summary_md}"
                     )
+                    if on_section_skip:
+                        on_section_skip(i + 1, total, section.title)
                     continue
-            except Exception as e:
-                logger.warning("eval_during_summarization_failed", error=str(e))
 
-            return summary
-        return summary
+            cumulative_context = "\n".join(cumulative_parts)
+
+            try:
+                start = time.monotonic()
+                summary = await self._summarize_single_section(
+                    book_id=book_id,
+                    section=section,
+                    facets=facets,
+                    preset_name=preset_name,
+                    model=model,
+                    cumulative_context=cumulative_context,
+                )
+                elapsed = time.monotonic() - start
+
+                # Set as default summary for this section
+                await self._section_repo.update_default_summary(
+                    section.id, summary.id
+                )
+
+                completed += 1
+                # Add to cumulative context
+                summary_text = summary.summary_md
+                cumulative_parts.append(
+                    f"- {section.title}: {summary_text[:500]}..."
+                    if len(summary_text) > 500
+                    else f"- {section.title}: {summary_text}"
+                )
+
+                if on_section_complete:
+                    comp = (
+                        summary.summary_char_count / summary.input_char_count
+                        if summary.input_char_count
+                        else 0
+                    )
+                    on_section_complete(
+                        i + 1, total, section.title, elapsed, comp
+                    )
+
+                logger.info(
+                    "section_summarized",
+                    section_id=section.id,
+                    book_id=book_id,
+                )
+            except Exception as e:
+                failed.append(section.id)
+                error_msg = str(e)
+                logger.error(
+                    "section_summarization_failed",
+                    section_id=section.id,
+                    error=error_msg,
+                )
+                if on_section_fail:
+                    on_section_fail(i + 1, total, section.title, error_msg)
+
+        await self.db.commit()
+
+        return {
+            "completed": completed,
+            "skipped": skipped,
+            "failed": failed,
+        }
 
     async def _summarize_single_section(
         self,
+        book_id: int,
         section: BookSection,
-        prior_sections: list[BookSection],
-        detail_level: str,
-    ) -> str:
-        """Core LLM call to summarize a single section."""
-        cumulative_context = self._build_cumulative_context(prior_sections)
-        compression_target = self._get_compression_target(detail_level)
+        facets: dict[str, str],
+        preset_name: str | None,
+        model: str | None,
+        cumulative_context: str,
+    ) -> Summary:
+        """Core LLM call to summarize a single section. Returns persisted Summary."""
+        book = await self._book_repo.get_by_id(book_id)
+        author = (
+            ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
+        )
 
-        content = section.content_md or ""
+        image_captions = (
+            await self._get_image_captions(section) if self.captioner else []
+        )
 
-        # Get image captions for this section
-        image_captions = await self._get_image_captions(section)
+        template = self._jinja_env.get_template("base/summarize_section.txt")
+        prompt = template.render(
+            book_title=book.title,
+            author=author,
+            section_title=section.title,
+            section_content=section.content_md or "",
+            cumulative_context=cumulative_context,
+            image_captions=image_captions,
+            **facets,
+        )
 
-        # Handle long sections via sub-chunking
-        token_estimate = len(content) // 4
-        if token_estimate > MAX_SECTION_TOKENS:
-            return await self._summarize_long_section(
-                section, content, cumulative_context, compression_target, detail_level
-            )
+        effective_model = model or self.config.llm.model
+        start = time.monotonic()
+        response = await self.llm.generate(prompt, model=effective_model)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
 
-        try:
-            template = self._jinja_env.get_template("summarize_section_v1.txt")
-            prompt = template.render(
-                section_title=section.title,
-                section_content=content,
-                cumulative_context=cumulative_context,
-                compression_target=compression_target,
-                detail_level=detail_level,
-                image_captions=image_captions,
-            )
-        except jinja2.TemplateNotFound:
-            # Fallback prompt if template not found
-            prompt = (
-                f"Summarize the following section at {compression_target}% compression.\n\n"
-                f"Section: {section.title}\n\n"
-                f"Prior context:\n{cumulative_context}\n\n"
-                f"Content:\n{content}\n\n"
-                f"Respond with JSON containing: key_concepts (list), detailed_summary (string), "
-                f"frameworks (list), key_quotes (list), concepts (list)."
-            )
+        summary_text = self._extract_summary_text(response)
 
-        response = await self.llm.generate(
-            prompt=prompt,
-            json_schema={
-                "type": "object",
-                "properties": {
-                    "key_concepts": {"type": "array", "items": {"type": "string"}},
-                    "detailed_summary": {"type": "string"},
-                    "frameworks": {"type": "array", "items": {"type": "string"}},
-                    "key_quotes": {"type": "array", "items": {"type": "string"}},
-                    "concepts": {"type": "array", "items": {"type": "object"}},
-                },
-                "required": ["key_concepts", "detailed_summary"],
+        summary = Summary(
+            content_type=SummaryContentType.SECTION,
+            content_id=section.id,
+            book_id=book_id,
+            preset_name=preset_name,
+            facets_used=facets,
+            prompt_text_sent=prompt,
+            model_used=effective_model,
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            input_char_count=len(section.content_md or ""),
+            summary_char_count=len(summary_text),
+            summary_md=summary_text,
+            latency_ms=elapsed_ms,
+        )
+        return await self._summary_repo.create(summary)
+
+    async def _generate_book_summary(
+        self,
+        book_id: int,
+        facets: dict[str, str],
+        preset_name: str | None,
+        model: str | None,
+    ) -> Summary:
+        """Reduce step: combine section summaries into overall book summary."""
+        book = await self._book_repo.get_by_id(book_id)
+        sections = await self._section_repo.get_by_book_id(book_id)
+        author = (
+            ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
+        )
+
+        section_data = []
+        for s in sections:
+            if s.default_summary_id:
+                summary = await self._summary_repo.get_by_id(s.default_summary_id)
+                if summary:
+                    section_data.append(
+                        {"title": s.title, "summary": summary.summary_md}
+                    )
+
+        template = self._jinja_env.get_template("base/summarize_book.txt")
+        prompt = template.render(
+            book_title=book.title,
+            author=author,
+            section_count=len(section_data),
+            sections=section_data,
+            **facets,
+        )
+
+        effective_model = model or self.config.llm.model
+        start = time.monotonic()
+        response = await self.llm.generate(prompt, model=effective_model)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+
+        summary_text = self._extract_summary_text(response)
+        combined_input = "\n".join(s["summary"] for s in section_data)
+
+        summary = Summary(
+            content_type=SummaryContentType.BOOK,
+            content_id=book_id,
+            book_id=book_id,
+            preset_name=preset_name,
+            facets_used=facets,
+            prompt_text_sent=prompt,
+            model_used=effective_model,
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            input_char_count=len(combined_input),
+            summary_char_count=len(summary_text),
+            summary_md=summary_text,
+            latency_ms=elapsed_ms,
+        )
+        saved = await self._summary_repo.create(summary)
+        await self._book_repo.update_default_summary(book_id, saved.id)
+        return saved
+
+    async def quick_summary(self, book_id: int) -> None:
+        """Deprecated: runs summarize with executive_brief preset."""
+        await self.summarize_book(
+            book_id=book_id,
+            preset_name="executive_brief",
+            facets={
+                "style": "bullet_points",
+                "audience": "executive",
+                "compression": "brief",
+                "content_focus": "key_concepts",
             },
         )
 
+    def _extract_summary_text(self, response) -> str:
+        """Parse LLM response to extract the summary text."""
         try:
             parsed = json.loads(response.content)
             return parsed.get("detailed_summary", response.content)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, AttributeError):
             return response.content
-
-    async def _summarize_long_section(
-        self,
-        section: BookSection,
-        content: str,
-        cumulative_context: str,
-        compression_target: int,
-        detail_level: str,
-    ) -> str:
-        """Handle sections > 150K tokens by sub-chunking."""
-        # Split into chunks of ~100K chars (~25K tokens)
-        chunk_size = 100_000
-        chunks = [content[i : i + chunk_size] for i in range(0, len(content), chunk_size)]
-
-        sub_summaries = []
-        for i, chunk in enumerate(chunks):
-            prompt = (
-                f"Summarize part {i + 1}/{len(chunks)} of section '{section.title}' "
-                f"at {compression_target}% compression.\n\n"
-                f"Content:\n{chunk}"
-            )
-            response = await self.llm.generate(prompt=prompt)
-            sub_summaries.append(response.content)
-
-        # Merge sub-summaries
-        merge_prompt = (
-            f"Merge these {len(sub_summaries)} partial summaries of section "
-            f"'{section.title}' into one coherent summary:\n\n"
-            + "\n\n---\n\n".join(sub_summaries)
-        )
-        response = await self.llm.generate(prompt=merge_prompt)
-        return response.content
-
-    def _build_cumulative_context(self, prior_sections: list) -> str:
-        """Build compact context from prior section summaries, including key image refs."""
-        if not prior_sections:
-            return ""
-
-        lines = []
-        for s in prior_sections:
-            title = getattr(s, "title", "Untitled")
-            summary = getattr(s, "summary_md", None) or ""
-            if len(summary) > 500:
-                summary = summary[:500] + "..."
-            lines.append(f"- {title}: {summary}")
-
-            # Include key image refs from prior sections
-            images = getattr(s, "images", None) or []
-            for img in images:
-                if getattr(img, "relevance", None) == "key" and getattr(img, "caption", None):
-                    lines.append(f"  [Image: {img.caption}]")
-
-        return "\n".join(lines)
-
-    def _get_compression_target(self, detail_level: str) -> int:
-        """Map detail level to compression ratio percentage."""
-        return COMPRESSION_TARGETS.get(detail_level, 20)
 
     async def _get_image_captions(self, section) -> list[dict]:
         """Get image captions for a section. Captions uncaptioned images if captioner available.
@@ -412,57 +349,3 @@ class SummarizerService:
                         })
 
         return captions
-
-    async def _generate_book_summary(self, book, sections: list[BookSection]) -> str:
-        """Reduce step: combine section summaries into overall book summary."""
-        # TODO: V1.1 — fetch summaries from Summary table instead of section fields
-        section_summaries = []
-        for s in sections:
-            summary_md = getattr(s, "summary_md", None)
-            if summary_md:
-                section_summaries.append(f"## {s.title}\n{summary_md}")
-
-        combined = "\n\n".join(section_summaries)
-
-        try:
-            template = self._jinja_env.get_template("summarize_book_v1.txt")
-            authors = getattr(book, "authors", None) or []
-            author_str = ", ".join(
-                a.name for a in authors
-            ) if authors else "Unknown"
-            prompt = template.render(
-                book_title=book.title,
-                book_author=author_str,
-                all_section_summaries=combined,
-                compression_target=20,
-            )
-        except jinja2.TemplateNotFound:
-            prompt = (
-                f"Create an overall summary of the book '{book.title}' "
-                f"from these section summaries:\n\n{combined}"
-            )
-
-        response = await self.llm.generate(prompt=prompt)
-        return response.content
-
-    async def generate_book_summary(self, book_id: int) -> str:
-        """Generate book-level summary from section summaries."""
-        from sqlalchemy import select
-        from app.db.models import Book
-
-        result = await self.db.execute(select(Book).where(Book.id == book_id))
-        book = result.scalar_one_or_none()
-        if not book:
-            raise ValueError(f"Book not found: {book_id}")
-
-        result = await self.db.execute(
-            select(BookSection)
-            .where(BookSection.book_id == book_id)
-            .options(selectinload(BookSection.images).undefer(Image.data))
-            .order_by(BookSection.order_index)
-        )
-        sections = list(result.scalars().all())
-        summary = await self._generate_book_summary(book, sections)
-        # TODO: V1.1 — store via SummaryService instead of book.overall_summary
-        await self.db.commit()
-        return summary
