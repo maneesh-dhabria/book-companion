@@ -32,6 +32,14 @@ class EvalTraceRepository:
         result = await self.session.execute(query.order_by(EvalTrace.created_at.desc()))
         return list(result.scalars().all())
 
+    async def get_by_summary(self, summary_id: int) -> list[EvalTrace]:
+        result = await self.session.execute(
+            select(EvalTrace)
+            .where(EvalTrace.summary_id == summary_id)
+            .order_by(EvalTrace.assertion_category, EvalTrace.assertion_name)
+        )
+        return list(result.scalars().all())
+
     async def get_aggregated_results(
         self, section_id: int | None = None
     ) -> list[tuple[str, str, int, int]]:

@@ -1,6 +1,6 @@
 """Book and Author repository — data access layer."""
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -59,6 +59,14 @@ class BookRepository:
         book = await self.get_by_id(book_id)
         if book:
             book.status = status
+            await self.session.flush()
+
+    async def update_default_summary(
+        self, book_id: int, summary_id: int | None
+    ) -> None:
+        book = await self.get_by_id(book_id)
+        if book:
+            book.default_summary_id = summary_id
             await self.session.flush()
 
 
