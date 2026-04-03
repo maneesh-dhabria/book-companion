@@ -3081,6 +3081,12 @@ summary_app = typer.Typer(help="Summary management commands.")
 console = Console()
 
 
+# NOTE: Typer callback with invoke_without_command=True + @async_command decorator.
+# This pattern allows `bookcompanion summary <book_id>` as shorthand while still supporting
+# subcommands like `summary list`, `summary compare`, etc.
+# If this pattern causes issues with Typer (e.g., the callback runs before subcommands),
+# fallback: rename this to `@summary_app.command("read")` and update help text to use
+# `bookcompanion summary read <book_id> [section_id]` instead.
 @summary_app.callback(invoke_without_command=True)
 @async_command
 async def summary_default(
@@ -3867,9 +3873,14 @@ async def add(
 
             console.print(f"{indent}{i+1}. {s.title:<35} {chars:>6,} chars  ~{tokens:,} tokens")
 
-        # Quality checks
+        # Quality checks and pre-save editing REPL (spec 5.1, 7.2)
         if quality_svc and section_dicts:
             issues = quality_svc.check_sections(section_dicts)
+            # Display quality flags inline with structure
+            for issue in issues:
+                severity_icon = "\\u2717" if issue.severity == "error" else "\\u26a0"
+                console.print(f"  {severity_icon} {issue.check}: {issue.message}")
+
             if issues:
                 actions = quality_svc.suggested_actions(issues)
                 if actions:
@@ -3882,13 +3893,122 @@ async def add(
                         default="Y"
                     ).strip().lower()
 
+                    # Build in-memory section list for editing
+                    from app.services.section_edit_service import SectionEditService, SectionItem
+                    edit_svc = SectionEditService()
+                    mem_sections = [
+                        SectionItem(
+                            index=i+1, id=s.id, title=s.title,
+                            content=s.content_md or "", depth=s.depth,
+                            char_count=len(s.content_md or ""),
+                        )
+                        for i, s in enumerate(sections)
+                    ]
+                    edit_svc.init_memory_mode(mem_sections)
+
                     if choice in ("y", "yes", ""):
-                        # Apply suggestions (delete non-content, merge short)
-                        # ... apply logic using SectionEditService in memory mode ...
-                        pass
+                        # Auto-apply: delete non-content, merge short sections
+                        delete_indices = [
+                            i.section_index for i in issues
+                            if i.suggested_action == "delete" and i.severity in ("error", "warning")
+                        ]
+                        if delete_indices:
+                            edit_svc.delete(delete_indices)
+                            console.print(f"\\u2713 Deleted {len(delete_indices)} sections.")
+
+                        console.print(f"\n  [Updated structure: {len(edit_svc.get_sections())} sections]")
+                        # Fall through to done
+
                     elif choice == "customize":
-                        # Enter REPL
-                        _run_editing_repl(sections, svc)
+                        # Enter interactive REPL
+                        from app.services.section_edit_service import parse_command
+                        while True:
+                            try:
+                                raw = input("\nEdit sections> ").strip()
+                            except (EOFError, KeyboardInterrupt):
+                                break
+                            if not raw:
+                                continue
+                            try:
+                                cmd = parse_command(raw)
+                            except Exception as e:
+                                print_error(str(e))
+                                continue
+                            if cmd.action == "done":
+                                break
+                            if cmd.action == "show":
+                                for s in edit_svc.get_sections():
+                                    indent = "  " * (s.depth + 1)
+                                    console.print(f"{indent}{s.index}. {s.title:<35} {s.char_count:>6,} chars")
+                                continue
+                            if cmd.action == "undo":
+                                if edit_svc.undo():
+                                    print_success("Undone.")
+                                else:
+                                    print_error("Nothing to undo.")
+                                continue
+                            try:
+                                if cmd.action == "merge":
+                                    edit_svc.merge(cmd.indices, cmd.title)
+                                    print_success(f"Merged sections {cmd.indices}.")
+                                elif cmd.action == "split" and cmd.split_mode == "char":
+                                    edit_svc.split_at_char(cmd.indices[0], cmd.split_value)
+                                    print_success(f"Split section {cmd.indices[0]}.")
+                                elif cmd.action == "split" and cmd.split_mode == "paragraph":
+                                    edit_svc.split_at_paragraph(cmd.indices[0], cmd.split_value)
+                                    print_success(f"Split section {cmd.indices[0]}.")
+                                elif cmd.action == "split" and cmd.split_mode == "heading":
+                                    headings = edit_svc.detect_headings(cmd.indices[0])
+                                    if not headings:
+                                        print_error("No sub-headings detected.")
+                                        continue
+                                    console.print(f"Detected sub-headings:")
+                                    for j, (h, pos) in enumerate(headings, 1):
+                                        console.print(f"  {j}. \"{h}\" (at char {pos:,})")
+                                    split_choice = typer.prompt(
+                                        "Split at all headings? [Y/n] or enter heading numbers (e.g., 1,3)",
+                                        default="Y"
+                                    ).strip()
+                                    if split_choice.lower() in ("y", "yes", ""):
+                                        edit_svc.split_at_headings(cmd.indices[0])
+                                    else:
+                                        selected = [int(x) for x in split_choice.split(",") if x.strip().isdigit()]
+                                        positions = [headings[i-1][1] for i in selected if i <= len(headings)]
+                                        edit_svc.split_at_headings(cmd.indices[0], positions)
+                                    print_success(f"Split section {cmd.indices[0]}.")
+                                elif cmd.action == "move":
+                                    edit_svc.move(cmd.indices[0], cmd.target_after)
+                                    print_success(f"Moved section {cmd.indices[0]}.")
+                                elif cmd.action == "delete":
+                                    count = edit_svc.delete(cmd.indices)
+                                    print_success(f"Deleted {count} section(s).")
+                            except Exception as e:
+                                print_error(str(e))
+
+                    # Apply in-memory edits back to DB
+                    # Delete removed sections, create new merged/split sections
+                    final_sections = edit_svc.get_sections()
+                    original_ids = {s.id for s in sections}
+                    remaining_ids = {s.id for s in final_sections if s.id is not None}
+                    deleted_ids = original_ids - remaining_ids
+                    if deleted_ids:
+                        from app.db.repositories.section_repo import SectionRepository
+                        section_repo = SectionRepository(svc["session"])
+                        await section_repo.delete_by_ids(list(deleted_ids))
+
+                    # Create new sections (from merge/split — have id=None)
+                    for s in final_sections:
+                        if s.id is None:
+                            new_section = BookSection(
+                                book_id=book.id, title=s.title, order_index=s.index - 1,
+                                depth=s.depth, content_md=s.content, derived_from=s.derived_from,
+                                content_token_count=len(s.content) // 4,
+                            )
+                            svc["session"].add(new_section)
+
+                    await svc["session"].flush()
+
+        console.print(f"\nEdit sections> done")
 
         # ... rest of add logic (save, quick summary alias) ...
 
@@ -3984,24 +4104,83 @@ async def edit_sections(
                     target_section = section_list[cmd.indices[0] - 1]
 
                     if cmd.split_mode == "heading":
-                        headings = section_edit.detect_headings_from_content(target_section.content_md or "")
+                        # Detect sub-headings via regex (spec 5.3)
+                        import re as _re
+                        content = target_section.content_md or ""
+                        headings = [
+                            (m.group(1), m.start())
+                            for m in _re.finditer(r"^#{2,6}\s+(.+)$", content, _re.MULTILINE)
+                        ]
                         if not headings:
-                            print_error("No sub-headings detected. Use --at-char or --at-paragraph.")
+                            print_error(
+                                f"No sub-headings detected in section #{cmd.indices[0]}. "
+                                "Use --at-char <position> or --at-paragraph <position> to split manually."
+                            )
                             continue
-                        # Display headings for selection
-                        console.print(f"Detected sub-headings:")
+
+                        console.print(f'Detected sub-headings in section #{cmd.indices[0]} "{target_section.title}":')
                         for j, (h, pos) in enumerate(headings, 1):
                             console.print(f"  {j}. \"{h}\" (at char {pos:,})")
-                        # ... heading selection ...
+
+                        split_choice = typer.prompt(
+                            "Split at all headings? [Y/n] or enter heading numbers (e.g., 1,3)",
+                            default="Y"
+                        ).strip()
+
+                        if split_choice.lower() in ("y", "yes", ""):
+                            # Split at all headings
+                            positions = [0] + [pos for _, pos in headings]
+                        else:
+                            selected = [int(x) for x in split_choice.split(",") if x.strip().isdigit()]
+                            positions = [0] + [headings[i-1][1] for i in selected if i <= len(headings)]
+
+                        # Create new sections from split positions
+                        new_sections = []
+                        for k, start in enumerate(positions):
+                            end = positions[k + 1] if k + 1 < len(positions) else len(content)
+                            sub_content = content[start:end].strip()
+                            sub_title = headings[k-1][0] if k > 0 and k <= len(headings) else f"{target_section.title} (Intro)"
+                            ns = BookSection(
+                                book_id=book_id, title=sub_title,
+                                order_index=target_section.order_index + k,
+                                depth=target_section.depth, content_md=sub_content,
+                                content_token_count=len(sub_content) // 4,
+                                derived_from=[target_section.id],
+                            )
+                            new_sections.append(await section_edit._section_repo.create(ns))
+
+                        await section_edit._section_repo.delete_by_ids([target_section.id])
+                        await section_edit._section_repo.reindex_order(book_id)
+                        await svc["session"].commit()
+                        print_success(f"Split into {len(new_sections)} sections.")
+                        modified_count += 1
+
                     elif cmd.split_mode == "char":
                         results = await section_edit.db_split_at_char(book_id, target_section.id, cmd.split_value)
                         await svc["session"].commit()
                         print_success(f"Split into {len(results)} sections.")
                         modified_count += 1
+
                     elif cmd.split_mode == "paragraph":
-                        # Find nearest paragraph boundary
-                        # ... paragraph split logic ...
-                        pass
+                        # Find nearest paragraph boundary (spec 5.4)
+                        content = target_section.content_md or ""
+                        import re as _re
+                        best_pos = None
+                        best_dist = float("inf")
+                        for m in _re.finditer(r"\n\n", content):
+                            dist = abs(m.start() - cmd.split_value)
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_pos = m.end()
+
+                        if best_pos is None or best_dist > 500:
+                            console.print("[yellow]No paragraph boundary near target position. Splitting at exact position.[/yellow]")
+                            best_pos = cmd.split_value
+
+                        results = await section_edit.db_split_at_char(book_id, target_section.id, best_pos)
+                        await svc["session"].commit()
+                        print_success(f"Split into {len(results)} sections.")
+                        modified_count += 1
 
                 elif cmd.action == "delete":
                     if not typer.confirm(f"Delete sections {cmd.indices}?", default=True):
