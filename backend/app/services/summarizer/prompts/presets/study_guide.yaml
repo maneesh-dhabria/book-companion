@@ -1,0 +1,8 @@
+name: Study Guide
+description: Cornell notes for active learning
+system: true
+facets:
+  style: cornell_notes
+  audience: practitioner
+  compression: standard
+  content_focus: full_coverage

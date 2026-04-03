@@ -1,0 +1,8 @@
+name: Tweet Thread
+description: 280-char tweet-sized takeaways
+system: true
+facets:
+  style: tweet_thread
+  audience: executive
+  compression: brief
+  content_focus: key_concepts

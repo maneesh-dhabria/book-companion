@@ -1,0 +1,2 @@
+## Audience
+Write for a working professional who wants to apply these ideas. Prioritize actionable frameworks, concrete examples, and implementation steps over theoretical background.

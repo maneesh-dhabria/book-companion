@@ -1,0 +1,2 @@
+## Audience
+Write for a decision-maker with limited time. Lead with conclusions and strategic implications. Provide just enough supporting evidence to justify claims. Skip implementation details.

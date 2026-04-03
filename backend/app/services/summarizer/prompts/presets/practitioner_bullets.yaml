@@ -1,0 +1,8 @@
+name: Practitioner Bullets
+description: Actionable frameworks in scannable bullet format
+system: true
+facets:
+  style: bullet_points
+  audience: practitioner
+  compression: standard
+  content_focus: frameworks_examples

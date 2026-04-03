@@ -1,0 +1,2 @@
+## Output Format
+Write the summary as a dialogue between a Host and an Expert. The Host asks clarifying questions and highlights key takeaways. The Expert explains concepts, provides examples, and connects ideas. Use natural conversational tone.

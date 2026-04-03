@@ -1,0 +1,26 @@
+You are summarizing "{{ book_title }}" by {{ author }}.
+Section: "{{ section_title }}"
+
+{% include "fragments/audience/" + audience + ".txt" %}
+{% include "fragments/content_focus/" + content_focus + ".txt" %}
+{% include "fragments/style/" + style + ".txt" %}
+{% include "fragments/compression/" + compression + ".txt" %}
+
+{% if cumulative_context %}
+## Context from prior sections
+{{ cumulative_context }}
+{% endif %}
+
+{% if image_captions %}
+## Visual Content
+The section contains the following images/diagrams. Integrate key images into your summary. When referencing an image, use: ![brief description](image:ID).
+
+{% for img in image_captions %}
+- [{{ img.relevance }}] (image:{{ img.image_id }}) {{ img.caption }}
+{% endfor %}
+{% endif %}
+
+## Source content
+{{ section_content }}
+
+Output as JSON matching the provided schema.

@@ -1,0 +1,2 @@
+## Output Format
+Structure the summary as an indented outline representing a mind map. The central topic is the section title. First-level items are major themes. Sub-levels are supporting details, examples, and connections. Use consistent indentation with dashes.

@@ -1,0 +1,15 @@
+You are creating a book-level summary of "{{ book_title }}" by {{ author }}.
+This summary synthesizes {{ section_count }} section summaries below.
+
+{% include "fragments/audience/" + audience + ".txt" %}
+{% include "fragments/content_focus/" + content_focus + ".txt" %}
+{% include "fragments/style/" + style + ".txt" %}
+{% include "fragments/compression/" + compression + ".txt" %}
+
+## Section summaries
+{% for section in sections %}
+### {{ section.title }}
+{{ section.summary }}
+{% endfor %}
+
+Output as JSON matching the provided schema.

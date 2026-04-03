@@ -1,0 +1,8 @@
+name: Academic Detailed
+description: Comprehensive academic analysis with full coverage
+system: true
+facets:
+  style: narrative
+  audience: academic
+  compression: detailed
+  content_focus: full_coverage

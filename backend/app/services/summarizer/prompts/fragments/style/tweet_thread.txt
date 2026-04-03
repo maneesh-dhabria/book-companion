@@ -1,0 +1,2 @@
+## Output Format
+Write the summary as a numbered tweet thread. Each tweet must be under 280 characters. Start with a hook tweet that captures the core idea. End with a takeaway tweet. Use plain language — no jargon unless it's the author's key term.

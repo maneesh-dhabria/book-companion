@@ -1,0 +1,2 @@
+## Length Target
+Aim for approximately 30% of the source length. Preserve nuance, include multiple examples per concept, and capture the author's reasoning chains.

@@ -1,0 +1,2 @@
+## Output Format
+Structure your summary as a bulleted list. Use top-level bullets for major points and nested bullets for supporting details. Each bullet should be a complete thought, scannable without reading surrounding context.

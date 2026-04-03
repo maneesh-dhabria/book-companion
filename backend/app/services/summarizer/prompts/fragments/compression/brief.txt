@@ -1,0 +1,2 @@
+## Length Target
+Aim for approximately 10% of the source length. Include only the most essential points. Omit examples unless they are central to the argument.

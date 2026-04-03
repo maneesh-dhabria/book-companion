@@ -1,0 +1,8 @@
+name: Executive Brief
+description: Key decisions and bottom-line takeaways
+system: true
+facets:
+  style: bullet_points
+  audience: executive
+  compression: brief
+  content_focus: key_concepts
