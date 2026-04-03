@@ -1910,8 +1910,9 @@ Key logic changes:
 - Create `Summary` row (not write to `section.summary_md`)
 - Set `section.default_summary_id` to the new summary ID
 - Track timing in `latency_ms`
+- **Error handling (spec 3.9):** If a section fails (LLM timeout, parse error), log the error, call `on_section_fail` callback, **continue** to next section. Do NOT abort the run. Track failed section IDs in `stats["failed"]`. At end, generate book-level summary with available sections (note missing ones). Failed sections retain their previous `default_summary_id`.
 - After all sections, call `_generate_book_summary()` with same facets
-- Return stats dict
+- Return stats dict `{"completed": int, "skipped": int, "failed": list[int]}`
 
 - [ ] **Step 3: Rewrite `_summarize_single_section()` to return `Summary` object**
 
@@ -3383,10 +3384,15 @@ from app.cli.commands.read_cmd import read
 
 app.add_typer(summary_app, name="summary")
 app.add_typer(preset_app, name="preset", help="Manage summarization presets.")
+
+# Replace old read command (books.read) with new read_cmd.read
+# OLD: app.command("read")(books.read)
+# NEW:
 app.command("read")(read)
 
 # Keep existing: app.command("summarize")(summarize_cmd.summarize)
 # Remove: app.command("summary")(summarize_cmd.summary)
+# Note: the old books.read function can be removed from books.py
 ```
 
 - [ ] **Step 5: Commit**
@@ -3486,8 +3492,32 @@ async def summarize(
             # ... delegate to summarizer with facets
             return
 
-        # Full book mode with spec-compliant progress display
+        # Soft gate: warn on sections with quality issues (spec 7.3)
         sections = book.sections or []
+        quality_svc = svc.get("quality")
+        if quality_svc and not force:
+            section_dicts = [
+                {"index": i+1, "title": s.title, "content": s.content_md or "",
+                 "depth": s.depth, "image_count": len(s.images) if hasattr(s, 'images') and s.images else 0}
+                for i, s in enumerate(sections)
+            ]
+            issues = quality_svc.check_sections(section_dicts)
+            for issue in issues:
+                if issue.severity == "error":
+                    console.print(f"  [red]Auto-skipping section #{issue.section_index} "
+                                  f'"{issue.section_title}" ({issue.message})[/red]')
+                elif issue.severity == "warning":
+                    response = typer.prompt(
+                        f'\\u26a0 Section #{issue.section_index} "{issue.section_title}" '
+                        f"has quality warnings ({issue.message}).\\n"
+                        f"Skip this section? [Y/n/force-all]",
+                        default="Y"
+                    ).strip().lower()
+                    if response == "force-all":
+                        break  # Stop asking, summarize everything
+                    # If Y, mark section for skip (implementation detail)
+
+        # Full book mode with spec-compliant progress display
         console.print(f'Summarizing {len(sections)} sections with preset "{preset_label}"...')
 
         stats = await summarizer.summarize_book(
