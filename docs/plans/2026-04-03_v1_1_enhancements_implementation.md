@@ -1882,6 +1882,16 @@ def __init__(self, db: AsyncSession, llm: LLMProvider, config, captioner=None):
 
 - [ ] **Step 2: Rewrite `summarize_book()` method**
 
+Add new imports at top of file:
+
+```python
+from typing import Callable
+from app.db.models import BookSection, Summary, SummaryContentType
+from app.db.repositories.summary_repo import SummaryRepository
+from app.db.repositories.section_repo import SectionRepository
+from app.db.repositories.book_repo import BookRepository
+```
+
 The new signature accepts preset/facets instead of `detail_level`:
 
 ```python
@@ -2766,7 +2776,19 @@ Remove any writes to `book.overall_summary` or `book.overall_summary_eval`.
 
 - [ ] **Step 4: Update `ExportService` — read from `summaries` table**
 
-In `export_service.py`, change `_collect_book_data()` to read summaries from the `summaries` table:
+In `export_service.py`, add `SummaryRepository` to `__init__`:
+
+```python
+from app.db.repositories.summary_repo import SummaryRepository
+
+class ExportService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+        self.book_repo = BookRepository(session)
+        self.summary_repo = SummaryRepository(session)  # NEW
+```
+
+Then change `_collect_book_data()` to read summaries from the `summaries` table:
 
 ```python
 # Replace section summary_md references:
@@ -2801,7 +2823,35 @@ elif book.quick_summary:
     book_summary = book.quick_summary  # Legacy fallback
 ```
 
-- [ ] **Step 5: Update `deps.py` — wire new services**
+- [ ] **Step 5: Add `reindex_summary()` to `SearchService`**
+
+In `backend/app/services/search_service.py`, add a method for re-embedding when `set-default` changes the active summary:
+
+```python
+async def reindex_summary(self, section_id: int, summary_text: str, book_id: int) -> None:
+    """Re-embed search index entries for a section's summary.
+    Called synchronously after set-default changes the active summary."""
+    from app.db.models import SourceType
+    # Delete old SECTION_SUMMARY entries for this section
+    await self.search_repo.delete_by_source(SourceType.SECTION_SUMMARY, section_id)
+    # Re-index with new summary text
+    chunks = self.embedding.chunk_text(summary_text)
+    entries = []
+    for i, chunk in enumerate(chunks):
+        embedding = await self.embedding.embed(chunk)
+        entries.append(SearchIndex(
+            source_type=SourceType.SECTION_SUMMARY,
+            source_id=section_id,
+            book_id=book_id,
+            chunk_text=chunk,
+            chunk_index=i,
+            embedding=embedding,
+        ))
+    if entries:
+        await self.search_repo.create_bulk(entries)
+```
+
+- [ ] **Step 6: Update `deps.py` — wire new services**
 
 Add to `get_services()`:
 
