@@ -5,6 +5,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -12,7 +13,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     LargeBinary,
     String,
     Text,
@@ -87,7 +87,7 @@ class AnnotationType(str, enum.Enum):
 class SummaryContentType(str, enum.Enum):
     SECTION = "section"
     BOOK = "book"
-    CONCEPT = "concept"        # Reserved for Phase 2
+    CONCEPT = "concept"  # Reserved for Phase 2
     ANNOTATION = "annotation"  # Reserved for Phase 2
 
 
@@ -100,13 +100,9 @@ class Author(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    books: Mapped[list["Book"]] = relationship(
-        secondary="book_authors", back_populates="authors"
-    )
+    books: Mapped[list["Book"]] = relationship(secondary="book_authors", back_populates="authors")
 
 
 class Book(Base):
@@ -124,21 +120,15 @@ class Book(Base):
         ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
-    status: Mapped[BookStatus] = mapped_column(
-        Enum(BookStatus), default=BookStatus.UPLOADING
-    )
+    status: Mapped[BookStatus] = mapped_column(Enum(BookStatus), default=BookStatus.UPLOADING)
     quick_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    authors: Mapped[list["Author"]] = relationship(
-        secondary="book_authors", back_populates="books"
-    )
+    authors: Mapped[list["Author"]] = relationship(secondary="book_authors", back_populates="books")
     sections: Mapped[list["BookSection"]] = relationship(
         back_populates="book", cascade="all, delete-orphan"
     )
@@ -193,9 +183,7 @@ class BookSection(Base):
         nullable=True,
     )
     derived_from: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     book: Mapped["Book"] = relationship(back_populates="sections")
     parent: Mapped["BookSection | None"] = relationship(remote_side="BookSection.id")
@@ -209,9 +197,7 @@ class BookSection(Base):
         "Annotation.content_type.in_(['section_content', 'section_summary']))",
     )
 
-    __table_args__ = (
-        Index("ix_book_sections_book_id_order", "book_id", "order_index"),
-    )
+    __table_args__ = (Index("ix_book_sections_book_id_order", "book_id", "order_index"),)
 
 
 class Image(Base):
@@ -233,9 +219,7 @@ class Image(Base):
     relevance: Mapped[str | None] = mapped_column(String(20), nullable=True)
     alt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     section: Mapped["BookSection"] = relationship(back_populates="images")
 
@@ -253,9 +237,7 @@ class SearchIndex(Base):
     chunk_index: Mapped[int] = mapped_column(Integer, default=0)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
     tsvector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         Index("ix_search_index_source", "source_type", "source_id"),
@@ -284,12 +266,8 @@ class ProcessingJob(Base):
     )
     progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     book: Mapped["Book"] = relationship(back_populates="processing_jobs")
@@ -322,9 +300,7 @@ class EvalTrace(Base):
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         Index("ix_eval_traces_section", "section_id"),
@@ -337,7 +313,8 @@ class Summary(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     content_type: Mapped[SummaryContentType] = mapped_column(
-        Enum(SummaryContentType), nullable=False
+        Enum(SummaryContentType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
     )
     content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     book_id: Mapped[int] = mapped_column(
@@ -354,9 +331,7 @@ class Summary(Base):
     summary_md: Mapped[str] = mapped_column(Text, nullable=False)
     eval_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         Index("ix_summaries_content", "content_type", "content_id"),
@@ -374,9 +349,7 @@ class Tag(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Taggable(Base):
@@ -393,25 +366,19 @@ class Annotation(Base):
     __tablename__ = "annotations"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    content_type: Mapped[ContentType] = mapped_column(
-        Enum(ContentType), nullable=False
-    )
+    content_type: Mapped[ContentType] = mapped_column(Enum(ContentType), nullable=False)
     content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     text_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
     text_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
     selected_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    type: Mapped[AnnotationType] = mapped_column(
-        Enum(AnnotationType), default=AnnotationType.NOTE
-    )
+    type: Mapped[AnnotationType] = mapped_column(Enum(AnnotationType), default=AnnotationType.NOTE)
     linked_annotation_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("annotations.id", ondelete="SET NULL"),
         nullable=True,
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -422,9 +389,7 @@ class Annotation(Base):
         "Annotation.content_type.in_(['section_content', 'section_summary']))",
     )
 
-    __table_args__ = (
-        Index("ix_annotations_content", "content_type", "content_id"),
-    )
+    __table_args__ = (Index("ix_annotations_content", "content_type", "content_id"),)
 
 
 class Concept(Base):
@@ -443,9 +408,7 @@ class Concept(Base):
     definition: Mapped[str] = mapped_column(Text, nullable=False)
     related_concepts: Mapped[list | None] = mapped_column(JSON, nullable=True)
     user_edited: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

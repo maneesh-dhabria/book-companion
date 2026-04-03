@@ -1,6 +1,7 @@
 """Tests for EPUB parser."""
 
 import pytest
+
 from app.services.parser.epub_parser import EPUBParser
 
 
@@ -47,9 +48,9 @@ def test_parsed_section_images_include_alt_text():
     """Images extracted from EPUB should include alt-text if available."""
     parser = EPUBParser.__new__(EPUBParser)
     html = (
-        '<html><body><p>Text</p>'
+        "<html><body><p>Text</p>"
         '<img src="fig1.png" alt="Porter Five Forces diagram"/>'
-        '</body></html>'
+        "</body></html>"
     )
     alt_map = parser._extract_alt_text(html)
     assert alt_map.get("fig1.png") == "Porter Five Forces diagram"
@@ -76,11 +77,11 @@ def test_alt_text_filters_generic_values():
     """Generic alt values like 'image' or 'figure' should be filtered out."""
     parser = EPUBParser.__new__(EPUBParser)
     html = (
-        '<html><body>'
+        "<html><body>"
         '<img src="a.png" alt="image"/>'
         '<img src="b.png" alt="Figure"/>'
         '<img src="c.png" alt="Real description"/>'
-        '</body></html>'
+        "</body></html>"
     )
     alt_map = parser._extract_alt_text(html)
     assert "a.png" not in alt_map

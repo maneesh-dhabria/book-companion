@@ -5,7 +5,7 @@ These tests commit to the real test DB. Each test cleans up after itself."""
 import pytest
 from sqlalchemy import select, text
 
-from app.db.models import Book, BookSection, BookStatus
+from app.db.models import BookSection, BookStatus
 
 
 async def _cleanup_all_books(db_session):
@@ -42,9 +42,7 @@ async def test_full_epub_pipeline(db_session, sample_epub_path, test_settings):
     assert book.id is not None
     assert book.status == BookStatus.PARSED
     assert book.title
-    result = await db_session.execute(
-        select(BookSection).where(BookSection.book_id == book.id)
-    )
+    result = await db_session.execute(select(BookSection).where(BookSection.book_id == book.id))
     sections = result.scalars().all()
     assert len(sections) >= 5  # Art of War has 13+ sections
 
@@ -86,7 +84,5 @@ async def test_delete_cascades_all_data(db_session, sample_epub_path, test_setti
     book = await service.add_book(str(sample_epub_path))
     book_id = book.id
     await service.delete_book(book_id)
-    result = await db_session.execute(
-        select(BookSection).where(BookSection.book_id == book_id)
-    )
+    result = await db_session.execute(select(BookSection).where(BookSection.book_id == book_id))
     assert result.scalars().all() == []

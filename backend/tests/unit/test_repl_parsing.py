@@ -1,8 +1,9 @@
 """Tests for section editing REPL command parser."""
 
 import pytest
-from app.services.section_edit_service import parse_command, EditCommand
+
 from app.exceptions import SectionEditError
+from app.services.section_edit_service import parse_command
 
 
 def test_parse_merge():

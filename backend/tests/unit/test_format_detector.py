@@ -1,8 +1,8 @@
 """Tests for file format detection."""
 
 import pytest
-from pathlib import Path
-from app.services.parser.format_detector import detect_format, FormatDetectionError
+
+from app.services.parser.format_detector import FormatDetectionError, detect_format
 
 
 def test_detect_epub_by_extension(tmp_path):

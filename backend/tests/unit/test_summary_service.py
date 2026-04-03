@@ -1,7 +1,6 @@
 """Tests for SummaryService concept diff and extraction."""
 
-import pytest
-from app.services.summary_service import SummaryService, BOLD_PATTERN, HEADER_PATTERN, NAMED_ENTITY_PATTERN
+from app.services.summary_service import SummaryService
 
 
 class TestConceptExtraction:
@@ -28,6 +27,7 @@ class TestConceptExtraction:
 
     def test_concept_diff(self):
         from unittest.mock import MagicMock
+
         a = MagicMock()
         a.summary_md = "The **Five Forces** drive **Competitive Advantage**"
         b = MagicMock()

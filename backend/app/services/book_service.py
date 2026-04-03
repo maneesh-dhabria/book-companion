@@ -50,8 +50,7 @@ class BookService:
         existing = await self.book_repo.get_by_hash(file_hash)
         if existing and not force:
             raise StorageError(
-                f"This book already exists (ID: {existing.id}). "
-                "Use --force to re-import."
+                f"This book already exists (ID: {existing.id}). Use --force to re-import."
             )
         if existing and force:
             return await self._re_import_book(existing, file_data, file_path, file_format)
@@ -81,7 +80,9 @@ class BookService:
 
         # 6. Store
         book = await self._store_book(parsed, file_data, file_hash, file_format)
-        logger.info("book_added", book_id=book.id, title=parsed.title, sections=len(parsed.sections))
+        logger.info(
+            "book_added", book_id=book.id, title=parsed.title, sections=len(parsed.sections)
+        )
 
         return book
 
@@ -98,7 +99,9 @@ class BookService:
     ) -> list[Book]:
         status_enum = BookStatus(status) if status else None
         return await self.book_repo.list_all(
-            author=author, status=status_enum, order_by_recent=recent,
+            author=author,
+            status=status_enum,
+            order_by_recent=recent,
         )
 
     async def get_book(self, book_id: int) -> Book | None:
@@ -115,7 +118,9 @@ class BookService:
         if all_summarized and book_summarized:
             book.status = BookStatus.COMPLETED
         elif book.status not in (
-            BookStatus.PARSING, BookStatus.PARSE_FAILED, BookStatus.UPLOADING,
+            BookStatus.PARSING,
+            BookStatus.PARSE_FAILED,
+            BookStatus.UPLOADING,
         ):
             book.status = BookStatus.PARSED
         await self.db.flush()
@@ -199,15 +204,11 @@ class BookService:
         # Delete old sections (cascades to images, eval_traces)
         from sqlalchemy import delete
 
-        await self.db.execute(
-            delete(BookSection).where(BookSection.book_id == existing.id)
-        )
+        await self.db.execute(delete(BookSection).where(BookSection.book_id == existing.id))
         # Delete old search index entries
         from app.db.models import SearchIndex
 
-        await self.db.execute(
-            delete(SearchIndex).where(SearchIndex.book_id == existing.id)
-        )
+        await self.db.execute(delete(SearchIndex).where(SearchIndex.book_id == existing.id))
 
         # Re-create sections from new parse
         detector = StructureDetector()

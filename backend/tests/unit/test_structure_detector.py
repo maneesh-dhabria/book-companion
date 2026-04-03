@@ -1,8 +1,7 @@
 """Tests for 3-tier structure detection."""
 
-import pytest
-from app.services.parser.structure_detector import StructureDetector
 from app.services.parser.base import ParsedSection
+from app.services.parser.structure_detector import StructureDetector
 
 
 def test_heuristic_heading_detection():

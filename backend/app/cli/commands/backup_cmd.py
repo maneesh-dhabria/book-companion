@@ -56,9 +56,7 @@ async def restore_backup(
 ):
     """Restore database from a backup file."""
     if not confirm:
-        proceed = typer.confirm(
-            "This will overwrite the current database. Continue?"
-        )
+        proceed = typer.confirm("This will overwrite the current database. Continue?")
         if not proceed:
             console.print("Restore cancelled.")
             raise typer.Exit(0)

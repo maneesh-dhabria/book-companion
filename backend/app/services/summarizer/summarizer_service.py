@@ -29,9 +29,7 @@ class SummarizerService:
         self.llm = llm
         self.config = config
         self.captioner = captioner
-        self._jinja_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(PROMPTS_DIR))
-        )
+        self._jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(PROMPTS_DIR)))
         self._summary_repo = SummaryRepository(db)
         self._section_repo = SectionRepository(db)
         self._book_repo = BookRepository(db)
@@ -92,9 +90,7 @@ class SummarizerService:
                 elapsed = time.monotonic() - start
 
                 # Set as default summary for this section
-                await self._section_repo.update_default_summary(
-                    section.id, summary.id
-                )
+                await self._section_repo.update_default_summary(section.id, summary.id)
 
                 completed += 1
                 # Add to cumulative context
@@ -111,9 +107,7 @@ class SummarizerService:
                         if summary.input_char_count
                         else 0
                     )
-                    on_section_complete(
-                        i + 1, total, section.title, elapsed, comp
-                    )
+                    on_section_complete(i + 1, total, section.title, elapsed, comp)
 
                 logger.info(
                     "section_summarized",
@@ -150,13 +144,9 @@ class SummarizerService:
     ) -> Summary:
         """Core LLM call to summarize a single section. Returns persisted Summary."""
         book = await self._book_repo.get_by_id(book_id)
-        author = (
-            ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
-        )
+        author = ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
 
-        image_captions = (
-            await self._get_image_captions(section) if self.captioner else []
-        )
+        image_captions = await self._get_image_captions(section) if self.captioner else []
 
         template = self._jinja_env.get_template("base/summarize_section.txt")
         prompt = template.render(
@@ -203,18 +193,14 @@ class SummarizerService:
         """Reduce step: combine section summaries into overall book summary."""
         book = await self._book_repo.get_by_id(book_id)
         sections = await self._section_repo.get_by_book_id(book_id)
-        author = (
-            ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
-        )
+        author = ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
 
         section_data = []
         for s in sections:
             if s.default_summary_id:
                 summary = await self._summary_repo.get_by_id(s.default_summary_id)
                 if summary:
-                    section_data.append(
-                        {"title": s.title, "summary": summary.summary_md}
-                    )
+                    section_data.append({"title": s.title, "summary": summary.summary_md})
 
         template = self._jinja_env.get_template("base/summarize_book.txt")
         prompt = template.render(
@@ -289,7 +275,7 @@ class SummarizerService:
             return []
 
         # Check config toggle
-        if hasattr(self.config, 'images') and not self.config.images.captioning_enabled:
+        if hasattr(self.config, "images") and not self.config.images.captioning_enabled:
             return []
 
         # Collect already-captioned non-decorative images
@@ -299,11 +285,13 @@ class SummarizerService:
         for img in images:
             if img.caption and img.relevance:
                 if img.relevance in ("key", "supplementary"):
-                    captions.append({
-                        "caption": img.caption,
-                        "relevance": img.relevance,
-                        "image_id": img.id,
-                    })
+                    captions.append(
+                        {
+                            "caption": img.caption,
+                            "relevance": img.relevance,
+                            "image_id": img.id,
+                        }
+                    )
                 continue
 
             # Only attempt captioning if captioner available
@@ -312,18 +300,20 @@ class SummarizerService:
                 if not img.content_hash:
                     img.content_hash = compute_content_hash(img.data)
 
-                needs_captioning.append({
-                    "id": img.id,
-                    "data": img.data,
-                    "mime_type": img.mime_type,
-                    "width": img.width,
-                    "height": img.height,
-                    "filename": img.filename,
-                    "alt_text": img.alt_text,
-                    "content_hash": img.content_hash,
-                    "existing_caption": None,
-                    "existing_relevance": None,
-                })
+                needs_captioning.append(
+                    {
+                        "id": img.id,
+                        "data": img.data,
+                        "mime_type": img.mime_type,
+                        "width": img.width,
+                        "height": img.height,
+                        "filename": img.filename,
+                        "alt_text": img.alt_text,
+                        "content_hash": img.content_hash,
+                        "existing_caption": None,
+                        "existing_relevance": None,
+                    }
+                )
 
         # Batch caption uncaptioned images (handles pre-filter + dedup)
         if needs_captioning and self.captioner:
@@ -342,10 +332,12 @@ class SummarizerService:
                     await self.db.flush()
 
                     if result["relevance"] in ("key", "supplementary"):
-                        captions.append({
-                            "caption": result["caption"],
-                            "relevance": result["relevance"],
-                            "image_id": img_id,
-                        })
+                        captions.append(
+                            {
+                                "caption": result["caption"],
+                                "relevance": result["relevance"],
+                                "image_id": img_id,
+                            }
+                        )
 
         return captions

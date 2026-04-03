@@ -6,7 +6,6 @@ from app.db.models import Tag, Taggable
 from app.db.repositories.tag_repo import TagRepository
 from app.exceptions import BookCompanionError
 
-
 VALID_TAGGABLE_TYPES = {"book", "section", "annotation"}
 
 
@@ -38,9 +37,7 @@ class TagService:
         await self.repo.add_taggable(tag.id, taggable_type, taggable_id)
         return tag
 
-    async def remove_tag(
-        self, taggable_type: str, taggable_id: int, tag_name: str
-    ) -> bool:
+    async def remove_tag(self, taggable_type: str, taggable_id: int, tag_name: str) -> bool:
         tag = await self.repo.get_by_name(tag_name)
         if not tag:
             return False
@@ -50,20 +47,14 @@ class TagService:
         """List all tags in the system."""
         return await self.repo.list_all()
 
-    async def list_tags_for_entity(
-        self, taggable_type: str, taggable_id: int
-    ) -> list[Tag]:
+    async def list_tags_for_entity(self, taggable_type: str, taggable_id: int) -> list[Tag]:
         return await self.repo.get_tags_for_entity(taggable_type, taggable_id)
 
-    async def list_by_tag(
-        self, tag_name: str, taggable_type: str | None = None
-    ) -> list[Taggable]:
+    async def list_by_tag(self, tag_name: str, taggable_type: str | None = None) -> list[Taggable]:
         """Get all entities tagged with a specific tag name."""
         return await self.repo.get_entities_by_tag(tag_name, taggable_type)
 
-    async def _validate_entity_exists(
-        self, taggable_type: str, taggable_id: int
-    ) -> None:
+    async def _validate_entity_exists(self, taggable_type: str, taggable_id: int) -> None:
         """Validate that the entity being tagged exists in the database."""
         from sqlalchemy import select
 
@@ -77,8 +68,6 @@ class TagService:
         model = model_map.get(taggable_type)
         if not model:
             return
-        result = await self.session.execute(
-            select(model).where(model.id == taggable_id)
-        )
+        result = await self.session.execute(select(model).where(model.id == taggable_id))
         if not result.scalar_one_or_none():
             raise TagError(f"{taggable_type.title()} {taggable_id} not found.")

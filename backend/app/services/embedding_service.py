@@ -24,17 +24,16 @@ class EmbeddingService:
 
     async def embed_text(self, text: str) -> list[float]:
         """Generate embedding for a single text via Ollama API."""
-        async with self._semaphore:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                try:
-                    response = await client.post(
-                        f"{self.ollama_url}/api/embeddings",
-                        json={"model": self.model, "prompt": text},
-                    )
-                    response.raise_for_status()
-                    return response.json()["embedding"]
-                except httpx.HTTPError as e:
-                    raise EmbeddingError(f"Ollama embedding failed: {e}")
+        async with self._semaphore, httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                response = await client.post(
+                    f"{self.ollama_url}/api/embeddings",
+                    json={"model": self.model, "prompt": text},
+                )
+                response.raise_for_status()
+                return response.json()["embedding"]
+            except httpx.HTTPError as e:
+                raise EmbeddingError(f"Ollama embedding failed: {e}")
 
     async def chunk_and_embed(
         self, text: str, chunk_size: int | None = None, overlap: int | None = None
@@ -56,9 +55,7 @@ class EmbeddingService:
             results.append((chunk, emb))
         return results
 
-    def _split_into_chunks(
-        self, text: str, chunk_size: int = 512, overlap: int = 50
-    ) -> list[str]:
+    def _split_into_chunks(self, text: str, chunk_size: int = 512, overlap: int = 50) -> list[str]:
         """Split text into overlapping chunks by estimated token count."""
         words = text.split()
         if not words:

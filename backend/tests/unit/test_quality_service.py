@@ -1,6 +1,7 @@
 """Tests for QualityService quality checks."""
 
 import pytest
+
 from app.services.quality_service import QualityService
 
 
@@ -10,7 +11,14 @@ def svc():
 
 
 def _section(index, title, content="x" * 1000, depth=0, image_count=0):
-    return {"index": index, "title": title, "content": content, "depth": depth, "char_count": len(content), "image_count": image_count}
+    return {
+        "index": index,
+        "title": title,
+        "content": content,
+        "depth": depth,
+        "char_count": len(content),
+        "image_count": image_count,
+    }
 
 
 def test_empty_section(svc):
@@ -59,7 +67,10 @@ def test_repeated_content(svc):
 
 
 def test_no_false_positive_on_different_content(svc):
-    sections = [_section(1, "A", content="Alpha bravo charlie delta echo foxtrot " * 50), _section(2, "B", content="Golf hotel india juliet kilo lima " * 50)]
+    sections = [
+        _section(1, "A", content="Alpha bravo charlie delta echo foxtrot " * 50),
+        _section(2, "B", content="Golf hotel india juliet kilo lima " * 50),
+    ]
     issues = svc.check_sections(sections)
     assert not any(i.check == "repeated_content" for i in issues)
 
@@ -73,7 +84,11 @@ def test_trigram_jaccard_different():
 
 
 def test_suggested_actions_groups_deletes(svc):
-    sections = [_section(1, "Copyright", content="x" * 500), _section(2, "Good Chapter"), _section(3, "Index", content="x" * 500)]
+    sections = [
+        _section(1, "Copyright", content="x" * 500),
+        _section(2, "Good Chapter"),
+        _section(3, "Index", content="x" * 500),
+    ]
     issues = svc.check_sections(sections)
     actions = svc.suggested_actions(issues)
     assert any("Delete" in a for a in actions)

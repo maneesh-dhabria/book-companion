@@ -17,24 +17,18 @@ class ConceptRepository:
 
     async def get_by_book(self, book_id: int) -> list[Concept]:
         result = await self.session.execute(
-            select(Concept)
-            .where(Concept.book_id == book_id)
-            .order_by(Concept.term)
+            select(Concept).where(Concept.book_id == book_id).order_by(Concept.term)
         )
         return list(result.scalars().all())
 
     async def search_across_books(self, term: str) -> list[Concept]:
         result = await self.session.execute(
-            select(Concept)
-            .where(Concept.term.ilike(f"%{term}%"))
-            .order_by(Concept.term)
+            select(Concept).where(Concept.term.ilike(f"%{term}%")).order_by(Concept.term)
         )
         return list(result.scalars().all())
 
     async def update(self, concept_id: int, **kwargs) -> Concept | None:
-        result = await self.session.execute(
-            select(Concept).where(Concept.id == concept_id)
-        )
+        result = await self.session.execute(select(Concept).where(Concept.id == concept_id))
         concept = result.scalar_one_or_none()
         if concept:
             for key, value in kwargs.items():
@@ -44,9 +38,7 @@ class ConceptRepository:
         return concept
 
     async def get_by_id(self, concept_id: int) -> Concept | None:
-        result = await self.session.execute(
-            select(Concept).where(Concept.id == concept_id)
-        )
+        result = await self.session.execute(select(Concept).where(Concept.id == concept_id))
         return result.scalar_one_or_none()
 
     async def get_by_term(self, book_id: int, term: str) -> Concept | None:
@@ -82,8 +74,6 @@ class ConceptRepository:
 
     async def get_sections_for_concept(self, concept_id: int) -> list[int]:
         result = await self.session.execute(
-            select(ConceptSection.section_id).where(
-                ConceptSection.concept_id == concept_id
-            )
+            select(ConceptSection.section_id).where(ConceptSection.concept_id == concept_id)
         )
         return list(result.scalars().all())

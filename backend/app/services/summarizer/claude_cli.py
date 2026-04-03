@@ -31,9 +31,13 @@ class ClaudeCodeCLIProvider(LLMProvider):
         timeout: int | None = None,
     ) -> LLMResponse:
         cmd = [
-            self.cli_command, "-p", "-",  # Read prompt from stdin
-            "--output-format", "json",
-            "--model", model or self.default_model,
+            self.cli_command,
+            "-p",
+            "-",  # Read prompt from stdin
+            "--output-format",
+            "json",
+            "--model",
+            model or self.default_model,
             "--print",
         ]
         if json_schema:
@@ -53,7 +57,7 @@ class ClaudeCodeCLIProvider(LLMProvider):
                 proc.communicate(input=prompt.encode()),  # Prompt via stdin
                 timeout=timeout or self.default_timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             raise SummarizationError(
                 f"Claude CLI timed out after {timeout or self.default_timeout}s"
@@ -76,23 +80,32 @@ class ClaudeCodeCLIProvider(LLMProvider):
         image_dir = str(image_path.parent)
         full_prompt = f"Read the image at {image_path.name} and {prompt}"
         cmd = [
-            self.cli_command, "-p", full_prompt,
-            "--add-dir", image_dir,
-            "--permission-mode", "auto",
-            "--output-format", "json",
-            "--model", model or self.default_model,
+            self.cli_command,
+            "-p",
+            full_prompt,
+            "--add-dir",
+            image_dir,
+            "--permission-mode",
+            "auto",
+            "--output-format",
+            "json",
+            "--model",
+            model or self.default_model,
             "--print",
         ]
 
         start = time.monotonic()
         proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
         try:
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=self.default_timeout,
+                proc.communicate(),
+                timeout=self.default_timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             raise SummarizationError("Image captioning timed out")
 

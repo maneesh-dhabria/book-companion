@@ -87,9 +87,7 @@ class EPUBParser(BookParser):
                 alt_map[filename] = alt
         return alt_map
 
-    def _extract_sections(
-        self, book: epub.EpubBook, toc: list
-    ) -> list[ParsedSection]:
+    def _extract_sections(self, book: epub.EpubBook, toc: list) -> list[ParsedSection]:
         """Extract sections from TOC structure."""
         sections: list[ParsedSection] = []
         # Build a map of href -> content for document items
@@ -128,12 +126,16 @@ class EPUBParser(BookParser):
                     name = item.get_name()
                     content = content_map.get(name, "")
                     if content.strip():
-                        sections.append(ParsedSection(
-                            title=name.split("/")[-1].replace(".xhtml", "").replace(".html", ""),
-                            content_md=content,
-                            depth=0,
-                            order_index=len(sections),
-                        ))
+                        sections.append(
+                            ParsedSection(
+                                title=name.split("/")[-1]
+                                .replace(".xhtml", "")
+                                .replace(".html", ""),
+                                content_md=content,
+                                depth=0,
+                                order_index=len(sections),
+                            )
+                        )
 
         return sections
 
@@ -151,7 +153,9 @@ class EPUBParser(BookParser):
             if isinstance(entry, tuple) and len(entry) == 2:
                 # Nested: (Section, [children])
                 section_obj, children = entry
-                self._add_section(section_obj, content_map, image_map, sections, order_counter, depth)
+                self._add_section(
+                    section_obj, content_map, image_map, sections, order_counter, depth
+                )
                 self._walk_toc(children, content_map, image_map, sections, order_counter, depth + 1)
             elif isinstance(entry, epub.Link):
                 self._add_section(entry, content_map, image_map, sections, order_counter, depth)
@@ -181,11 +185,13 @@ class EPUBParser(BookParser):
             if img_name in content:
                 section_images.append(img)
 
-        sections.append(ParsedSection(
-            title=title or f"Section {order_counter[0]}",
-            content_md=content,
-            depth=depth,
-            order_index=order_counter[0],
-            images=section_images,
-        ))
+        sections.append(
+            ParsedSection(
+                title=title or f"Section {order_counter[0]}",
+                content_md=content,
+                depth=depth,
+                order_index=order_counter[0],
+                images=section_images,
+            )
+        )
         order_counter[0] += 1

@@ -46,12 +46,14 @@ class StructureDetector:
             section_content = content[start:end].strip()
 
             if section_content:
-                sections.append(ParsedSection(
-                    title=title,
-                    content_md=section_content,
-                    depth=depth,
-                    order_index=len(sections),
-                ))
+                sections.append(
+                    ParsedSection(
+                        title=title,
+                        content_md=section_content,
+                        depth=depth,
+                        order_index=len(sections),
+                    )
+                )
         return sections
 
     async def detect_via_llm(self, content: str, max_tokens: int = 5000) -> list[dict]:
@@ -59,11 +61,15 @@ class StructureDetector:
         if not self.llm_provider:
             return []
 
-        truncated = content[:max_tokens * 4]  # ~4 chars per token
+        truncated = content[: max_tokens * 4]  # ~4 chars per token
         from pathlib import Path
-        prompt_path = Path(__file__).parent.parent / "summarizer" / "prompts" / "detect_structure_v1.txt"
+
+        prompt_path = (
+            Path(__file__).parent.parent / "summarizer" / "prompts" / "detect_structure_v1.txt"
+        )
         if prompt_path.exists():
             import jinja2
+
             template = jinja2.Template(prompt_path.read_text())
             prompt = template.render(book_text=truncated)
         else:

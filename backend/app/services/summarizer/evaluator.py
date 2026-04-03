@@ -6,10 +6,10 @@ from pathlib import Path
 
 import jinja2
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EvalTrace
-from app.services.summarizer.llm_provider import LLMProvider, LLMResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.summarizer.llm_provider import LLMProvider
 
 logger = structlog.get_logger()
 
@@ -18,7 +18,10 @@ ASSERTION_REGISTRY: dict[str, dict] = {
     "no_hallucinated_facts": {"category": "critical", "prompt_file": "eval_faithfulness_v1.txt"},
     "no_contradictions": {"category": "critical", "prompt_file": "eval_faithfulness_v1.txt"},
     "accurate_quotes": {"category": "critical", "prompt_file": "eval_faithfulness_v1.txt"},
-    "cross_summary_consistency": {"category": "critical", "prompt_file": "eval_faithfulness_v1.txt"},
+    "cross_summary_consistency": {
+        "category": "critical",
+        "prompt_file": "eval_faithfulness_v1.txt",
+    },
     # Completeness (Important)
     "covers_main_argument": {"category": "important", "prompt_file": "eval_completeness_v1.txt"},
     "covers_key_concepts": {"category": "important", "prompt_file": "eval_completeness_v1.txt"},
@@ -30,7 +33,10 @@ ASSERTION_REGISTRY: dict[str, dict] = {
     "no_dangling_references": {"category": "advisory", "prompt_file": "eval_coherence_v1.txt"},
     # Specificity (Important)
     "not_generic": {"category": "important", "prompt_file": "eval_specificity_v1.txt"},
-    "preserves_author_terminology": {"category": "important", "prompt_file": "eval_specificity_v1.txt"},
+    "preserves_author_terminology": {
+        "category": "important",
+        "prompt_file": "eval_specificity_v1.txt",
+    },
     # Format (Advisory)
     "has_key_concepts": {"category": "advisory", "prompt_file": "eval_format_v1.txt"},
     "reasonable_length": {"category": "advisory", "prompt_file": "eval_format_v1.txt"},
@@ -45,9 +51,7 @@ class EvalService:
         self.db = db
         self.llm = llm
         self.config = config
-        self._jinja_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(PROMPTS_DIR))
-        )
+        self._jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(PROMPTS_DIR)))
 
     def _get_compression_range(self, facets: dict) -> tuple[float, float]:
         """Return expected compression % range based on facets."""
@@ -74,8 +78,12 @@ class EvalService:
         """Run all 16 assertions in parallel. Returns {assertion_name: {passed, reasoning}}."""
         tasks = [
             self._run_single_assertion(
-                name, source_text, summary_text, section_id,
-                image_count=image_count, summary_id=summary_id,
+                name,
+                source_text,
+                summary_text,
+                section_id,
+                image_count=image_count,
+                summary_id=summary_id,
             )
             for name in ASSERTION_REGISTRY
         ]
@@ -84,7 +92,11 @@ class EvalService:
         results = {}
         for name, result in zip(ASSERTION_REGISTRY.keys(), results_list):
             if isinstance(result, Exception):
-                results[name] = {"passed": False, "reasoning": f"Eval error: {result}", "error": True}
+                results[name] = {
+                    "passed": False,
+                    "reasoning": f"Eval error: {result}",
+                    "error": True,
+                }
             else:
                 results[name] = result
         return results

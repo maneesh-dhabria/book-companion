@@ -39,9 +39,7 @@ class TagRepository:
         await self.session.flush()
         return result.rowcount > 0
 
-    async def add_taggable(
-        self, tag_id: int, taggable_type: str, taggable_id: int
-    ) -> Taggable:
+    async def add_taggable(self, tag_id: int, taggable_type: str, taggable_id: int) -> Taggable:
         """Add a tag association to an entity (book, section, annotation)."""
         existing = await self.session.execute(
             select(Taggable).where(
@@ -62,9 +60,7 @@ class TagRepository:
         await self.session.flush()
         return taggable
 
-    async def remove_taggable(
-        self, tag_id: int, taggable_type: str, taggable_id: int
-    ) -> bool:
+    async def remove_taggable(self, tag_id: int, taggable_type: str, taggable_id: int) -> bool:
         result = await self.session.execute(
             delete(Taggable).where(
                 Taggable.tag_id == tag_id,
@@ -75,9 +71,7 @@ class TagRepository:
         await self.session.flush()
         return result.rowcount > 0
 
-    async def get_tags_for_entity(
-        self, taggable_type: str, taggable_id: int
-    ) -> list[Tag]:
+    async def get_tags_for_entity(self, taggable_type: str, taggable_id: int) -> list[Tag]:
         result = await self.session.execute(
             select(Tag)
             .join(Taggable, Tag.id == Taggable.tag_id)
@@ -93,11 +87,7 @@ class TagRepository:
         self, tag_name: str, taggable_type: str | None = None
     ) -> list[Taggable]:
         """Get all entities tagged with a given tag name."""
-        query = (
-            select(Taggable)
-            .join(Tag, Tag.id == Taggable.tag_id)
-            .where(Tag.name == tag_name)
-        )
+        query = select(Taggable).join(Tag, Tag.id == Taggable.tag_id).where(Tag.name == tag_name)
         if taggable_type:
             query = query.where(Taggable.taggable_type == taggable_type)
         result = await self.session.execute(query)

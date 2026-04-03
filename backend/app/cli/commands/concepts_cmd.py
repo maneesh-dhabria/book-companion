@@ -25,8 +25,7 @@ async def list_concepts(
         concepts = await svc["concept"].list_by_book(book_id)
         if not concepts:
             print_empty_state(
-                "No concepts found for this book. "
-                "Concepts are extracted during summarization."
+                "No concepts found for this book. Concepts are extracted during summarization."
             )
             return
         print_concept_table(concepts)

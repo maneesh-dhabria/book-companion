@@ -1,20 +1,32 @@
 """Tests for the 16-assertion evaluation service."""
 
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from app.services.summarizer.evaluator import EvalService, ASSERTION_REGISTRY
+
+import pytest
+
+from app.services.summarizer.evaluator import ASSERTION_REGISTRY, EvalService
 from app.services.summarizer.llm_provider import LLMResponse
 
 
 def test_all_16_assertions_registered():
     assert len(ASSERTION_REGISTRY) == 16
     expected = {
-        "no_hallucinated_facts", "no_contradictions", "accurate_quotes",
-        "cross_summary_consistency", "covers_main_argument", "covers_key_concepts",
-        "covers_frameworks", "covers_examples", "standalone_readable",
-        "logical_flow", "no_dangling_references", "not_generic",
-        "preserves_author_terminology", "has_key_concepts", "reasonable_length",
+        "no_hallucinated_facts",
+        "no_contradictions",
+        "accurate_quotes",
+        "cross_summary_consistency",
+        "covers_main_argument",
+        "covers_key_concepts",
+        "covers_frameworks",
+        "covers_examples",
+        "standalone_readable",
+        "logical_flow",
+        "no_dangling_references",
+        "not_generic",
+        "preserves_author_terminology",
+        "has_key_concepts",
+        "reasonable_length",
         "image_refs_preserved",
     }
     assert set(ASSERTION_REGISTRY.keys()) == expected

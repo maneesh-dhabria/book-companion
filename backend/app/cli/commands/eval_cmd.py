@@ -93,9 +93,7 @@ async def eval_cmd(
             table.add_column("Reasoning")
 
             for name, result in results.items():
-                result_str = (
-                    "[green]PASS[/green]" if result.get("passed") else "[red]FAIL[/red]"
-                )
+                result_str = "[green]PASS[/green]" if result.get("passed") else "[red]FAIL[/red]"
                 table.add_row(name, result_str, (result.get("reasoning") or "")[:100])
             console.print(table)
             print_success(f"Eval complete: {passed_count}/{total_count} passed.")
@@ -208,9 +206,7 @@ async def compare_prompts(
         from app.db.models import BookSection
 
         session = svc["session"]
-        result = await session.execute(
-            select(BookSection).where(BookSection.id == section)
-        )
+        result = await session.execute(select(BookSection).where(BookSection.id == section))
         section_obj = result.scalar_one_or_none()
         if not section_obj:
             print_error(f"Section {section} not found.")

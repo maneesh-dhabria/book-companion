@@ -5,7 +5,7 @@ import re
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Book, BookSection, Summary, SummaryContentType
+from app.db.models import Summary, SummaryContentType
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
@@ -34,7 +34,9 @@ class SummaryService:
     async def list_for_book(self, book_id: int) -> list[Summary]:
         return await self.summary_repo.list_by_book(book_id)
 
-    async def list_for_content(self, content_type: SummaryContentType, content_id: int) -> list[Summary]:
+    async def list_for_content(
+        self, content_type: SummaryContentType, content_id: int
+    ) -> list[Summary]:
         return await self.summary_repo.list_by_content(content_type, content_id)
 
     async def list_book_level(self, book_id: int) -> list[Summary]:

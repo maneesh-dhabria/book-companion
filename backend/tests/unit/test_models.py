@@ -11,7 +11,6 @@ from app.db.models import (
     EvalTrace,
     Image,
     ProcessingJob,
-    ProcessingJobStatus,
     ProcessingStep,
     SearchIndex,
     SourceType,
@@ -122,6 +121,7 @@ def test_external_reference_model():
 
 def test_summary_content_type_enum():
     from app.db.models import SummaryContentType
+
     assert SummaryContentType.SECTION.value == "section"
     assert SummaryContentType.BOOK.value == "book"
     assert SummaryContentType.CONCEPT.value == "concept"
@@ -130,13 +130,22 @@ def test_summary_content_type_enum():
 
 def test_summary_model_instantiation():
     from app.db.models import Summary, SummaryContentType
+
     s = Summary(
         content_type=SummaryContentType.SECTION,
-        content_id=1, book_id=1,
-        facets_used={"style": "bullet_points", "audience": "practitioner",
-                     "compression": "standard", "content_focus": "frameworks_examples"},
-        prompt_text_sent="test prompt", model_used="sonnet",
-        input_char_count=1000, summary_char_count=200, summary_md="# Test summary",
+        content_id=1,
+        book_id=1,
+        facets_used={
+            "style": "bullet_points",
+            "audience": "practitioner",
+            "compression": "standard",
+            "content_focus": "frameworks_examples",
+        },
+        prompt_text_sent="test prompt",
+        model_used="sonnet",
+        input_char_count=1000,
+        summary_char_count=200,
+        summary_md="# Test summary",
     )
     assert s.content_type == SummaryContentType.SECTION
     assert s.preset_name is None
@@ -144,4 +153,5 @@ def test_summary_model_instantiation():
 
 def test_summary_status_enum_removed():
     import app.db.models as models
+
     assert not hasattr(models, "SummaryStatus")

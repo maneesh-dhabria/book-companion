@@ -44,9 +44,7 @@ class AnnotationService:
         if linked_annotation_id:
             linked = await self.repo.get_by_id(linked_annotation_id)
             if not linked:
-                raise AnnotationError(
-                    f"Linked annotation {linked_annotation_id} not found."
-                )
+                raise AnnotationError(f"Linked annotation {linked_annotation_id} not found.")
 
         annotation = Annotation(
             content_type=content_type,
@@ -80,9 +78,7 @@ class AnnotationService:
             return await self.repo.list_by_book(book_id, annotation_type)
         return []
 
-    async def link_annotations(
-        self, annotation_id: int, linked_annotation_id: int
-    ) -> Annotation:
+    async def link_annotations(self, annotation_id: int, linked_annotation_id: int) -> Annotation:
         """Link two annotations for cross-book referencing."""
         annotation = await self.repo.get_by_id(annotation_id)
         if not annotation:
@@ -103,9 +99,7 @@ class AnnotationService:
     async def delete_annotation(self, annotation_id: int) -> bool:
         return await self.repo.delete(annotation_id)
 
-    async def _validate_content_reference(
-        self, content_type: ContentType, content_id: int
-    ) -> None:
+    async def _validate_content_reference(self, content_type: ContentType, content_id: int) -> None:
         """Validate that the referenced content actually exists."""
         from sqlalchemy import select
 
@@ -118,9 +112,7 @@ class AnnotationService:
                     f"Section {content_id} not found for content_type={content_type.value}."
                 )
         elif content_type == ContentType.BOOK_SUMMARY:
-            result = await self.session.execute(
-                select(Book).where(Book.id == content_id)
-            )
+            result = await self.session.execute(select(Book).where(Book.id == content_id))
             if not result.scalar_one_or_none():
                 raise AnnotationError(
                     f"Book {content_id} not found for content_type={content_type.value}."

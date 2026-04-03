@@ -29,13 +29,9 @@ class ConceptService:
     async def get_concept(self, concept_id: int) -> Concept | None:
         return await self.repo.get_by_id(concept_id)
 
-    async def edit(
-        self, concept_id: int, definition: str
-    ) -> Concept:
+    async def edit(self, concept_id: int, definition: str) -> Concept:
         """Edit a concept definition and mark as user_edited."""
-        concept = await self.repo.update_definition(
-            concept_id, definition, user_edited=True
-        )
+        concept = await self.repo.update_definition(concept_id, definition, user_edited=True)
         if not concept:
             raise ConceptError(f"Concept {concept_id} not found.")
         return concept
@@ -43,9 +39,7 @@ class ConceptService:
     async def get_by_term(self, book_id: int, term: str) -> Concept | None:
         return await self.repo.get_by_term(book_id, term)
 
-    async def bulk_update_definitions(
-        self, updates: list[dict]
-    ) -> list[Concept]:
+    async def bulk_update_definitions(self, updates: list[dict]) -> list[Concept]:
         """Bulk update concept definitions from $EDITOR output.
 
         Each dict should have: {"id": int, "definition": str}

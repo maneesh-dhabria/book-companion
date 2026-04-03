@@ -51,9 +51,7 @@ class ExportService:
 
         return content
 
-    async def export_library(
-        self, fmt: str = "json", output_path: str | None = None
-    ) -> str:
+    async def export_library(self, fmt: str = "json", output_path: str | None = None) -> str:
         """Export the entire library in the specified format."""
         books = await self.book_repo.list_all()
         all_data = []
@@ -85,16 +83,13 @@ class ExportService:
 
         # Concepts
         concepts_result = await self.session.execute(
-            select(Concept)
-            .where(Concept.book_id == book.id)
-            .order_by(Concept.term)
+            select(Concept).where(Concept.book_id == book.id).order_by(Concept.term)
         )
         concepts = list(concepts_result.scalars().all())
 
         # External references
         refs_result = await self.session.execute(
-            select(ExternalReference)
-            .where(ExternalReference.book_id == book.id)
+            select(ExternalReference).where(ExternalReference.book_id == book.id)
         )
         refs = list(refs_result.scalars().all())
 
@@ -126,14 +121,16 @@ class ExportService:
                 sec_summary = await self.summary_repo.get_by_id(s.default_summary_id)
                 if sec_summary:
                     section_summary_md = sec_summary.summary_md
-            section_data.append({
-                "id": s.id,
-                "title": s.title,
-                "order_index": s.order_index,
-                "depth": s.depth,
-                "has_summary": s.default_summary_id is not None,
-                "summary_md": section_summary_md,
-            })
+            section_data.append(
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "order_index": s.order_index,
+                    "depth": s.depth,
+                    "has_summary": s.default_summary_id is not None,
+                    "summary_md": section_summary_md,
+                }
+            )
 
         return {
             "id": book.id,
@@ -214,9 +211,7 @@ class ExportService:
                 for section in book["sections"]:
                     indent = "  " * section.get("depth", 0)
                     status = "summarized" if section.get("has_summary") else "pending"
-                    lines.append(
-                        f"{indent}- **{section['title']}** ({status})"
-                    )
+                    lines.append(f"{indent}- **{section['title']}** ({status})")
                     if section.get("summary_md"):
                         for line in section["summary_md"].split("\n"):
                             lines.append(f"{indent}  {line}")
@@ -238,7 +233,7 @@ class ExportService:
                 for ann in book["annotations"]:
                     ann_type = ann.get("type", "note")
                     if ann.get("selected_text"):
-                        lines.append(f"- [{ann_type}] \"{ann['selected_text']}\"")
+                        lines.append(f'- [{ann_type}] "{ann["selected_text"]}"')
                     if ann.get("note"):
                         lines.append(f"  Note: {ann['note']}")
                     lines.append("")

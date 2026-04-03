@@ -39,7 +39,10 @@ def clean_env():
 def test_default_settings():
     """Settings load with sensible defaults."""
     settings = Settings()
-    assert settings.database.url == "postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion"
+    assert (
+        settings.database.url
+        == "postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion"
+    )
     assert settings.llm.cli_command == "claude"
     assert settings.llm.model == "sonnet"
     assert settings.llm.timeout_seconds == 300

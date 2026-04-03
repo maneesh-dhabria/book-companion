@@ -67,8 +67,7 @@ class AnnotationRepository:
             select(Annotation)
             .join(
                 Taggable,
-                (Taggable.taggable_type == "annotation")
-                & (Taggable.taggable_id == Annotation.id),
+                (Taggable.taggable_type == "annotation") & (Taggable.taggable_id == Annotation.id),
             )
             .join(Tag, Tag.id == Taggable.tag_id)
             .where(Tag.name == tag_name)

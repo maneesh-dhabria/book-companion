@@ -30,9 +30,7 @@ def version_callback(value: bool):
 
 @app.callback()
 def main(
-    version: bool = typer.Option(
-        False, "--version", callback=version_callback, is_eager=True
-    ),
+    version: bool = typer.Option(False, "--version", callback=version_callback, is_eager=True),
     verbose: bool = typer.Option(False, "--verbose", help="Enable verbose (DEBUG) logging."),
     format: str = typer.Option("text", "--format", help="Output format: text (default) or json."),
     no_pager: bool = typer.Option(False, "--no-pager", help="Disable pager for long output."),

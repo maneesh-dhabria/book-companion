@@ -4,7 +4,6 @@ import typer
 
 from app.cli.deps import async_command, get_services
 from app.cli.formatting import (
-    console,
     print_annotation_table,
     print_empty_state,
     print_error,
@@ -48,9 +47,7 @@ async def annotate(
     try:
         at = AnnotationType(ann_type)
     except ValueError:
-        print_error(
-            f"Invalid type '{ann_type}'. Use: highlight, note, freeform."
-        )
+        print_error(f"Invalid type '{ann_type}'. Use: highlight, note, freeform.")
         raise typer.Exit(1)
 
     async with get_services() as svc:

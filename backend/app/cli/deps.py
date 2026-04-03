@@ -1,13 +1,12 @@
 """Dependency wiring for CLI commands — creates services with proper sessions."""
 
 import asyncio
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from functools import wraps
-from typing import Callable
 
 from app.config import Settings
 from app.db.session import create_session_factory
-
 
 _settings: Settings | None = None
 
@@ -131,9 +130,9 @@ async def get_services():
             pass
 
         try:
-            from app.services.summarizer.summarizer_service import SummarizerService
             from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
             from app.services.summarizer.image_captioner import ImageCaptioner
+            from app.services.summarizer.summarizer_service import SummarizerService
 
             llm = ClaudeCodeCLIProvider(
                 cli_command=settings.llm.cli_command,

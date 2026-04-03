@@ -11,7 +11,6 @@ from app.cli.formatting import (
     print_book_table,
     print_empty_state,
     print_error,
-    print_json_or_table,
     print_markdown,
     print_success,
     should_json,
@@ -39,7 +38,7 @@ def _run_edit_repl(edit_service):
 
     console.print(
         "\n[bold]Section Editor[/bold] — commands: "
-        "show, merge 1,2 [\"title\"], split <n> --at-heading, "
+        'show, merge 1,2 ["title"], split <n> --at-heading, '
         "delete 1,2, move <n> --after <m>, undo, done"
     )
 
@@ -121,7 +120,9 @@ def _run_edit_repl(edit_service):
 @async_command
 async def add(
     file_path: Path = typer.Argument(..., help="Path to the book file."),
-    quick: bool = typer.Option(False, "--quick", help="Parse + generate a rough book-level summary."),
+    quick: bool = typer.Option(
+        False, "--quick", help="Parse + generate a rough book-level summary."
+    ),
     async_mode: bool = typer.Option(False, "--async", help="Parse + summarize in background."),
     force: bool = typer.Option(False, "--force", help="Re-import or retry failed parse."),
 ):
@@ -130,7 +131,7 @@ async def add(
         print_error(f"File not found: {file_path}")
         raise typer.Exit(1)
 
-    if not file_path.suffix.lower() in (".epub", ".mobi", ".pdf"):
+    if file_path.suffix.lower() not in (".epub", ".mobi", ".pdf"):
         print_error(f"Unsupported format: {file_path.suffix}. Supported: .epub, .mobi, .pdf")
         raise typer.Exit(1)
 
@@ -163,7 +164,7 @@ async def add(
 
         if not async_mode and section_count > 0:
             console.print(f"\nDetected structure ({section_count} sections):")
-            for section in (book.sections or []):
+            for section in book.sections or []:
                 indent = "  " * (section.depth + 1)
                 console.print(f"{indent}{section.order_index + 1}. {section.title}")
 
@@ -202,10 +203,14 @@ async def add(
                         for action in actions:
                             console.print(f"  - {action}")
 
-                        choice = typer.prompt(
-                            "\nApply suggested actions? [Y/n/customize]",
-                            default="Y",
-                        ).strip().lower()
+                        choice = (
+                            typer.prompt(
+                                "\nApply suggested actions? [Y/n/customize]",
+                                default="Y",
+                            )
+                            .strip()
+                            .lower()
+                        )
 
                         if choice == "y":
                             # Auto-delete non-content sections
@@ -219,28 +224,19 @@ async def add(
                                 section_edit_svc = svc.get("section_edit")
                                 if section_edit_svc:
                                     # Map order_index to section IDs
-                                    idx_to_id = {
-                                        s.order_index: s.id
-                                        for s in (book.sections or [])
-                                    }
+                                    idx_to_id = {s.order_index: s.id for s in (book.sections or [])}
                                     ids_to_delete = [
-                                        idx_to_id[idx]
-                                        for idx in delete_indices
-                                        if idx in idx_to_id
+                                        idx_to_id[idx] for idx in delete_indices if idx in idx_to_id
                                     ]
                                     if ids_to_delete:
                                         count = await section_edit_svc.db_delete(
                                             book.id, ids_to_delete
                                         )
                                         await svc["session"].flush()
-                                        console.print(
-                                            f"Deleted {count} non-content section(s)."
-                                        )
+                                        console.print(f"Deleted {count} non-content section(s).")
                                         # Reload book
                                         book = await book_service.get_book(book.id)
-                                        section_count = (
-                                            len(book.sections) if book.sections else 0
-                                        )
+                                        section_count = len(book.sections) if book.sections else 0
 
                         elif choice == "customize":
                             # Enter interactive REPL with in-memory mode
@@ -266,9 +262,7 @@ async def add(
                                     # Apply edits back to DB
                                     final_sections = section_edit_svc.get_sections()
                                     original_ids = {s.id for s in (book.sections or [])}
-                                    final_ids = {
-                                        s.id for s in final_sections if s.id is not None
-                                    }
+                                    final_ids = {s.id for s in final_sections if s.id is not None}
 
                                     # Delete removed sections
                                     removed_ids = [
@@ -312,21 +306,13 @@ async def add(
 
                                     # Reload
                                     book = await book_service.get_book(book.id)
-                                    section_count = (
-                                        len(book.sections) if book.sections else 0
-                                    )
-                                    console.print(
-                                        f"Applied edits. {section_count} sections."
-                                    )
+                                    section_count = len(book.sections) if book.sections else 0
+                                    console.print(f"Applied edits. {section_count} sections.")
                             else:
-                                console.print(
-                                    "Section edit service not available."
-                                )
+                                console.print("Section edit service not available.")
                         # else 'n' — accept as-is
 
-            if not issues and not typer.confirm(
-                "\nAccept this structure?", default=True
-            ):
+            if not issues and not typer.confirm("\nAccept this structure?", default=True):
                 console.print(
                     "Structure rejected. Use --force to re-import with different parsing."
                 )
@@ -365,9 +351,7 @@ async def list_books(
             raise typer.Exit(1)
 
         try:
-            books = await book_service.list_books(
-                recent=recent, author=author, status=status
-            )
+            books = await book_service.list_books(recent=recent, author=author, status=status)
         except Exception:
             # Fallback: try simpler call if service doesn't support filters
             try:
@@ -378,8 +362,9 @@ async def list_books(
 
         # Phase 2: filter by tag if provided
         if tag and books:
-            from app.db.models import Tag, Taggable
             from sqlalchemy import select
+
+            from app.db.models import Tag, Taggable
 
             session = svc["session"]
             result = await session.execute(
@@ -460,8 +445,7 @@ async def show(
             )
             warning_count = len(issues)
             console.print(
-                f"Quality: {ok_count}/{len(book.sections)} sections OK. "
-                f"{warning_count} warning(s)"
+                f"Quality: {ok_count}/{len(book.sections)} sections OK. {warning_count} warning(s)"
             )
 
         if book.sections:
@@ -504,18 +488,12 @@ async def show(
                     eval_display = "-"
                     if section.default_summary_id and summary_service:
                         try:
-                            summary = await summary_service.get_by_id(
-                                section.default_summary_id
-                            )
+                            summary = await summary_service.get_by_id(section.default_summary_id)
                             if summary and summary.summary_md and char_count > 0:
                                 ratio = len(summary.summary_md) / char_count
                                 compression = f"{ratio:.0%}"
                             if summary and summary.eval_json:
-                                passed = sum(
-                                    1
-                                    for v in summary.eval_json.values()
-                                    if v is True
-                                )
+                                passed = sum(1 for v in summary.eval_json.values() if v is True)
                                 total = len(summary.eval_json)
                                 eval_display = f"{passed}/{total}"
                         except Exception:
@@ -548,9 +526,7 @@ async def delete(
             raise typer.Exit(1)
 
         if not yes:
-            if not typer.confirm(
-                f'Delete "{book.title}" (ID: {book_id}) and all related data?'
-            ):
+            if not typer.confirm(f'Delete "{book.title}" (ID: {book_id}) and all related data?'):
                 console.print("Cancelled.")
                 raise typer.Exit(0)
 

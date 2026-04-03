@@ -1,7 +1,8 @@
 """Tests for embedding service."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.embedding_service import EmbeddingService
 
@@ -18,9 +19,7 @@ def test_chunk_splitting():
 
 @pytest.mark.asyncio
 async def test_embed_text_calls_ollama():
-    service = EmbeddingService(
-        ollama_url="http://localhost:11434", model="nomic-embed-text"
-    )
+    service = EmbeddingService(ollama_url="http://localhost:11434", model="nomic-embed-text")
     mock_response = MagicMock()
     mock_response.json.return_value = {"embedding": [0.1] * 768}
     mock_response.raise_for_status = MagicMock()

@@ -45,13 +45,15 @@ def mock_config():
 def mock_llm():
     llm = AsyncMock()
     llm.generate.return_value = LLMResponse(
-        content=json.dumps({
-            "key_concepts": ["concept1"],
-            "detailed_summary": "This section covers strategy.",
-            "frameworks": [],
-            "key_quotes": [],
-            "concepts": [],
-        }),
+        content=json.dumps(
+            {
+                "key_concepts": ["concept1"],
+                "detailed_summary": "This section covers strategy.",
+                "frameworks": [],
+                "key_quotes": [],
+                "concepts": [],
+            }
+        ),
         model="sonnet",
         input_tokens=100,
         output_tokens=50,
@@ -63,9 +65,7 @@ def mock_llm():
 def test_service_instantiation(mock_config, mock_llm):
     """SummarizerService can be instantiated with the new signature."""
     session = AsyncMock()
-    service = SummarizerService(
-        db=session, llm=mock_llm, config=mock_config, captioner=None
-    )
+    service = SummarizerService(db=session, llm=mock_llm, config=mock_config, captioner=None)
     assert service._summary_repo is not None
     assert service._section_repo is not None
     assert service._book_repo is not None
@@ -93,6 +93,7 @@ def test_imports_clean():
     from app.db.repositories.book_repo import BookRepository
     from app.db.repositories.section_repo import SectionRepository
     from app.db.repositories.summary_repo import SummaryRepository
+
     assert Summary is not None
     assert SummaryContentType is not None
     assert SummaryRepository is not None
@@ -104,9 +105,7 @@ def test_imports_clean():
 async def test_summarize_book_accepts_facets(mock_config, mock_llm):
     """summarize_book accepts preset_name and facets dict."""
     session = AsyncMock()
-    service = SummarizerService(
-        db=session, llm=mock_llm, config=mock_config
-    )
+    service = SummarizerService(db=session, llm=mock_llm, config=mock_config)
 
     # Mock repos
     service._section_repo = AsyncMock()
@@ -115,8 +114,12 @@ async def test_summarize_book_accepts_facets(mock_config, mock_llm):
     result = await service.summarize_book(
         book_id=1,
         preset_name="practitioner_bullets",
-        facets={"style": "bullet_points", "audience": "practitioner",
-                "compression": "standard", "content_focus": "actionable"},
+        facets={
+            "style": "bullet_points",
+            "audience": "practitioner",
+            "compression": "standard",
+            "content_focus": "actionable",
+        },
     )
     assert result == {"completed": 0, "skipped": 0, "failed": []}
 
@@ -125,9 +128,7 @@ async def test_summarize_book_accepts_facets(mock_config, mock_llm):
 async def test_summarize_book_skips_existing(mock_config, mock_llm):
     """summarize_book skips sections that already have a summary for the given facets."""
     session = AsyncMock()
-    service = SummarizerService(
-        db=session, llm=mock_llm, config=mock_config
-    )
+    service = SummarizerService(db=session, llm=mock_llm, config=mock_config)
 
     section = make_mock_section()
     service._section_repo = AsyncMock()
@@ -141,8 +142,12 @@ async def test_summarize_book_skips_existing(mock_config, mock_llm):
     skip_cb = MagicMock()
     result = await service.summarize_book(
         book_id=1,
-        facets={"style": "bullet_points", "audience": "practitioner",
-                "compression": "standard", "content_focus": "actionable"},
+        facets={
+            "style": "bullet_points",
+            "audience": "practitioner",
+            "compression": "standard",
+            "content_focus": "actionable",
+        },
         on_section_skip=skip_cb,
     )
     assert result["skipped"] == 1
@@ -154,9 +159,7 @@ async def test_summarize_book_skips_existing(mock_config, mock_llm):
 async def test_summarize_book_force_resumes(mock_config, mock_llm):
     """summarize_book with force=True does not skip even if summary exists."""
     session = AsyncMock()
-    service = SummarizerService(
-        db=session, llm=mock_llm, config=mock_config
-    )
+    service = SummarizerService(db=session, llm=mock_llm, config=mock_config)
 
     section = make_mock_section()
     service._section_repo = AsyncMock()
@@ -173,8 +176,12 @@ async def test_summarize_book_force_resumes(mock_config, mock_llm):
     created_summary.input_char_count = 100
     service._summarize_single_section = AsyncMock(return_value=created_summary)
 
-    facets = {"style": "bullet_points", "audience": "practitioner",
-              "compression": "standard", "content_focus": "key_concepts"}
+    facets = {
+        "style": "bullet_points",
+        "audience": "practitioner",
+        "compression": "standard",
+        "content_focus": "key_concepts",
+    }
     result = await service.summarize_book(
         book_id=1,
         facets=facets,

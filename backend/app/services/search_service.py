@@ -184,17 +184,14 @@ class SearchService:
                     book_title=book.title if book else "Unknown",
                     section_title=section_title,
                     chunk_text=row.chunk_text[:200],
-                    score=getattr(row, "rank", 0)
-                    or (1 - getattr(row, "distance", 1)),
+                    score=getattr(row, "rank", 0) or (1 - getattr(row, "distance", 1)),
                     highlight=row.chunk_text[:150],
                 )
             )
         return results
 
     @staticmethod
-    def _rrf_merge_static(
-        bm25_ids: list[int], semantic_ids: list[int], k: int = 60
-    ) -> list[int]:
+    def _rrf_merge_static(bm25_ids: list[int], semantic_ids: list[int], k: int = 60) -> list[int]:
         """Reciprocal Rank Fusion: RRF_score(doc) = 1/(k + rank)"""
         scores: dict[int, float] = defaultdict(float)
         for rank, doc_id in enumerate(bm25_ids):
@@ -204,21 +201,17 @@ class SearchService:
         return sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
 
     @staticmethod
-    def _group_results_static(
-        results: list[SearchResult], query: str = ""
-    ) -> GroupedSearchResults:
+    def _group_results_static(results: list[SearchResult], query: str = "") -> GroupedSearchResults:
         books: dict[int, list[SearchResult]] = defaultdict(list)
         for r in results:
             books[r.book_id].append(r)
-        return GroupedSearchResults(
-            query=query, books=dict(books), total_count=len(results)
-        )
+        return GroupedSearchResults(query=query, books=dict(books), total_count=len(results))
 
     # --- Image Caption Indexing ---
 
     async def index_image_captions(self, section, book_id: int) -> None:
         """Index non-decorative image captions for search discovery."""
-        images = getattr(section, 'images', None) or []
+        images = getattr(section, "images", None) or []
         captions = [
             f"[Image: {img.caption}]"
             for img in images
@@ -293,9 +286,7 @@ class SearchService:
         """Delete search index entries for a deleted annotation."""
         await self._delete_source_entries(SourceType.ANNOTATION, annotation_id)
 
-    async def _delete_source_entries(
-        self, source_type: SourceType, source_id: int
-    ) -> None:
+    async def _delete_source_entries(self, source_type: SourceType, source_id: int) -> None:
         """Delete all search index entries for a given source."""
         from sqlalchemy import delete
 

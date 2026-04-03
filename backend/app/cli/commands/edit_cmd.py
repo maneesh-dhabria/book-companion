@@ -28,7 +28,6 @@ async def edit_metadata(
         raise typer.Exit(1)
 
     async with get_services() as svc:
-        from app.db.models import Book
         from app.db.repositories.book_repo import AuthorRepository, BookRepository
 
         session = svc["session"]
@@ -47,15 +46,11 @@ async def edit_metadata(
             # Clear existing authors and set new one
             from app.db.models import BookAuthor
 
-            await session.execute(
-                select(BookAuthor).where(BookAuthor.book_id == book_id)
-            )
+            await session.execute(select(BookAuthor).where(BookAuthor.book_id == book_id))
             # Remove old associations
             from sqlalchemy import delete
 
-            await session.execute(
-                delete(BookAuthor).where(BookAuthor.book_id == book_id)
-            )
+            await session.execute(delete(BookAuthor).where(BookAuthor.book_id == book_id))
             session.add(BookAuthor(book_id=book_id, author_id=new_author.id))
 
         await session.flush()
@@ -76,9 +71,7 @@ async def edit_summary(
         if section_id:
             from app.db.models import BookSection, Summary
 
-            result = await session.execute(
-                select(BookSection).where(BookSection.id == section_id)
-            )
+            result = await session.execute(select(BookSection).where(BookSection.id == section_id))
             section = result.scalar_one_or_none()
             if not section:
                 print_error(f"Section {section_id} not found.")
@@ -108,7 +101,7 @@ async def edit_summary(
             else:
                 console.print("No changes detected.")
         else:
-            from app.db.models import Book, Summary
+            from app.db.models import Summary
             from app.db.repositories.book_repo import BookRepository
 
             book_repo = BookRepository(session)
@@ -129,8 +122,7 @@ async def edit_summary(
 
             if not summary_text:
                 print_error(
-                    f"No summary for book {book_id}. "
-                    f"Run `bookcompanion summarize {book_id}` first."
+                    f"No summary for book {book_id}. Run `bookcompanion summarize {book_id}` first."
                 )
                 raise typer.Exit(1)
 
@@ -177,12 +169,12 @@ async def edit_sections(
             raise typer.Exit(1)
 
         # Display current structure
-        console.print(f'\n[bold]{book.title}[/bold] — {len(book.sections)} sections\n')
+        console.print(f"\n[bold]{book.title}[/bold] — {len(book.sections)} sections\n")
         _show_db_sections(book.sections)
 
         console.print(
             "\n[bold]Section Editor[/bold] — commands: "
-            "show, merge 1,2 [\"title\"], split <id> --at-char <pos>, "
+            'show, merge 1,2 ["title"], split <id> --at-char <pos>, '
             "delete 1,2 (by section ID), move <id> --after <id>, done"
         )
 
@@ -213,15 +205,13 @@ async def edit_sections(
                 continue
 
             if cmd.action == "undo":
-                console.print(
-                    "Undo not available in DB mode. Changes are applied immediately."
-                )
+                console.print("Undo not available in DB mode. Changes are applied immediately.")
                 continue
 
             if cmd.action == "delete":
                 section_ids = cmd.indices
                 names = []
-                for s in (book.sections or []):
+                for s in book.sections or []:
                     if s.id in section_ids:
                         names.append(f"{s.id}: {s.title}")
                 if not names:
@@ -241,13 +231,9 @@ async def edit_sections(
 
             if cmd.action == "merge":
                 section_ids = cmd.indices
-                if typer.confirm(
-                    f"Merge section IDs {section_ids} into one?", default=True
-                ):
+                if typer.confirm(f"Merge section IDs {section_ids} into one?", default=True):
                     try:
-                        merged = await section_edit_svc.db_merge(
-                            book_id, section_ids, cmd.title
-                        )
+                        merged = await section_edit_svc.db_merge(book_id, section_ids, cmd.title)
                         await svc["session"].flush()
                         console.print(f'Merged into: "{merged.title}"')
                         modified = True
@@ -302,8 +288,7 @@ async def edit_sections(
                 default=False,
             ):
                 console.print(
-                    f"Run: bookcompanion summarize {book_id} --force "
-                    "to regenerate summaries."
+                    f"Run: bookcompanion summarize {book_id} --force to regenerate summaries."
                 )
 
 
@@ -316,11 +301,7 @@ def _show_db_sections(sections):
     table.add_column("Status")
     table.add_column("Chars", justify="right")
     for s in sections:
-        status = (
-            "[green]Completed[/green]"
-            if s.default_summary_id
-            else "[yellow]Pending[/yellow]"
-        )
+        status = "[green]Completed[/green]" if s.default_summary_id else "[yellow]Pending[/yellow]"
         char_count = len(s.content_md) if s.content_md else 0
         table.add_row(
             str(s.order_index + 1),

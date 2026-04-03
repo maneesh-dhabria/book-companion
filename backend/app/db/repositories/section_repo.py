@@ -29,9 +29,7 @@ class SectionRepository:
         return list(result.scalars().all())
 
     async def get_by_id(self, section_id: int) -> BookSection | None:
-        result = await self.session.execute(
-            select(BookSection).where(BookSection.id == section_id)
-        )
+        result = await self.session.execute(select(BookSection).where(BookSection.id == section_id))
         return result.scalar_one_or_none()
 
     async def get_by_ids(self, section_ids: list[int]) -> list[BookSection]:
@@ -60,9 +58,7 @@ class SectionRepository:
             section.order_index = idx
         await self.session.flush()
 
-    async def update_default_summary(
-        self, section_id: int, summary_id: int | None
-    ) -> None:
+    async def update_default_summary(self, section_id: int, summary_id: int | None) -> None:
         section = await self.get_by_id(section_id)
         if section:
             section.default_summary_id = summary_id
@@ -70,8 +66,6 @@ class SectionRepository:
 
     async def count_by_book(self, book_id: int) -> int:
         result = await self.session.execute(
-            select(func.count(BookSection.id)).where(
-                BookSection.book_id == book_id
-            )
+            select(func.count(BookSection.id)).where(BookSection.book_id == book_id)
         )
         return result.scalar_one()

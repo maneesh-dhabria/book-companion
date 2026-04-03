@@ -10,9 +10,9 @@ class FormatDetectionError(ParseError):
 
 
 MAGIC_SIGNATURES = {
-    "epub": (b"PK", 0),        # ZIP archive (EPUB is zipped)
-    "pdf": (b"%PDF", 0),       # PDF header
-    "mobi": (b"BOOKMOBI", 60), # MOBI identifier at offset 60
+    "epub": (b"PK", 0),  # ZIP archive (EPUB is zipped)
+    "pdf": (b"%PDF", 0),  # PDF header
+    "mobi": (b"BOOKMOBI", 60),  # MOBI identifier at offset 60
 }
 
 SUPPORTED_EXTENSIONS = {"epub", "mobi", "pdf"}

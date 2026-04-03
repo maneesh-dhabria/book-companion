@@ -15,7 +15,9 @@ async def search(
     query: str = typer.Argument(..., help="Search query text."),
     book: int = typer.Option(None, "--book", help="Search within a specific book only."),
     source: str = typer.Option(
-        None, "--source", help="Filter by source type: content, summary, title, concept, annotation."
+        None,
+        "--source",
+        help="Filter by source type: content, summary, title, concept, annotation.",
     ),
     tag: str = typer.Option(None, "--tag", help="Filter by tag name. (Phase 2)"),
     annotations_only: bool = typer.Option(
@@ -54,7 +56,11 @@ async def search(
         if should_json():
             import json
 
-            console.print(json.dumps([r if isinstance(r, dict) else vars(r) for r in results], indent=2, default=str))
+            console.print(
+                json.dumps(
+                    [r if isinstance(r, dict) else vars(r) for r in results], indent=2, default=str
+                )
+            )
             return
 
         # Group results by book

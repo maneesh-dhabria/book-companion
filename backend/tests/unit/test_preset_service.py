@@ -2,21 +2,30 @@
 
 import pytest
 import yaml
-from pathlib import Path
-from app.services.preset_service import PresetService, FACET_DIMENSIONS
+
 from app.exceptions import PresetError
+from app.services.preset_service import PresetService
 
 
 @pytest.fixture
 def preset_dir(tmp_path):
     d = tmp_path / "presets"
     d.mkdir()
-    (d / "test_system.yaml").write_text(yaml.dump({
-        "name": "Test System", "description": "A test preset",
-        "system": True,
-        "facets": {"style": "bullet_points", "audience": "practitioner",
-                   "compression": "standard", "content_focus": "key_concepts"},
-    }))
+    (d / "test_system.yaml").write_text(
+        yaml.dump(
+            {
+                "name": "Test System",
+                "description": "A test preset",
+                "system": True,
+                "facets": {
+                    "style": "bullet_points",
+                    "audience": "practitioner",
+                    "compression": "standard",
+                    "content_focus": "key_concepts",
+                },
+            }
+        )
+    )
     return d
 
 
@@ -43,7 +52,12 @@ def test_list_all(service):
 
 
 def test_create_user_preset(service, preset_dir):
-    facets = {"style": "narrative", "audience": "academic", "compression": "detailed", "content_focus": "full_coverage"}
+    facets = {
+        "style": "narrative",
+        "audience": "academic",
+        "compression": "detailed",
+        "content_focus": "full_coverage",
+    }
     preset = service.create("my_custom", "Custom preset", facets)
     assert preset.system is False
     assert (preset_dir / "my_custom.yaml").exists()
@@ -51,16 +65,39 @@ def test_create_user_preset(service, preset_dir):
 
 def test_create_duplicate_raises(service):
     with pytest.raises(PresetError, match="already exists"):
-        service.create("test_system", "Dup", {"style": "narrative", "audience": "academic", "compression": "detailed", "content_focus": "full_coverage"})
+        service.create(
+            "test_system",
+            "Dup",
+            {
+                "style": "narrative",
+                "audience": "academic",
+                "compression": "detailed",
+                "content_focus": "full_coverage",
+            },
+        )
 
 
 def test_create_invalid_facet_raises(service):
     with pytest.raises(PresetError, match="Fragment not found"):
-        service.create("bad", "Bad preset", {"style": "haiku", "audience": "academic", "compression": "detailed", "content_focus": "full_coverage"})
+        service.create(
+            "bad",
+            "Bad preset",
+            {
+                "style": "haiku",
+                "audience": "academic",
+                "compression": "detailed",
+                "content_focus": "full_coverage",
+            },
+        )
 
 
 def test_delete_user_preset(service, preset_dir):
-    facets = {"style": "narrative", "audience": "academic", "compression": "detailed", "content_focus": "full_coverage"}
+    facets = {
+        "style": "narrative",
+        "audience": "academic",
+        "compression": "detailed",
+        "content_focus": "full_coverage",
+    }
     service.create("deletable", "To delete", facets)
     service.delete("deletable")
     assert not (preset_dir / "deletable.yaml").exists()
@@ -86,5 +123,9 @@ def test_resolve_facets_with_overrides(service):
 
 
 def test_resolve_facets_default(service):
-    name, facets = service.resolve_facets(None, {"style": None, "audience": None, "compression": None, "content_focus": None}, "test_system")
+    name, facets = service.resolve_facets(
+        None,
+        {"style": None, "audience": None, "compression": None, "content_focus": None},
+        "test_system",
+    )
     assert name == "test_system"

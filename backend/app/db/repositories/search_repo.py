@@ -1,6 +1,6 @@
 """SearchIndex repository — data access layer."""
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import SearchIndex, SourceType
@@ -56,9 +56,7 @@ class SearchIndexRepository:
         await self.session.flush()
         return result.rowcount
 
-    async def delete_by_source(
-        self, source_type: SourceType, source_id: int
-    ) -> int:
+    async def delete_by_source(self, source_type: SourceType, source_id: int) -> int:
         result = await self.session.execute(
             delete(SearchIndex).where(
                 SearchIndex.source_type == source_type,

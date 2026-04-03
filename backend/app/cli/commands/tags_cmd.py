@@ -4,7 +4,6 @@ import typer
 
 from app.cli.deps import async_command, get_services
 from app.cli.formatting import (
-    console,
     print_empty_state,
     print_error,
     print_success,

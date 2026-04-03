@@ -1,6 +1,6 @@
 """Unit tests for search service."""
 
-from app.services.search_service import SearchService, SearchResult, GroupedSearchResults
+from app.services.search_service import SearchResult, SearchService
 
 
 def test_rrf_merge():

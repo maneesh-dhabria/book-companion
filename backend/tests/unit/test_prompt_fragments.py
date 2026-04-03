@@ -10,13 +10,26 @@ PROMPTS_DIR = Path(__file__).parents[2] / "app" / "services" / "summarizer" / "p
 PRESETS_DIR = PROMPTS_DIR / "presets"
 
 VALID_FACETS = {
-    "style": ["bullet_points", "narrative", "podcast_dialogue", "cornell_notes", "mind_map_outline", "tweet_thread"],
+    "style": [
+        "bullet_points",
+        "narrative",
+        "podcast_dialogue",
+        "cornell_notes",
+        "mind_map_outline",
+        "tweet_thread",
+    ],
     "audience": ["practitioner", "academic", "executive"],
     "compression": ["brief", "standard", "detailed"],
     "content_focus": ["key_concepts", "frameworks_examples", "full_coverage"],
 }
 
-SYSTEM_PRESETS = ["practitioner_bullets", "academic_detailed", "executive_brief", "study_guide", "tweet_thread"]
+SYSTEM_PRESETS = [
+    "practitioner_bullets",
+    "academic_detailed",
+    "executive_brief",
+    "study_guide",
+    "tweet_thread",
+]
 
 
 def _load_preset(name: str) -> dict:
@@ -56,8 +69,12 @@ def test_system_preset_renders(preset_name):
     env = _create_jinja_env()
     template = env.get_template("base/summarize_section.txt")
     result = template.render(
-        book_title="Test Book", author="Test Author", section_title="Test Section",
-        section_content="Sample content.", cumulative_context="", image_captions=[],
+        book_title="Test Book",
+        author="Test Author",
+        section_title="Test Section",
+        section_content="Sample content.",
+        cumulative_context="",
+        image_captions=[],
         **preset["facets"],
     )
     assert len(result) > 0
@@ -71,8 +88,14 @@ def test_book_template_renders(preset_name):
     env = _create_jinja_env()
     template = env.get_template("base/summarize_book.txt")
     result = template.render(
-        book_title="Test Book", author="Test Author", section_count=3,
-        sections=[{"title": "Ch 1", "summary": "S1"}, {"title": "Ch 2", "summary": "S2"}, {"title": "Ch 3", "summary": "S3"}],
+        book_title="Test Book",
+        author="Test Author",
+        section_count=3,
+        sections=[
+            {"title": "Ch 1", "summary": "S1"},
+            {"title": "Ch 2", "summary": "S2"},
+            {"title": "Ch 3", "summary": "S3"},
+        ],
         **preset["facets"],
     )
     assert len(result) > 0
@@ -84,8 +107,14 @@ def test_invalid_fragment_raises():
     template = env.get_template("base/summarize_section.txt")
     with pytest.raises(jinja2.TemplateNotFound):
         template.render(
-            book_title="Test", author="Author", section_title="S",
-            section_content="C", cumulative_context="", image_captions=[],
-            style="nonexistent_style", audience="practitioner",
-            compression="standard", content_focus="key_concepts",
+            book_title="Test",
+            author="Author",
+            section_title="S",
+            section_content="C",
+            cumulative_context="",
+            image_captions=[],
+            style="nonexistent_style",
+            audience="practitioner",
+            compression="standard",
+            content_focus="key_concepts",
         )

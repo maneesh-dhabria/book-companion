@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Book, ExternalReference
+from app.db.models import ExternalReference
 from app.db.repositories.book_repo import BookRepository
 from app.exceptions import BookCompanionError
 
@@ -37,9 +37,7 @@ class ReferenceService:
         prompt = self._build_discovery_prompt(book.title, authors)
 
         if not self.llm:
-            raise ReferenceError(
-                "LLM service not configured. Cannot discover references."
-            )
+            raise ReferenceError("LLM service not configured. Cannot discover references.")
 
         try:
             response = await self.llm.generate(prompt=prompt)

@@ -32,7 +32,7 @@ async def status(
             print_error(f"Book {book_id} not found.")
             raise typer.Exit(1)
 
-        console.print(f'\n[bold]{book.title}[/bold]')
+        console.print(f"\n[bold]{book.title}[/bold]")
         console.print(f"Status: {book.status.value if book.status else 'unknown'}")
 
         # Show processing jobs
@@ -86,16 +86,12 @@ async def status(
             console.print(table)
         else:
             print_empty_state(
-                f"Book parsed but not yet summarized. "
-                f"Run: bookcompanion summarize {book_id}"
+                f"Book parsed but not yet summarized. Run: bookcompanion summarize {book_id}"
             )
 
         # Show section progress
         sections = book.sections or []
         if sections:
-            completed = sum(
-                1 for s in sections
-                if s.default_summary_id is not None
-            )
+            completed = sum(1 for s in sections if s.default_summary_id is not None)
             total = len(sections)
             console.print(f"\nSection progress: {completed}/{total} summarized")

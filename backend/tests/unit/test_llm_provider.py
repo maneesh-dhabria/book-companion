@@ -1,11 +1,12 @@
 """Tests for LLM provider interface and Claude CLI implementation."""
 
 import json
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.services.summarizer.llm_provider import LLMResponse
+import pytest
+
 from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
+from app.services.summarizer.llm_provider import LLMResponse
 
 
 def test_llm_response_model():
@@ -22,7 +23,13 @@ async def test_claude_cli_constructs_correct_args():
     # Mock subprocess
     mock_proc = AsyncMock()
     mock_proc.communicate.return_value = (
-        json.dumps({"result": "test output", "model": "sonnet", "usage": {"input_tokens": 10, "output_tokens": 5}}).encode(),
+        json.dumps(
+            {
+                "result": "test output",
+                "model": "sonnet",
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            }
+        ).encode(),
         b"",
     )
     mock_proc.returncode = 0
@@ -42,12 +49,11 @@ async def test_claude_cli_constructs_correct_args():
 
 @pytest.mark.asyncio
 async def test_claude_cli_timeout_raises():
-    import asyncio
     provider = ClaudeCodeCLIProvider(
         cli_command="claude", default_model="sonnet", default_timeout=1
     )
     mock_proc = AsyncMock()
-    mock_proc.communicate.side_effect = asyncio.TimeoutError()
+    mock_proc.communicate.side_effect = TimeoutError()
     mock_proc.kill = AsyncMock()
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):

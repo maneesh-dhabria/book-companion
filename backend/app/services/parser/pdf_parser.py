@@ -64,11 +64,13 @@ class PDFParser(BookParser):
             # Collect images from this page
             for img in images:
                 if isinstance(img, dict) and "image" in img:
-                    current_images.append(ParsedImage(
-                        data=img["image"] if isinstance(img["image"], bytes) else b"",
-                        mime_type="image/png",
-                        filename=img.get("name"),
-                    ))
+                    current_images.append(
+                        ParsedImage(
+                            data=img["image"] if isinstance(img["image"], bytes) else b"",
+                            mime_type="image/png",
+                            filename=img.get("name"),
+                        )
+                    )
 
             # Split on major headings (# or ##)
             for line in text.split("\n"):
@@ -78,13 +80,15 @@ class PDFParser(BookParser):
                     if current_content:
                         content = "\n".join(current_content).strip()
                         if content:
-                            sections.append(ParsedSection(
-                                title=current_title,
-                                content_md=content,
-                                depth=0,
-                                order_index=order,
-                                images=current_images,
-                            ))
+                            sections.append(
+                                ParsedSection(
+                                    title=current_title,
+                                    content_md=content,
+                                    depth=0,
+                                    order_index=order,
+                                    images=current_images,
+                                )
+                            )
                             order += 1
                             current_images = []
                     current_title = stripped.lstrip("#").strip()
@@ -96,13 +100,15 @@ class PDFParser(BookParser):
         if current_content:
             content = "\n".join(current_content).strip()
             if content:
-                sections.append(ParsedSection(
-                    title=current_title,
-                    content_md=content,
-                    depth=0,
-                    order_index=order,
-                    images=current_images,
-                ))
+                sections.append(
+                    ParsedSection(
+                        title=current_title,
+                        content_md=content,
+                        depth=0,
+                        order_index=order,
+                        images=current_images,
+                    )
+                )
 
         # If no heading-based splits worked, create one section per N pages
         if len(sections) <= 1 and len(pages) > 5:
@@ -114,6 +120,7 @@ class PDFParser(BookParser):
         """Heuristic: detect complex PDFs that need marker-pdf.
         Check for multi-column layouts, heavy table content, or dense images."""
         import fitz  # pymupdf
+
         doc = fitz.open(str(file_path))
         sample_pages = min(5, len(doc))
         table_count = 0
@@ -121,7 +128,7 @@ class PDFParser(BookParser):
         for i in range(sample_pages):
             page = doc[i]
             tables = page.find_tables()
-            table_count += len(tables.tables) if hasattr(tables, 'tables') else 0
+            table_count += len(tables.tables) if hasattr(tables, "tables") else 0
             image_density += len(page.get_images())
         doc.close()
         # Complex if >3 tables or >2 images per page on average
@@ -131,6 +138,7 @@ class PDFParser(BookParser):
         """Fallback: use marker-pdf for complex layouts (~8s/page)."""
         from marker.converters.pdf import PdfConverter
         from marker.models import create_model_dict
+
         converter = PdfConverter(artifact_dict=create_model_dict())
         rendered = converter(str(file_path))
         # Convert marker output to ParsedBook format
@@ -151,10 +159,12 @@ class PDFParser(BookParser):
             chunk = pages[i : i + pages_per_section]
             content = "\n\n".join(p.get("text", "") for p in chunk).strip()
             if content:
-                sections.append(ParsedSection(
-                    title=f"Pages {i + 1}-{min(i + pages_per_section, len(pages))}",
-                    content_md=content,
-                    depth=0,
-                    order_index=len(sections),
-                ))
+                sections.append(
+                    ParsedSection(
+                        title=f"Pages {i + 1}-{min(i + pages_per_section, len(pages))}",
+                        content_md=content,
+                        depth=0,
+                        order_index=len(sections),
+                    )
+                )
         return sections

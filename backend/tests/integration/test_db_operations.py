@@ -57,9 +57,7 @@ async def test_create_book_sections(db_session):
     await db_session.flush()
 
     result = await db_session.execute(
-        select(BookSection)
-        .where(BookSection.book_id == book.id)
-        .order_by(BookSection.order_index)
+        select(BookSection).where(BookSection.book_id == book.id).order_by(BookSection.order_index)
     )
     fetched = result.scalars().all()
     assert len(fetched) == 3
@@ -78,16 +76,12 @@ async def test_cascade_delete_book(db_session):
     db_session.add(book)
     await db_session.flush()
 
-    section = BookSection(
-        book_id=book.id, title="Ch1", order_index=0, depth=0
-    )
+    section = BookSection(book_id=book.id, title="Ch1", order_index=0, depth=0)
     db_session.add(section)
     await db_session.flush()
 
     await db_session.delete(book)
     await db_session.flush()
 
-    result = await db_session.execute(
-        select(BookSection).where(BookSection.book_id == book.id)
-    )
+    result = await db_session.execute(select(BookSection).where(BookSection.book_id == book.id))
     assert result.scalars().all() == []

@@ -16,16 +16,12 @@ class SummaryRepository:
         return summary
 
     async def get_by_id(self, summary_id: int) -> Summary | None:
-        result = await self.session.execute(
-            select(Summary).where(Summary.id == summary_id)
-        )
+        result = await self.session.execute(select(Summary).where(Summary.id == summary_id))
         return result.scalar_one_or_none()
 
     async def list_by_book(self, book_id: int) -> list[Summary]:
         result = await self.session.execute(
-            select(Summary)
-            .where(Summary.book_id == book_id)
-            .order_by(Summary.created_at.desc())
+            select(Summary).where(Summary.book_id == book_id).order_by(Summary.created_at.desc())
         )
         return list(result.scalars().all())
 
@@ -80,9 +76,7 @@ class SummaryRepository:
         )
         return result.scalar_one_or_none()
 
-    async def count_by_content(
-        self, content_type: SummaryContentType, content_id: int
-    ) -> int:
+    async def count_by_content(self, content_type: SummaryContentType, content_id: int) -> int:
         result = await self.session.execute(
             select(func.count(Summary.id)).where(
                 Summary.content_type == content_type,

@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 from app.config import Settings
 from app.exceptions import BookCompanionError
 
-
 DEFAULT_BACKUP_DIR = os.path.expanduser("~/.config/bookcompanion/backups")
 
 
@@ -56,12 +55,18 @@ class BackupService:
 
         cmd = [
             "pg_dump",
-            "-h", db["host"],
-            "-p", db["port"],
-            "-U", db["username"],
-            "-d", db["database"],
-            "-F", "p",  # Plain-text SQL format
-            "-f", str(backup_path),
+            "-h",
+            db["host"],
+            "-p",
+            db["port"],
+            "-U",
+            db["username"],
+            "-d",
+            db["database"],
+            "-F",
+            "p",  # Plain-text SQL format
+            "-f",
+            str(backup_path),
         ]
 
         proc = await asyncio.create_subprocess_exec(
@@ -90,11 +95,16 @@ class BackupService:
 
         cmd = [
             "psql",
-            "-h", db["host"],
-            "-p", db["port"],
-            "-U", db["username"],
-            "-d", db["database"],
-            "-f", str(backup_path),
+            "-h",
+            db["host"],
+            "-p",
+            db["port"],
+            "-U",
+            db["username"],
+            "-d",
+            db["database"],
+            "-f",
+            str(backup_path),
         ]
 
         proc = await asyncio.create_subprocess_exec(
@@ -126,11 +136,13 @@ class BackupService:
                 except ValueError:
                     pass
 
-            backups.append({
-                "path": str(f),
-                "filename": f.name,
-                "size_bytes": stat.st_size,
-                "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                "created": created.isoformat() if created else None,
-            })
+            backups.append(
+                {
+                    "path": str(f),
+                    "filename": f.name,
+                    "size_bytes": stat.st_size,
+                    "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                    "created": created.isoformat() if created else None,
+                }
+            )
         return backups

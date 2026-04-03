@@ -28,9 +28,7 @@ class BookRepository:
         return result.scalar_one_or_none()
 
     async def get_by_hash(self, file_hash: str) -> Book | None:
-        result = await self.session.execute(
-            select(Book).where(Book.file_hash == file_hash)
-        )
+        result = await self.session.execute(select(Book).where(Book.file_hash == file_hash))
         return result.scalar_one_or_none()
 
     async def list_all(
@@ -61,9 +59,7 @@ class BookRepository:
             book.status = status
             await self.session.flush()
 
-    async def update_default_summary(
-        self, book_id: int, summary_id: int | None
-    ) -> None:
+    async def update_default_summary(self, book_id: int, summary_id: int | None) -> None:
         book = await self.get_by_id(book_id)
         if book:
             book.default_summary_id = summary_id
@@ -75,9 +71,7 @@ class AuthorRepository:
         self.session = session
 
     async def get_or_create(self, name: str) -> Author:
-        result = await self.session.execute(
-            select(Author).where(Author.name == name)
-        )
+        result = await self.session.execute(select(Author).where(Author.name == name))
         author = result.scalar_one_or_none()
         if not author:
             author = Author(name=name)

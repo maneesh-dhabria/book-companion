@@ -13,9 +13,7 @@ console = Console()
 
 @async_command
 async def init(
-    database_url: str = typer.Option(
-        None, "--database-url", help="Override database URL."
-    ),
+    database_url: str = typer.Option(None, "--database-url", help="Override database URL."),
 ):
     """First-time setup: start PostgreSQL, run migrations, verify dependencies."""
     console.print("\nChecking dependencies...")
@@ -76,16 +74,14 @@ async def init(
     console.print("  2. Quick overview:         bookcompanion add --quick ~/path/to/book.epub")
     console.print("  3. Full summarization:     bookcompanion summarize <book_id>")
     console.print("  4. Browse your library:    bookcompanion list")
-    console.print("  5. Search across books:    bookcompanion search \"query\"")
+    console.print('  5. Search across books:    bookcompanion search "query"')
     console.print("\nRun `bookcompanion --help` for all commands.\n")
 
 
 def _check_dependency(name: str, command: str, args: list, required: bool = True):
     if shutil.which(command):
         try:
-            result = subprocess.run(
-                [command] + args, capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run([command] + args, capture_output=True, text=True, timeout=10)
             version = result.stdout.strip().split("\n")[0][:60]
             console.print(f"  [green]✓[/green] {name}: {version}")
         except Exception:

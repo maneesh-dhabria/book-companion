@@ -384,9 +384,7 @@ class SectionEditService:
         """Delete sections at given indices. At least 1 must remain."""
         remaining = len(self._sections) - len(indices)
         if remaining < 1:
-            raise SectionEditError(
-                "Cannot delete all sections; at least 1 must remain"
-            )
+            raise SectionEditError("Cannot delete all sections; at least 1 must remain")
 
         # Validate all indices exist
         for i in indices:
@@ -501,9 +499,7 @@ class SectionEditService:
         repo = self._require_repo()
         total = await repo.count_by_book(book_id)
         if total - len(section_ids) < 1:
-            raise SectionEditError(
-                "Cannot delete all sections; at least 1 must remain"
-            )
+            raise SectionEditError("Cannot delete all sections; at least 1 must remain")
 
         count = await repo.delete_by_ids(section_ids)
         await repo.reindex_order(book_id)
@@ -511,9 +507,7 @@ class SectionEditService:
         logger.info("db_sections_deleted", book_id=book_id, count=count)
         return count
 
-    async def db_move(
-        self, book_id: int, section_id: int, after_id: int | None
-    ) -> None:
+    async def db_move(self, book_id: int, section_id: int, after_id: int | None) -> None:
         """Move a section in DB. after_id=None means move to first position."""
         repo = self._require_repo()
         sections = await repo.get_by_book_id(book_id)

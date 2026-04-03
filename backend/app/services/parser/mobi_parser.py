@@ -22,7 +22,9 @@ class MOBIParser(BookParser):
 
     async def _convert_to_epub(self, mobi_path: Path, epub_path: Path) -> None:
         proc = await asyncio.create_subprocess_exec(
-            "ebook-convert", str(mobi_path), str(epub_path),
+            "ebook-convert",
+            str(mobi_path),
+            str(epub_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

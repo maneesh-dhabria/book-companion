@@ -1,7 +1,9 @@
 """Tests for MOBI parser (delegates to EPUB after Calibre conversion)."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.services.parser.mobi_parser import MOBIParser
 
 

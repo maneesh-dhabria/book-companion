@@ -117,7 +117,11 @@ def print_annotation_table(annotations):
     for ann in annotations:
         ann_type = ann.type.value if ann.type else "note"
         ct = ann.content_type.value if ann.content_type else "-"
-        text = (ann.selected_text[:37] + "...") if ann.selected_text and len(ann.selected_text) > 40 else (ann.selected_text or "-")
+        text = (
+            (ann.selected_text[:37] + "...")
+            if ann.selected_text and len(ann.selected_text) > 40
+            else (ann.selected_text or "-")
+        )
         note = (ann.note[:37] + "...") if ann.note and len(ann.note) > 40 else (ann.note or "-")
         created = ann.created_at.strftime("%Y-%m-%d") if ann.created_at else "-"
         table.add_row(str(ann.id), ann_type, ct, text, note, created)
@@ -134,7 +138,11 @@ def print_concept_table(concepts):
     table.add_column("Edited", justify="center")
 
     for concept in concepts:
-        defn = (concept.definition[:57] + "...") if len(concept.definition) > 60 else concept.definition
+        defn = (
+            (concept.definition[:57] + "...")
+            if len(concept.definition) > 60
+            else concept.definition
+        )
         edited = "Yes" if concept.user_edited else ""
         table.add_row(str(concept.id), concept.term, defn, edited)
 
@@ -165,7 +173,11 @@ def print_reference_table(refs):
     table.add_column("Snippet", max_width=40)
 
     for ref in refs:
-        snippet = (ref.snippet[:37] + "...") if ref.snippet and len(ref.snippet) > 40 else (ref.snippet or "-")
+        snippet = (
+            (ref.snippet[:37] + "...")
+            if ref.snippet and len(ref.snippet) > 40
+            else (ref.snippet or "-")
+        )
         table.add_row(str(ref.id), ref.title, ref.source_name, ref.url, snippet)
 
     console.print(table)

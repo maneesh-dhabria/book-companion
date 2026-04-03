@@ -2,6 +2,7 @@
 
 import pytest
 import pytest_asyncio
+
 from app.db.models import Book, BookSection, BookStatus
 from app.services.section_edit_service import SectionEditService
 
@@ -9,16 +10,23 @@ from app.services.section_edit_service import SectionEditService
 @pytest_asyncio.fixture
 async def book_with_sections(db_session):
     book = Book(
-        title="Edit Test", file_data=b"test", file_hash="edit_test_hash_v11",
-        file_format="epub", file_size_bytes=100, status=BookStatus.PARSED,
+        title="Edit Test",
+        file_data=b"test",
+        file_hash="edit_test_hash_v11",
+        file_format="epub",
+        file_size_bytes=100,
+        status=BookStatus.PARSED,
     )
     db_session.add(book)
     await db_session.flush()
 
     for i in range(5):
         s = BookSection(
-            book_id=book.id, title=f"Section {i+1}",
-            order_index=i, depth=0, content_md=f"Content for section {i+1}. " * 100,
+            book_id=book.id,
+            title=f"Section {i + 1}",
+            order_index=i,
+            depth=0,
+            content_md=f"Content for section {i + 1}. " * 100,
         )
         db_session.add(s)
     await db_session.flush()
@@ -62,6 +70,7 @@ async def test_db_delete_validates_minimum(db_session, book_with_sections):
     all_ids = [s.id for s in sections]
 
     from app.exceptions import SectionEditError
+
     with pytest.raises(SectionEditError, match="Cannot delete all"):
         await svc.db_delete(book.id, all_ids)
 

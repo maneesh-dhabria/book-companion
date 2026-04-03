@@ -1,8 +1,10 @@
 """Tests for book service orchestration."""
 
 import hashlib
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from app.services.book_service import BookService
 from app.services.parser.base import ParsedBook, ParsedSection
 
@@ -12,16 +14,18 @@ async def test_add_book_computes_hash():
     mock_session = AsyncMock()
     mock_parser = AsyncMock()
     mock_parser.parse.return_value = ParsedBook(
-        title="Test", authors=["Author"], sections=[
+        title="Test",
+        authors=["Author"],
+        sections=[
             ParsedSection(title="Ch1", content_md="Content", depth=0, order_index=0),
-        ], cover_image=None, metadata={},
+        ],
+        cover_image=None,
+        metadata={},
     )
     mock_config = MagicMock()
     mock_config.storage.max_file_size_mb = 200
 
-    service = BookService(
-        db=mock_session, config=mock_config
-    )
+    service = BookService(db=mock_session, config=mock_config)
 
     file_data = b"fake epub content"
     expected_hash = hashlib.sha256(file_data).hexdigest()

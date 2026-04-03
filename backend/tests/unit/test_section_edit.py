@@ -1,8 +1,9 @@
 """Tests for SectionEditService in-memory operations."""
 
 import pytest
-from app.services.section_edit_service import SectionEditService, SectionItem
+
 from app.exceptions import SectionEditError
+from app.services.section_edit_service import SectionEditService, SectionItem
 
 
 def _make_sections(count=5):

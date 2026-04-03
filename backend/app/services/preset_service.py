@@ -4,8 +4,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
 import structlog
+import yaml
 
 from app.exceptions import PresetError
 
@@ -16,7 +16,14 @@ PRESETS_DIR = PROMPTS_DIR / "presets"
 FRAGMENTS_DIR = PROMPTS_DIR / "fragments"
 
 FACET_DIMENSIONS = {
-    "style": ["bullet_points", "narrative", "podcast_dialogue", "cornell_notes", "mind_map_outline", "tweet_thread"],
+    "style": [
+        "bullet_points",
+        "narrative",
+        "podcast_dialogue",
+        "cornell_notes",
+        "mind_map_outline",
+        "tweet_thread",
+    ],
     "audience": ["practitioner", "academic", "executive"],
     "compression": ["brief", "standard", "detailed"],
     "content_focus": ["key_concepts", "frameworks_examples", "full_coverage"],
@@ -59,10 +66,15 @@ class PresetService:
 
     def create(self, name: str, description: str, facets: dict[str, str]) -> Preset:
         if not re.match(r"^[a-z][a-z0-9_]*$", name):
-            raise PresetError(f'Invalid preset name "{name}". Use lowercase letters, numbers, and underscores.')
+            raise PresetError(
+                f'Invalid preset name "{name}". Use lowercase letters, numbers, and underscores.'
+            )
         path = self.presets_dir / f"{name}.yaml"
         if path.exists():
-            raise PresetError(f'Preset "{name}" already exists. Use a different name or delete it first with: bookcompanion preset delete {name}')
+            raise PresetError(
+                f'Preset "{name}" already exists. Use a different name or '
+                f"delete it first with: bookcompanion preset delete {name}"
+            )
         self._validate_facets(facets)
         data = {
             "name": name.replace("_", " ").title(),
@@ -79,7 +91,9 @@ class PresetService:
             raise PresetError(f'Cannot delete system preset "{name}".')
         preset.file_path.unlink()
 
-    def resolve_facets(self, preset_name: str | None, overrides: dict[str, str | None], default_preset: str) -> tuple[str | None, dict[str, str]]:
+    def resolve_facets(
+        self, preset_name: str | None, overrides: dict[str, str | None], default_preset: str
+    ) -> tuple[str | None, dict[str, str]]:
         if preset_name:
             preset = self.load(preset_name)
             facets = dict(preset.facets)
@@ -105,7 +119,11 @@ class PresetService:
             if dim not in facets:
                 raise PresetError(f"Missing facet: {dim}")
             if facets[dim] not in valid_values:
-                raise PresetError(f"Fragment not found: fragments/{dim}/{facets[dim]}.txt. Available {dim}s: {', '.join(valid_values)}")
+                available = ", ".join(valid_values)
+                raise PresetError(
+                    f"Fragment not found: fragments/{dim}/{facets[dim]}.txt. "
+                    f"Available {dim}s: {available}"
+                )
 
     def _parse_file(self, path: Path) -> Preset:
         with open(path) as f:

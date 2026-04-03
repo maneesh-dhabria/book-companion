@@ -1,6 +1,6 @@
 """ProcessingJob repository — data access layer."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,9 +36,7 @@ class ProcessingRepository:
         error_message: str | None = None,
         progress: dict | None = None,
     ) -> None:
-        result = await self.session.execute(
-            select(ProcessingJob).where(ProcessingJob.id == job_id)
-        )
+        result = await self.session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
         job = result.scalar_one_or_none()
         if job:
             job.status = status
@@ -47,16 +45,14 @@ class ProcessingRepository:
             if progress:
                 job.progress = progress
             if status == ProcessingJobStatus.RUNNING and not job.started_at:
-                job.started_at = datetime.now(timezone.utc)
+                job.started_at = datetime.now(UTC)
             if status in (ProcessingJobStatus.COMPLETED, ProcessingJobStatus.FAILED):
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(UTC)
             await self.session.flush()
 
     async def get_orphaned_jobs(self, max_age_hours: int = 24) -> list[ProcessingJob]:
         """Find running jobs that may have been abandoned."""
-        cutoff = datetime.now(timezone.utc).replace(
-            hour=datetime.now(timezone.utc).hour - max_age_hours
-        )
+        cutoff = datetime.now(UTC).replace(hour=datetime.now(UTC).hour - max_age_hours)
         result = await self.session.execute(
             select(ProcessingJob).where(
                 ProcessingJob.status == ProcessingJobStatus.RUNNING,

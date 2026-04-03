@@ -2,9 +2,9 @@
 
 import hashlib
 import json
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from app.config import Settings
 from app.db.models import Image, ImageRelevance
@@ -20,25 +20,26 @@ from app.services.summarizer.llm_provider import LLMResponse
 
 class TestPreFilter:
     def test_skips_sub_5kb_images(self):
-        assert should_skip_image(
-            data=b"x" * 4000, width=200, height=200, filename="fig.png"
-        ) is True
+        assert (
+            should_skip_image(data=b"x" * 4000, width=200, height=200, filename="fig.png") is True
+        )
 
     def test_passes_5kb_plus_images(self):
-        assert should_skip_image(
-            data=b"x" * 6000, width=200, height=200, filename="fig.png"
-        ) is False
+        assert (
+            should_skip_image(data=b"x" * 6000, width=200, height=200, filename="fig.png") is False
+        )
 
     def test_skips_cover_variants(self):
         for name in ["cover.jpg", "book-cover.png", "front_cover.jpeg"]:
-            assert should_skip_image(
-                data=b"x" * 10000, width=600, height=900, filename=name
-            ) is True
+            assert (
+                should_skip_image(data=b"x" * 10000, width=600, height=900, filename=name) is True
+            )
 
     def test_no_dimensions_not_skipped(self):
-        assert should_skip_image(
-            data=b"x" * 10000, width=None, height=None, filename="fig.png"
-        ) is False
+        assert (
+            should_skip_image(data=b"x" * 10000, width=None, height=None, filename="fig.png")
+            is False
+        )
 
 
 class TestContentHash:
@@ -75,9 +76,7 @@ class TestParsedImageAltText:
         assert img.alt_text is None
 
     def test_alt_text_accepted(self):
-        img = ParsedImage(
-            data=b"x", mime_type="image/png", alt_text="Five Forces"
-        )
+        img = ParsedImage(data=b"x", mime_type="image/png", alt_text="Five Forces")
         assert img.alt_text == "Five Forces"
 
 
@@ -105,9 +104,7 @@ class TestCaptionerReturnType:
             latency_ms=100,
         )
         captioner = ImageCaptioner(llm_provider=mock_llm)
-        result = await captioner.caption_image(
-            image_data=b"x" * 100, mime_type="image/png"
-        )
+        result = await captioner.caption_image(image_data=b"x" * 100, mime_type="image/png")
         assert isinstance(result, dict)
         assert "caption" in result
         assert "relevance" in result
@@ -120,9 +117,7 @@ class TestCaptionerReturnType:
             latency_ms=100,
         )
         captioner = ImageCaptioner(llm_provider=mock_llm)
-        result = await captioner.caption_image(
-            image_data=b"x" * 100, mime_type="image/png"
-        )
+        result = await captioner.caption_image(image_data=b"x" * 100, mime_type="image/png")
         assert result["relevance"] == "supplementary"
         assert "Not valid JSON" in result["caption"]
 
@@ -130,9 +125,7 @@ class TestCaptionerReturnType:
         mock_llm = AsyncMock()
         mock_llm.generate_with_image.side_effect = Exception("fail")
         captioner = ImageCaptioner(llm_provider=mock_llm)
-        result = await captioner.caption_image(
-            image_data=b"x", mime_type="image/png"
-        )
+        result = await captioner.caption_image(image_data=b"x", mime_type="image/png")
         assert result["caption"] == ""
         assert result["relevance"] == "decorative"
 
@@ -143,7 +136,9 @@ class TestSummarizerConstructor:
 
         mock_captioner = MagicMock()
         svc = SummarizerService(
-            db=MagicMock(), llm=MagicMock(), config=MagicMock(),
+            db=MagicMock(),
+            llm=MagicMock(),
+            config=MagicMock(),
             captioner=mock_captioner,
         )
         assert svc.captioner is mock_captioner
@@ -152,7 +147,9 @@ class TestSummarizerConstructor:
         from app.services.summarizer.summarizer_service import SummarizerService
 
         svc = SummarizerService(
-            db=MagicMock(), llm=MagicMock(), config=MagicMock(),
+            db=MagicMock(),
+            llm=MagicMock(),
+            config=MagicMock(),
         )
         assert svc.captioner is None
 
@@ -202,9 +199,7 @@ class TestCaptionSectionImages:
             },
         ]
 
-        results = await captioner.caption_section_images(
-            images=images, section_context="Chapter 1"
-        )
+        results = await captioner.caption_section_images(images=images, section_context="Chapter 1")
 
         assert 1 not in results  # Pre-filtered
         assert 2 in results
@@ -242,9 +237,7 @@ class TestCaptionSectionImages:
             },
         ]
 
-        results = await captioner.caption_section_images(
-            images=images, section_context="Chapter 1"
-        )
+        results = await captioner.caption_section_images(images=images, section_context="Chapter 1")
 
         assert results[1]["caption"] == "Already captioned."
         assert results[2]["caption"] == "Already captioned."

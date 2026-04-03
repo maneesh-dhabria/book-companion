@@ -5,9 +5,10 @@ Revises: bb35febd1383
 Create Date: 2026-04-03
 """
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ENUM, JSONB
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "c1d2e3f4a5b6"
@@ -17,24 +18,35 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 1. Create SummaryContentType enum
-    summary_content_type = sa.Enum(
-        "section", "book", "concept", "annotation",
-        name="summarycontenttype",
+    # 1. Create SummaryContentType enum type directly via SQL
+    op.execute(
+        "DO $$ BEGIN "
+        "CREATE TYPE summarycontenttype AS ENUM "
+        "('section', 'book', 'concept', 'annotation'); "
+        "EXCEPTION WHEN duplicate_object THEN NULL; "
+        "END $$"
     )
-    summary_content_type.create(op.get_bind(), checkfirst=True)
 
     # 2. Create summaries table
+    summary_content_type_col = ENUM(
+        "section",
+        "book",
+        "concept",
+        "annotation",
+        name="summarycontenttype",
+        create_type=False,
+    )
     op.create_table(
         "summaries",
         sa.Column("id", sa.BigInteger(), primary_key=True),
+        sa.Column("content_type", summary_content_type_col, nullable=False),
+        sa.Column("content_id", sa.BigInteger(), nullable=False),
         sa.Column(
-            "content_type",
-            sa.Enum("section", "book", "concept", "annotation", name="summarycontenttype", create_type=False),
+            "book_id",
+            sa.BigInteger(),
+            sa.ForeignKey("books.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("content_id", sa.BigInteger(), nullable=False),
-        sa.Column("book_id", sa.BigInteger(), sa.ForeignKey("books.id", ondelete="CASCADE"), nullable=False),
         sa.Column("preset_name", sa.String(200), nullable=True),
         sa.Column("facets_used", JSONB(), nullable=False),
         sa.Column("prompt_text_sent", sa.Text(), nullable=False),
