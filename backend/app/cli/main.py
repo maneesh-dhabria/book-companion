@@ -79,9 +79,7 @@ app.command("add")(books.add)
 app.command("list")(books.list_books)
 app.command("show")(books.show)
 app.command("delete")(books.delete)
-app.command("read")(books.read)
 app.command("authors")(books.authors)
-app.command("summary")(summarize_cmd.summary)
 app.command("summarize")(summarize_cmd.summarize)
 app.command("search")(search_cmd.search)
 app.command("eval")(eval_cmd.eval_cmd)
@@ -89,6 +87,15 @@ app.add_typer(eval_cmd.eval_app, name="eval-compare", help="Eval comparison comm
 app.command("status")(status_cmd.status)
 app.add_typer(config_cmd.config_app, name="config")
 
+
+# Import and register V1.1 command modules
+from app.cli.commands.preset_cmd import preset_app
+from app.cli.commands.read_cmd import read
+from app.cli.commands.summary_cmds import summary_app
+
+app.add_typer(summary_app, name="summary")
+app.add_typer(preset_app, name="preset", help="Manage summarization presets.")
+app.command("read")(read)
 
 # Import and register Phase 2 command modules
 from app.cli.commands.annotations_cmd import annotations_app
