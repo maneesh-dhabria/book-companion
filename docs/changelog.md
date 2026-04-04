@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-04 — V1.2: EPUB parsing fixes, markdown output, eval display
+
+- Fixed: EPUB books that split chapters across multiple files now parse correctly — chapter content is aggregated from all spine items between TOC entries, not just the first file. Books like "Understanding Michael Porter" went from ~100 chars per chapter to 25K-46K chars
+- Fixed: Book and section summaries now output clean markdown instead of JSON-wrapped text. Existing JSON-format summaries are still readable (backward compatible)
+- Sections with very little real content (< 200 chars after stripping XML/images) are automatically skipped during summarization instead of producing hallucinated summaries. Use `--force` to override
+- `summary list` now shows separate "Status" and "Results" columns (e.g., "passed", "3/5") instead of a single "Eval" dash. Distinguishes between "eval not run" and "eval failed"
+- After summarizing with `--skip-eval`, a hint reminds you to run `bookcompanion eval <book_id>` separately
+
+**References:**
+- Requirements: [`docs/requirements/2026-04-04_v1_2_bugfixes_and_improvements.md`](docs/requirements/2026-04-04_v1_2_bugfixes_and_improvements.md)
+- Spec: [`docs/specs/2026-04-04_v1_2_bugfixes_and_improvements_spec.md`](docs/specs/2026-04-04_v1_2_bugfixes_and_improvements_spec.md)
+- Plan: [`docs/plans/2026-04-04_v1_2_bugfixes_implementation.md`](docs/plans/2026-04-04_v1_2_bugfixes_implementation.md)
+
 ## 2026-04-04 — V1.1: Preset-based summarization, summary log, section editing
 
 - Summarize books using named presets (`--preset practitioner_bullets`, `--preset executive_brief`, etc.) that control style, audience, compression, and content focus — or override individual facets with `--style`, `--audience`, `--compression`, `--content-focus` flags
