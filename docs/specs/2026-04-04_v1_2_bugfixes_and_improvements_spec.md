@@ -14,14 +14,16 @@
 3. [Fix 1: EPUB Parser — Auto-Merge Stub Sections](#fix-1-epub-parser--auto-merge-stub-sections)
 4. [Fix 2: Markdown Output — Remove JSON Wrapping](#fix-2-markdown-output--remove-json-wrapping)
 5. [Fix 3: Summarizer — Minimum Content Threshold](#fix-3-summarizer--minimum-content-threshold)
-6. [Fix 4: Eval Hint After --skip-eval](#fix-4-eval-hint-after---skip-eval)
+6. [Fix 4: Eval Hint & Eval Display Improvements](#fix-4-eval-hint--eval-display-improvements)
 7. [Fix 5: XML/HTML Boilerplate Stripping](#fix-5-xmlhtml-boilerplate-stripping)
-8. [Database Migrations](#database-migrations)
-9. [Configuration Changes](#configuration-changes)
-10. [Verification Plan](#verification-plan)
-11. [Deployment & Rollout](#deployment-rollout)
-12. [Risk Mitigation](#risk-mitigation)
-13. [Research Sources](#research-sources)
+8. [Shared Utilities](#shared-utilities)
+9. [Re-Parse Cascade Behavior](#re-parse-cascade-behavior)
+10. [Database Migrations](#database-migrations)
+11. [Configuration Changes](#configuration-changes)
+12. [Verification Plan](#verification-plan)
+13. [Deployment & Rollout](#deployment-rollout)
+14. [Risk Mitigation](#risk-mitigation)
+15. [Research Sources](#research-sources)
 
 ---
 
@@ -332,13 +334,13 @@ Skipped sections show a distinct message:
 
 ---
 
-## Fix 4: Eval Hint After --skip-eval
+## Fix 4: Eval Hint & Eval Display Improvements
 
 ### 4.1 Problem
 
-After summarization with `--skip-eval`, there's no indication that eval wasn't run. Users see `Eval: -` in summary lists with no context.
+After summarization with `--skip-eval`, there's no indication that eval wasn't run. Users see `Eval: -` in summary lists with no context. Additionally, the single `Eval` column doesn't distinguish between "not run", "passed", "partially passed", and "failed".
 
-### 4.2 Solution
+### 4.2 Solution: Eval Hint
 
 After the final summary report in `summarize_cmd.py`, add:
 
@@ -349,11 +351,78 @@ if skip_eval:
     )
 ```
 
-### 4.3 Files Changed
+### 4.3 Solution: Eval Status & Results Columns
+
+Replace the single `Eval` column in `summary list` with two columns:
+
+| Column | Values | Description |
+|--------|--------|-------------|
+| **Eval Status** | `—` (not run), `running`, `passed`, `failed`, `partial` | Whether eval has been executed |
+| **Eval Results** | `—`, `14/16`, `16/16` | Pass count / total assertions |
+
+**Status derivation logic:**
+
+```python
+def _eval_status(eval_json: dict | None) -> str:
+    """Derive eval status from eval_json."""
+    if not eval_json or not isinstance(eval_json, dict):
+        return "—"            # Not run
+    total = eval_json.get("total", 0)
+    passed = eval_json.get("passed", 0)
+    if total == 0:
+        return "—"
+    if passed == total:
+        return "[green]passed[/green]"
+    # Check if any critical assertions failed
+    results = eval_json.get("results", {})
+    critical_failed = any(
+        not r.get("passed") for name, r in results.items()
+        if ASSERTION_REGISTRY.get(name, {}).get("category") == "critical"
+    )
+    if critical_failed:
+        return "[red]failed[/red]"
+    return "[yellow]partial[/yellow]"
+
+
+def _eval_results(eval_json: dict | None) -> str:
+    """Format eval pass/total as string."""
+    if not eval_json or not isinstance(eval_json, dict):
+        return "—"
+    passed = eval_json.get("passed", 0)
+    total = eval_json.get("total", 0)
+    if total == 0:
+        return "—"
+    return f"{passed}/{total}"
+```
+
+**Apply to these views:**
+
+| View | Change |
+|------|--------|
+| `summary list <book_id>` (overview) | No eval columns (too noisy for overview) |
+| `summary list <book_id> <section_id>` | Replace `Eval` with `Status` + `Results` columns |
+| `summary list <book_id> --book-level` | Replace `Eval` with `Status` + `Results` columns |
+| `summary show <id>` | Show status line + detailed breakdown if available |
+| `summary compare <id1> <id2>` | Show `Status` + `Results` rows in comparison table |
+| `show <book_id>` (section table) | Replace `Eval` with `Status` column (narrow) |
+
+**`summary show` detailed eval display** (when eval has been run):
+```
+Eval Status: passed
+Eval Results: 14/16 assertions passed
+  Critical (4/4):  ✓ no_hallucinated_facts  ✓ no_contradictions  ✓ accurate_quotes  ✓ cross_summary_consistency
+  Important (6/6): ✓ covers_main_argument  ✓ covers_key_concepts  ✓ covers_frameworks  ...
+  Advisory (4/6):  ✓ standalone_readable  ✗ reasonable_length  ✗ image_refs_preserved  ...
+```
+
+### 4.4 Files Changed
 
 | File | Change |
 |------|--------|
 | `app/cli/commands/summarize_cmd.py` | Add hint after final report when `--skip-eval` |
+| `app/cli/commands/summary_cmds.py` | Replace `_format_eval()` with `_eval_status()` + `_eval_results()`, update all table columns |
+| `app/cli/commands/books.py` | Update `show` command eval column to use `_eval_status()` |
+| `tests/e2e/test_v1_1_flows.py` | Update any assertions checking eval column output |
 
 ---
 
@@ -486,6 +555,10 @@ summarization:
 | `test_min_chars_force_override` | `test_summarizer.py` | `--force` bypasses threshold |
 | `test_config_min_section_chars` | `test_config.py` | Default 200, configurable |
 | `test_concept_extraction_after_summary` | `test_summarizer.py` | Concepts stored in eval_json after summarization |
+| `test_eval_status_not_run` | `test_summary_cmds.py` | eval_json=None → status "—", results "—" |
+| `test_eval_status_passed` | `test_summary_cmds.py` | All 16 passed → status "passed", results "16/16" |
+| `test_eval_status_failed` | `test_summary_cmds.py` | Critical assertion failed → status "failed" |
+| `test_eval_status_partial` | `test_summary_cmds.py` | Non-critical failures only → status "partial" |
 
 ### Integration Tests
 
@@ -504,6 +577,8 @@ summarization:
 | Skip hint | `bookcompanion summarize <id> --skip-eval` | stdout contains "Run bookcompanion eval" |
 | Threshold skip | `bookcompanion summarize <id>` (with stub sections) | stdout contains "skipped (X chars < 200 min)" |
 | Show quality | `bookcompanion show <id>` | Quality line shows fewer warnings after re-parse |
+| Eval display | `bookcompanion eval <id>` then `summary list <id> <section>` | Status + Results columns show "passed"/"partial"/"failed" + "14/16" |
+| Eval not run | `summary list <id>` (before eval) | Status shows "—", Results shows "—" |
 
 ### Manual Verification (Post-Deploy)
 
@@ -511,8 +586,11 @@ summarization:
 2. Verify sections: `bookcompanion show 2` — expect ~7-8 content sections instead of 17
 3. Summarize: `bookcompanion summarize 2 --preset practitioner_bullets`
 4. Verify markdown: `bookcompanion summary read 2` — expect clean markdown, no JSON
-5. Run full eval: `bookcompanion eval 2`
-6. Compare summaries: `bookcompanion summary list 2` — verify compression ratios are 10-30%
+5. Verify eval hint: stdout after summarize shows "Run bookcompanion eval..."
+6. Run full eval: `bookcompanion eval 2`
+7. Verify eval display: `bookcompanion summary list 2 <section_id>` — Status shows "passed"/"partial", Results shows "X/16"
+8. Verify summary show: `bookcompanion summary show <id>` — detailed eval breakdown with categories
+9. Compare summaries: `bookcompanion summary list 2` — verify compression ratios are 10-30%
 
 ---
 
