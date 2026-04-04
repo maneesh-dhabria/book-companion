@@ -124,6 +124,91 @@ class EPUBParser(BookParser):
 
         return merged
 
+    def _aggregate_spine_content(
+        self,
+        book: epub.EpubBook,
+        sections: list[ParsedSection],
+        content_map: dict[str, str],
+        image_map: dict[str, ParsedImage],
+    ) -> list[ParsedSection]:
+        """Aggregate spine items between TOC entries into the preceding section.
+
+        Many EPUBs split chapters across multiple spine items but only the first
+        is referenced in the TOC. This collects orphan spine items (not referenced
+        by any TOC entry) into the section that precedes them in spine order.
+        """
+        # Build ordered spine file list
+        spine_files: list[str] = []
+        for item_id, _ in book.spine:
+            item = book.get_item_with_id(item_id)
+            if item and item.get_type() == ebooklib.ITEM_DOCUMENT:
+                spine_files.append(item.get_name())
+
+        # Map section → spine file (from href)
+        section_files: set[str] = set()
+        section_file_map: dict[int, str] = {}  # section index → spine file
+        for idx, sec in enumerate(sections):
+            # Recover href from content_map key matching
+            for fname, content in content_map.items():
+                if content == sec.content_md.split("\n\n")[0] or content == sec.content_md:
+                    section_file_map[idx] = fname
+                    section_files.add(fname)
+                    break
+
+        # Alternative: match by looking up the original href stored during walk
+        # Since we don't store it, re-derive from TOC
+        toc_hrefs: set[str] = set()
+        self._collect_toc_hrefs(book.toc, toc_hrefs)
+
+        # Build mapping: spine file → section index (which section owns this file)
+        file_to_section: dict[str, int] = {}
+        for fname in toc_hrefs:
+            # Find which section this file belongs to
+            for idx, sec in enumerate(sections):
+                content = content_map.get(fname, "")
+                if content and content == sec.content_md:
+                    file_to_section[fname] = idx
+                    break
+
+        # For each spine file NOT in toc_hrefs, assign it to the preceding TOC section
+        current_section_idx: int | None = None
+        for fname in spine_files:
+            if fname in toc_hrefs:
+                current_section_idx = file_to_section.get(fname)
+            elif current_section_idx is not None:
+                # This spine item is between TOC entries — append to current section
+                extra_content = content_map.get(fname, "").strip()
+                if extra_content:
+                    sec = sections[current_section_idx]
+                    sec.content_md = sec.content_md + "\n\n" + extra_content
+                    # Add images from this content
+                    for img_name, img in image_map.items():
+                        if img_name in extra_content and img not in sec.images:
+                            sec.images.append(img)
+                    logger.info(
+                        "spine_content_aggregated",
+                        section_title=sec.title,
+                        spine_file=fname,
+                        added_chars=len(extra_content),
+                    )
+
+        # Recalculate token counts
+        for sec in sections:
+            sec.content_token_count = len(sec.content_md) // 4
+
+        return sections
+
+    def _collect_toc_hrefs(self, toc_entries: list, hrefs: set[str]) -> None:
+        """Collect all file hrefs from TOC (without fragments)."""
+        for entry in toc_entries:
+            if isinstance(entry, tuple) and len(entry) == 2:
+                section_obj, children = entry
+                if hasattr(section_obj, "href"):
+                    hrefs.add(section_obj.href.split("#")[0])
+                self._collect_toc_hrefs(children, hrefs)
+            elif isinstance(entry, epub.Link):
+                hrefs.add(entry.href.split("#")[0])
+
     def _extract_alt_text(self, html_content: str) -> dict[str, str]:
         """Extract alt-text from img tags. Returns {filename: alt_text}."""
         import re
@@ -181,6 +266,10 @@ class EPUBParser(BookParser):
             )
 
         self._walk_toc(toc, content_map, image_map, sections, order_counter=[0], depth=0)
+
+        # Aggregate spine content between TOC entries
+        if sections:
+            sections = self._aggregate_spine_content(book, sections, content_map, image_map)
 
         # If no TOC entries produced sections, fall back to spine order
         if not sections:

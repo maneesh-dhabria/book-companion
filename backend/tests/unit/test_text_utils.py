@@ -1,7 +1,5 @@
 """Tests for app.services.parser.text_utils module."""
 
-import pytest
-
 from app.services.parser.text_utils import strip_non_content, text_char_count
 
 
