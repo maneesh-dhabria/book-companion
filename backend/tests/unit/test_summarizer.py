@@ -191,3 +191,23 @@ async def test_summarize_book_force_resumes(mock_config, mock_llm):
     assert result["skipped"] == 0
     service._summary_repo.get_latest_by_content_and_facets.assert_not_called()
     service._summarize_single_section.assert_called_once()
+
+
+def test_extract_summary_text_code_fenced():
+    svc = SummarizerService.__new__(SummarizerService)
+    response = LLMResponse(content='```json\n{"summary": "extracted text"}\n```', model="test")
+    assert svc._extract_summary_text(response) == "extracted text"
+
+
+def test_extract_summary_text_summary_key():
+    svc = SummarizerService.__new__(SummarizerService)
+    response = LLMResponse(content='{"summary": "the summary"}', model="test")
+    assert svc._extract_summary_text(response) == "the summary"
+
+
+def test_extract_summary_text_markdown_passthrough():
+    svc = SummarizerService.__new__(SummarizerService)
+    response = LLMResponse(content="# Chapter Summary\n\nThis is markdown.", model="test")
+    result = svc._extract_summary_text(response)
+    assert "# Chapter Summary" in result
+    assert "This is markdown." in result

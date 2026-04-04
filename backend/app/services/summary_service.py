@@ -58,7 +58,8 @@ class SummaryService:
             raise SummaryError(f"Cannot set default for content_type={summary.content_type.value}")
         return summary
 
-    def extract_concepts(self, text: str) -> set[str]:
+    @staticmethod
+    def extract_concepts(text: str) -> set[str]:
         concepts = set()
         concepts.update(BOLD_PATTERN.findall(text))
         concepts.update(HEADER_PATTERN.findall(text))

@@ -12,4 +12,4 @@ This summary synthesizes {{ section_count }} section summaries below.
 {{ section.summary }}
 {% endfor %}
 
-Output as JSON matching the provided schema.
+Output your summary directly as markdown. Do not wrap in JSON or code fences.

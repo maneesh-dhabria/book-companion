@@ -23,4 +23,4 @@ The section contains the following images/diagrams. Integrate key images into yo
 ## Source content
 {{ section_content }}
 
-Output as JSON matching the provided schema.
+Output your summary directly as markdown. Do not wrap in JSON or code fences.

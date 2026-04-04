@@ -14,6 +14,7 @@ from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
 from app.services.summarizer.llm_provider import LLMProvider
+from app.services.summary_service import SummaryService
 
 logger = structlog.get_logger()
 
@@ -166,6 +167,9 @@ class SummarizerService:
 
         summary_text = self._extract_summary_text(response)
 
+        concepts = SummaryService.extract_concepts(summary_text)
+        eval_json_data = {"concepts": sorted(concepts)} if concepts else None
+
         summary = Summary(
             content_type=SummaryContentType.SECTION,
             content_id=section.id,
@@ -180,6 +184,7 @@ class SummarizerService:
             summary_char_count=len(summary_text),
             summary_md=summary_text,
             latency_ms=elapsed_ms,
+            eval_json=eval_json_data,
         )
         return await self._summary_repo.create(summary)
 
@@ -219,6 +224,9 @@ class SummarizerService:
         summary_text = self._extract_summary_text(response)
         combined_input = "\n".join(s["summary"] for s in section_data)
 
+        concepts = SummaryService.extract_concepts(summary_text)
+        eval_json_data = {"concepts": sorted(concepts)} if concepts else None
+
         summary = Summary(
             content_type=SummaryContentType.BOOK,
             content_id=book_id,
@@ -233,6 +241,7 @@ class SummarizerService:
             summary_char_count=len(summary_text),
             summary_md=summary_text,
             latency_ms=elapsed_ms,
+            eval_json=eval_json_data,
         )
         saved = await self._summary_repo.create(summary)
         await self._book_repo.update_default_summary(book_id, saved.id)
@@ -252,12 +261,24 @@ class SummarizerService:
         )
 
     def _extract_summary_text(self, response) -> str:
-        """Parse LLM response to extract the summary text."""
+        """Extract summary text from LLM response. Handles markdown, JSON, code-fenced."""
+        content = response.content.strip()
+        # Strip code fence wrapping
+        if content.startswith("```"):
+            lines = content.split("\n")
+            if lines[-1].strip() == "```":
+                content = "\n".join(lines[1:-1]).strip()
+        # Try JSON extraction (backward compat)
         try:
-            parsed = json.loads(response.content)
-            return parsed.get("detailed_summary", response.content)
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                for key in ("summary", "detailed_summary", "content"):
+                    if key in parsed:
+                        return parsed[key]
+                return content
         except (json.JSONDecodeError, AttributeError):
-            return response.content
+            pass
+        return content
 
     async def _get_image_captions(self, section) -> list[dict]:
         """Get image captions for a section. Captions uncaptioned images if captioner available.
