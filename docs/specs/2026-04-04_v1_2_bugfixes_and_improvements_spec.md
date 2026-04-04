@@ -100,25 +100,38 @@ for each section S[i] in order:
 
 This gives the "real" text character count for the merge decision.
 
-### 1.3 Merge Threshold
+### 1.3 Image Handling During Merge
+
+- **Book cover image**: Retained — already extracted and stored as `Book.cover_image` during initial parse. Not affected by section merging.
+- **Section cover page images** (decorative chapter art, dividers): **Dropped** during merge. These are non-informational and add noise for the summarizer. The `ParsedImage` objects from stub sections are not carried into the merged section.
+- **Content images** in the target section: Preserved — images in the content-rich section remain unchanged.
+
+### 1.4 Merge Threshold
 
 - Default: **500 chars** of text content (after stripping XML/images)
 - Rationale: Cover pages are typically 100-150 chars. Short forewords/dedications are 200-400 chars. Real chapter content starts at 1000+ chars. 500 is a safe boundary.
 - Not configurable (internal parser heuristic, not user-facing)
+- **Distinct from** `min_section_chars` (Fix 3): The merge threshold operates during parsing to combine spine items. The min_section_chars threshold operates during summarization to skip sections. Both serve different purposes at different stages.
 
-### 1.4 Part Divider Handling
+### 1.5 Part Divider Handling
 
 Part dividers ("Part One: What Is Competition?") are merged into the first chapter of that part:
 - "Part One" (115 chars) + "Chapter 1: Competition" (content) → Section titled "Chapter 1: Competition" with part divider text prepended
 
-### 1.5 Logging
+### 1.6 Post-Merge Cleanup
+
+After merging, update derived fields on merged sections:
+- `content_token_count`: Recalculate as `len(content_md) // 4`
+- `order_index`: Reindex 0-based after removing merged stubs
+
+### 1.7 Logging
 
 When sections are merged, log at `info` level:
 ```
 section_merged, source_title="Part One: What Is Competition?", target_title="1. Competition: The Right Mind-Set", reason="stub_section (115 chars text)"
 ```
 
-### 1.6 Files Changed
+### 1.8 Files Changed
 
 | File | Change |
 |------|--------|
@@ -126,7 +139,7 @@ section_merged, source_title="Part One: What Is Competition?", target_title="1. 
 | `app/services/parser/epub_parser.py` | Add `_strip_xml_and_images()` helper |
 | `tests/unit/test_epub_parser.py` | Add tests for merge logic |
 
-### 1.7 Edge Cases
+### 1.9 Edge Cases
 
 | Case | Behavior |
 |------|----------|
@@ -381,6 +394,43 @@ md = markdownify(html, heading_style="ATX", strip=["script", "style"])
 |------|--------|
 | `app/services/parser/epub_parser.py` | Add `_clean_html()`, call before markdownify |
 | `tests/unit/test_epub_parser.py` | Test XML stripping |
+
+---
+
+## Shared Utilities
+
+The XML/image stripping logic is used in both Fix 1 (merge decision) and Fix 3 (threshold check). Extract into a shared helper in `app/services/parser/text_utils.py`:
+
+```python
+"""Text cleaning utilities shared across parser and summarizer."""
+import re
+
+_XML_DECL = re.compile(r'<\?xml[^?]*\?>')
+_PROCESSING_INST = re.compile(r'<\?[^?]*\?>')
+_IMAGE_ONLY_LINE = re.compile(r'^\s*!\[.*?\]\(.*?\)\s*$', re.MULTILINE)
+
+def strip_non_content(text: str) -> str:
+    """Remove XML declarations, processing instructions, image-only lines."""
+    text = _XML_DECL.sub('', text)
+    text = _PROCESSING_INST.sub('', text)
+    text = _IMAGE_ONLY_LINE.sub('', text)
+    return text.strip()
+
+def text_char_count(text: str) -> int:
+    """Character count of text after stripping non-content."""
+    return len(strip_non_content(text))
+```
+
+## Re-Parse Cascade Behavior
+
+When `bookcompanion add <path> --force` re-parses a book:
+1. Existing `BookSection` rows are deleted (cascade)
+2. `Summary` rows are cascade-deleted via `book_id` FK (`ON DELETE CASCADE`)
+3. `Book.default_summary_id` is set to NULL
+4. New sections are created from the re-parsed content
+5. User must re-summarize to generate new summaries
+
+This is the expected and desired behavior for V1.2 — old JSON-wrapped summaries are replaced by re-summarizing after the parser fix.
 
 ---
 
