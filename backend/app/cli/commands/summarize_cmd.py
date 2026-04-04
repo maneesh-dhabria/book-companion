@@ -86,6 +86,7 @@ async def summarize(
                 cumulative_context="",
             )
             await summarizer._section_repo.update_default_summary(section_id, summary.id)
+            await svc["session"].commit()
             elapsed = int(time.monotonic() - start)
             comp = (
                 summary.summary_char_count / summary.input_char_count * 100
@@ -131,6 +132,7 @@ async def summarize(
         console.print("Generating book-level summary...     ", end="")
         try:
             await summarizer._generate_book_summary(book_id, facets, resolved_preset, model)
+            await svc["session"].commit()
             console.print("done")
         except Exception as e:
             console.print(f"FAILED ({e})")

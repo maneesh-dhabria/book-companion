@@ -300,6 +300,7 @@ async def summary_set_default(
 
         try:
             summary = await summary_service.set_default(summary_id)
+            await svc["session"].commit()
             print_success(
                 f"Summary #{summary_id} set as default for "
                 f"{summary.content_type.value} #{summary.content_id}."
