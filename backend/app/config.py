@@ -27,6 +27,7 @@ class LLMConfig(BaseModel):
 class SummarizationConfig(BaseModel):
     default_preset: str = "practitioner_bullets"
     eval_prompt_version: str = "v1"
+    min_section_chars: int = 200
 
 
 class EmbeddingConfig(BaseModel):

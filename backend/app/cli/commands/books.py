@@ -462,7 +462,7 @@ async def show(
             table.add_column("Chars", justify="right")
             if wide_mode:
                 table.add_column("Compression", justify="right")
-                table.add_column("Eval", justify="right")
+                table.add_column("Status")
 
             # Pre-fetch summaries for compression/eval if wide mode
             summary_service = svc.get("summary_service") if wide_mode else None
@@ -485,20 +485,20 @@ async def show(
 
                 if wide_mode:
                     compression = "-"
-                    eval_display = "-"
+                    status_display = "—"
                     if section.default_summary_id and summary_service:
                         try:
+                            from app.cli.formatting import eval_status
+
                             summary = await summary_service.get_by_id(section.default_summary_id)
                             if summary and summary.summary_md and char_count > 0:
                                 ratio = len(summary.summary_md) / char_count
                                 compression = f"{ratio:.0%}"
-                            if summary and summary.eval_json:
-                                passed = sum(1 for v in summary.eval_json.values() if v is True)
-                                total = len(summary.eval_json)
-                                eval_display = f"{passed}/{total}"
+                            if summary:
+                                status_display = eval_status(summary.eval_json)
                         except Exception:
                             pass
-                    row.extend([compression, eval_display])
+                    row.extend([compression, status_display])
 
                 table.add_row(*row)
             console.print(table)

@@ -7,19 +7,18 @@ from rich.panel import Panel
 from rich.table import Table
 
 from app.cli.deps import async_command, get_services
-from app.cli.formatting import print_empty_state, print_error, print_markdown, print_success
+from app.cli.formatting import (
+    eval_results,
+    eval_status,
+    print_empty_state,
+    print_error,
+    print_markdown,
+    print_success,
+)
 from app.db.models import SummaryContentType
 
 summary_app = typer.Typer(help="Summary management commands.")
 console = Console()
-
-
-def _format_eval(eval_json: dict | None) -> str:
-    if not eval_json or not isinstance(eval_json, dict):
-        return "-"
-    passed = eval_json.get("passed", 0)
-    total = eval_json.get("total", 0)
-    return f"{passed}/{total}"
 
 
 @summary_app.callback(invoke_without_command=True)
@@ -110,7 +109,8 @@ async def summary_list(
             table.add_column("Model")
             table.add_column("Compression")
             table.add_column("Chars")
-            table.add_column("Eval")
+            table.add_column("Status")
+            table.add_column("Results")
             table.add_column("Created")
             for s in summaries:
                 comp = (
@@ -125,7 +125,8 @@ async def summary_list(
                     s.model_used,
                     comp,
                     f"{s.summary_char_count:,}",
-                    _format_eval(s.eval_json),
+                    eval_status(s.eval_json),
+                    eval_results(s.eval_json),
                     str(s.created_at.strftime("%Y-%m-%d %H:%M")),
                 )
             console.print(table)
@@ -142,7 +143,8 @@ async def summary_list(
             table.add_column("Preset")
             table.add_column("Model")
             table.add_column("Chars")
-            table.add_column("Eval")
+            table.add_column("Status")
+            table.add_column("Results")
             table.add_column("Created")
             for s in summaries:
                 default_marker = " *" if section and section.default_summary_id == s.id else ""
@@ -151,7 +153,8 @@ async def summary_list(
                     s.preset_name or "-",
                     s.model_used,
                     f"{s.summary_char_count:,}",
-                    _format_eval(s.eval_json),
+                    eval_status(s.eval_json),
+                    eval_results(s.eval_json),
                     str(s.created_at.strftime("%Y-%m-%d %H:%M")),
                 )
             console.print(table)
@@ -215,7 +218,7 @@ async def summary_show(
         console.print(f"Compression: {comp}")
         console.print(f"Input chars: {summary.input_char_count:,}")
         console.print(f"Summary chars: {summary.summary_char_count:,}")
-        console.print(f"Eval: {_format_eval(summary.eval_json)}")
+        console.print(f"Eval: {eval_status(summary.eval_json)}")
         console.print(f"Created: {summary.created_at}")
         console.print()
         print_markdown(summary.summary_md, use_pager=True)
@@ -254,7 +257,7 @@ async def summary_compare(
             f"{summary_a.summary_char_count:,}",
             f"{summary_b.summary_char_count:,}",
         )
-        table.add_row("Eval", _format_eval(summary_a.eval_json), _format_eval(summary_b.eval_json))
+        table.add_row("Eval", eval_status(summary_a.eval_json), eval_status(summary_b.eval_json))
         console.print(table)
 
         # Concept diff

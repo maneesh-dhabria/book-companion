@@ -73,8 +73,26 @@ class SummarizerService:
                         else f"- {section.title}: {existing.summary_md}"
                     )
                     if on_section_skip:
-                        on_section_skip(i + 1, total, section.title)
+                        on_section_skip(i + 1, total, section.title, "already summarized")
                     continue
+
+            # Minimum content threshold
+            from app.services.parser.text_utils import text_char_count
+
+            char_count = text_char_count(section.content_md or "")
+            min_chars = self.config.summarization.min_section_chars
+            if not force and char_count < min_chars:
+                skipped += 1
+                if on_section_skip:
+                    on_section_skip(
+                        i + 1, total, section.title, f"{char_count} chars < {min_chars} min"
+                    )
+                logger.info(
+                    "section_skipped_insufficient_content",
+                    section_id=section.id,
+                    char_count=char_count,
+                )
+                continue
 
             cumulative_context = "\n".join(cumulative_parts)
 

@@ -120,8 +120,8 @@ async def summarize(
             on_section_complete=lambda i, total, title, elapsed, comp: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} done  ({elapsed}s, {comp:.1f}%)"
             ),
-            on_section_skip=lambda i, total, title: console.print(
-                f"  [{i}/{total}] {title[:35]:<35} skipped (already summarized)"
+            on_section_skip=lambda i, total, title, reason=None: console.print(
+                f"  [{i}/{total}] {title[:35]:<35} skipped ({reason or 'already summarized'})"
             ),
             on_section_fail=lambda i, total, title, err: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} FAILED ({err})"
@@ -149,3 +149,8 @@ async def summarize(
         if failed:
             parts.append(f"{len(failed)} failed")
         print_success(f"Done. {'. '.join(parts)}.")
+
+        if skip_eval:
+            console.print(
+                f"\n  [dim]Tip: Run bookcompanion eval {book_id} to evaluate quality[/dim]"
+            )

@@ -81,3 +81,9 @@ def test_summarization_default_preset():
     assert settings.summarization.default_preset == "practitioner_bullets"
     assert not hasattr(settings.summarization, "default_detail_level")
     assert not hasattr(settings.summarization, "prompt_version")
+
+
+def test_config_min_section_chars():
+    """V1.2: min_section_chars defaults to 200."""
+    settings = Settings()
+    assert settings.summarization.min_section_chars == 200

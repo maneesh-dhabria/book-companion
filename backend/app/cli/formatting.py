@@ -198,3 +198,36 @@ def print_backup_table(backups):
         )
 
     console.print(table)
+
+
+def eval_status(eval_json: dict | None) -> str:
+    """Derive eval status: —/passed/partial/failed."""
+    if not eval_json or not isinstance(eval_json, dict):
+        return "—"
+    total = eval_json.get("total", 0)
+    passed = eval_json.get("passed", 0)
+    if total == 0:
+        return "—"
+    if passed == total:
+        return "[green]passed[/green]"
+    results = eval_json.get("results", eval_json.get("assertions", {}))
+    if isinstance(results, dict):
+        try:
+            from app.services.summarizer.evaluator import ASSERTION_REGISTRY
+
+            for name, r in results.items():
+                if isinstance(r, dict) and not r.get("passed"):
+                    if ASSERTION_REGISTRY.get(name, {}).get("category") == "critical":
+                        return "[red]failed[/red]"
+        except ImportError:
+            pass
+    return "[yellow]partial[/yellow]"
+
+
+def eval_results(eval_json: dict | None) -> str:
+    """Format eval pass/total."""
+    if not eval_json or not isinstance(eval_json, dict):
+        return "—"
+    passed = eval_json.get("passed", 0)
+    total = eval_json.get("total", 0)
+    return f"{passed}/{total}" if total else "—"
