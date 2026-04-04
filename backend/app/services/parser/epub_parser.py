@@ -1,12 +1,16 @@
 """EPUB parser using ebooklib + markdownify."""
 
+import re
 from pathlib import Path
 
 import ebooklib
+import structlog
 from ebooklib import epub
 from markdownify import markdownify
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
+
+logger = structlog.get_logger()
 
 
 class EPUBParser(BookParser):
@@ -62,6 +66,64 @@ class EPUBParser(BookParser):
                 return item.get_content()
         return None
 
+    @staticmethod
+    def _clean_html(html: str) -> str:
+        """Strip XML processing instructions before markdownify."""
+        html = re.sub(r"<\?xml[^?]*\?>", "", html)
+        html = re.sub(r"<\?[^?]*\?>", "", html)
+        return html
+
+    def _merge_stub_sections(self, sections: list[ParsedSection]) -> list[ParsedSection]:
+        """Merge stub sections (< 500 chars real text) into adjacent sections."""
+        from app.services.parser.text_utils import text_char_count
+
+        merge_threshold = 500
+        if len(sections) <= 1:
+            return sections
+
+        merged: list[ParsedSection] = []
+
+        i = 0
+        while i < len(sections):
+            section = sections[i]
+            char_count = text_char_count(section.content_md)
+
+            if char_count < merge_threshold:
+                if i + 1 < len(sections):
+                    # Merge forward: prepend stub content to next section
+                    next_sec = sections[i + 1]
+                    next_sec.content_md = section.content_md + "\n\n" + next_sec.content_md
+                    next_sec.depth = min(section.depth, next_sec.depth)
+                    logger.info(
+                        "section_merged",
+                        stub_title=section.title,
+                        into_title=next_sec.title,
+                        reason=f"stub_section ({char_count} chars)",
+                    )
+                    i += 1  # skip stub, next iteration processes the merged next_sec
+                    continue
+                elif merged:
+                    # Last section is stub — merge backward
+                    prev = merged[-1]
+                    prev.content_md = prev.content_md + "\n\n" + section.content_md
+                    logger.info(
+                        "section_merged",
+                        stub_title=section.title,
+                        into_title=prev.title,
+                        reason=f"stub_last ({char_count} chars)",
+                    )
+                    i += 1
+                    continue
+
+            merged.append(section)
+            i += 1
+
+        # Reindex
+        for idx, sec in enumerate(merged):
+            sec.order_index = idx
+
+        return merged
+
     def _extract_alt_text(self, html_content: str) -> dict[str, str]:
         """Extract alt-text from img tags. Returns {filename: alt_text}."""
         import re
@@ -94,6 +156,7 @@ class EPUBParser(BookParser):
         content_map: dict[str, str] = {}
         for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
             html = item.get_content().decode("utf-8", errors="replace")
+            html = self._clean_html(html)
             md = markdownify(html, heading_style="ATX", strip=["script", "style"])
             content_map[item.get_name()] = md.strip()
 
@@ -101,6 +164,7 @@ class EPUBParser(BookParser):
         alt_text_map: dict[str, str] = {}
         for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
             html = item.get_content().decode("utf-8", errors="replace")
+            html = self._clean_html(html)
             alt_map = self._extract_alt_text(html)
             alt_text_map.update(alt_map)
 
@@ -137,6 +201,7 @@ class EPUBParser(BookParser):
                             )
                         )
 
+        sections = self._merge_stub_sections(sections)
         return sections
 
     def _walk_toc(

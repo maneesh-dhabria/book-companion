@@ -2,6 +2,7 @@
 
 import pytest
 
+from app.services.parser.base import ParsedImage, ParsedSection
 from app.services.parser.epub_parser import EPUBParser
 
 
@@ -87,3 +88,108 @@ def test_alt_text_filters_generic_values():
     assert "a.png" not in alt_map
     assert "b.png" not in alt_map
     assert alt_map.get("c.png") == "Real description"
+
+
+class TestCleanHtml:
+    def test_strips_xml_declaration(self):
+        html = '<?xml version="1.0" encoding="utf-8"?><html><body>Hello</body></html>'
+        result = EPUBParser._clean_html(html)
+        assert "<?xml" not in result
+        assert "<html>" in result
+
+    def test_strips_processing_instructions(self):
+        html = '<?mso-application progid="Word"?><p>Content</p>'
+        result = EPUBParser._clean_html(html)
+        assert "<?mso" not in result
+        assert "Content" in result
+
+    def test_preserves_normal_html(self):
+        html = "<html><body><p>Normal content</p></body></html>"
+        assert EPUBParser._clean_html(html) == html
+
+
+class TestMergeStubSections:
+    def _make_section(self, title, content, depth=0, order=0, images=None):
+        return ParsedSection(
+            title=title, content_md=content, depth=depth, order_index=order, images=images or []
+        )
+
+    def test_merge_stub_into_next(self):
+        parser = EPUBParser()
+        sections = [
+            self._make_section("Cover", "x" * 100, order=0),
+            self._make_section("Chapter 1", "y" * 5000, order=1),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 1
+        assert result[0].title == "Chapter 1"
+        assert "x" * 100 in result[0].content_md
+
+    def test_merge_part_divider(self):
+        parser = EPUBParser()
+        sections = [
+            self._make_section("Part One", "# Part One\n", order=0),
+            self._make_section("Ch 1: Strategy", "Real content " * 200, order=1),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 1
+        assert result[0].title == "Ch 1: Strategy"
+
+    def test_merge_cascading_stubs(self):
+        parser = EPUBParser()
+        sections = [
+            self._make_section("Stub1", "short", order=0),
+            self._make_section("Stub2", "also short", order=1),
+            self._make_section("Content", "z" * 5000, order=2),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 1
+        assert result[0].title == "Content"
+
+    def test_merge_last_stub_backward(self):
+        parser = EPUBParser()
+        sections = [
+            self._make_section("Content", "z" * 5000, order=0),
+            self._make_section("About Author", "Short bio", order=1),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 1
+        assert result[0].title == "Content"
+
+    def test_no_merge_above_threshold(self):
+        parser = EPUBParser()
+        sections = [
+            self._make_section("Ch1", "a" * 1000, order=0),
+            self._make_section("Ch2", "b" * 1000, order=1),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 2
+
+    def test_single_section_no_merge(self):
+        parser = EPUBParser()
+        sections = [self._make_section("Only", "content", order=0)]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 1
+
+    def test_merge_drops_stub_images(self):
+        parser = EPUBParser()
+        stub_img = ParsedImage(data=b"img", mime_type="image/png", filename="cover.png")
+        content_img = ParsedImage(data=b"img2", mime_type="image/png", filename="fig1.png")
+        sections = [
+            self._make_section("Cover", "short", order=0, images=[stub_img]),
+            self._make_section("Ch1", "z" * 5000, order=1, images=[content_img]),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert len(result) == 1
+        assert len(result[0].images) == 1
+        assert result[0].images[0].filename == "fig1.png"
+
+    def test_merge_reindexes_order(self):
+        parser = EPUBParser()
+        sections = [
+            self._make_section("Stub", "x", order=0),
+            self._make_section("Ch1", "y" * 1000, order=1),
+            self._make_section("Ch2", "z" * 1000, order=2),
+        ]
+        result = parser._merge_stub_sections(sections)
+        assert [s.order_index for s in result] == [0, 1]
