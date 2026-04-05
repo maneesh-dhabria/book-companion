@@ -84,7 +84,7 @@ async def eval_cmd(
                 "total": total_count,
                 "assertions": results,
             }
-            await session.flush()
+            await session.commit()
 
             # Display results
             table = Table(title=f"Eval Results — Summary #{summary_id}")

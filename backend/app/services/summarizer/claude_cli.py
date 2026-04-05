@@ -123,7 +123,12 @@ class ClaudeCodeCLIProvider(LLMProvider):
             return LLMResponse(content=raw.strip(), model=model, latency_ms=latency_ms)
 
         # Handle different response formats from CLI
-        content = data.get("result", data.get("content", raw))
+        # When --json-schema is used, structured output is in "structured_output"
+        structured = data.get("structured_output")
+        if structured is not None:
+            content = json.dumps(structured) if not isinstance(structured, str) else structured
+        else:
+            content = data.get("result", data.get("content", raw))
         usage = data.get("usage", {})
         return LLMResponse(
             content=content if isinstance(content, str) else json.dumps(content),

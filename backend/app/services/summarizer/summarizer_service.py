@@ -152,6 +152,9 @@ class SummarizerService:
             "failed": failed,
         }
 
+    # Compression targets by facet name (fraction of source length)
+    COMPRESSION_TARGETS = {"brief": 0.10, "standard": 0.20, "detailed": 0.30}
+
     async def _summarize_single_section(
         self,
         book_id: int,
@@ -166,6 +169,9 @@ class SummarizerService:
         author = ", ".join(a.name for a in book.authors) if book.authors else "Unknown"
 
         image_captions = await self._get_image_captions(section) if self.captioner else []
+        source_chars = len(section.content_md or "")
+        compression_frac = self.COMPRESSION_TARGETS.get(facets.get("compression", "standard"), 0.20)
+        target_chars = int(source_chars * compression_frac) if source_chars > 0 else None
 
         template = self._jinja_env.get_template("base/summarize_section.txt")
         prompt = template.render(
@@ -175,6 +181,7 @@ class SummarizerService:
             section_content=section.content_md or "",
             cumulative_context=cumulative_context,
             image_captions=image_captions,
+            target_chars=target_chars,
             **facets,
         )
 
@@ -184,6 +191,27 @@ class SummarizerService:
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
         summary_text = self._extract_summary_text(response)
+
+        # Retry once if summary is longer than source content
+        if source_chars > 0 and len(summary_text) >= source_chars:
+            max_chars = int(source_chars * min(compression_frac * 2, 0.50))
+            retry_prompt = (
+                f"{prompt}\n\n"
+                f"IMPORTANT: Your previous summary was {len(summary_text):,} characters "
+                f"but the source is only {source_chars:,} characters. "
+                f"You MUST keep your summary under {max_chars:,} characters."
+            )
+            logger.warning(
+                "summary_too_long_retrying",
+                section_id=section.id,
+                source_chars=source_chars,
+                summary_chars=len(summary_text),
+                max_chars=max_chars,
+            )
+            retry_start = time.monotonic()
+            response = await self.llm.generate(retry_prompt, model=effective_model)
+            elapsed_ms += int((time.monotonic() - retry_start) * 1000)
+            summary_text = self._extract_summary_text(response)
 
         concepts = SummaryService.extract_concepts(summary_text)
         eval_json_data = {"concepts": sorted(concepts)} if concepts else None

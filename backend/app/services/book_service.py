@@ -192,37 +192,73 @@ class BookService:
     async def _re_import_book(
         self, existing: Book, file_data: bytes, file_path: Path, file_format: str
     ) -> Book:
-        """Re-import: replace content, mark summaries stale, delete embeddings."""
+        """Re-import: update sections in-place to preserve IDs, summaries, and evals."""
+        from sqlalchemy import delete
+
         parser = self._get_parser(file_format)
         parsed = await parser.parse(file_path)
+
+        # Re-fetch with eager loading so we can access sections
+        existing = await self.book_repo.get_by_id(existing.id)
 
         # Update book data
         existing.file_data = file_data
         existing.file_size_bytes = len(file_data)
         existing.status = BookStatus.PARSED
 
-        # Delete old sections (cascades to images, eval_traces)
-        from sqlalchemy import delete
-
-        await self.db.execute(delete(BookSection).where(BookSection.book_id == existing.id))
-        # Delete old search index entries
+        # Delete old search index entries (will be rebuilt)
         from app.db.models import SearchIndex
 
         await self.db.execute(delete(SearchIndex).where(SearchIndex.book_id == existing.id))
 
-        # Re-create sections from new parse
+        # Structure detection on new parse
         detector = StructureDetector()
         parsed.sections = detector.validate_structure(parsed.sections)
+
+        # Build lookup of existing sections by order_index
+        old_sections = {s.order_index: s for s in (existing.sections or [])}
+        new_order_indices = {ps.order_index for ps in parsed.sections}
+
+        # Update existing sections in-place, add new ones
         for ps in parsed.sections:
-            section = BookSection(
-                book_id=existing.id,
-                title=ps.title,
-                order_index=ps.order_index,
-                depth=ps.depth,
-                content_md=ps.content_md,
-                content_token_count=len(ps.content_md) // 4,
-            )
-            self.db.add(section)
+            if ps.order_index in old_sections:
+                # Update in-place — preserves section ID, summaries, evals
+                section = old_sections[ps.order_index]
+                section.title = ps.title
+                section.depth = ps.depth
+                section.content_md = ps.content_md
+                section.content_token_count = len(ps.content_md) // 4
+            else:
+                # New section
+                section = BookSection(
+                    book_id=existing.id,
+                    title=ps.title,
+                    order_index=ps.order_index,
+                    depth=ps.depth,
+                    content_md=ps.content_md,
+                    content_token_count=len(ps.content_md) // 4,
+                )
+                self.db.add(section)
+            await self.db.flush()
+
+            # Replace images (delete old, add new from fresh parse)
+            await self.db.execute(delete(Image).where(Image.section_id == section.id))
+            for pi in ps.images:
+                image = Image(
+                    section_id=section.id,
+                    data=pi.data,
+                    mime_type=pi.mime_type,
+                    filename=pi.filename,
+                    width=pi.width,
+                    height=pi.height,
+                    alt_text=pi.alt_text,
+                )
+                self.db.add(image)
+
+        # Remove sections that no longer exist in the new parse
+        for order_idx, section in old_sections.items():
+            if order_idx not in new_order_indices:
+                await self.db.execute(delete(BookSection).where(BookSection.id == section.id))
 
         await self.db.commit()
         logger.info("book_reimported", book_id=existing.id)

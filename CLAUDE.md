@@ -99,6 +99,8 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 - **LLM via subprocess**: `ClaudeCodeCLIProvider` invokes `claude -p - --output-format json --print` with prompt piped via stdin. JSON schema for structured output via `--json-schema`.
 - **Faceted prompts**: Jinja2 base templates include fragment files based on 4 facet dimensions. Preset YAML files define named combinations. `PresetService.resolve_facets()` merges preset + CLI overrides.
 - **Graceful degradation**: Service imports in `deps.py` are wrapped in try/except — commands work even if some services aren't fully implemented.
+- **Relationship-level ordering**: Collection ordering (e.g., `Book.sections`) uses `order_by` on the `relationship()` definition, not per-query. Prevents sorting regressions across commands.
+- **Compression enforcement**: Prompt templates receive `target_chars` (explicit character count) alongside percentage guidance. `SummarizerService` retries once if summary >= source length.
 
 ### Domain Terms
 
@@ -139,6 +141,9 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 9. **`SummaryStatus` enum removed in V1.1**: Replaced by `default_summary_id` FK pattern.
 10. **`summary_md` removed from `BookSection`**: Summaries now live in `summaries` table.
 11. **`overall_summary` removed from `Book`**: Use `default_summary_id` to point to a Summary row.
+12. **Claude CLI `structured_output` field**: With `--json-schema`, the CLI returns parsed JSON in `structured_output`, not `result` (which is empty). Any code parsing structured responses must check `structured_output` first.
+13. **Re-import must preserve section IDs**: `_re_import_book` updates sections in-place by `order_index`. Delete-and-recreate orphans summaries/evals since `Summary.content_id` is not a FK and won't cascade.
+14. **`get_services()` does not auto-commit**: CLI commands that persist data must call `session.commit()` explicitly. `flush()` alone loses changes when the session closes.
 
 ## Extended Docs
 

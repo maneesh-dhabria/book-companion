@@ -460,9 +460,11 @@ async def show(
             table.add_column("Title")
             table.add_column("Status")
             table.add_column("Chars", justify="right")
+            table.add_column("Imgs", justify="right")
             if wide_mode:
                 table.add_column("Compression", justify="right")
-                table.add_column("Status")
+                table.add_column("Eval", justify="right")
+                table.add_column("Eval Status")
 
             # Pre-fetch summaries for compression/eval if wide mode
             summary_service = svc.get("summary_service") if wide_mode else None
@@ -475,30 +477,34 @@ async def show(
                 )
                 char_count = len(section.content_md) if section.content_md else 0
 
+                img_count = len(section.images) if section.images else 0
                 row = [
                     str(section.order_index + 1),
                     str(section.id),
                     section.title,
                     summary_status,
                     f"{char_count:,}",
+                    str(img_count) if img_count else "—",
                 ]
 
                 if wide_mode:
                     compression = "-"
+                    eval_count = "—"
                     status_display = "—"
                     if section.default_summary_id and summary_service:
                         try:
-                            from app.cli.formatting import eval_status
+                            from app.cli.formatting import eval_results, eval_status
 
                             summary = await summary_service.get_by_id(section.default_summary_id)
                             if summary and summary.summary_md and char_count > 0:
                                 ratio = len(summary.summary_md) / char_count
                                 compression = f"{ratio:.0%}"
                             if summary:
+                                eval_count = eval_results(summary.eval_json)
                                 status_display = eval_status(summary.eval_json)
                         except Exception:
                             pass
-                    row.extend([compression, status_display])
+                    row.extend([compression, eval_count, status_display])
 
                 table.add_row(*row)
             console.print(table)

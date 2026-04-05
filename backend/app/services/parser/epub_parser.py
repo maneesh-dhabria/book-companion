@@ -181,9 +181,10 @@ class EPUBParser(BookParser):
                 if extra_content:
                     sec = sections[current_section_idx]
                     sec.content_md = sec.content_md + "\n\n" + extra_content
-                    # Add images from this content
+                    # Add images from this content (match on short filename)
                     for img_name, img in image_map.items():
-                        if img_name in extra_content and img not in sec.images:
+                        short_name = img_name.split("/")[-1]
+                        if short_name in extra_content and img not in sec.images:
                             sec.images.append(img)
                     logger.info(
                         "spine_content_aggregated",
@@ -333,10 +334,12 @@ class EPUBParser(BookParser):
         if not content.strip():
             return
 
-        # Find images referenced in this content
+        # Find images referenced in this content (match on short filename
+        # since markdownify converts EPUB paths to relative paths)
         section_images = []
         for img_name, img in image_map.items():
-            if img_name in content:
+            short_name = img_name.split("/")[-1]
+            if short_name in content:
                 section_images.append(img)
 
         sections.append(

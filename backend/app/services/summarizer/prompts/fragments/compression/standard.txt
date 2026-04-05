@@ -1,2 +1,2 @@
 ## Length Target
-Aim for approximately 20% of the source length. Cover all major points with representative examples. Balance completeness with conciseness.
+Aim for approximately 20% of the source length{% if target_chars %} (~{{ target_chars }} characters){% endif %}. Cover all major points with representative examples. Balance completeness with conciseness. Your summary MUST be shorter than the source content.

@@ -130,7 +130,8 @@ class Book(Base):
 
     authors: Mapped[list["Author"]] = relationship(secondary="book_authors", back_populates="books")
     sections: Mapped[list["BookSection"]] = relationship(
-        back_populates="book", cascade="all, delete-orphan"
+        back_populates="book", cascade="all, delete-orphan",
+        order_by="BookSection.order_index",
     )
     processing_jobs: Mapped[list["ProcessingJob"]] = relationship(
         back_populates="book", cascade="all, delete-orphan"
