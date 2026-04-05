@@ -20,14 +20,15 @@
 9. [Change 7: Book-Level Summary Evaluation](#change-7-book-level-summary-evaluation)
 10. [Change 8: Cascade-Safe Eval Traces](#change-8-cascade-safe-eval-traces)
 11. [Change 9: Diagnostic Eval Reasoning](#change-9-diagnostic-eval-reasoning)
-12. [Deterministic Assertion Conversions](#deterministic-assertion-conversions)
-13. [Database Migrations](#database-migrations)
-14. [Prompt Template Changes](#prompt-template-changes)
-15. [Configuration & Preset Changes](#configuration--preset-changes)
-16. [Verification Plan](#verification-plan)
-17. [Deployment & Rollout](#deployment--rollout)
-18. [Risk Mitigation](#risk-mitigation)
-19. [Research Sources](#research-sources)
+12. [Consolidated EvalService Interface](#consolidated-evalservice-interface)
+13. [Deterministic Assertion Conversions](#deterministic-assertion-conversions)
+14. [Database Migrations](#database-migrations)
+15. [Prompt Template Changes](#prompt-template-changes)
+16. [Configuration & Preset Changes](#configuration--preset-changes)
+17. [Verification Plan](#verification-plan)
+18. [Deployment & Rollout](#deployment--rollout)
+19. [Risk Mitigation](#risk-mitigation)
+20. [Research Sources](#research-sources)
 
 ---
 
@@ -523,27 +524,9 @@ Implementation: Pass `section_type` to `_run_single_assertion()` and include it 
 
 ## Change 6: Numeric Accuracy Prompt Guidance
 
-**Observation:** 6 (arithmetic interpretation edge case)
-**Severity:** Low — one-off, eval correctly caught it
+**Observation:** 6 | **Severity:** Low — one-off edge case the eval correctly caught
 
-### 6.1 Problem
-
-Section 93 summary says "3-4x commodity price" when source says "300-400% premium" (which is 4-5x total price). The summarizer misinterpreted "premium" as "total multiplier."
-
-### 6.2 Solution
-
-Add one line to the summarization prompt template:
-
-**File:** `backend/app/services/summarizer/prompts/base/summarize_section.txt`
-
-```
-When converting percentages or premiums to multipliers, be precise:
-a "300% premium" means the premium is 3x, making the total price 4x the base.
-```
-
-### 6.3 Scope
-
-No code changes, no schema changes. Prompt-only fix. No systemic risk.
+**Fix:** Add to `base/summarize_section.txt`: `"When converting percentages or premiums to multipliers, be precise: a '300% premium' means the premium is 3x, making the total price 4x the base."` Prompt-only change, no code or schema changes.
 
 ---
 
@@ -822,6 +805,111 @@ For deterministic assertions that fail, set `likely_cause` and `suggestion` prog
 - **LLM doesn't return likely_cause/suggestion:** Default to `None`. Don't fail the assertion over missing diagnostic fields.
 - **LLM returns invalid likely_cause value:** Log a warning, store as-is. Don't crash. The field is informational, not load-bearing.
 - **Deterministic assertions:** Set diagnostic fields programmatically (no LLM call to provide them).
+
+---
+
+## Consolidated EvalService Interface
+
+All changes across Changes 1-9 modify `EvalService`. This section consolidates the final method signatures and dispatch logic.
+
+### `evaluate_summary()` — Final Signature
+
+```python
+async def evaluate_summary(
+    self,
+    section_id: int,
+    source_text: str,
+    summary_text: str,
+    image_count: int = 0,
+    facets_used: dict | None = None,       # NOW USED: passed to deterministic assertions
+    summary_id: int | None = None,
+    preset_name: str | None = None,        # NEW: for skip_assertions lookup
+    cumulative_context: str | None = None,  # NEW: for faithfulness assertions
+    section_type: str = "chapter",          # NEW: for completeness assertion adaptation
+    eval_scope: str = "section",           # NEW: "section" or "book"
+) -> dict[str, dict]:
+```
+
+### Assertion Dispatch Logic
+
+`evaluate_summary()` routes each assertion to the appropriate handler:
+
+```python
+import uuid
+
+DETERMINISTIC_ASSERTIONS = {"reasonable_length", "has_key_concepts", "image_refs_preserved"}
+FAITHFULNESS_ASSERTIONS = {"no_hallucinated_facts", "no_contradictions", "accurate_quotes", "cross_summary_consistency"}
+BOOK_LEVEL_SKIP = {"image_refs_preserved", "cross_summary_consistency"}
+
+async def evaluate_summary(self, ...):
+    eval_run_id = str(uuid.uuid4())
+
+    # 1. Compute combined skip list
+    skip_list = set()
+    if preset_name:
+        preset = self._load_preset(preset_name)
+        skip_list.update(preset.skip_assertions or [])
+    if eval_scope == "book":
+        skip_list.update(BOOK_LEVEL_SKIP)
+
+    tasks = []
+    for assertion_name, meta in ASSERTION_REGISTRY.items():
+        if assertion_name in skip_list:
+            # Return skipped result directly (no task needed)
+            tasks.append(self._skipped_result(assertion_name, meta, preset_name, eval_run_id, ...))
+        elif assertion_name in DETERMINISTIC_ASSERTIONS:
+            # Run deterministic check synchronously (fast, no I/O)
+            tasks.append(self._run_deterministic(assertion_name, source_text, summary_text, ...))
+        else:
+            # Run LLM-based assertion asynchronously
+            extra_context = cumulative_context if assertion_name in FAITHFULNESS_ASSERTIONS else None
+            tasks.append(self._run_single_assertion(
+                assertion_name, source_text, summary_text, section_id,
+                image_count, summary_id, eval_run_id, extra_context, section_type, eval_scope
+            ))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 2. Derive eval_json from traces
+    eval_json = await self._compute_eval_json(eval_run_id)
+    return eval_json
+```
+
+### `_run_deterministic()` — Dispatcher
+
+```python
+def _run_deterministic(self, assertion_name: str, ...) -> dict:
+    if assertion_name == "reasonable_length":
+        return self._check_reasonable_length(source_text, summary_text, facets_used, ...)
+    elif assertion_name == "has_key_concepts":
+        return self._check_has_key_concepts(summary_text, ...)
+    elif assertion_name == "image_refs_preserved":
+        return self._check_image_refs_preserved(source_text, summary_text, image_count, ...)
+```
+
+### `eval_format_v1.txt` Disposition
+
+With all 3 format assertions (`reasonable_length`, `has_key_concepts`, `image_refs_preserved`) converted to deterministic, the `eval_format_v1.txt` prompt template is **no longer used**. It should be retained in the codebase (not deleted) as a reference for the original LLM-based implementations, but is not loaded during evaluation. Add a comment at the top: `{# DEPRECATED: All format assertions are now deterministic. See evaluator.py. #}`.
+
+### Cumulative Context Retrieval in CLI
+
+When `eval <book_id> <section_id>` is run standalone (not post-summarization), the CLI must build cumulative context:
+
+```python
+# In eval_cmd.py, before calling evaluate_summary():
+prior_sections = [s for s in book.sections if s.order_index < section.order_index]
+cumulative_parts = []
+for s in prior_sections:
+    if s.default_summary_id:
+        summary = await summary_repo.get_by_id(s.default_summary_id)
+        if summary:
+            cumulative_parts.append(f"- {s.title}: {summary.summary_md[:500]}")
+cumulative_context = "\n".join(cumulative_parts) if cumulative_parts else None
+```
+
+### eval_run_id Generation
+
+The `eval_run_id` UUID is generated once per `evaluate_summary()` call and passed to every assertion handler (deterministic and LLM-based). It is stored on each `EvalTrace` row and included in the derived `eval_json`.
 
 ---
 
