@@ -591,6 +591,7 @@ The `eval <book_id>` command (no section_id) should:
 1. Display section-level eval results (existing behavior).
 2. Also display book-level summary eval results if they exist.
 3. New flag: `--book-only` to show only book-level results.
+4. New flag: `--force` to re-run eval even if `eval_json` already exists on the summary. Without `--force`, eval skips summaries that already have traces for the current `eval_run_id` pattern. With `--force`, existing eval_json is overwritten and new traces are created (old traces for that summary are marked `is_stale`).
 
 ### 7.3 Edge Cases
 
@@ -634,7 +635,7 @@ ALTER TABLE eval_traces ADD COLUMN is_stale BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX ix_eval_traces_is_stale ON eval_traces (is_stale) WHERE is_stale = FALSE;
 ```
 
-When a section is deleted (re-import, section editing), the FK sets `section_id = NULL`. A post-delete hook or the `_re_import_book` function marks these traces as `is_stale = True`.
+**Stale marking timing:** Before deleting a section, `_re_import_book` explicitly marks its traces as `is_stale = True` AND sets `section_id = NULL`. This is done in application code, not via a DB trigger, because the FK `SET NULL` only handles the null-out — it cannot set `is_stale`. The explicit update happens before the section DELETE to ensure both fields are set atomically in the same transaction.
 
 #### 8.2.3 Add `eval_run_id` Column
 
@@ -812,6 +813,28 @@ For deterministic assertions that fail, set `likely_cause` and `suggestion` prog
 
 All changes across Changes 1-9 modify `EvalService`. This section consolidates the final method signatures and dispatch logic.
 
+### EvalService Dependency Change
+
+`EvalService.__init__` currently takes `(db, llm, config)`. Loading presets for `skip_assertions` requires access to preset YAML files. Rather than injecting the full `PresetService`, `EvalService` will load preset YAML directly using a lightweight helper (the preset files are just YAML on disk — no DB needed):
+
+```python
+def __init__(self, db: AsyncSession, llm: LLMProvider, config):
+    ...
+    self._presets_dir = Path(__file__).parent / "prompts" / "presets"
+
+def _load_skip_assertions(self, preset_name: str | None) -> set[str]:
+    """Load skip_assertions from preset YAML. Returns empty set if preset is None."""
+    if not preset_name:
+        return set()
+    path = self._presets_dir / f"{preset_name}.yaml"
+    if not path.exists():
+        return set()
+    data = yaml.safe_load(path.read_text())
+    return set(data.get("skip_assertions", []))
+```
+
+This avoids a circular dependency (PresetService → EvalService or vice versa) and keeps eval self-contained.
+
 ### `evaluate_summary()` — Final Signature
 
 ```python
@@ -865,7 +888,9 @@ async def evaluate_summary(self, ...):
             extra_context = cumulative_context if assertion_name in FAITHFULNESS_ASSERTIONS else None
             tasks.append(self._run_single_assertion(
                 assertion_name, source_text, summary_text, section_id,
-                image_count, summary_id, eval_run_id, extra_context, section_type, eval_scope
+                image_count=image_count, summary_id=summary_id,
+                eval_run_id=eval_run_id, cumulative_context=extra_context,
+                section_type=section_type, eval_scope=eval_scope,
             ))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
