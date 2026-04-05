@@ -1,0 +1,1219 @@
+# V1.3 Eval System Improvements — Specification
+
+**Date:** 2026-04-05
+**Status:** Draft
+**Requirements:** [`docs/requirements/2026-04-05_v1_3_eval_improvements.md`](../requirements/2026-04-05_v1_3_eval_improvements.md)
+**V1.2 Spec:** [`docs/specs/2026-04-04_v1_2_bugfixes_and_improvements_spec.md`](2026-04-04_v1_2_bugfixes_and_improvements_spec.md)
+
+---
+
+## Table of Contents
+
+1. [Decision Log](#decision-log)
+2. [Overview](#overview)
+3. [Change 1: Preset-Aware Assertion Skipping (`has_key_concepts`)](#change-1-preset-aware-assertion-skipping)
+4. [Change 2: Deterministic `reasonable_length` Check](#change-2-deterministic-reasonable_length-check)
+5. [Change 3: Cumulative Context for Faithfulness Eval](#change-3-cumulative-context-for-faithfulness-eval)
+6. [Change 4: Paraphrased Quote Detection](#change-4-paraphrased-quote-detection)
+7. [Change 5: Section-Type-Aware Eval Thresholds](#change-5-section-type-aware-eval-thresholds)
+8. [Change 6: Numeric Accuracy Prompt Guidance](#change-6-numeric-accuracy-prompt-guidance)
+9. [Change 7: Book-Level Summary Evaluation](#change-7-book-level-summary-evaluation)
+10. [Change 8: Cascade-Safe Eval Traces](#change-8-cascade-safe-eval-traces)
+11. [Change 9: Diagnostic Eval Reasoning](#change-9-diagnostic-eval-reasoning)
+12. [Deterministic Assertion Conversions](#deterministic-assertion-conversions)
+13. [Database Migrations](#database-migrations)
+14. [Prompt Template Changes](#prompt-template-changes)
+15. [Configuration & Preset Changes](#configuration--preset-changes)
+16. [Verification Plan](#verification-plan)
+17. [Deployment & Rollout](#deployment--rollout)
+18. [Risk Mitigation](#risk-mitigation)
+19. [Research Sources](#research-sources)
+
+---
+
+## Decision Log
+
+| # | Decision | Options Considered | Choice | Rationale |
+|---|----------|--------------------|--------|-----------|
+| D1 | Deterministic assertion scope | (A) Only `reasonable_length` (B) 3 assertions: `reasonable_length`, `has_key_concepts`, `image_refs_preserved` (C) Up to 6 assertions including `accurate_quotes`, `no_dangling_references`, `preserves_author_terminology` | **B — 3 assertions** | Deterministic checks are faster (< 10ms), cheaper (zero LLM cost), and 100% reproducible. The 3 selected assertions have clear, codifiable criteria. The remaining assertions genuinely require LLM judgment. Cuts LLM calls from 16 to 13 per eval (~19% cost reduction). |
+| D2 | EvalTrace cascade strategy | (A) Link via `summary_id` only (B) `SET NULL` + `is_stale` flag on `section_id` (C) Content-hash decoupling | **B — SET NULL + is_stale** | Preserves traces through section deletes/re-imports. Traces remain queryable by `summary_id` (stable) and `section_id` (if section still exists). `is_stale` flag allows queries to filter appropriately. Simple, reversible, no data loss. |
+| D3 | Eval source context for faithfulness | (A) Full raw source up to section N (B) Cumulative section summaries (same as summarizer) (C) Claims-extraction pipeline with BM25 search | **B — Cumulative section summaries** | Matches what the summarizer actually "knew" when generating the summary. Much smaller than raw text (~5-20K chars vs 500K+). Avoids the "hallucination" false positives where the summarizer correctly referenced prior context. Aligns eval and summarizer information scope. |
+| D4 | Eval result schema extensions | (A) `likely_cause` + `suggestion` + numeric `score` (float 0-1) (B) `likely_cause` + `suggestion` only (C) Full audit metadata (`eval_run_id`, `config_snapshot`, `source_hash`, weights) | **B + eval_run_id — likely_cause, suggestion, and eval_run_id** | `likely_cause` and `suggestion` directly address the diagnostic gap in Observation 9. Numeric scoring adds complexity without clear benefit for a personal tool. `eval_run_id` is added because it's low-cost (one UUID column) with high utility for grouping and querying. |
+| D5 | Preset assertion configuration | (A) `skip_assertions` list in preset YAML (B) `expected_format` map with per-assertion config (C) Auto-detect from facets | **A — skip_assertions list** | Simple, explicit, easy to maintain. Each preset declares which assertions don't apply to its output format. Presets without the field run all assertions. No implicit logic to debug. |
+| D6 | Book-level eval assertion set | (A) Same 16 assertions (B) Modified subset (skip inapplicable, adapt completeness) (C) Entirely separate book-level battery | **B — Modified subset** | Some assertions don't apply at book level (`image_refs_preserved`, `cross_summary_consistency`). Completeness assertions should check "representative coverage across chapters" rather than exhaustive listing. Reuses existing assertion infrastructure with a book-level skip list. |
+| D7 | Paraphrased quote handling | (A) Prompt guidance only (B) Prompt + deterministic post-check (non-blocking) (C) Prompt + eval-side hybrid check | **B — Prompt + deterministic post-check** | Prompt guidance addresses root cause. Post-check catches remaining issues as non-blocking warnings stored in summary metadata. Doesn't add latency (no re-prompt). The eval's `accurate_quotes` assertion remains as the authoritative quality signal. |
+| D8 | Section type tracking | (A) Infer from title heuristics at eval time (B) `section_type` field on `BookSection` model (C) Per-section-type overrides in preset YAML | **B — section_type field** | Explicit, reusable beyond eval (search weighting, export formatting, UI). Set during parsing with title-based auto-detection, overridable via section editing. Requires migration but creates a proper domain concept. |
+| D9 | eval_json vs EvalTrace source of truth | (A) Traces as source of truth, eval_json derived (B) eval_json as primary store (C) Keep both independent | **A — Traces as source of truth** | EvalTrace rows contain full audit data (prompt, response, tokens, latency). `eval_json` on Summary becomes a cached denormalization rebuilt from traces. Single source of truth eliminates divergence. |
+| D10 | Existing data migration | (A) Re-run evals for book 2 post-deploy (B) Backfill traces from eval_json (C) No backfill | **A — Re-run evals** | Generates fresh EvalTrace rows with new schema fields (`likely_cause`, `suggestion`). Validates all V1.3 fixes against real data. Old eval_json is overwritten. Worth the LLM cost for 17 sections (~221 LLM calls at 13 per section). |
+| D11 | Quote post-check behavior | (A) Blocking with re-prompt (B) Non-blocking warning in CLI output (C) Store as quality_warnings field | **B — Non-blocking warning** | Logged in CLI output and stored in summary metadata. Doesn't block or add latency. The eval system remains the authoritative quality gate. |
+| D12 | Re-import warning UX | (A) Warning + count with confirmation prompt (B) Warning + JSON export option (C) Silent stale marking | **A — Warning + count** | Since SET NULL + is_stale preserves data, the warning is informational. "'This book has N eval traces and M summaries. Re-import will mark traces as stale. Proceed? [y/N]'" |
+| D13 | Golden set testing | (A) Book 2 all-pass sections only (B) All-pass + known-failure sections (C) Synthetic fixtures | **B — All-pass + known-failure** | All-pass sections validate that fixes don't regress working evals. Known-failure sections (91, 93, 96 from requirements) verify the eval correctly catches real issues. Both positive and negative test cases. |
+| D14 | Verification approach | (A) Unit + integration only (B) Unit + integration + golden set (C) Full pipeline with real LLM | **B — Unit + integration + golden set** | Unit tests for deterministic assertions and new logic. Mock-LLM integration tests for eval pipeline. Golden set of pre-evaluated summaries from book 2 as regression fixtures. Comprehensive without requiring live LLM calls in CI. |
+
+---
+
+## Overview
+
+V1.3 is a comprehensive overhaul of the eval system, driven by analysis of 17 section evaluations on book 2 ("Understanding Michael Porter") using the `practitioner_bullets` preset. Of ~35 total assertion failures, the vast majority trace to three root causes: an eval/prompt contract mismatch (`has_key_concepts`), a code bug (`reasonable_length`), and a context scope mismatch (`no_hallucinated_facts`). Only `accurate_quotes` failures represent genuine summarization quality issues.
+
+**Goals:**
+- Eliminate false-positive eval failures caused by system issues (not summary quality)
+- Make eval traces cascade-safe so re-imports don't destroy expensive evaluation data
+- Add diagnostic fields so failures are actionable without manual investigation
+- Enable book-level summary evaluation
+- Convert appropriate assertions to deterministic checks for speed and reliability
+
+**Scope:**
+- All 9 observations from the requirements document
+- Schema changes: `EvalTrace` (new columns, FK change), `BookSection` (new `section_type`), `Summary` (new `quality_warnings`)
+- Prompt changes: summarization templates (quote guidance, numeric accuracy) and eval templates (cumulative context, facet injection)
+- Service logic: `EvalService`, `SummarizerService`, `BookService` (re-import warning)
+- Preset YAML: `skip_assertions` field
+- CLI: re-import confirmation, eval display enhancements
+
+**Out of scope:**
+- New eval assertions beyond the existing 16
+- Changes to the search/embedding pipeline
+- PDF/MOBI parser changes
+- UI/frontend (CLI-only tool)
+
+---
+
+## Change 1: Preset-Aware Assertion Skipping
+
+**Observation:** 1 (`has_key_concepts` near-universal false failure)
+**Severity:** High — 15/17 sections fail on a structural check the preset was never designed to produce
+
+### 1.1 Problem
+
+The `eval_format_v1.txt` template checks for a literal "Key Concepts" section. The `practitioner_bullets` preset produces bullet-point summaries organized by theme — structured and useful, but without a dedicated "Key Concepts" heading. The eval penalizes a valid output format.
+
+### 1.2 Solution
+
+Add an optional `skip_assertions` field to preset YAML files. The `EvalService` reads the preset name from the summary being evaluated, loads the preset's `skip_assertions` list, and skips those assertions (returning `passed: true` with reasoning "Skipped: assertion not applicable for preset '{preset_name}'").
+
+### 1.3 Preset YAML Schema Change
+
+```yaml
+# practitioner_bullets.yaml
+name: Practitioner Bullets
+description: Actionable frameworks in scannable bullet format
+system: true
+facets:
+  style: bullet_points
+  audience: practitioner
+  compression: standard
+  content_focus: frameworks_examples
+skip_assertions:           # NEW — optional
+  - has_key_concepts       # Bullet-point style doesn't use Key Concepts headings
+```
+
+**Presets that should skip `has_key_concepts`:** `practitioner_bullets`, `tweet_thread`, `executive_brief` (all non-section-headed formats).
+
+**Presets that should NOT skip it:** `study_guide`, `academic_detailed` (formats that explicitly produce structured sections).
+
+### 1.4 EvalService Changes
+
+**File:** `backend/app/services/summarizer/evaluator.py`
+
+In `evaluate_summary()`:
+1. Accept `preset_name: str | None` parameter (already available via `Summary.preset_name`).
+2. If `preset_name` is provided, load the preset YAML via `PresetService.load(preset_name)`.
+3. Extract `skip_assertions` list (default: empty).
+4. For each assertion in the skip list, return immediately with `{"passed": True, "reasoning": "Skipped: not applicable for preset '{preset_name}'", "skipped": True}`.
+5. Store skipped assertions in EvalTrace with `passed=True` and a `skipped` flag for auditability.
+
+### 1.5 Conversion of `has_key_concepts` to Deterministic
+
+In addition to preset-based skipping, the `has_key_concepts` assertion itself is converted from LLM-based to deterministic (see [Deterministic Assertion Conversions](#deterministic-assertion-conversions)). When not skipped, it checks for structured concept presentation via regex pattern matching rather than LLM judgment.
+
+### 1.6 Edge Cases
+
+- **Preset is None (ad-hoc facets):** No assertions skipped. All 16 run.
+- **Preset YAML missing `skip_assertions` field:** Treated as empty list. All assertions run.
+- **Unknown assertion name in skip list:** Log a warning, ignore. Don't crash the eval.
+- **All assertions skipped:** Technically valid. `eval_json` shows 16/16 passed. This would be a user configuration error — log a warning if >12 assertions are skipped.
+
+---
+
+## Change 2: Deterministic `reasonable_length` Check
+
+**Observation:** 2 (template variables never populated — code bug)
+**Severity:** High — assertion is completely non-functional
+
+### 2.1 Problem
+
+The `reasonable_length` assertion in `eval_format_v1.txt` expects compression variables (`compression_target`, `source_length`, `expected_length`, `min_length`, `max_length`, `summary_length`) that are never passed by `_run_single_assertion()`. The `_get_compression_range()` helper exists (lines 56-67) but is never called. Results are inconsistent: 4 sections fail, 13 pass based on LLM guessing.
+
+### 2.2 Solution
+
+Convert `reasonable_length` to a **fully deterministic check** — no LLM call needed. All inputs are known at eval time.
+
+### 2.3 Algorithm
+
+```python
+def _check_reasonable_length(
+    self,
+    source_text: str,
+    summary_text: str,
+    facets_used: dict,
+    section_id: int,
+    summary_id: int | None,
+    eval_run_id: str,
+) -> dict:
+    source_len = len(source_text)
+    summary_len = len(summary_text)
+
+    min_ratio, max_ratio = self._get_compression_range(facets_used)
+
+    # Apply ±50% tolerance band around the compression range
+    min_chars = int(source_len * min_ratio * 0.5)
+    max_chars = int(source_len * max_ratio * 1.5)
+
+    passed = min_chars <= summary_len <= max_chars
+    actual_ratio = summary_len / source_len if source_len > 0 else 0
+
+    reasoning = (
+        f"Source: {source_len} chars, Summary: {summary_len} chars, "
+        f"Ratio: {actual_ratio:.1%}. "
+        f"Expected range: {min_ratio:.0%}-{max_ratio:.0%} "
+        f"(tolerance: {min_chars}-{max_chars} chars). "
+        f"{'Within' if passed else 'Outside'} acceptable range."
+    )
+
+    # Store trace (no LLM call, so prompt_sent/llm_response are null)
+    trace = EvalTrace(
+        section_id=section_id,
+        summary_id=summary_id,
+        eval_run_id=eval_run_id,
+        assertion_name="reasonable_length",
+        assertion_category="advisory",
+        passed=passed,
+        reasoning=reasoning,
+        prompt_sent=None,
+        llm_response=None,
+        model_used="deterministic",
+        input_tokens=None,
+        output_tokens=None,
+        latency_ms=0,
+    )
+    self.db.add(trace)
+
+    return {
+        "assertion_name": "reasonable_length",
+        "category": "advisory",
+        "passed": passed,
+        "reasoning": reasoning,
+    }
+```
+
+### 2.4 Compression Ranges (from existing `_get_compression_range`)
+
+| Facet Combination | Min Ratio | Max Ratio | With ±50% Tolerance |
+|---|---|---|---|
+| `style=tweet_thread` | 2% | 8% | 1%-12% |
+| `compression=brief` | 5% | 15% | 2.5%-22.5% |
+| `compression=standard` (default) | 15% | 25% | 7.5%-37.5% |
+| `compression=detailed` | 25% | 40% | 12.5%-60% |
+
+### 2.5 Edge Cases
+
+- **Source text is empty:** Return `passed: true` with reasoning "Source text is empty, length check not applicable."
+- **Summary is empty:** Return `passed: false` with reasoning "Summary is empty."
+- **Facets not provided:** Default to `standard` compression range (15-25%).
+- **Very short sections** (< 500 chars): The tolerance band may be too tight. Apply a floor of 50 chars for `min_chars`.
+
+---
+
+## Change 3: Cumulative Context for Faithfulness Eval
+
+**Observation:** 3 (`no_hallucinated_facts` flags cross-chapter knowledge)
+**Severity:** High — critical assertion producing false positives
+
+### 3.1 Problem
+
+The summarizer receives cumulative context (summaries of all prior sections) to maintain cross-section coherence. When the summary references concepts from earlier chapters, the eval flags them as hallucinations because it only sees the current section's source text.
+
+### 3.2 Solution
+
+Pass cumulative section summaries to the eval as additional source context, matching the information scope the summarizer had when generating the summary.
+
+### 3.3 Data Flow
+
+**Current flow:**
+```
+Eval receives: source_text = section.content_md
+```
+
+**New flow:**
+```
+Eval receives: source_text = section.content_md
+               cumulative_context = summaries of all sections with order_index < current
+```
+
+### 3.4 Implementation
+
+#### 3.4.1 Building Cumulative Context at Eval Time
+
+**File:** `backend/app/services/summarizer/evaluator.py` — `evaluate_summary()`
+
+New parameter: `cumulative_context: str | None = None`
+
+When provided, cumulative context is injected into the eval prompt template for **faithfulness assertions only** (`no_hallucinated_facts`, `no_contradictions`, `accurate_quotes`). Completeness and format assertions evaluate the summary against the current section only — they don't benefit from prior context.
+
+#### 3.4.2 Fetching Cumulative Context
+
+**File:** `backend/app/cli/commands/eval_cmd.py` (and `summarize_cmd.py` where eval is triggered post-summarization)
+
+Before calling `evaluate_summary()`:
+1. Fetch all sections for the book with `order_index < current_section.order_index`.
+2. For each prior section, get `default_summary_id` → load summary → extract `summary_md`.
+3. Build cumulative context string (same format as `SummarizerService`):
+   ```
+   - Section Title: [first 500 chars of summary]...
+   ```
+4. Pass as `cumulative_context` parameter.
+
+**For post-summarization eval** (in `summarize_cmd.py`): The `SummarizerService` already builds cumulative context during the map step. Pass it through to the eval call.
+
+#### 3.4.3 Prompt Template Changes
+
+**File:** `backend/app/services/summarizer/prompts/eval_faithfulness_v1.txt`
+
+Add conditional cumulative context block:
+
+```jinja2
+{% if cumulative_context %}
+## Context from prior sections in this book
+The summarizer had access to the following context from earlier sections when generating this summary.
+Claims that reference information from prior sections should NOT be flagged as hallucinations
+if that information appears in this context.
+
+{{ cumulative_context }}
+{% endif %}
+
+## Source text for this section
+{{ source_text }}
+```
+
+#### 3.4.4 Distinguishing Hard vs Soft Hallucinations
+
+The eval prompt for `no_hallucinated_facts` should instruct the LLM to distinguish:
+- **Hard hallucination:** A claim that contradicts or has no basis in any part of the book seen so far (cumulative context + current section).
+- **Soft inference:** A reasonable editorial connection between facts individually present in the source (e.g., "the author's humanities background explains the book's unusual clarity"). Flag these as `likely_cause: "scope_mismatch"` rather than failing.
+
+Update the `no_hallucinated_facts` section of `eval_faithfulness_v1.txt`:
+```jinja2
+{% if assertion_name == "no_hallucinated_facts" %}
+Evaluate whether EVERY factual claim in the summary is supported by the source text
+{% if cumulative_context %}or the prior section context provided above{% endif %}.
+
+A claim is a HARD HALLUCINATION (fail) if it has no basis anywhere in the provided source material.
+A claim is a SOFT INFERENCE (pass, but note in reasoning) if it makes a reasonable editorial
+connection between facts that are individually present in the source.
+{% endif %}
+```
+
+### 3.5 Edge Cases
+
+- **First section of book:** `cumulative_context` is empty/None. Eval runs with current section only (same as today).
+- **Prior sections have no summaries:** Skip those sections in cumulative context. Log a warning.
+- **Cumulative context exceeds reasonable size:** Truncate to most recent 20K chars with a note: "...truncated, showing most recent context."
+- **Book-level eval:** Uses all section summaries as source context (see Change 7).
+
+---
+
+## Change 4: Paraphrased Quote Detection
+
+**Observation:** 4 (`accurate_quotes` fails on paraphrased attributions)
+**Severity:** Medium — genuine quality issue
+
+### 4.1 Problem
+
+The summarizer sometimes paraphrases attributed statements but keeps them in quotation marks, creating misleading verbatim-looking quotes.
+
+### 4.2 Solution (Two-Part)
+
+#### 4.2.1 Part A: Summarizer Prompt Guidance
+
+**File:** `backend/app/services/summarizer/prompts/base/summarize_section.txt`
+
+Add to the output instructions section:
+
+```
+When attributing a statement to a specific person, either quote verbatim from the source
+or paraphrase without quotation marks. Do not place paraphrased content in quotation marks.
+```
+
+#### 4.2.2 Part B: Deterministic Post-Processing Check
+
+**File:** New function in `backend/app/services/summarizer/summarizer_service.py`
+
+After generating a summary and before storing it, run a non-blocking quote verification:
+
+```python
+def _check_paraphrased_quotes(
+    self, summary_text: str, source_text: str
+) -> list[dict]:
+    """
+    Extract quoted text from summary, fuzzy-match against source.
+    Returns list of warnings for quotes that don't match verbatim.
+    """
+    warnings = []
+    # Extract all quoted strings from the summary
+    quoted_pattern = r'"([^"]{10,200})"'  # 10-200 char quoted strings
+    quotes = re.findall(quoted_pattern, summary_text)
+
+    for quote in quotes:
+        # Check exact match first
+        if quote in source_text:
+            continue
+
+        # Fuzzy match: check if a high-similarity substring exists in source
+        # Use simple substring ratio (SequenceMatcher)
+        from difflib import SequenceMatcher
+        best_ratio = 0.0
+        best_match = ""
+        # Sliding window over source text
+        words = source_text.split()
+        quote_word_count = len(quote.split())
+        for i in range(len(words) - quote_word_count + 1):
+            candidate = " ".join(words[i:i + quote_word_count + 2])
+            ratio = SequenceMatcher(None, quote.lower(), candidate.lower()).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = candidate
+
+        if best_ratio < 0.85:
+            warnings.append({
+                "type": "paraphrased_quote",
+                "quote": quote,
+                "best_match": best_match if best_ratio > 0.5 else None,
+                "similarity": round(best_ratio, 2),
+                "message": f'Quoted text "{quote[:50]}..." does not appear verbatim in source.'
+            })
+
+    return warnings
+```
+
+### 4.3 Warning Storage
+
+Warnings are stored in a new `quality_warnings` JSON field on the `Summary` model:
+
+```python
+# Summary model addition
+quality_warnings: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+```
+
+Structure:
+```json
+{
+  "paraphrased_quotes": [
+    {
+      "quote": "airlines increased costs 25%...",
+      "best_match": "In order to get an additional 5 percent...",
+      "similarity": 0.42,
+      "message": "Quoted text does not appear verbatim in source."
+    }
+  ]
+}
+```
+
+### 4.4 CLI Display
+
+In `summary show` command output, if `quality_warnings` is non-empty, display:
+
+```
+⚠ Quality Warnings:
+  - Paraphrased quote detected: "airlines increased costs 25%..." (42% match)
+```
+
+### 4.5 Edge Cases
+
+- **No quoted text in summary:** No warnings generated. `quality_warnings` remains null.
+- **Very short quotes (< 10 chars):** Excluded from check (too prone to false positives from common phrases).
+- **Nested quotes / single quotes:** Only double-quoted strings are checked. Single quotes and nested quotes are ignored.
+- **Source text contains markdown formatting:** Strip markdown before comparison (bold markers, headers, etc. could break matching).
+
+---
+
+## Change 5: Section-Type-Aware Eval Thresholds
+
+**Observation:** 5 (`covers_frameworks` misses items in peripheral chapters)
+**Severity:** Low — legitimate omissions, not systemic issues
+
+### 5.1 Problem
+
+Glossary, notes, and appendix sections contain many named items. Summaries correctly prioritize major frameworks over exhaustive listing, but completeness assertions penalize the omissions.
+
+### 5.2 Solution
+
+Add a `section_type` field to `BookSection` and make eval assertions section-type-aware.
+
+### 5.3 Schema Change
+
+```python
+class SectionType(str, enum.Enum):
+    CHAPTER = "chapter"
+    FOREWORD = "foreword"
+    PREFACE = "preface"
+    INTRODUCTION = "introduction"
+    GLOSSARY = "glossary"
+    NOTES = "notes"
+    APPENDIX = "appendix"
+    BIBLIOGRAPHY = "bibliography"
+    INDEX = "index"
+    ABOUT_AUTHOR = "about_author"
+    EPILOGUE = "epilogue"
+    CONCLUSION = "conclusion"
+    OTHER = "other"
+```
+
+**BookSection model addition:**
+```python
+section_type: Mapped[str] = mapped_column(
+    String(50), default=SectionType.CHAPTER.value, server_default="chapter"
+)
+```
+
+### 5.4 Auto-Detection During Parsing
+
+**File:** `backend/app/services/parser/epub_parser.py`
+
+After section extraction, infer `section_type` from title patterns:
+
+```python
+SECTION_TYPE_PATTERNS = {
+    SectionType.GLOSSARY: r"(?i)^glossar",
+    SectionType.NOTES: r"(?i)^(chapter\s+)?notes|^endnotes|^references",
+    SectionType.APPENDIX: r"(?i)^appendix",
+    SectionType.BIBLIOGRAPHY: r"(?i)^bibliograph|^works\s+cited|^sources",
+    SectionType.INDEX: r"(?i)^index$",
+    SectionType.ABOUT_AUTHOR: r"(?i)^about\s+the\s+author",
+    SectionType.FOREWORD: r"(?i)^foreword",
+    SectionType.PREFACE: r"(?i)^preface",
+    SectionType.INTRODUCTION: r"(?i)^introduction",
+    SectionType.EPILOGUE: r"(?i)^epilogue",
+    SectionType.CONCLUSION: r"(?i)^conclusion",
+}
+```
+
+Default: `SectionType.CHAPTER` if no pattern matches.
+
+### 5.5 Manual Override
+
+The existing `edit sections` command allows title and structure changes. Add `section_type` to the editable fields so users can correct mis-detected types.
+
+### 5.6 Eval Behavior by Section Type
+
+For `reference-type` sections (`glossary`, `notes`, `bibliography`, `index`, `appendix`):
+- `covers_frameworks`: Inject into eval prompt: "This is a {section_type} section. Evaluate coverage of the MAJOR frameworks only, not exhaustive listing. A glossary summary should cover the most prominent entries."
+- `covers_key_concepts`: Same relaxed threshold.
+- `covers_examples`: Skip (reference sections don't have illustrative examples in the traditional sense).
+
+Implementation: Pass `section_type` to `_run_single_assertion()` and include it in the Jinja2 template context. The eval prompt templates add conditional instructions.
+
+### 5.7 Edge Cases
+
+- **Section type detection ambiguous:** Default to `chapter`. User can correct via `edit sections`.
+- **Re-import with section_type:** `_re_import_book` preserves `section_type` when updating in-place (same as other section fields).
+- **New section types added later:** The `OTHER` catch-all and `String(50)` column allow extension without migration.
+
+---
+
+## Change 6: Numeric Accuracy Prompt Guidance
+
+**Observation:** 6 (arithmetic interpretation edge case)
+**Severity:** Low — one-off, eval correctly caught it
+
+### 6.1 Problem
+
+Section 93 summary says "3-4x commodity price" when source says "300-400% premium" (which is 4-5x total price). The summarizer misinterpreted "premium" as "total multiplier."
+
+### 6.2 Solution
+
+Add one line to the summarization prompt template:
+
+**File:** `backend/app/services/summarizer/prompts/base/summarize_section.txt`
+
+```
+When converting percentages or premiums to multipliers, be precise:
+a "300% premium" means the premium is 3x, making the total price 4x the base.
+```
+
+### 6.3 Scope
+
+No code changes, no schema changes. Prompt-only fix. No systemic risk.
+
+---
+
+## Change 7: Book-Level Summary Evaluation
+
+**Observation:** 7 (book-level summaries never evaluated with assertion battery)
+**Severity:** Medium — gap in eval coverage
+
+### 7.1 Problem
+
+Book-level summaries have `eval_json` containing only extracted concept lists, not 16-assertion pass/fail results. The eval was never run on book-level summaries.
+
+### 7.2 Solution
+
+#### 7.2.1 Auto-Trigger Eval After Book Summary Generation
+
+**File:** `backend/app/services/summarizer/summarizer_service.py` — `_generate_book_summary()`
+
+After generating the book-level summary, automatically trigger evaluation (unless `--skip-eval` is set).
+
+#### 7.2.2 Source Context for Book-Level Eval
+
+The book-level summary is generated from **section summaries**, not raw source text. The eval should use the same input:
+
+```python
+# Build source context for book-level eval
+source_for_eval = "\n\n".join(
+    f"## {section.title}\n{section.default_summary.summary_md}"
+    for section in book.sections
+    if section.default_summary_id
+)
+```
+
+No cumulative context needed for book-level eval (it already has the full book context).
+
+#### 7.2.3 Book-Level Assertion Subset
+
+Define a skip list for book-level summaries:
+
+```python
+BOOK_LEVEL_SKIP_ASSERTIONS = [
+    "image_refs_preserved",         # Not meaningful at book level
+    "cross_summary_consistency",    # No second independent book summary to compare
+]
+```
+
+Adapt completeness assertion prompts for book level:
+
+```jinja2
+{% if eval_scope == "book" %}
+This is a BOOK-LEVEL summary synthesizing {{ section_count }} section summaries.
+Evaluate whether the summary provides representative coverage across major chapters
+and themes. It should NOT exhaustively list every concept from every section.
+{% endif %}
+```
+
+#### 7.2.4 CLI Changes
+
+**File:** `backend/app/cli/commands/eval_cmd.py`
+
+The `eval <book_id>` command (no section_id) should:
+1. Display section-level eval results (existing behavior).
+2. Also display book-level summary eval results if they exist.
+3. New flag: `--book-only` to show only book-level results.
+
+### 7.3 Edge Cases
+
+- **No section summaries exist:** Cannot generate or evaluate book summary. Error message: "No section summaries found. Run `summarize <book_id>` first."
+- **Some sections lack summaries:** Use available summaries. Log warning about missing sections.
+- **Multiple book-level summaries (different presets):** Each has its own eval. Display grouped by preset.
+
+---
+
+## Change 8: Cascade-Safe Eval Traces
+
+**Observation:** 8 (EvalTrace rows missing after re-import)
+**Severity:** Medium — loss of debugging data and reproducibility
+
+### 8.1 Problem
+
+`EvalTrace.section_id` has `ON DELETE CASCADE`. When `_re_import_book()` deletes sections (for removed/reordered content), all associated eval traces are destroyed. Since eval traces cost 16 LLM calls per section, this is expensive data loss.
+
+### 8.2 Solution
+
+#### 8.2.1 FK Change: CASCADE → SET NULL
+
+**Migration:**
+```sql
+ALTER TABLE eval_traces
+    DROP CONSTRAINT eval_traces_section_id_fkey,
+    ADD CONSTRAINT eval_traces_section_id_fkey
+        FOREIGN KEY (section_id) REFERENCES book_sections(id)
+        ON DELETE SET NULL;
+```
+
+Make `section_id` nullable:
+```sql
+ALTER TABLE eval_traces ALTER COLUMN section_id DROP NOT NULL;
+```
+
+#### 8.2.2 Add `is_stale` Flag
+
+```sql
+ALTER TABLE eval_traces ADD COLUMN is_stale BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX ix_eval_traces_is_stale ON eval_traces (is_stale) WHERE is_stale = FALSE;
+```
+
+When a section is deleted (re-import, section editing), the FK sets `section_id = NULL`. A post-delete hook or the `_re_import_book` function marks these traces as `is_stale = True`.
+
+#### 8.2.3 Add `eval_run_id` Column
+
+```sql
+ALTER TABLE eval_traces ADD COLUMN eval_run_id UUID;
+CREATE INDEX ix_eval_traces_eval_run_id ON eval_traces (eval_run_id);
+```
+
+Generated once per `evaluate_summary()` call. Groups all 13-16 traces from a single eval run.
+
+#### 8.2.4 Update `_re_import_book` to Mark Stale
+
+**File:** `backend/app/services/book_service.py`
+
+Before deleting sections during re-import:
+```python
+# Mark eval traces as stale for sections being removed
+for section in sections_to_remove:
+    await self.db.execute(
+        update(EvalTrace)
+        .where(EvalTrace.section_id == section.id)
+        .values(is_stale=True)
+    )
+```
+
+#### 8.2.5 Re-Import Confirmation Warning
+
+**File:** `backend/app/cli/commands/add_cmd.py` (where `--force` triggers re-import)
+
+Before calling `_re_import_book()`:
+```python
+trace_count = await eval_repo.count_by_book(book.id)
+summary_count = await summary_repo.count_by_book(book.id)
+if trace_count > 0 or summary_count > 0:
+    confirm = typer.confirm(
+        f"This book has {trace_count} eval traces and {summary_count} summaries. "
+        f"Re-import will mark traces as stale. Proceed?"
+    )
+    if not confirm:
+        raise typer.Abort()
+```
+
+#### 8.2.6 EvalTrace Query Updates
+
+All existing queries in `eval_repo.py` must add `WHERE is_stale = FALSE` by default. Add an optional `include_stale: bool = False` parameter for queries that need historical data.
+
+#### 8.2.7 eval_json Derivation from Traces
+
+**Current:** `eval_json` is written independently from trace storage.
+
+**New:** After all traces are stored for an eval run, compute `eval_json` from the traces:
+
+```python
+async def _compute_eval_json(self, eval_run_id: str) -> dict:
+    """Derive eval_json from EvalTrace rows for this run."""
+    traces = await self.db.execute(
+        select(EvalTrace).where(EvalTrace.eval_run_id == eval_run_id)
+    )
+    traces = traces.scalars().all()
+
+    assertions = {}
+    for t in traces:
+        assertions[t.assertion_name] = {
+            "assertion_name": t.assertion_name,
+            "category": t.assertion_category,
+            "passed": t.passed,
+            "reasoning": t.reasoning,
+        }
+        if t.likely_cause:
+            assertions[t.assertion_name]["likely_cause"] = t.likely_cause
+        if t.suggestion:
+            assertions[t.assertion_name]["suggestion"] = t.suggestion
+
+    passed_count = sum(1 for a in assertions.values() if a["passed"])
+    return {
+        "passed": passed_count,
+        "total": len(assertions),
+        "eval_run_id": eval_run_id,
+        "assertions": assertions,
+    }
+```
+
+### 8.3 Edge Cases
+
+- **Stale traces queried for display:** Default queries exclude stale. A `--include-stale` flag on the CLI could show historical data.
+- **Section re-created with same order_index:** Traces from the old section have `section_id = NULL` + `is_stale = True`. New section gets fresh evals. No conflict.
+- **summary_id still valid after re-import:** Yes — summaries are linked by `content_id` (not FK), so they survive re-import. Traces can still be queried by `summary_id`.
+
+---
+
+## Change 9: Diagnostic Eval Reasoning
+
+**Observation:** 9 (eval reasoning is descriptive but not diagnostic)
+**Severity:** Medium — limits actionability
+
+### 9.1 Problem
+
+Eval LLM returns reasoning that describes *what* failed but not *why* the summarizer made that choice or *how to fix it*.
+
+### 9.2 Solution
+
+#### 9.2.1 New Fields on EvalTrace
+
+```sql
+ALTER TABLE eval_traces ADD COLUMN likely_cause VARCHAR(50);
+ALTER TABLE eval_traces ADD COLUMN suggestion TEXT;
+```
+
+`likely_cause` enum values (stored as string, validated in code):
+- `content_quality` — the summary itself has a genuine quality issue
+- `scope_mismatch` — the claim may be accurate in broader context but isn't in the provided source
+- `format_mismatch` — the summary structure doesn't match what the assertion expects
+- `insufficient_data` — the eval couldn't run properly due to missing inputs
+
+#### 9.2.2 Updated JSON Schema for LLM Response
+
+Current schema sent to LLM:
+```json
+{"passed": "boolean", "reasoning": "string"}
+```
+
+New schema:
+```json
+{
+  "passed": "boolean",
+  "reasoning": "string",
+  "likely_cause": "string (one of: content_quality, scope_mismatch, format_mismatch, insufficient_data, or null if passed)",
+  "suggestion": "string (one-line fix recommendation, or null if passed)"
+}
+```
+
+#### 9.2.3 Prompt Template Updates
+
+Add to all eval prompt templates, after the assertion-specific instructions:
+
+```jinja2
+If the assertion FAILS, you must also provide:
+- "likely_cause": Classify the root cause:
+  - "content_quality": The summary has a genuine quality problem.
+  - "scope_mismatch": The claim may be correct in broader book context but is not supported by the provided source.
+  - "format_mismatch": The summary format doesn't match what this assertion expects.
+  - "insufficient_data": You cannot evaluate properly due to missing or ambiguous inputs.
+- "suggestion": A one-line, actionable recommendation for how to fix the issue.
+  Example: "Remove quotation marks around paraphrased attributions."
+  Example: "Include cumulative context in eval source."
+
+If the assertion PASSES, set both fields to null.
+```
+
+#### 9.2.4 Trace Storage
+
+In `_run_single_assertion()`, after parsing the LLM response:
+```python
+trace = EvalTrace(
+    ...
+    likely_cause=result.get("likely_cause"),
+    suggestion=result.get("suggestion"),
+    ...
+)
+```
+
+For deterministic assertions that fail, set `likely_cause` and `suggestion` programmatically:
+- `reasonable_length` fail: `likely_cause="content_quality"`, `suggestion="Adjust compression level or re-summarize with different preset."`
+- `has_key_concepts` fail: `likely_cause="format_mismatch"`, `suggestion="Add a 'Key Concepts' section heading to the summary."`
+
+### 9.3 Edge Cases
+
+- **LLM doesn't return likely_cause/suggestion:** Default to `None`. Don't fail the assertion over missing diagnostic fields.
+- **LLM returns invalid likely_cause value:** Log a warning, store as-is. Don't crash. The field is informational, not load-bearing.
+- **Deterministic assertions:** Set diagnostic fields programmatically (no LLM call to provide them).
+
+---
+
+## Deterministic Assertion Conversions
+
+Three assertions are converted from LLM-based to deterministic/hybrid checks:
+
+### `reasonable_length` → Fully Deterministic
+
+See [Change 2](#change-2-deterministic-reasonable_length-check) for full algorithm. Pure math: `len(summary) / len(source)` against compression range derived from facets.
+
+### `has_key_concepts` → Deterministic
+
+**Logic:**
+1. If preset skips this assertion (via `skip_assertions`), return passed + skipped.
+2. Check for structured concept presentation via regex:
+   - Look for heading patterns: `## Key Concepts`, `**Key Concepts**`, `### Concepts`, `## Core Ideas`, etc.
+   - Look for definition-list patterns: `**Term**: Description` (3+ occurrences).
+   - Look for structured bullet groups with bold lead terms (3+ occurrences).
+3. If any pattern matches, pass. Otherwise, fail.
+
+```python
+KEY_CONCEPTS_PATTERNS = [
+    r"(?mi)^#{1,3}\s*(key\s+concepts?|core\s+(ideas?|concepts?)|main\s+(ideas?|concepts?))",
+    r"(?mi)^\*\*[A-Z][^*]+\*\*[:\s]",  # Bold term followed by colon (counted)
+]
+
+def _check_has_key_concepts(self, summary_text: str, ...) -> dict:
+    # Check heading patterns
+    for pattern in KEY_CONCEPTS_PATTERNS[:1]:
+        if re.search(pattern, summary_text):
+            return {"passed": True, "reasoning": "Found structured key concepts section."}
+
+    # Check bold-term definitions (need 3+ for structured presentation)
+    bold_terms = re.findall(KEY_CONCEPTS_PATTERNS[1], summary_text)
+    if len(bold_terms) >= 3:
+        return {"passed": True, "reasoning": f"Found {len(bold_terms)} structured concept definitions."}
+
+    return {
+        "passed": False,
+        "reasoning": "No structured concept presentation found (no Key Concepts heading or 3+ bold-term definitions).",
+        "likely_cause": "format_mismatch",
+        "suggestion": "Add a 'Key Concepts' section or use bold terms for concept definitions.",
+    }
+```
+
+### `image_refs_preserved` → Deterministic
+
+**Logic:**
+1. Count images in source: regex for `![`, `<img`, or image references.
+2. If source has 0 images, pass (nothing to preserve).
+3. If source has images, check if summary mentions visual content: regex for `figure`, `diagram`, `chart`, `image`, `illustration`, `table`, `graph`, `photo`.
+4. Pass if at least one visual reference keyword is found when images exist.
+
+```python
+IMAGE_SOURCE_PATTERN = r"!\[|<img\s|\.(?:png|jpg|jpeg|gif|svg)"
+IMAGE_REF_KEYWORDS = r"(?i)\b(figure|diagram|chart|image|illustration|table|graph|photo|visual)\b"
+
+def _check_image_refs_preserved(self, source_text: str, summary_text: str, image_count: int, ...) -> dict:
+    source_images = len(re.findall(IMAGE_SOURCE_PATTERN, source_text))
+    total_images = max(source_images, image_count)
+
+    if total_images == 0:
+        return {"passed": True, "reasoning": "No images in source — nothing to preserve."}
+
+    refs_in_summary = re.findall(IMAGE_REF_KEYWORDS, summary_text)
+    passed = len(refs_in_summary) > 0
+
+    return {
+        "passed": passed,
+        "reasoning": f"Source has {total_images} images. Summary has {len(refs_in_summary)} visual references." +
+            (" Visual content acknowledged." if passed else " No visual content references found."),
+        "likely_cause": None if passed else "content_quality",
+        "suggestion": None if passed else "Add a note about diagrams or visual content from the section.",
+    }
+```
+
+---
+
+## Database Migrations
+
+### Migration: `v1_3_eval_improvements`
+
+**Changes:**
+
+| Table | Column | Change | Details |
+|-------|--------|--------|---------|
+| `eval_traces` | `section_id` | ALTER | Make nullable, change FK from CASCADE to SET NULL |
+| `eval_traces` | `is_stale` | ADD | `BOOLEAN NOT NULL DEFAULT FALSE` |
+| `eval_traces` | `eval_run_id` | ADD | `UUID`, nullable, indexed |
+| `eval_traces` | `likely_cause` | ADD | `VARCHAR(50)`, nullable |
+| `eval_traces` | `suggestion` | ADD | `TEXT`, nullable |
+| `book_sections` | `section_type` | ADD | `VARCHAR(50) NOT NULL DEFAULT 'chapter'` |
+| `summaries` | `quality_warnings` | ADD | `JSON`, nullable |
+
+**Index changes:**
+
+| Index | Table | Columns | Notes |
+|-------|-------|---------|-------|
+| `ix_eval_traces_is_stale` | `eval_traces` | `is_stale` | Partial index WHERE `is_stale = FALSE` |
+| `ix_eval_traces_eval_run_id` | `eval_traces` | `eval_run_id` | For grouping traces by eval run |
+| `ix_book_sections_section_type` | `book_sections` | `section_type` | For section-type queries |
+
+**FK change:**
+```sql
+-- Drop old CASCADE constraint
+ALTER TABLE eval_traces
+    DROP CONSTRAINT IF EXISTS eval_traces_section_id_fkey;
+
+-- Make section_id nullable
+ALTER TABLE eval_traces ALTER COLUMN section_id DROP NOT NULL;
+
+-- Add new SET NULL constraint
+ALTER TABLE eval_traces
+    ADD CONSTRAINT eval_traces_section_id_fkey
+        FOREIGN KEY (section_id) REFERENCES book_sections(id)
+        ON DELETE SET NULL;
+```
+
+**Enum for section_type:**
+No DB-level enum needed. Stored as `VARCHAR(50)` with application-level validation (same pattern as `BookStatus`).
+
+---
+
+## Prompt Template Changes
+
+### Summarization Prompts
+
+| File | Change | Purpose |
+|------|--------|---------|
+| `base/summarize_section.txt` | Add quote attribution guidance | Obs 4: prevent paraphrased quotes |
+| `base/summarize_section.txt` | Add numeric accuracy guidance | Obs 6: prevent percentage/multiplier confusion |
+
+### Eval Prompts
+
+| File | Change | Purpose |
+|------|--------|---------|
+| `eval_faithfulness_v1.txt` | Add cumulative context block | Obs 3: faithfulness eval with book context |
+| `eval_faithfulness_v1.txt` | Add hard/soft hallucination distinction | Obs 3: reduce false positives |
+| `eval_faithfulness_v1.txt` | Add `likely_cause` + `suggestion` output fields | Obs 9: diagnostic reasoning |
+| `eval_completeness_v1.txt` | Add section-type-aware instructions | Obs 5: relaxed thresholds for reference sections |
+| `eval_completeness_v1.txt` | Add book-level scope instructions | Obs 7: representative vs exhaustive coverage |
+| `eval_completeness_v1.txt` | Add `likely_cause` + `suggestion` output fields | Obs 9: diagnostic reasoning |
+| `eval_coherence_v1.txt` | Add `likely_cause` + `suggestion` output fields | Obs 9: diagnostic reasoning |
+| `eval_specificity_v1.txt` | Add `likely_cause` + `suggestion` output fields | Obs 9: diagnostic reasoning |
+| `eval_format_v1.txt` | Remove `reasonable_length` and `has_key_concepts` LLM sections | Now deterministic |
+| `eval_format_v1.txt` | Remove `image_refs_preserved` LLM section | Now deterministic |
+
+---
+
+## Configuration & Preset Changes
+
+### Preset YAML Schema
+
+Add optional `skip_assertions` field to all preset files:
+
+| Preset | skip_assertions |
+|--------|----------------|
+| `practitioner_bullets` | `[has_key_concepts]` |
+| `executive_brief` | `[has_key_concepts]` |
+| `tweet_thread` | `[has_key_concepts, image_refs_preserved]` |
+| `study_guide` | `[]` (empty — all assertions apply) |
+| `academic_detailed` | `[]` (empty — all assertions apply) |
+
+### PresetService Validation
+
+`PresetService._parse_file()` should:
+1. Accept `skip_assertions` as optional list of strings.
+2. Validate that all assertion names in the list exist in `ASSERTION_REGISTRY`.
+3. Warn (don't error) on unknown assertion names for forward compatibility.
+
+### Settings
+
+No new settings required. Existing `summarization.eval_prompt_version` continues to control template versioning.
+
+---
+
+## Verification Plan
+
+### Unit Tests
+
+**File:** `backend/tests/unit/test_eval_deterministic.py` (new)
+
+| Test | Description |
+|------|-------------|
+| `test_reasonable_length_within_range` | Summary at 20% of source with standard compression passes |
+| `test_reasonable_length_too_short` | Summary at 2% of source with standard compression fails |
+| `test_reasonable_length_too_long` | Summary at 80% of source with standard compression fails |
+| `test_reasonable_length_empty_source` | Empty source returns passed with "not applicable" reasoning |
+| `test_reasonable_length_brief_preset` | 8% summary passes for brief compression |
+| `test_reasonable_length_detailed_preset` | 35% summary passes for detailed compression |
+| `test_reasonable_length_no_facets_defaults_standard` | Missing facets defaults to standard range |
+| `test_has_key_concepts_heading_found` | Summary with `## Key Concepts` heading passes |
+| `test_has_key_concepts_bold_terms` | Summary with 3+ `**Term**: description` patterns passes |
+| `test_has_key_concepts_no_structure` | Plain prose fails |
+| `test_has_key_concepts_bullets_with_bold_leads` | Bullet-point summary with bold lead terms passes |
+| `test_image_refs_no_images` | Source without images always passes |
+| `test_image_refs_images_mentioned` | Source with images + summary mentioning "diagram" passes |
+| `test_image_refs_images_not_mentioned` | Source with images + summary without visual keywords fails |
+| `test_paraphrased_quote_exact_match` | Verbatim quote in source returns no warning |
+| `test_paraphrased_quote_paraphrased` | Paraphrased quote returns warning with similarity score |
+| `test_paraphrased_quote_no_quotes` | Summary without quotes returns empty warnings |
+
+**File:** `backend/tests/unit/test_eval_service.py` (extend existing)
+
+| Test | Description |
+|------|-------------|
+| `test_preset_skip_assertions` | Assertions in skip list return passed + skipped flag |
+| `test_preset_no_skip_list` | Preset without skip_assertions runs all assertions |
+| `test_eval_run_id_groups_traces` | All traces from one eval call share same `eval_run_id` |
+| `test_eval_json_derived_from_traces` | `_compute_eval_json()` correctly aggregates trace results |
+| `test_cumulative_context_passed_to_faithfulness` | Faithfulness assertions receive cumulative context |
+| `test_cumulative_context_not_passed_to_format` | Format assertions don't receive cumulative context |
+| `test_section_type_injected_in_completeness` | Section type appears in completeness eval prompt |
+| `test_book_level_skip_assertions` | Book-level eval skips `image_refs_preserved` and `cross_summary_consistency` |
+| `test_diagnostic_fields_stored` | `likely_cause` and `suggestion` stored on EvalTrace |
+| `test_diagnostic_fields_null_on_pass` | Passing assertions have null `likely_cause` and `suggestion` |
+
+**File:** `backend/tests/unit/test_section_type.py` (new)
+
+| Test | Description |
+|------|-------------|
+| `test_detect_glossary` | Title "Glossary" → `SectionType.GLOSSARY` |
+| `test_detect_notes` | Title "Chapter Notes" → `SectionType.NOTES` |
+| `test_detect_about_author` | Title "About the Author" → `SectionType.ABOUT_AUTHOR` |
+| `test_detect_default_chapter` | Title "Chapter 3: Strategy" → `SectionType.CHAPTER` |
+| `test_detect_case_insensitive` | Title "APPENDIX A" → `SectionType.APPENDIX` |
+
+**File:** `backend/tests/unit/test_preset_service.py` (extend existing)
+
+| Test | Description |
+|------|-------------|
+| `test_load_preset_with_skip_assertions` | YAML with `skip_assertions` loads correctly |
+| `test_load_preset_without_skip_assertions` | YAML without field returns empty list |
+| `test_invalid_assertion_name_warns` | Unknown assertion name in skip list logs warning |
+
+### Integration Tests
+
+**File:** `backend/tests/integration/test_eval_cascade.py` (new)
+
+| Test | Description |
+|------|-------------|
+| `test_section_delete_sets_trace_null` | Deleting a section sets `EvalTrace.section_id = NULL` and `is_stale = True` |
+| `test_stale_traces_excluded_by_default` | Default trace queries exclude `is_stale = True` rows |
+| `test_re_import_preserves_traces` | `_re_import_book` with section changes preserves eval traces as stale |
+| `test_re_import_warning_count` | Confirmation prompt shows correct trace/summary counts |
+| `test_eval_json_matches_traces` | After eval, `Summary.eval_json` matches aggregated traces |
+
+**File:** `backend/tests/integration/test_eval_pipeline.py` (extend existing)
+
+| Test | Description |
+|------|-------------|
+| `test_full_eval_with_deterministic_assertions` | Eval run uses deterministic checks for 3 assertions, LLM for rest |
+| `test_book_level_eval_triggered` | Book-level summary auto-triggers eval after generation |
+| `test_cumulative_context_built_correctly` | Prior section summaries assembled and passed to eval |
+
+### Golden Set Tests
+
+**File:** `backend/tests/integration/test_eval_golden_set.py` (new)
+
+**Fixtures:** Store in `backend/tests/fixtures/golden_eval/`
+
+| Fixture | Source | Purpose |
+|---------|--------|---------|
+| `book2_section_92.json` | Book 2, section 92 (16/16 pass) | All-pass positive test |
+| `book2_section_97.json` | Book 2, section 97 (16/16 pass) | All-pass positive test |
+| `book2_section_91.json` | Book 2, section 91 (hallucination false positive) | Verify cumulative context fix |
+| `book2_section_93.json` | Book 2, section 93 (paraphrased quote) | Verify quote detection |
+| `book2_section_101.json` | Book 2, section 101 (glossary) | Verify section-type-aware thresholds |
+
+Each fixture contains: `source_text`, `summary_text`, `cumulative_context`, `facets_used`, `section_type`, `expected_results` (per-assertion pass/fail).
+
+Golden set tests run deterministic assertions against the fixture data and verify results match expectations. LLM-based assertions are tested separately with mocked LLM responses.
+
+### E2E Tests
+
+| Test | Description |
+|------|-------------|
+| `test_eval_command_shows_diagnostic_fields` | `bookcompanion eval <book_id> <section_id>` displays `likely_cause` and `suggestion` |
+| `test_eval_command_shows_book_level` | `bookcompanion eval <book_id>` includes book-level eval results |
+| `test_re_import_confirmation_prompt` | `bookcompanion add --force` shows confirmation with trace counts |
+| `test_summary_show_displays_warnings` | `bookcompanion summary show <id>` displays paraphrased quote warnings |
+
+---
+
+## Deployment & Rollout
+
+### Step 1: Database Migration
+```bash
+cd backend
+uv run alembic revision --autogenerate -m "V1.3 eval improvements"
+# Manual review: verify FK change, new columns, indexes
+uv run alembic upgrade head
+# Migrate test DB
+BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion_test uv run alembic upgrade head
+```
+
+### Step 2: Code Changes
+1. Update models (`EvalTrace`, `BookSection`, `Summary`)
+2. Implement deterministic assertions in `evaluator.py`
+3. Update `_run_single_assertion()` to pass new context
+4. Update eval prompt templates
+5. Update summarization prompt templates
+6. Add `skip_assertions` to preset YAML files
+7. Update `PresetService` to load/validate `skip_assertions`
+8. Add `section_type` auto-detection to parser
+9. Implement paraphrased quote check in `SummarizerService`
+10. Update `_re_import_book()` with stale marking and confirmation
+11. Update `eval_cmd.py` for book-level display and diagnostic fields
+12. Implement `_compute_eval_json()` for trace-based derivation
+
+### Step 3: Run Tests
+```bash
+uv run python -m pytest tests/unit/test_eval_deterministic.py -v
+uv run python -m pytest tests/unit/test_section_type.py -v
+uv run python -m pytest tests/unit/test_eval_service.py -v
+uv run python -m pytest tests/integration/test_eval_cascade.py -v
+uv run python -m pytest tests/integration/test_eval_golden_set.py -v
+uv run python -m pytest tests/ -v  # Full suite
+uv run ruff check . && uv run ruff format --check .
+```
+
+### Step 4: Validate with Real Data
+```bash
+# Re-run eval on book 2 sections
+bookcompanion eval 2 --force
+
+# Check results — should see:
+# - has_key_concepts passes or is skipped for practitioner_bullets
+# - reasonable_length has actual numbers (not "cannot evaluate")
+# - no_hallucinated_facts reduces false positives on sections 91, 99
+# - Diagnostic fields (likely_cause, suggestion) populated on failures
+
+# Run book-level eval
+bookcompanion eval 2 --book-only
+
+# Check paraphrased quote warnings
+bookcompanion summary show <summary_id_for_section_93>
+```
+
+### Step 5: Rollback Plan
+
+If issues are found:
+1. **Schema is additive only** — new columns with defaults don't break existing code.
+2. **FK change is the riskiest**: If SET NULL causes issues, can revert FK to CASCADE in a new migration.
+3. **Deterministic assertions**: If results are worse than LLM-based, revert by changing the assertion dispatch back to LLM (the prompt templates still exist).
+4. **Prompt changes**: Version-controlled. Revert by setting `eval_prompt_version` to "v1" (though this would need the old templates preserved as v1, new as v2).
+
+---
+
+## Risk Mitigation
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| Deterministic assertions are less accurate than LLM | Low | Medium | Golden set testing validates accuracy. Deterministic checks are well-defined (length, pattern matching). Can revert to LLM for specific assertions if needed. |
+| Cumulative context makes eval prompts too large | Low | Medium | Truncate to 20K chars. Cumulative context uses summaries (compressed), not raw text. Typical size: 5-15K chars. |
+| FK change from CASCADE to SET NULL creates orphaned traces | Low | Low | `is_stale` flag ensures orphaned traces are filtered out of default queries. Periodic cleanup query can remove old stale traces. |
+| Re-run eval on book 2 produces different results | High | Low | Expected — that's the point. New results should be more accurate. Compare before/after to validate improvements. |
+| LLM doesn't reliably return `likely_cause`/`suggestion` | Medium | Low | Fields are nullable. Code handles missing values gracefully. Worst case: diagnostic fields are null, falls back to current behavior. |
+| `section_type` auto-detection misclassifies | Medium | Low | Conservative regex patterns (only match obvious titles). Default is `chapter`. Users can correct via `edit sections`. |
+| Preset `skip_assertions` accidentally skips important checks | Low | Medium | Validation warns if >12 assertions skipped. `skip_assertions` only on system presets initially — user presets start with none. |
+| Migration failure on existing data | Low | High | Test migration on a copy of the production database first. All changes are additive (new columns with defaults). FK change is the only destructive alteration. |
+
+---
+
+## Research Sources
+
+### Existing Code Explored
+
+| File | Key Findings |
+|------|-------------|
+| `backend/app/services/summarizer/evaluator.py` (217 lines) | ASSERTION_REGISTRY (16 assertions), `_get_compression_range()` exists but never called, `facets_used` accepted but unused, `_run_single_assertion()` missing compression variables |
+| `backend/app/db/models.py` (EvalTrace: 279-309) | `section_id` FK with CASCADE, `summary_id` FK with SET NULL, full audit fields (prompt_sent, llm_response, tokens, latency) |
+| `backend/app/db/models.py` (Summary: 312-341) | `eval_json` JSON field, `facets_used` JSONB field, `preset_name` String field |
+| `backend/app/services/summarizer/summarizer_service.py` | Cumulative context built as markdown bullet list, truncated to 500 chars per section, passed to LLM as `cumulative_context` parameter |
+| `backend/app/services/book_service.py` (192-265) | `_re_import_book` updates by order_index match, deletes unmatched sections (cascades to EvalTrace) |
+| `backend/app/services/preset_service.py` | FACET_DIMENSIONS, `resolve_facets()`, YAML load/validate, 5 system presets |
+| `backend/app/services/summarizer/prompts/eval_format_v1.txt` | Template expects 6 compression variables that are never passed |
+| `backend/app/services/summarizer/prompts/eval_faithfulness_v1.txt` | Receives only `source_text` for current section, no cumulative context |
+| `backend/app/services/summarizer/prompts/presets/practitioner_bullets.yaml` | style=bullet_points, audience=practitioner, no skip_assertions field |
+| `backend/app/cli/commands/eval_cmd.py` | Writes `eval_json` independently from traces, `--summary-id` mode exists |
+| `backend/app/cli/commands/summarize_cmd.py` | Calls eval after section summarization, passes `facets_used` (unused by eval) |
+| `docs/specs/2026-04-04_v1_2_bugfixes_and_improvements_spec.md` | Spec template: Decision Log, numbered changes, verification plan, risk table |
+
+### External Research
+
+| Topic | Key Finding | Source |
+|-------|------------|--------|
+| Deterministic vs LLM assertions | "Favor deterministic checks over LLM-as-judge" — industry consensus. Pure math/regex for codifiable criteria. | Hamel Husain (evals FAQ), Promptfoo docs |
+| LLM-as-judge failure modes | Position bias (~40% inconsistency), verbosity bias (~15% inflation), self-enhancement bias (5-7% boost when same model family) | Evidently AI, Monte Carlo Data, Label Your Data |
+| Eval result schemas | Universal fields: `eval_run_id` (UUID), `score` (float), `config_snapshot`. Priority additions for this system: `eval_run_id` and `config_snapshot`. | OpenAI Evals, Braintrust, DeepEval, LangSmith, Promptfoo |
+| Cascade-safe audit trails | Soft-delete pattern, content-addressed storage (source_hash), SET NULL + stale flag. Replace CASCADE with SET NULL for audit data. | Audit trail best practices (Datadog, compliance systems) |
+| Faithfulness evaluation | Claims-extraction pattern (RAGAS/DeepEval): extract atomic claims → match to source passages → verify each. More reliable for long contexts. | RAGAS docs, DeepEval faithfulness metric |
+| Preset-aware evaluation | Parametric assertions (Promptfoo pattern): assertions accept params that vary by config. Assertion set selection per preset. Rubric injection into judge prompts. | Promptfoo, EvalLM (Microsoft Research) |
+| Context window management | Sliding window, hierarchical evaluation (eval against intermediate summaries), truncation with disclosure flag. | Redis context management guide, Langfuse docs |
