@@ -868,10 +868,7 @@ async def evaluate_summary(self, ...):
     eval_run_id = str(uuid.uuid4())
 
     # 1. Compute combined skip list
-    skip_list = set()
-    if preset_name:
-        preset = self._load_preset(preset_name)
-        skip_list.update(preset.skip_assertions or [])
+    skip_list = self._load_skip_assertions(preset_name)
     if eval_scope == "book":
         skip_list.update(BOOK_LEVEL_SKIP)
 
@@ -893,9 +890,15 @@ async def evaluate_summary(self, ...):
                 section_type=section_type, eval_scope=eval_scope,
             ))
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    # Note: deterministic/skipped handlers are sync (return dicts directly).
+    # Wrap them in coroutines or collect separately before gather.
+    # Only LLM-based assertions need async gather.
+    sync_results = [t for t in tasks if not asyncio.iscoroutine(t)]
+    async_tasks = [t for t in tasks if asyncio.iscoroutine(t)]
+    async_results = await asyncio.gather(*async_tasks, return_exceptions=True)
 
-    # 2. Derive eval_json from traces
+    # 2. Derive eval_json from traces (all handlers store their own EvalTrace rows)
+    await self.db.flush()
     eval_json = await self._compute_eval_json(eval_run_id)
     return eval_json
 ```
