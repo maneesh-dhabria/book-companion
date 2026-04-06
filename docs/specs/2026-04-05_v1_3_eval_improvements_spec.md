@@ -20,15 +20,16 @@
 9. [Change 7: Book-Level Summary Evaluation](#change-7-book-level-summary-evaluation)
 10. [Change 8: Cascade-Safe Eval Traces](#change-8-cascade-safe-eval-traces)
 11. [Change 9: Diagnostic Eval Reasoning](#change-9-diagnostic-eval-reasoning)
-12. [Consolidated EvalService Interface](#consolidated-evalservice-interface)
-13. [Deterministic Assertion Conversions](#deterministic-assertion-conversions)
-14. [Database Migrations](#database-migrations)
-15. [Prompt Template Changes](#prompt-template-changes)
-16. [Configuration & Preset Changes](#configuration--preset-changes)
-17. [Verification Plan](#verification-plan)
-18. [Deployment & Rollout](#deployment--rollout)
-19. [Risk Mitigation](#risk-mitigation)
-20. [Research Sources](#research-sources)
+12. [Change 10: Auto-Retry on Eval Failure](#change-10-auto-retry-on-eval-failure)
+13. [Consolidated EvalService Interface](#consolidated-evalservice-interface)
+14. [Deterministic Assertion Conversions](#deterministic-assertion-conversions)
+15. [Database Migrations](#database-migrations)
+16. [Prompt Template Changes](#prompt-template-changes)
+17. [Configuration & Preset Changes](#configuration--preset-changes)
+18. [Verification Plan](#verification-plan)
+19. [Deployment & Rollout](#deployment--rollout)
+20. [Risk Mitigation](#risk-mitigation)
+21. [Research Sources](#research-sources)
 
 ---
 
@@ -50,6 +51,12 @@
 | D12 | Re-import warning UX | (A) Warning + count with confirmation prompt (B) Warning + JSON export option (C) Silent stale marking | **A — Warning + count** | Since SET NULL + is_stale preserves data, the warning is informational. "'This book has N eval traces and M summaries. Re-import will mark traces as stale. Proceed? [y/N]'" |
 | D13 | Golden set testing | (A) Book 2 all-pass sections only (B) All-pass + known-failure sections (C) Synthetic fixtures | **B — All-pass + known-failure** | All-pass sections validate that fixes don't regress working evals. Known-failure sections (91, 93, 96 from requirements) verify the eval correctly catches real issues. Both positive and negative test cases. |
 | D14 | Verification approach | (A) Unit + integration only (B) Unit + integration + golden set (C) Full pipeline with real LLM | **B — Unit + integration + golden set** | Unit tests for deterministic assertions and new logic. Mock-LLM integration tests for eval pipeline. Golden set of pre-evaluated summaries from book 2 as regression fixtures. Comprehensive without requiring live LLM calls in CI. |
+| D15 | Auto-retry scope | (A) 3 faithfulness only (exclude `cross_summary_consistency`) (B) All 4 critical (C) Critical + important (10 assertions) | **C — Critical + important** | Higher quality bar. 10 of 16 assertions can trigger retry. Advisory assertions (format/coherence) are informational — not worth retry cost. Important assertions (completeness, specificity) are genuine quality signals worth fixing. |
+| D16 | Retry fix prompt strategy | (A) Inject `suggestion` fields from eval diagnostics (B) Assertion-specific fix templates (C) Full `reasoning` + `suggestion` | **A — Inject suggestion fields** | Targeted and concise. Uses the diagnostic data from Change 9. Falls back to assertion name if `suggestion` is null. Avoids prompt bloat from full reasoning. |
+| D17 | Batch retry timing | (A) After all sections complete (B) Inline — eval + retry before next section (C) Inline eval, deferred retry | **B — Inline** | Retried summary feeds into cumulative context for subsequent sections, so quality propagates forward. Adds ~60-90s eval latency per section but ensures best available context at every step. |
+| D18 | Max retries per section | (A) 1 retry (B) 2 retries | **A — 1 retry** | One attempt with a targeted fix prompt. If it still fails, accept the result and flag it. Keeps latency bounded (~3-5 min worst case per section). Most quality issues are fixable in one attempt. |
+| D19 | Retry default behavior | (A) On by default, `--no-retry` to disable (B) Off by default, `--retry` to enable | **A — On by default** | Quality matters more than speed for a personal knowledge tool. `--skip-eval` implicitly disables retry too. |
+| D20 | Original summary on retry | (A) Keep both, retry becomes default (B) Replace original | **A — Keep both** | Append-only summary log (V1.1 design). Retry summary becomes `default_summary_id`. Original preserved with its eval traces for audit trail. User can revert via `summary set-default`. |
 
 ---
 
@@ -65,12 +72,12 @@ V1.3 is a comprehensive overhaul of the eval system, driven by analysis of 17 se
 - Convert appropriate assertions to deterministic checks for speed and reliability
 
 **Scope:**
-- All 9 observations from the requirements document
-- Schema changes: `EvalTrace` (new columns, FK change), `BookSection` (new `section_type`), `Summary` (new `quality_warnings`)
-- Prompt changes: summarization templates (quote guidance, numeric accuracy) and eval templates (cumulative context, facet injection)
-- Service logic: `EvalService`, `SummarizerService`, `BookService` (re-import warning)
+- All 9 observations from the requirements document + auto-retry on eval failure
+- Schema changes: `EvalTrace` (new columns, FK change), `BookSection` (new `section_type`), `Summary` (new `quality_warnings`, `retry_of_id`)
+- Prompt changes: summarization templates (quote guidance, numeric accuracy, retry fix instructions) and eval templates (cumulative context, facet injection)
+- Service logic: `EvalService`, `SummarizerService` (inline eval + retry loop), `BookService` (re-import warning)
 - Preset YAML: `skip_assertions` field
-- CLI: re-import confirmation, eval display enhancements
+- CLI: re-import confirmation, eval display enhancements, `--no-retry` flag, retry progress output
 
 **Out of scope:**
 - New eval assertions beyond the existing 16
@@ -809,9 +816,404 @@ For deterministic assertions that fail, set `likely_cause` and `suggestion` prog
 
 ---
 
+## Change 10: Auto-Retry on Eval Failure
+
+**Driven by:** Post-V1.3 quality strategy — eval failures on critical/important assertions indicate genuine summary quality issues worth fixing automatically.
+**Severity:** Medium — directly impacts summary quality for the final library
+
+### 10.1 Problem
+
+When eval assertions fail, the current system records the failure and moves on. The user must manually re-summarize sections that have quality issues. With V1.3 eliminating most false positives (Changes 1-3, 5), remaining failures represent genuine summarization problems — hallucinations, misquotes, missing coverage — that the LLM can often fix with targeted guidance.
+
+### 10.2 Solution
+
+After evaluating each section's summary, check for failures in critical or important assertions. If any fail, re-summarize the section with a fix prompt that injects the `suggestion` field from each failing assertion. Re-evaluate the new summary. The retry summary becomes the new default; the original is preserved in the summary log.
+
+### 10.3 Retry-Eligible Assertions
+
+Retry triggers when **any** critical or important assertion fails (10 of 16):
+
+| Category | Assertions | Count |
+|----------|-----------|-------|
+| **Critical** | `no_hallucinated_facts`, `no_contradictions`, `accurate_quotes`, `cross_summary_consistency` | 4 |
+| **Important** | `covers_main_argument`, `covers_key_concepts`, `covers_frameworks`, `covers_examples`, `not_generic`, `preserves_author_terminology` | 6 |
+| **Advisory** (no retry) | `standalone_readable`, `logical_flow`, `no_dangling_references`, `has_key_concepts`, `reasonable_length`, `image_refs_preserved` | 6 |
+
+**Note on `cross_summary_consistency`:** This assertion generates a second independent summary and compares. Retrying the original doesn't guarantee improvement against a different random comparison. Included for completeness but expected to rarely trigger (it's often disabled via config). If it becomes a noise source, it can be excluded from retry scope via config without a code change (see 10.9).
+
+### 10.4 Retry Flow — Inline Per Section
+
+Retry happens **inline** during the batch summarization loop, before moving to the next section. This ensures the best available summary feeds into cumulative context for subsequent sections.
+
+#### 10.4.1 Single-Section Mode
+
+**File:** `backend/app/cli/commands/summarize_cmd.py`
+
+```python
+# After initial summarize + eval (existing code at line ~98):
+if not skip_eval and svc.get("eval"):
+    console.print("Running eval assertions...")
+    eval_results = await svc["eval"].evaluate_summary(
+        section_id=section_id,
+        source_text=section.content_md or "",
+        summary_text=summary.summary_md,
+        facets_used=facets,
+        summary_id=summary.id,
+        preset_name=resolved_preset,
+        cumulative_context="",  # single section, no prior context
+        section_type=section.section_type,
+    )
+
+    if not no_retry and _should_retry(eval_results):
+        console.print("  [yellow]Critical/important failures detected. Retrying...[/yellow]")
+        fix_prompt = _build_fix_prompt(eval_results)
+        retry_summary = await summarizer._summarize_single_section(
+            book_id=book_id,
+            section=section,
+            facets=facets,
+            preset_name=resolved_preset,
+            model=model,
+            cumulative_context="",
+            fix_instructions=fix_prompt,  # NEW parameter
+        )
+        retry_summary.retry_of_id = summary.id
+        await summarizer._section_repo.update_default_summary(section_id, retry_summary.id)
+        await svc["session"].commit()
+
+        # Re-eval the retry
+        retry_eval = await svc["eval"].evaluate_summary(
+            section_id=section_id,
+            source_text=section.content_md or "",
+            summary_text=retry_summary.summary_md,
+            facets_used=facets,
+            summary_id=retry_summary.id,
+            preset_name=resolved_preset,
+            cumulative_context="",
+            section_type=section.section_type,
+        )
+        _display_retry_outcome(console, eval_results, retry_eval)
+    else:
+        print_success("Eval complete.")
+```
+
+#### 10.4.2 Batch Mode — Restructured Loop
+
+**File:** `backend/app/services/summarizer/summarizer_service.py` — `summarize_book()`
+
+The batch loop changes from "summarize all, then optionally eval" to "summarize → eval → retry per section." This requires `EvalService` as a new dependency of `SummarizerService`.
+
+```python
+async def summarize_book(
+    self,
+    book_id: int,
+    preset_name: str | None = None,
+    facets: dict[str, str] | None = None,
+    force: bool = False,
+    model: str | None = None,
+    skip_eval: bool = False,
+    no_retry: bool = False,              # NEW
+    eval_service: "EvalService | None" = None,  # NEW — injected from CLI
+    on_section_complete: Callable | None = None,
+    on_section_skip: Callable | None = None,
+    on_section_fail: Callable | None = None,
+    on_section_retry: Callable | None = None,   # NEW callback
+) -> dict:
+```
+
+Inside the per-section loop, after `_summarize_single_section()`:
+
+```python
+for i, section in enumerate(sections):
+    # ... existing skip/threshold checks ...
+
+    try:
+        summary = await self._summarize_single_section(
+            book_id, section, facets, preset_name, model, cumulative_context,
+        )
+        await self._section_repo.update_default_summary(section.id, summary.id)
+
+        # Inline eval + retry
+        retried = False
+        if not skip_eval and eval_service:
+            eval_results = await eval_service.evaluate_summary(
+                section_id=section.id,
+                source_text=section.content_md or "",
+                summary_text=summary.summary_md,
+                facets_used=facets,
+                summary_id=summary.id,
+                preset_name=preset_name,
+                cumulative_context=cumulative_context,
+                section_type=getattr(section, "section_type", "chapter"),
+            )
+
+            if not no_retry and self._should_retry(eval_results):
+                fix_prompt = self._build_fix_prompt(eval_results)
+                retry_summary = await self._summarize_single_section(
+                    book_id, section, facets, preset_name, model,
+                    cumulative_context, fix_instructions=fix_prompt,
+                )
+                retry_summary.retry_of_id = summary.id
+                await self._summary_repo.create(retry_summary)
+                await self._section_repo.update_default_summary(
+                    section.id, retry_summary.id
+                )
+
+                # Re-eval retry
+                retry_eval = await eval_service.evaluate_summary(
+                    section_id=section.id,
+                    source_text=section.content_md or "",
+                    summary_text=retry_summary.summary_md,
+                    facets_used=facets,
+                    summary_id=retry_summary.id,
+                    preset_name=preset_name,
+                    cumulative_context=cumulative_context,
+                    section_type=getattr(section, "section_type", "chapter"),
+                )
+
+                summary = retry_summary  # Use retry for cumulative context
+                retried = True
+                retried_sections.append(section.id)
+
+                if on_section_retry:
+                    original_pass = _pass_count(eval_results)
+                    retry_pass = _pass_count(retry_eval)
+                    on_section_retry(
+                        i + 1, total, section.title,
+                        original_pass, retry_pass, len(ASSERTION_REGISTRY),
+                    )
+
+        # Add best available summary to cumulative context
+        summary_text = summary.summary_md
+        cumulative_parts.append(
+            f"- {section.title}: {summary_text[:500]}..."
+            if len(summary_text) > 500
+            else f"- {section.title}: {summary_text}"
+        )
+
+        completed += 1
+        # ... existing on_section_complete callback ...
+```
+
+Return value updated:
+```python
+return {
+    "completed": completed,
+    "skipped": skipped,
+    "failed": failed,
+    "retried": retried_sections,  # NEW
+}
+```
+
+### 10.5 Fix Prompt Construction
+
+**File:** `backend/app/services/summarizer/summarizer_service.py` (new methods)
+
+```python
+RETRY_ELIGIBLE_CATEGORIES = {"critical", "important"}
+
+def _should_retry(self, eval_results: dict) -> bool:
+    """Return True if any critical or important assertion failed."""
+    for name, result in eval_results.get("assertions", eval_results).items():
+        if result.get("skipped"):
+            continue
+        meta = ASSERTION_REGISTRY.get(name, {})
+        if meta.get("category") in RETRY_ELIGIBLE_CATEGORIES and not result.get("passed"):
+            return True
+    return False
+
+def _build_fix_prompt(self, eval_results: dict) -> str:
+    """Build a fix instruction string from failing assertion suggestions."""
+    failures = []
+    results = eval_results.get("assertions", eval_results)
+    for name, result in results.items():
+        if result.get("skipped"):
+            continue
+        meta = ASSERTION_REGISTRY.get(name, {})
+        if meta.get("category") in RETRY_ELIGIBLE_CATEGORIES and not result.get("passed"):
+            suggestion = result.get("suggestion") or f"Fix the issue flagged by '{name}'."
+            failures.append(f"- {name}: {suggestion}")
+
+    return (
+        "IMPORTANT: Your previous summary had quality issues. "
+        "Please fix these and regenerate:\n"
+        + "\n".join(failures)
+        + "\n\nKeep all other content unchanged."
+    )
+```
+
+### 10.6 Summarizer Prompt Integration
+
+**File:** `backend/app/services/summarizer/summarizer_service.py` — `_summarize_single_section()`
+
+Add `fix_instructions: str | None = None` parameter. When provided, append to the rendered prompt:
+
+```python
+async def _summarize_single_section(
+    self,
+    book_id: int,
+    section: BookSection,
+    facets: dict[str, str],
+    preset_name: str | None,
+    model: str | None,
+    cumulative_context: str,
+    fix_instructions: str | None = None,  # NEW
+) -> Summary:
+    # ... existing prompt rendering ...
+
+    prompt = template.render(...)
+
+    if fix_instructions:
+        prompt = f"{prompt}\n\n{fix_instructions}"
+
+    # ... rest of method unchanged ...
+```
+
+The fix instructions are appended **after** the full original prompt (including source content), so the LLM has the complete context before seeing the fix guidance.
+
+### 10.7 Summary Lineage Tracking
+
+**Schema change on `summaries` table:**
+
+```python
+# Summary model addition
+retry_of_id: Mapped[int | None] = mapped_column(
+    ForeignKey("summaries.id", ondelete="SET NULL"),
+    nullable=True,
+)
+```
+
+This creates a self-referential FK. When a summary is a retry, `retry_of_id` points to the original summary it was retrying. Enables:
+- `summary list` to show "(retry of #N)" label
+- Querying retry success rates per assertion
+- Tracking whether retries actually improve quality over time
+
+### 10.8 CLI Changes
+
+#### 10.8.1 New Flag
+
+**File:** `backend/app/cli/commands/summarize_cmd.py`
+
+```python
+no_retry: bool = typer.Option(
+    False, "--no-retry", help="Disable auto-retry on eval failures."
+),
+```
+
+`--skip-eval` implicitly disables retry (no eval results → nothing to retry on).
+
+#### 10.8.2 Batch Progress Output
+
+```
+Summarizing 17 sections with preset "practitioner_bullets"...
+  [1/17]  Introduction                        done  (32s, 18.2%)
+  [2/17]  Chapter 1: Competition              done  (45s, 21.1%)
+  [3/17]  Chapter 2: The Five Forces          done  (38s, 19.7%)
+  [4/17]  Chapter 3: Competitive Advantage    retry (12/16 → 15/16)  (2m 41s, 20.3%)
+  [5/17]  Chapter 4: Value Chain              done  (41s, 22.0%)
+  ...
+Done. 17 section summaries (1 retried). 1 book summary generated.
+```
+
+#### 10.8.3 Single-Section Retry Output
+
+```
+Summarizing section #93 "Chapter 8: Strategic Positioning"...
+  Done (38s, 19.4%)
+Running eval assertions...
+  ⚠ 2 critical/important failures:
+    - accurate_quotes: Remove quotation marks around paraphrased attributions.
+    - no_hallucinated_facts: Remove unsupported claim about "3-4x commodity price".
+  Retrying with fix prompt...
+  Retry done (35s, 19.1%)
+  Re-evaluating...
+  ✓ Retry improved: 14/16 → 16/16
+  Original summary #45 preserved. Retry summary #48 set as default.
+```
+
+#### 10.8.4 Retry-Still-Failing Output
+
+```
+  ⚠ 2 critical/important failures:
+    - accurate_quotes: Remove quotation marks around paraphrased attributions.
+    - covers_main_argument: Include the chapter's central thesis.
+  Retrying with fix prompt...
+  Retry done (36s, 18.8%)
+  Re-evaluating...
+  ⚠ Retry partial improvement: 12/16 → 14/16 (1 critical still failing)
+  Retry summary #48 set as default (best available).
+```
+
+### 10.9 Configuration
+
+No new settings file entries. Retry is controlled via CLI flags:
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--no-retry` | `False` | Disables retry even when eval runs |
+| `--skip-eval` | `False` | Disables eval AND retry |
+
+**Future extensibility:** If `cross_summary_consistency` proves noisy as a retry trigger, a `retry_skip_assertions` list can be added to settings or presets (similar to `skip_assertions` for eval). Not needed for V1.3 — the existing config flag `llm.cross_summary_consistency` already controls whether this assertion runs at all.
+
+### 10.10 EvalService Dependency Injection
+
+The batch loop in `SummarizerService` now needs `EvalService`. Rather than making it a constructor dependency (which creates a circular risk), it's passed as an optional parameter to `summarize_book()`:
+
+```python
+# In summarize_cmd.py — batch mode:
+stats = await summarizer.summarize_book(
+    book_id=book_id,
+    preset_name=resolved_preset,
+    facets=facets,
+    force=force,
+    model=model,
+    skip_eval=skip_eval,
+    no_retry=no_retry,
+    eval_service=svc.get("eval") if not skip_eval else None,  # NEW
+    on_section_complete=...,
+    on_section_skip=...,
+    on_section_fail=...,
+    on_section_retry=lambda i, total, title, orig, retry, assertions: console.print(
+        f"  [{i}/{total}] {title[:35]:<35} retry ({orig}/{assertions} → {retry}/{assertions})"
+    ),
+)
+```
+
+This keeps `SummarizerService` independent — it doesn't import or construct `EvalService`. The CLI layer wires them together.
+
+### 10.11 Interaction with Existing Compression Retry
+
+`_summarize_single_section()` already has a compression retry (lines 196-214): if the summary is longer than the source, it retries once with a "keep it shorter" prompt. The eval-driven retry is a **separate concern** that happens after the compression check:
+
+```
+1. Generate summary
+2. Compression check: if summary >= source length → retry with length constraint (existing)
+3. Store summary
+4. Eval: run 16 assertions
+5. Quality check: if critical/important fail → retry with fix prompt (NEW)
+6. Store retry summary (if generated)
+```
+
+The fix prompt for step 5 does **not** re-apply the compression constraint — the retry starts from the original full prompt plus fix instructions. If the retry summary happens to be too long, the compression check in step 2 handles it within that call.
+
+### 10.12 Edge Cases
+
+- **All assertions pass:** No retry. Normal flow.
+- **Only advisory assertions fail:** No retry. Advisory failures are informational only.
+- **Eval errors (exception, not assertion failure):** No retry. `result.get("error") == True` entries are excluded from retry logic. Log a warning.
+- **`suggestion` is null on a failing assertion:** Fall back to `"Fix the issue flagged by '{assertion_name}'."` — generic but still provides direction.
+- **Retry produces a worse summary:** The retry summary still becomes default (it was generated with awareness of the issues). Both summaries are preserved — user can revert via `summary set-default <original_id>`. The `on_section_retry` callback reports the score change so the user sees the regression.
+- **Retry fails with an exception (LLM error, timeout):** Log the error. Keep the original summary as default. Don't crash the batch loop.
+- **Section was skipped (already summarized, `--force` not set):** No eval, no retry. Existing summary used for cumulative context as-is.
+- **`fix_instructions` makes the prompt exceed context window:** Unlikely — fix instructions are ~200-500 chars. The source content dominates prompt size. If the LLM truncates, the retry may be lower quality, but the eval will catch it.
+- **Skipped assertions:** Assertions in the preset's `skip_assertions` list have `skipped: true` and are excluded from the retry check. A skipped assertion cannot trigger a retry.
+- **Deterministic assertion fails (e.g., `reasonable_length`):** These are advisory category, so they don't trigger retry. If future deterministic assertions are promoted to important, the fix prompt should still work — the `suggestion` field is set programmatically for deterministic assertions.
+- **Book-level summary retry:** The book-level summary is generated after all sections. If its eval fails critical/important assertions, the same retry logic applies: re-generate with fix prompt, re-eval, keep both. No cumulative context implications since it's the final step.
+
+---
+
 ## Consolidated EvalService Interface
 
-All changes across Changes 1-9 modify `EvalService`. This section consolidates the final method signatures and dispatch logic.
+All changes across Changes 1-10 modify `EvalService` and/or `SummarizerService`. This section consolidates the final method signatures and dispatch logic for `EvalService`. Retry logic (Change 10) lives in `SummarizerService` and the CLI layer, not in `EvalService` — the eval service remains a pure evaluator.
 
 ### EvalService Dependency Change
 
@@ -1032,6 +1434,7 @@ def _check_image_refs_preserved(self, source_text: str, summary_text: str, image
 | `eval_traces` | `suggestion` | ADD | `TEXT`, nullable |
 | `book_sections` | `section_type` | ADD | `VARCHAR(50) NOT NULL DEFAULT 'chapter'` |
 | `summaries` | `quality_warnings` | ADD | `JSON`, nullable |
+| `summaries` | `retry_of_id` | ADD | `INTEGER`, nullable, FK to `summaries.id` ON DELETE SET NULL |
 
 **Index changes:**
 
@@ -1174,6 +1577,22 @@ No new settings required. Existing `summarization.eval_prompt_version` continues
 | `test_load_preset_without_skip_assertions` | YAML without field returns empty list |
 | `test_invalid_assertion_name_warns` | Unknown assertion name in skip list logs warning |
 
+**File:** `backend/tests/unit/test_auto_retry.py` (new)
+
+| Test | Description |
+|------|-------------|
+| `test_should_retry_critical_failure` | One critical assertion fails → `_should_retry()` returns True |
+| `test_should_retry_important_failure` | One important assertion fails → `_should_retry()` returns True |
+| `test_should_retry_advisory_only` | Only advisory assertions fail → `_should_retry()` returns False |
+| `test_should_retry_all_pass` | All assertions pass → `_should_retry()` returns False |
+| `test_should_retry_skipped_ignored` | Skipped assertion (even critical) does not trigger retry |
+| `test_should_retry_error_ignored` | Assertion with `error: true` does not trigger retry |
+| `test_build_fix_prompt_uses_suggestions` | Failing assertions' `suggestion` fields appear in fix prompt |
+| `test_build_fix_prompt_null_suggestion_fallback` | Null `suggestion` falls back to assertion name |
+| `test_build_fix_prompt_multiple_failures` | Multiple failing assertions produce multi-line fix prompt |
+| `test_fix_instructions_appended_to_prompt` | `_summarize_single_section(fix_instructions=...)` appends to rendered prompt |
+| `test_retry_summary_has_retry_of_id` | Retry summary's `retry_of_id` points to original summary |
+
 ### Integration Tests
 
 **File:** `backend/tests/integration/test_eval_cascade.py` (new)
@@ -1193,6 +1612,19 @@ No new settings required. Existing `summarization.eval_prompt_version` continues
 | `test_full_eval_with_deterministic_assertions` | Eval run uses deterministic checks for 3 assertions, LLM for rest |
 | `test_book_level_eval_triggered` | Book-level summary auto-triggers eval after generation |
 | `test_cumulative_context_built_correctly` | Prior section summaries assembled and passed to eval |
+
+**File:** `backend/tests/integration/test_auto_retry.py` (new)
+
+| Test | Description |
+|------|-------------|
+| `test_retry_creates_new_summary` | Retry produces a second Summary row, original preserved |
+| `test_retry_becomes_default` | After retry, `section.default_summary_id` points to retry summary |
+| `test_retry_of_id_set` | Retry summary's `retry_of_id` FK points to original |
+| `test_no_retry_when_skip_eval` | `skip_eval=True` skips both eval and retry |
+| `test_no_retry_when_no_retry_flag` | `no_retry=True` runs eval but skips retry |
+| `test_batch_retry_feeds_cumulative_context` | Retried section's improved summary used in cumulative context for next section |
+| `test_retry_on_exception_preserves_original` | If retry LLM call throws, original summary stays as default |
+| `test_batch_stats_include_retried` | `summarize_book()` return dict includes `retried` section list |
 
 ### Golden Set Tests
 
@@ -1220,6 +1652,9 @@ Golden set tests run deterministic assertions against the fixture data and verif
 | `test_eval_command_shows_book_level` | `bookcompanion eval <book_id>` includes book-level eval results |
 | `test_re_import_confirmation_prompt` | `bookcompanion add --force` shows confirmation with trace counts |
 | `test_summary_show_displays_warnings` | `bookcompanion summary show <id>` displays paraphrased quote warnings |
+| `test_summarize_with_retry_output` | `bookcompanion summarize <book_id> <section_id>` shows retry progress when eval fails |
+| `test_summarize_no_retry_flag` | `bookcompanion summarize <book_id> --no-retry` skips retry on eval failure |
+| `test_summary_list_shows_retry_lineage` | `bookcompanion summary list <book_id>` shows "(retry of #N)" for retry summaries |
 
 ---
 
@@ -1236,7 +1671,7 @@ BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@loc
 ```
 
 ### Step 2: Code Changes
-1. Update models (`EvalTrace`, `BookSection`, `Summary`)
+1. Update models (`EvalTrace`, `BookSection`, `Summary` — including `retry_of_id`)
 2. Implement deterministic assertions in `evaluator.py`
 3. Update `_run_single_assertion()` to pass new context
 4. Update eval prompt templates
@@ -1248,13 +1683,20 @@ BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@loc
 10. Update `_re_import_book()` with stale marking and confirmation
 11. Update `eval_cmd.py` for book-level display and diagnostic fields
 12. Implement `_compute_eval_json()` for trace-based derivation
+13. Implement `_should_retry()`, `_build_fix_prompt()` in `SummarizerService`
+14. Add `fix_instructions` parameter to `_summarize_single_section()`
+15. Restructure `summarize_book()` batch loop for inline eval + retry
+16. Update `summarize_cmd.py` for `--no-retry` flag and retry progress output
+17. Update `summary list` CLI to show retry lineage
 
 ### Step 3: Run Tests
 ```bash
 uv run python -m pytest tests/unit/test_eval_deterministic.py -v
 uv run python -m pytest tests/unit/test_section_type.py -v
 uv run python -m pytest tests/unit/test_eval_service.py -v
+uv run python -m pytest tests/unit/test_auto_retry.py -v
 uv run python -m pytest tests/integration/test_eval_cascade.py -v
+uv run python -m pytest tests/integration/test_auto_retry.py -v
 uv run python -m pytest tests/integration/test_eval_golden_set.py -v
 uv run python -m pytest tests/ -v  # Full suite
 uv run ruff check . && uv run ruff format --check .
@@ -1300,6 +1742,11 @@ If issues are found:
 | `section_type` auto-detection misclassifies | Medium | Low | Conservative regex patterns (only match obvious titles). Default is `chapter`. Users can correct via `edit sections`. |
 | Preset `skip_assertions` accidentally skips important checks | Low | Medium | Validation warns if >12 assertions skipped. `skip_assertions` only on system presets initially — user presets start with none. |
 | Migration failure on existing data | Low | High | Test migration on a copy of the production database first. All changes are additive (new columns with defaults). FK change is the only destructive alteration. |
+| Retry produces worse summary than original | Medium | Low | Both summaries preserved. User can revert via `summary set-default`. CLI reports score change so regression is visible immediately. |
+| Inline eval adds significant latency to batch runs | High | Medium | Expected: ~60-90s eval per section adds ~17-25 min to a 17-section book. `--skip-eval` and `--no-retry` provide escape hatches. Quality tradeoff is worth it for a personal knowledge tool. |
+| Retry loop masks systemic prompt issues | Low | Medium | If many sections retry, the root cause is likely the prompt or preset, not individual summaries. Log retry rate per book and warn if >50% of sections retry: "High retry rate — consider adjusting your preset or prompt." |
+| `cross_summary_consistency` retry is ineffective | Medium | Low | Retrying doesn't control the second independent summary. If this becomes a noise source, disable via existing `llm.cross_summary_consistency` config flag. |
+| Fix prompt confuses the LLM | Low | Medium | Fix instructions are appended after the full original prompt, so context is complete. Instructions are concise (~200-500 chars). If retry quality is consistently poor, can fall back to `--no-retry` and investigate prompt phrasing. |
 
 ---
 
