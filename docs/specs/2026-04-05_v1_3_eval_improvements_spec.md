@@ -70,6 +70,7 @@ V1.3 is a comprehensive overhaul of the eval system, driven by analysis of 17 se
 - Add diagnostic fields so failures are actionable without manual investigation
 - Enable book-level summary evaluation
 - Convert appropriate assertions to deterministic checks for speed and reliability
+- Auto-retry summaries that fail critical/important eval assertions with targeted fix prompts
 
 **Scope:**
 - All 9 observations from the requirements document + auto-retry on eval failure
@@ -84,6 +85,31 @@ V1.3 is a comprehensive overhaul of the eval system, driven by analysis of 17 se
 - Changes to the search/embedding pipeline
 - PDF/MOBI parser changes
 - UI/frontend (CLI-only tool)
+
+### LLM Call Budget
+
+V1.3 changes the cost profile significantly due to inline eval and auto-retry.
+
+**Per section:**
+
+| Stage | Current (V1.2) | V1.3 (no retry) | V1.3 (with retry) |
+|-------|----------------|------------------|---------------------|
+| Summarize | 1 LLM call | 1 LLM call | 1 + 1 retry = 2 |
+| Compression retry | 0-1 | 0-1 | 0-1 |
+| Eval | 0 (batch) / 16 (single) | 13 LLM + 3 deterministic | 13 + 13 re-eval = 26 LLM |
+| **Total per section** | **1-2** (batch) | **14-15** | **28-29** (worst case) |
+
+**Per book (17 sections, ~4 needing retry):**
+
+| Metric | Current (V1.2) | V1.3 |
+|--------|----------------|------|
+| Summarize calls | 17-18 | 17 + 4 retries = 21 |
+| Eval calls | 0 (batch) | 13 × 17 + 13 × 4 = 273 |
+| **Total LLM calls** | **~18** | **~294** |
+| Estimated cost | ~$1-2 | ~$5-8 |
+| Estimated time | ~15-20 min | ~40-50 min |
+
+The cost increase is driven by inline eval (previously not run in batch mode). The `--skip-eval` flag restores V1.2 behavior. `--no-retry` saves ~52 calls for the typical 4-retry scenario.
 
 ---
 
@@ -131,11 +157,25 @@ In `evaluate_summary()`:
 4. For each assertion in the skip list, return immediately with `{"passed": True, "reasoning": "Skipped: not applicable for preset '{preset_name}'", "skipped": True}`.
 5. Store skipped assertions in EvalTrace with `passed=True` and a `skipped` flag for auditability.
 
-### 1.5 Conversion of `has_key_concepts` to Deterministic
+### 1.5 Prompt Guidance for Presets That Should Produce Key Concepts
+
+Presets where `has_key_concepts` is **not** skipped (e.g., `study_guide`, `academic_detailed`) should explicitly request structured concept presentation in their style fragment. This ensures the summarizer produces the structure the eval expects.
+
+**File:** `backend/app/services/summarizer/prompts/fragments/style/study_guide.txt`
+
+Add: `Include a "## Key Concepts" section listing the major concepts, frameworks, or terms from this section with brief definitions.`
+
+**File:** `backend/app/services/summarizer/prompts/fragments/style/academic_detailed.txt`
+
+Add: `Begin with a "## Key Concepts" section enumerating the principal ideas, theories, or frameworks, each with a one-sentence explanation.`
+
+No changes needed for `practitioner_bullets`, `executive_brief`, or `tweet_thread` — they skip this assertion via `skip_assertions`.
+
+### 1.6 Conversion of `has_key_concepts` to Deterministic
 
 In addition to preset-based skipping, the `has_key_concepts` assertion itself is converted from LLM-based to deterministic (see [Deterministic Assertion Conversions](#deterministic-assertion-conversions)). When not skipped, it checks for structured concept presentation via regex pattern matching rather than LLM judgment.
 
-### 1.6 Edge Cases
+### 1.7 Edge Cases
 
 - **Preset is None (ad-hoc facets):** No assertions skipped. All 16 run.
 - **Preset YAML missing `skip_assertions` field:** Treated as empty list. All assertions run.
@@ -355,54 +395,18 @@ or paraphrase without quotation marks. Do not place paraphrased content in quota
 
 #### 4.2.2 Part B: Deterministic Post-Processing Check
 
-**File:** New function in `backend/app/services/summarizer/summarizer_service.py`
+**File:** New function `_check_paraphrased_quotes()` in `backend/app/services/summarizer/summarizer_service.py`
 
 After generating a summary and before storing it, run a non-blocking quote verification:
 
-```python
-def _check_paraphrased_quotes(
-    self, summary_text: str, source_text: str
-) -> list[dict]:
-    """
-    Extract quoted text from summary, fuzzy-match against source.
-    Returns list of warnings for quotes that don't match verbatim.
-    """
-    warnings = []
-    # Extract all quoted strings from the summary
-    quoted_pattern = r'"([^"]{10,200})"'  # 10-200 char quoted strings
-    quotes = re.findall(quoted_pattern, summary_text)
+1. Extract double-quoted strings from summary (regex: `"([^"]{10,200})"` — 10-200 char range to avoid common short phrases).
+2. For each quote, check exact substring match in source. If found, skip.
+3. If no exact match, run a sliding-window fuzzy match over source words using `difflib.SequenceMatcher`. Window size = quote word count + 2 words margin.
+4. If best match similarity < 0.85, emit a warning with: `type`, `quote`, `best_match` (if similarity > 0.5), `similarity` score, `message`.
 
-    for quote in quotes:
-        # Check exact match first
-        if quote in source_text:
-            continue
+**Key parameters:** threshold = 0.85 (below this = paraphrased), min quote length = 10 chars, max = 200 chars.
 
-        # Fuzzy match: check if a high-similarity substring exists in source
-        # Use simple substring ratio (SequenceMatcher)
-        from difflib import SequenceMatcher
-        best_ratio = 0.0
-        best_match = ""
-        # Sliding window over source text
-        words = source_text.split()
-        quote_word_count = len(quote.split())
-        for i in range(len(words) - quote_word_count + 1):
-            candidate = " ".join(words[i:i + quote_word_count + 2])
-            ratio = SequenceMatcher(None, quote.lower(), candidate.lower()).ratio()
-            if ratio > best_ratio:
-                best_ratio = ratio
-                best_match = candidate
-
-        if best_ratio < 0.85:
-            warnings.append({
-                "type": "paraphrased_quote",
-                "quote": quote,
-                "best_match": best_match if best_ratio > 0.5 else None,
-                "similarity": round(best_ratio, 2),
-                "message": f'Quoted text "{quote[:50]}..." does not appear verbatim in source.'
-            })
-
-    return warnings
-```
+**Returns:** `list[dict]` of warnings (empty if all quotes match verbatim or no quotes found).
 
 ### 4.3 Warning Storage
 
@@ -657,33 +661,13 @@ Generated once per `evaluate_summary()` call. Groups all 13-16 traces from a sin
 
 **File:** `backend/app/services/book_service.py`
 
-Before deleting sections during re-import:
-```python
-# Mark eval traces as stale for sections being removed
-for section in sections_to_remove:
-    await self.db.execute(
-        update(EvalTrace)
-        .where(EvalTrace.section_id == section.id)
-        .values(is_stale=True)
-    )
-```
+Before deleting sections during re-import, run `UPDATE eval_traces SET is_stale = TRUE WHERE section_id = :id` for each section being removed. This must happen before the DELETE so the FK SET NULL doesn't null out the section_id before we can use it to find the traces.
 
 #### 8.2.5 Re-Import Confirmation Warning
 
-**File:** `backend/app/cli/commands/add_cmd.py` (where `--force` triggers re-import)
+**File:** `backend/app/cli/commands/add_cmd.py`
 
-Before calling `_re_import_book()`:
-```python
-trace_count = await eval_repo.count_by_book(book.id)
-summary_count = await summary_repo.count_by_book(book.id)
-if trace_count > 0 or summary_count > 0:
-    confirm = typer.confirm(
-        f"This book has {trace_count} eval traces and {summary_count} summaries. "
-        f"Re-import will mark traces as stale. Proceed?"
-    )
-    if not confirm:
-        raise typer.Abort()
-```
+Before calling `_re_import_book()`, count eval traces and summaries for the book. If either > 0, prompt: `"This book has {N} eval traces and {M} summaries. Re-import will mark traces as stale. Proceed? [y/N]"`. Abort if declined.
 
 #### 8.2.6 EvalTrace Query Updates
 
@@ -845,9 +829,53 @@ Retry triggers when **any** critical or important assertion fails (10 of 16):
 
 Retry happens **inline** during the batch summarization loop, before moving to the next section. This ensures the best available summary feeds into cumulative context for subsequent sections.
 
+```
+┌─────────────────────────────────────────────────────────┐
+│  For each section (sequential):                         │
+│                                                         │
+│  ┌──────────────┐                                       │
+│  │  Summarize   │─── compression retry if too long ──┐  │
+│  └──────┬───────┘                                    │  │
+│         │ summary                                    │  │
+│         ▼                                            │  │
+│  ┌──────────────┐                                    │  │
+│  │  Eval (16)   │─── 3 deterministic + 13 LLM       │  │
+│  └──────┬───────┘                                    │  │
+│         │ eval_json                                  │  │
+│         ▼                                            │  │
+│  ┌──────────────┐  all pass    ┌────────────────┐    │  │
+│  │ _should_     │─────────────→│ Add summary to │    │  │
+│  │  retry()?    │              │ cumul. context  │    │  │
+│  └──────┬───────┘              └────────┬───────┘    │  │
+│    fail │                               │            │  │
+│         ▼                               │            │  │
+│  ┌──────────────┐                       │            │  │
+│  │ Build fix    │                       │            │  │
+│  │ prompt from  │                       │            │  │
+│  │ suggestions  │                       │            │  │
+│  └──────┬───────┘                       │            │  │
+│         ▼                               │            │  │
+│  ┌──────────────┐                       │            │  │
+│  │ Re-summarize │                       │            │  │
+│  │ + Re-eval    │                       │            │  │
+│  └──────┬───────┘                       │            │  │
+│         │ retry becomes default         │            │  │
+│         ▼                               │            │  │
+│  ┌──────────────┐                       │            │  │
+│  │ Add BEST     │◄──────────────────────┘            │  │
+│  │ summary to   │                                    │  │
+│  │ cumul. ctxt  │                                    │  │
+│  └──────┬───────┘                                    │  │
+│         │                                            │  │
+│         ▼ next section                               │  │
+└─────────────────────────────────────────────────────────┘
+```
+
 #### 10.4.1 Single-Section Mode
 
 **File:** `backend/app/cli/commands/summarize_cmd.py`
+
+The CLI calls `summarizer._should_retry()` and `summarizer._build_fix_prompt()` — the same `SummarizerService` methods used by the batch loop (see 10.5). No standalone functions in the CLI layer.
 
 ```python
 # After initial summarize + eval (existing code at line ~98):
@@ -864,9 +892,9 @@ if not skip_eval and svc.get("eval"):
         section_type=section.section_type,
     )
 
-    if not no_retry and _should_retry(eval_results):
+    if not no_retry and summarizer._should_retry(eval_results):
         console.print("  [yellow]Critical/important failures detected. Retrying...[/yellow]")
-        fix_prompt = _build_fix_prompt(eval_results)
+        fix_prompt = summarizer._build_fix_prompt(eval_results)
         retry_summary = await summarizer._summarize_single_section(
             book_id=book_id,
             section=section,
@@ -874,7 +902,7 @@ if not skip_eval and svc.get("eval"):
             preset_name=resolved_preset,
             model=model,
             cumulative_context="",
-            fix_instructions=fix_prompt,  # NEW parameter
+            fix_instructions=fix_prompt,
         )
         retry_summary.retry_of_id = summary.id
         await summarizer._section_repo.update_default_summary(section_id, retry_summary.id)
@@ -1213,7 +1241,40 @@ The fix prompt for step 5 does **not** re-apply the compression constraint — t
 
 ## Consolidated EvalService Interface
 
-All changes across Changes 1-10 modify `EvalService` and/or `SummarizerService`. This section consolidates the final method signatures and dispatch logic for `EvalService`. Retry logic (Change 10) lives in `SummarizerService` and the CLI layer, not in `EvalService` — the eval service remains a pure evaluator.
+All changes across Changes 1-10 modify `EvalService` and/or `SummarizerService`. This section consolidates the final method signatures and dispatch logic.
+
+**Responsibility split:**
+- **`EvalService`** — pure evaluator. Runs assertions, stores traces, returns results. No retry logic.
+- **`SummarizerService`** — owns `_should_retry()`, `_build_fix_prompt()`, and the inline eval+retry loop in `summarize_book()`.
+- **CLI layer** (`summarize_cmd.py`) — wires them together. `svc.get("eval")` is already available from `deps.py:get_services()` (no new wiring needed). Passes `eval_service` to `summarize_book()` as an optional parameter.
+
+**End-to-end flow per section (with retry enabled):**
+
+```
+summarize_cmd.py / summarize_book()
+  │
+  ├─ 1. SummarizerService._summarize_single_section()
+  │     └─ [compression retry if summary >= source length]
+  │     └─ Returns Summary (persisted)
+  │
+  ├─ 2. EvalService.evaluate_summary()
+  │     ├─ Deterministic assertions (3)  ─→ EvalTrace rows
+  │     ├─ LLM-based assertions (10-13)  ─→ EvalTrace rows
+  │     ├─ Skipped assertions (0+)       ─→ EvalTrace rows (passed, skipped=True)
+  │     └─ Returns eval_json (wrapped format with "assertions" key)
+  │
+  ├─ 3. SummarizerService._should_retry(eval_json)
+  │     └─ Checks "assertions" dict for critical/important failures
+  │
+  ├─ 4. [If retry needed]:
+  │     ├─ SummarizerService._build_fix_prompt(eval_json)
+  │     ├─ SummarizerService._summarize_single_section(fix_instructions=...)
+  │     ├─ Set retry_summary.retry_of_id = original.id
+  │     ├─ Update default_summary_id → retry summary
+  │     └─ EvalService.evaluate_summary() on retry summary
+  │
+  └─ 5. Add best summary to cumulative context → next section
+```
 
 ### EvalService Dependency Change
 
@@ -1237,7 +1298,7 @@ def _load_skip_assertions(self, preset_name: str | None) -> set[str]:
 
 This avoids a circular dependency (PresetService → EvalService or vice versa) and keeps eval self-contained.
 
-### `evaluate_summary()` — Final Signature
+### `evaluate_summary()` — Final Signature and Return Format
 
 ```python
 async def evaluate_summary(
@@ -1252,8 +1313,38 @@ async def evaluate_summary(
     cumulative_context: str | None = None,  # NEW: for faithfulness assertions
     section_type: str = "chapter",          # NEW: for completeness assertion adaptation
     eval_scope: str = "section",           # NEW: "section" or "book"
-) -> dict[str, dict]:
+) -> dict:
 ```
+
+**Return format** (the `_compute_eval_json` wrapped format — NOT a flat assertion dict):
+
+```json
+{
+  "passed": 14,
+  "total": 16,
+  "eval_run_id": "a1b2c3d4-...",
+  "assertions": {
+    "no_hallucinated_facts": {
+      "assertion_name": "no_hallucinated_facts",
+      "category": "critical",
+      "passed": true,
+      "reasoning": "All claims supported by source or cumulative context.",
+      "likely_cause": null,
+      "suggestion": null
+    },
+    "accurate_quotes": {
+      "assertion_name": "accurate_quotes",
+      "category": "critical",
+      "passed": false,
+      "reasoning": "Quote does not appear verbatim in source.",
+      "likely_cause": "content_quality",
+      "suggestion": "Remove quotation marks around paraphrased attributions."
+    }
+  }
+}
+```
+
+This is the same format stored as `Summary.eval_json`. All callers — including `_should_retry()`, `eval_cmd.py`, and `summarize_cmd.py` — consume this wrapped format. The `assertions` key contains per-assertion results; `passed` and `total` are top-level aggregates.
 
 ### Assertion Dispatch Logic
 
@@ -1444,21 +1535,24 @@ def _check_image_refs_preserved(self, source_text: str, summary_text: str, image
 | `ix_eval_traces_eval_run_id` | `eval_traces` | `eval_run_id` | For grouping traces by eval run |
 | `ix_book_sections_section_type` | `book_sections` | `section_type` | For section-type queries |
 
-**FK change:**
+**FK change — must execute in this exact order:**
+
 ```sql
--- Drop old CASCADE constraint
+-- Step 1: Drop old CASCADE constraint (must happen before nullable change)
 ALTER TABLE eval_traces
     DROP CONSTRAINT IF EXISTS eval_traces_section_id_fkey;
 
--- Make section_id nullable
+-- Step 2: Make section_id nullable (column must be nullable before SET NULL FK)
 ALTER TABLE eval_traces ALTER COLUMN section_id DROP NOT NULL;
 
--- Add new SET NULL constraint
+-- Step 3: Add new SET NULL constraint (requires nullable column)
 ALTER TABLE eval_traces
     ADD CONSTRAINT eval_traces_section_id_fkey
         FOREIGN KEY (section_id) REFERENCES book_sections(id)
         ON DELETE SET NULL;
 ```
+
+**Important for Alembic:** Auto-generated migrations may not order these correctly. Manually verify the migration file puts DROP CONSTRAINT → ALTER COLUMN → ADD CONSTRAINT in sequence. Test on a copy of the production database before running on real data.
 
 **Enum for section_type:**
 No DB-level enum needed. Stored as `VARCHAR(50)` with application-level validation (same pattern as `BookStatus`).
@@ -1473,6 +1567,8 @@ No DB-level enum needed. Stored as `VARCHAR(50)` with application-level validati
 |------|--------|---------|
 | `base/summarize_section.txt` | Add quote attribution guidance | Obs 4: prevent paraphrased quotes |
 | `base/summarize_section.txt` | Add numeric accuracy guidance | Obs 6: prevent percentage/multiplier confusion |
+| `fragments/style/study_guide.txt` | Add "## Key Concepts" instruction | Obs 1.2: ensure structured concept output |
+| `fragments/style/academic_detailed.txt` | Add "## Key Concepts" instruction | Obs 1.2: ensure structured concept output |
 
 ### Eval Prompts
 
@@ -1670,24 +1766,43 @@ uv run alembic upgrade head
 BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion_test uv run alembic upgrade head
 ```
 
-### Step 2: Code Changes
-1. Update models (`EvalTrace`, `BookSection`, `Summary` — including `retry_of_id`)
-2. Implement deterministic assertions in `evaluator.py`
-3. Update `_run_single_assertion()` to pass new context
-4. Update eval prompt templates
-5. Update summarization prompt templates
-6. Add `skip_assertions` to preset YAML files
-7. Update `PresetService` to load/validate `skip_assertions`
-8. Add `section_type` auto-detection to parser
-9. Implement paraphrased quote check in `SummarizerService`
-10. Update `_re_import_book()` with stale marking and confirmation
-11. Update `eval_cmd.py` for book-level display and diagnostic fields
-12. Implement `_compute_eval_json()` for trace-based derivation
-13. Implement `_should_retry()`, `_build_fix_prompt()` in `SummarizerService`
-14. Add `fix_instructions` parameter to `_summarize_single_section()`
-15. Restructure `summarize_book()` batch loop for inline eval + retry
-16. Update `summarize_cmd.py` for `--no-retry` flag and retry progress output
-17. Update `summary list` CLI to show retry lineage
+### Step 2: Code Changes — Implementation Phases
+
+Changes have dependencies. Implement in this order:
+
+**Phase A: Schema + Models** (no logic changes, unblocks everything)
+1. Run Alembic migration: new columns, FK change, indexes (see migration ordering note in §15)
+2. Update SQLAlchemy models: `EvalTrace` (new columns, nullable `section_id`), `BookSection` (`section_type`), `Summary` (`quality_warnings`, `retry_of_id`)
+
+**Phase B: Deterministic Assertions + Preset Skipping** (Changes 1, 2, 5 — no dependencies on other phases)
+3. Implement `_check_reasonable_length()`, `_check_has_key_concepts()`, `_check_image_refs_preserved()` in `evaluator.py`
+4. Add `skip_assertions` to preset YAML files
+5. Update `PresetService._parse_file()` to load/validate `skip_assertions`
+6. Add `_load_skip_assertions()` to `EvalService`
+7. Add `section_type` auto-detection to epub parser
+8. Add `section_type` to `edit sections` editable fields
+
+**Phase C: Eval Pipeline Overhaul** (Changes 3, 7, 8, 9 — depends on Phase A models)
+9. Implement `_compute_eval_json()` for trace-based derivation
+10. Update `_run_single_assertion()` to accept and pass new context (`cumulative_context`, `section_type`, `eval_scope`, `eval_run_id`)
+11. Implement assertion dispatch logic in `evaluate_summary()` (deterministic vs LLM routing, skip list merge)
+12. Update `_re_import_book()` with stale marking and confirmation prompt
+13. Update eval prompt templates (cumulative context, section-type, diagnostics, hard/soft hallucination)
+
+**Phase D: Summarizer Changes** (Changes 4, 6 — independent of eval changes)
+14. Add quote attribution guidance + numeric accuracy guidance to summarization prompts
+15. Implement `_check_paraphrased_quotes()` in `SummarizerService`
+
+**Phase E: Auto-Retry Loop** (Change 10 — depends on Phases B + C)
+16. Implement `_should_retry()`, `_build_fix_prompt()` in `SummarizerService`
+17. Add `fix_instructions` parameter to `_summarize_single_section()`
+18. Restructure `summarize_book()` batch loop for inline eval + retry
+19. Update `summarize_cmd.py` for `--no-retry` flag and retry progress output
+
+**Phase F: CLI Polish** (depends on Phases C + E)
+20. Update `eval_cmd.py` for book-level display, diagnostic fields, `--force` flag
+21. Update `summary list` CLI to show retry lineage
+22. Update `summary show` to display `quality_warnings`
 
 ### Step 3: Run Tests
 ```bash
