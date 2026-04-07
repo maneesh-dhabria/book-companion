@@ -282,6 +282,8 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 
 - [ ] In `BookService.add_book()` / section creation: pass `section_type` from ParsedSection to BookSection model
 
+- [ ] In `BookService._re_import_book()`: when updating sections in-place (line ~223-241), also update `section_type` from the new parse data (spec §5.7)
+
 - [ ] Write tests in `test_section_type.py`:
   - `test_detect_glossary` — "Glossary" → `"glossary"`
   - `test_detect_notes` — "Chapter Notes" → `"notes"`
@@ -325,7 +327,7 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
     ```
   - For reference sections, `covers_examples` should be skipped (add to dynamic skip list in `evaluate_summary()`)
 
-- [ ] Update `section_edit_service.py`: Add `section_type` as an editable field in the REPL
+- [ ] Update `section_edit_service.py`: Add `section_type` as an editable field in the REPL. Specifically, the `edit` method's interactive loop should accept `type <section_id> <type_name>` command to change a section's type. Validate against `SectionType` enum values.
 
 - [ ] Add tests:
   - `test_section_type_injected_in_completeness` — section type appears in rendered completeness prompt
@@ -441,6 +443,8 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 ## Task 10: Eval Pipeline Overhaul — Dispatch Logic + eval_run_id + eval_json Derivation (Changes 8, 9 partial)
 
 **Goal:** Rewrite `evaluate_summary()` with the consolidated dispatch logic: deterministic vs LLM routing, skip list merge, eval_run_id grouping, and eval_json derivation from traces.
+
+**Prerequisites:** Tasks 2-5 (deterministic assertions + skip logic), Task 8 (diagnostic fields), Task 9 (cumulative context). This is the integration task that wires all earlier pieces together.
 
 **Files:**
 - Modify: `backend/app/services/summarizer/evaluator.py`
@@ -579,10 +583,18 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 
 **12c. Auto-trigger eval in `_generate_book_summary()`**
 
-- [ ] After generating book-level summary in `summarizer_service.py`:
-  - Build source context from section summaries (as per spec §7.2.2)
-  - If `eval_service` is available and `not skip_eval`: call `evaluate_summary()` with `eval_scope="book"`
+- [ ] Update `_generate_book_summary()` signature to accept `eval_service`, `skip_eval`, `no_retry`, `preset_name` parameters (passed through from `summarize_book()`)
+- [ ] After generating book-level summary:
+  - Build source context from section summaries (as per spec §7.2.2):
+    ```python
+    source_for_eval = "\n\n".join(
+        f"## {s.title}\n{s.default_summary.summary_md}"
+        for s in book.sections if s.default_summary_id
+    )
+    ```
+  - If `eval_service` is available and `not skip_eval`: call `evaluate_summary()` with `eval_scope="book"`, pass `section_count=len(sections_with_summaries)`
   - Store eval_json on book-level Summary
+  - If eval fails critical/important and `not no_retry`: apply same retry logic
 
 **12d. Update eval CLI for book-level display**
 
@@ -751,13 +763,13 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 
 - [ ] After batch loop completes, if >50% of sections retried: log warning "High retry rate ({n}/{total}) — consider adjusting your preset or prompt."
 
-**16e. Book-level summary retry**
+**16d. Book-level summary retry**
 
 - [ ] After `_generate_book_summary()`, if eval fails critical/important:
   - Same retry logic as sections
   - No cumulative context implications (it's the final step)
 
-**16f. Update CLI**
+**16e. Update CLI**
 
 - [ ] Add `--no-retry` flag to `summarize` command
 - [ ] `--skip-eval` implicitly disables retry
@@ -765,7 +777,7 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 - [ ] Add `on_section_retry` callback for progress output (spec §10.8.2)
 - [ ] Single-section mode: same inline eval + retry logic (spec §10.4.1)
 
-**16g. Integration tests**
+**16f. Integration tests**
 
 - [ ] Create `test_auto_retry.py` (integration):
   - `test_retry_creates_new_summary` — retry produces second Summary, original preserved
