@@ -1,6 +1,8 @@
 """Summarizer service — section + book summarization orchestration."""
 
+import difflib
 import json
+import re
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -43,9 +45,12 @@ class SummarizerService:
         force: bool = False,
         model: str | None = None,
         skip_eval: bool = False,
+        no_retry: bool = False,
+        eval_service=None,
         on_section_complete: Callable | None = None,
         on_section_skip: Callable | None = None,
         on_section_fail: Callable | None = None,
+        on_section_retry: Callable | None = None,
     ) -> dict:
         """Orchestrate full book summarization using map-reduce with faceted prompts."""
         facets = facets or {}
@@ -56,6 +61,7 @@ class SummarizerService:
         completed = 0
         skipped = 0
         failed: list[int] = []
+        retried_sections: list[int] = []
         cumulative_parts: list[str] = []
 
         for i, section in enumerate(sections):
@@ -111,6 +117,65 @@ class SummarizerService:
                 # Set as default summary for this section
                 await self._section_repo.update_default_summary(section.id, summary.id)
 
+                # Inline eval + retry
+                if not skip_eval and eval_service:
+                    try:
+                        from app.services.summarizer.evaluator import EvalService
+
+                        section_type = getattr(section, "section_type", "chapter")
+                        eval_results = await eval_service.evaluate_summary(
+                            section_id=section.id,
+                            source_text=section.content_md or "",
+                            summary_text=summary.summary_md,
+                            image_count=len(section.images) if section.images else 0,
+                            facets_used=facets,
+                            summary_id=summary.id,
+                            preset_name=preset_name,
+                            cumulative_context=cumulative_context,
+                            section_type=section_type,
+                        )
+                        summary.eval_json = EvalService.compute_eval_json(eval_results)
+
+                        # Auto-retry if critical/important assertion failed
+                        if not no_retry and EvalService._should_retry(eval_results):
+                            fix_prompt = EvalService._build_fix_prompt(eval_results)
+                            retry_summary = await self._summarize_single_section(
+                                book_id=book_id,
+                                section=section,
+                                facets=facets,
+                                preset_name=preset_name,
+                                model=model,
+                                cumulative_context=cumulative_context,
+                                fix_instructions=fix_prompt,
+                            )
+                            retry_summary.retry_of_id = summary.id
+                            await self._section_repo.update_default_summary(
+                                section.id, retry_summary.id
+                            )
+                            # Re-eval the retry
+                            retry_eval = await eval_service.evaluate_summary(
+                                section_id=section.id,
+                                source_text=section.content_md or "",
+                                summary_text=retry_summary.summary_md,
+                                image_count=len(section.images) if section.images else 0,
+                                facets_used=facets,
+                                summary_id=retry_summary.id,
+                                preset_name=preset_name,
+                                cumulative_context=cumulative_context,
+                                section_type=section_type,
+                            )
+                            retry_summary.eval_json = EvalService.compute_eval_json(retry_eval)
+                            summary = retry_summary  # Use retry for cumulative context
+                            retried_sections.append(section.id)
+                            if on_section_retry:
+                                on_section_retry(i + 1, total, section.title)
+                    except Exception as eval_err:
+                        logger.warning(
+                            "inline_eval_failed",
+                            section_id=section.id,
+                            error=str(eval_err),
+                        )
+
                 completed += 1
                 # Add to cumulative context
                 summary_text = summary.summary_md
@@ -144,12 +209,22 @@ class SummarizerService:
                 if on_section_fail:
                     on_section_fail(i + 1, total, section.title, error_msg)
 
+        # High retry rate warning
+        if retried_sections and len(retried_sections) > total / 2:
+            logger.warning(
+                "high_retry_rate",
+                retried=len(retried_sections),
+                total=total,
+                message="Consider adjusting your preset or prompt.",
+            )
+
         await self.db.commit()
 
         return {
             "completed": completed,
             "skipped": skipped,
             "failed": failed,
+            "retried": retried_sections,
         }
 
     # Compression targets by facet name (fraction of source length)
@@ -163,6 +238,7 @@ class SummarizerService:
         preset_name: str | None,
         model: str | None,
         cumulative_context: str,
+        fix_instructions: str | None = None,
     ) -> Summary:
         """Core LLM call to summarize a single section. Returns persisted Summary."""
         book = await self._book_repo.get_by_id(book_id)
@@ -184,6 +260,9 @@ class SummarizerService:
             target_chars=target_chars,
             **facets,
         )
+
+        if fix_instructions:
+            prompt = f"{prompt}\n\n{fix_instructions}"
 
         effective_model = model or self.config.llm.model
         start = time.monotonic()
@@ -216,6 +295,12 @@ class SummarizerService:
         concepts = SummaryService.extract_concepts(summary_text)
         eval_json_data = {"concepts": sorted(concepts)} if concepts else None
 
+        # Check for paraphrased quotes
+        quality_warnings = None
+        quote_warnings = self._check_paraphrased_quotes(section.content_md or "", summary_text)
+        if quote_warnings:
+            quality_warnings = {"paraphrased_quotes": quote_warnings}
+
         summary = Summary(
             content_type=SummaryContentType.SECTION,
             content_id=section.id,
@@ -231,6 +316,7 @@ class SummarizerService:
             summary_md=summary_text,
             latency_ms=elapsed_ms,
             eval_json=eval_json_data,
+            quality_warnings=quality_warnings,
         )
         return await self._summary_repo.create(summary)
 
@@ -240,6 +326,9 @@ class SummarizerService:
         facets: dict[str, str],
         preset_name: str | None,
         model: str | None,
+        eval_service=None,
+        skip_eval: bool = False,
+        no_retry: bool = False,
     ) -> Summary:
         """Reduce step: combine section summaries into overall book summary."""
         book = await self._book_repo.get_by_id(book_id)
@@ -291,6 +380,71 @@ class SummarizerService:
         )
         saved = await self._summary_repo.create(summary)
         await self._book_repo.update_default_summary(book_id, saved.id)
+
+        # Book-level eval
+        if not skip_eval and eval_service:
+            try:
+                from app.services.summarizer.evaluator import EvalService
+
+                source_for_eval = "\n\n".join(
+                    f"## {s['title']}\n{s['summary']}" for s in section_data
+                )
+                eval_results = await eval_service.evaluate_summary(
+                    section_id=0,  # book-level, no specific section
+                    source_text=source_for_eval,
+                    summary_text=summary_text,
+                    facets_used=facets,
+                    summary_id=saved.id,
+                    preset_name=preset_name,
+                    eval_scope="book",
+                    section_count=len(section_data),
+                )
+                saved.eval_json = EvalService.compute_eval_json(eval_results)
+
+                # Retry if needed
+                if not no_retry and EvalService._should_retry(eval_results):
+                    fix_prompt = EvalService._build_fix_prompt(eval_results)
+                    retry_prompt = f"{prompt}\n\n{fix_prompt}"
+                    retry_start = time.monotonic()
+                    retry_response = await self.llm.generate(retry_prompt, model=effective_model)
+                    retry_elapsed = int((time.monotonic() - retry_start) * 1000)
+                    retry_text = self._extract_summary_text(retry_response)
+
+                    retry_summary = Summary(
+                        content_type=SummaryContentType.BOOK,
+                        content_id=book_id,
+                        book_id=book_id,
+                        preset_name=preset_name,
+                        facets_used=facets,
+                        prompt_text_sent=retry_prompt,
+                        model_used=effective_model,
+                        input_tokens=retry_response.input_tokens,
+                        output_tokens=retry_response.output_tokens,
+                        input_char_count=len(combined_input),
+                        summary_char_count=len(retry_text),
+                        summary_md=retry_text,
+                        latency_ms=retry_elapsed,
+                        retry_of_id=saved.id,
+                    )
+                    retry_saved = await self._summary_repo.create(retry_summary)
+                    await self._book_repo.update_default_summary(book_id, retry_saved.id)
+
+                    # Re-eval retry
+                    retry_eval = await eval_service.evaluate_summary(
+                        section_id=0,
+                        source_text=source_for_eval,
+                        summary_text=retry_text,
+                        facets_used=facets,
+                        summary_id=retry_saved.id,
+                        preset_name=preset_name,
+                        eval_scope="book",
+                        section_count=len(section_data),
+                    )
+                    retry_saved.eval_json = EvalService.compute_eval_json(retry_eval)
+                    saved = retry_saved
+            except Exception as eval_err:
+                logger.warning("book_eval_failed", error=str(eval_err))
+
         return saved
 
     async def quick_summary(self, book_id: int) -> None:
@@ -325,6 +479,56 @@ class SummarizerService:
         except (json.JSONDecodeError, AttributeError):
             pass
         return content
+
+    @staticmethod
+    def _check_paraphrased_quotes(source_text: str, summary_text: str) -> list[dict]:
+        """Detect paraphrased quotes in summary by comparing with source text."""
+        # Extract double-quoted strings from summary (10-200 chars)
+        quote_pattern = re.compile(r'\u201c([^\u201d]{10,200})\u201d|"([^"]{10,200})"')
+        matches = quote_pattern.findall(summary_text)
+        quotes = [m[0] or m[1] for m in matches]
+
+        if not quotes:
+            return []
+
+        # Strip markdown from source for comparison
+        clean_source = re.sub(r"[#*_`\[\]()]", "", source_text)
+
+        warnings = []
+        for quote in quotes:
+            # Check exact match first
+            if quote in clean_source:
+                continue
+
+            # Sliding window fuzzy match
+            quote_words = quote.split()
+            window_size = len(quote_words) + 2
+            source_words = clean_source.split()
+
+            best_similarity = 0.0
+            best_match = ""
+            for i in range(max(0, len(source_words) - window_size + 1)):
+                window = " ".join(source_words[i : i + window_size])
+                similarity = difflib.SequenceMatcher(None, quote.lower(), window.lower()).ratio()
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_match = window
+
+            if best_similarity >= 0.85:
+                warnings.append(
+                    {
+                        "type": "paraphrased_quote",
+                        "quote": quote,
+                        "best_match": best_match,
+                        "similarity": round(best_similarity, 2),
+                        "message": (
+                            f"Possible paraphrased quote ({int(best_similarity * 100)}% match): "
+                            f'"{quote[:50]}..."'
+                        ),
+                    }
+                )
+
+        return warnings
 
     async def _get_image_captions(self, section) -> list[dict]:
         """Get image captions for a section. Captions uncaptioned images if captioner available.

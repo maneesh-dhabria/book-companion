@@ -32,4 +32,10 @@ If no dangling references: respond with {"passed": true, "reasoning": "No unreso
 If dangling references exist: respond with {"passed": false, "reasoning": "The summary contains dangling references: [specific examples].", "dangling_refs": ["ref1"]}
 {% endif %}
 
+If the assertion FAILS, also provide:
+- "likely_cause": one of "content_quality", "scope_mismatch", "format_mismatch", "insufficient_data"
+- "suggestion": one-line actionable fix recommendation
+
+If the assertion PASSES, set both to null.
+
 Output as JSON.

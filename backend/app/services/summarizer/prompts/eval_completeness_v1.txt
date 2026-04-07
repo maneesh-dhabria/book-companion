@@ -1,4 +1,14 @@
 You are evaluating the completeness of a book summary.
+{% if eval_scope == "book" %}
+
+**Context:** This is a BOOK-LEVEL summary synthesizing {{ section_count }} section summaries.
+Evaluate whether the summary provides representative coverage across major chapters and themes.
+It should NOT exhaustively list every concept from every section.
+{% endif %}
+{% if section_type in ["glossary", "notes", "bibliography", "index", "appendix"] %}
+
+**Context:** This is a {{ section_type }} section. Evaluate coverage of the MAJOR frameworks only — this type of section has different completeness expectations than a regular chapter.
+{% endif %}
 
 ## Source Text
 {{ source_text }}
@@ -36,5 +46,11 @@ If key examples are referenced: respond with {"passed": true, "reasoning": "Key 
 
 If important examples are missing: respond with {"passed": false, "reasoning": "The source includes important examples that are not reflected in the summary.", "missing_examples": ["example1"]}
 {% endif %}
+
+If the assertion FAILS, also provide:
+- "likely_cause": one of "content_quality", "scope_mismatch", "format_mismatch", "insufficient_data"
+- "suggestion": one-line actionable fix recommendation
+
+If the assertion PASSES, set both to null.
 
 Output as JSON.

@@ -121,7 +121,7 @@ async def test_summarize_book_accepts_facets(mock_config, mock_llm):
             "content_focus": "actionable",
         },
     )
-    assert result == {"completed": 0, "skipped": 0, "failed": []}
+    assert result == {"completed": 0, "skipped": 0, "failed": [], "retried": []}
 
 
 @pytest.mark.asyncio

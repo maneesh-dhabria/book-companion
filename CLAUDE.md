@@ -61,6 +61,13 @@ uv run bookcompanion summary set-default <id>  # Set default summary
 uv run bookcompanion summary show <id>         # Show summary with metadata
 uv run bookcompanion read <book_id> <section_id> [--with-summary]  # Read section content
 uv run bookcompanion edit sections <book_id>   # Interactive section editing
+
+# V1.3 CLI Additions
+uv run bookcompanion summarize <book_id> --no-retry          # Skip auto-retry on eval failure
+uv run bookcompanion summarize <book_id> --skip-eval         # Skip eval (implies no retry)
+uv run bookcompanion eval <book_id> --book-only              # Show only book-level eval results
+uv run bookcompanion eval <book_id> <section_id> --force     # Re-run eval on section
+uv run bookcompanion eval <book_id> --summary-id <id>        # Evaluate a specific summary
 ```
 
 ## Architecture
@@ -117,6 +124,12 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 | Fragment | Jinja2 template snippet for one facet value |
 | Summary Log | Append-only summaries table (replaces inline summary_md) |
 | Default Summary | The active summary for a section/book (default_summary_id FK) |
+| Section Type | Auto-detected type: chapter, glossary, notes, appendix, etc. (`SectionType` enum) |
+| Eval Run ID | UUID grouping all traces from one `evaluate_summary()` call |
+| Golden Set | Synthetic test fixtures in `tests/fixtures/golden_eval/` for regression testing |
+| Deterministic Assertion | Eval check using pure code (regex/math), not LLM: `reasonable_length`, `has_key_concepts`, `image_refs_preserved` |
+| Quality Warning | Post-processing check stored on Summary (e.g., paraphrased quotes) |
+| Auto-Retry | When critical/important eval assertions fail, re-summarize with fix instructions |
 
 ## Code Style
 
@@ -144,6 +157,9 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 12. **Claude CLI `structured_output` field**: With `--json-schema`, the CLI returns parsed JSON in `structured_output`, not `result` (which is empty). Any code parsing structured responses must check `structured_output` first.
 13. **Re-import must preserve section IDs**: `_re_import_book` updates sections in-place by `order_index`. Delete-and-recreate orphans summaries/evals since `Summary.content_id` is not a FK and won't cascade.
 14. **`get_services()` does not auto-commit**: CLI commands that persist data must call `session.commit()` explicitly. `flush()` alone loses changes when the session closes.
+15. **`eval_json` is derived from traces (V1.3)**: `Summary.eval_json` is computed from `EvalTrace` rows via `EvalService.compute_eval_json()`. The wrapped format includes `{passed, total, eval_run_id, assertions: {name: {passed, reasoning, ...}}}`. All callers must consume the `assertions` key.
+16. **Stale eval traces**: Re-import marks traces as `is_stale=True` before section deletion. All `eval_repo` queries filter `WHERE is_stale = FALSE` by default. Pass `include_stale=True` to see old traces.
+17. **Deterministic assertions skip LLM**: `reasonable_length`, `has_key_concepts`, `image_refs_preserved` use pure code checks. Their `EvalTrace` has `model_used="deterministic"`, `prompt_sent=None`.
 
 ## Extended Docs
 

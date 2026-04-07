@@ -129,3 +129,63 @@ def test_resolve_facets_default(service):
         "test_system",
     )
     assert name == "test_system"
+
+
+def test_load_preset_with_skip_assertions():
+    """Load practitioner_bullets preset and verify skip_assertions."""
+    from app.services.preset_service import PRESETS_DIR
+
+    service = PresetService(presets_dir=PRESETS_DIR)
+    preset = service.load("practitioner_bullets")
+    assert preset.skip_assertions == ["has_key_concepts"]
+
+
+def test_load_preset_without_skip_assertions(tmp_path):
+    """Preset without skip_assertions field returns empty list."""
+    d = tmp_path / "presets"
+    d.mkdir()
+    (d / "no_skip.yaml").write_text(
+        yaml.dump(
+            {
+                "name": "No Skip",
+                "description": "No skip assertions",
+                "system": False,
+                "facets": {
+                    "style": "bullet_points",
+                    "audience": "practitioner",
+                    "compression": "standard",
+                    "content_focus": "key_concepts",
+                },
+            }
+        )
+    )
+    service = PresetService(presets_dir=d)
+    preset = service.load("no_skip")
+    assert preset.skip_assertions == []
+
+
+def test_invalid_assertion_name_warns(tmp_path, capsys):
+    """Unknown assertion name in skip_assertions logs a warning."""
+    d = tmp_path / "presets"
+    d.mkdir()
+    (d / "bad_skip.yaml").write_text(
+        yaml.dump(
+            {
+                "name": "Bad Skip",
+                "description": "Has unknown assertion",
+                "system": False,
+                "facets": {
+                    "style": "bullet_points",
+                    "audience": "practitioner",
+                    "compression": "standard",
+                    "content_focus": "key_concepts",
+                },
+                "skip_assertions": ["nonexistent_assertion", "has_key_concepts"],
+            }
+        )
+    )
+    service = PresetService(presets_dir=d)
+    preset = service.load("bad_skip")
+    assert preset.skip_assertions == ["nonexistent_assertion", "has_key_concepts"]
+    captured = capsys.readouterr()
+    assert "unknown_skip_assertions" in captured.out

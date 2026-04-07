@@ -97,6 +97,11 @@ def parse_command(raw: str) -> EditCommand:
         indices = [int(x) for x in parts[1].split(",")]
         return EditCommand(action="delete", indices=indices)
 
+    if action == "type":
+        if len(parts) < 3:
+            raise SectionEditError("type requires: type <index> <type_name>")
+        return EditCommand(action="type", indices=[int(parts[1])], title=parts[2])
+
     raise SectionEditError(f"Unknown command: {action}")
 
 
@@ -109,6 +114,7 @@ class SectionItem:
     depth: int
     char_count: int
     derived_from: list[int] | None = None
+    section_type: str = "chapter"
 
 
 class SectionEditService:
@@ -135,6 +141,7 @@ class SectionEditService:
                 depth=s.depth,
                 char_count=s.char_count,
                 derived_from=list(s.derived_from) if s.derived_from else None,
+                section_type=s.section_type,
             )
             for s in self._sections
         ]
@@ -397,6 +404,20 @@ class SectionEditService:
 
         logger.info("sections_deleted", indices=indices)
         return len(indices)
+
+    def set_type(self, index: int, type_name: str) -> None:
+        """Set section type for a section. Validates against SectionType enum."""
+        from app.db.models import SectionType
+
+        valid_types = {t.value for t in SectionType}
+        if type_name not in valid_types:
+            raise SectionEditError(
+                f"Invalid section type '{type_name}'. Valid: {', '.join(sorted(valid_types))}"
+            )
+        section = self._get_by_index(index)
+        self._save_undo()
+        section.section_type = type_name
+        logger.info("section_type_set", index=index, type=type_name)
 
     def undo(self) -> bool:
         """Revert last operation. Returns True if undo was performed."""

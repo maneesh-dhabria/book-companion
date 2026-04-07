@@ -1,2 +1,4 @@
 ## Output Format
 Write the summary as flowing prose paragraphs. Use clear topic sentences and logical transitions between ideas. Aim for readability as a standalone essay — someone unfamiliar with the source should follow the argument.
+
+Include a "## Key Concepts" section listing the most important concepts with brief definitions.

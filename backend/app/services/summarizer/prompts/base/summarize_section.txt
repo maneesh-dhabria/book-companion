@@ -23,4 +23,10 @@ The section contains the following images/diagrams. Integrate key images into yo
 ## Source content
 {{ section_content }}
 
+When attributing a statement to a specific person, either quote verbatim from the source
+or paraphrase without quotation marks. Do not place paraphrased content in quotation marks.
+
+When converting percentages or premiums to multipliers, be precise: a '300% premium' means
+the premium is 3x, making the total price 4x the base.
+
 Output your summary directly as markdown. Do not wrap in JSON or code fences.
