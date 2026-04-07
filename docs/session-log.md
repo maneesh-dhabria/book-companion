@@ -1,5 +1,19 @@
 # Session Log
 
+## 2026-04-07 — V1.3 eval improvements implementation plan
+
+- Built 21-task implementation plan for V1.3 eval system overhaul covering 10 spec changes: 3 deterministic assertion conversions, preset-aware skipping, cumulative context for faithfulness eval, section-type detection, diagnostic fields, cascade-safe traces, book-level eval, paraphrased quote detection, and auto-retry on eval failure
+- Used an Explore agent to deeply read 20+ files (evaluator, summarizer service, models, CLI commands, prompt templates, repos, parser) before writing the plan — critical for identifying exact line numbers, method signatures, and data flow patterns
+- Ran 3 review loops with gap analysis: Loop 1 caught 6 gaps (LLM cost budget, eval_format_v1.txt disposition, book 2 re-eval, prompt_sent nullability test, E2E test cases, high retry rate warning); Loop 2 caught 5 coherence issues (sub-step lettering, _generate_book_summary signature, section_type re-import preservation, section_edit specificity, Task 10 prerequisites); Loop 3 confirmed 100% spec coverage
+- Key plan decision: Task 10 (eval pipeline overhaul) is the critical integration task that wires deterministic dispatch, skip lists, eval_run_id, cumulative context, and eval_json derivation — explicitly noted as depending on Tasks 2-5, 8, 9
+- Spec has a ~16x increase in LLM calls per book (18 → 294) due to inline eval + retry — documented cost impact prominently and noted `--skip-eval` / `--no-retry` escape hatches
+- Pattern: systematic gap analysis via dedicated Explore agent comparing spec sections against plan tasks is effective for catching coverage gaps that manual review misses
+
+**References:**
+- Spec: [`docs/specs/2026-04-05_v1_3_eval_improvements_spec.md`](specs/2026-04-05_v1_3_eval_improvements_spec.md)
+- Plan: [`docs/plans/2026-04-07_v1_3_eval_improvements_implementation.md`](plans/2026-04-07_v1_3_eval_improvements_implementation.md)
+- Requirements: [`docs/requirements/2026-04-05_v1_3_eval_improvements.md`](requirements/2026-04-05_v1_3_eval_improvements.md)
+
 ## 2026-04-04 — V1.2 Bugfixes: EPUB spine aggregation, markdown output, eval display
 
 - **V1.2 scope**: 5 fixes from testing V1.1 on "Understanding Michael Porter" — EPUB spine content aggregation, XML stripping, markdown output (was JSON-wrapped), min content threshold skip, eval status/results split columns. Also: requirements doc, spec with multi-role review, 8-task implementation plan.
