@@ -11,6 +11,8 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 
 **Scope:** 10 spec changes across schema, eval service, summarizer service, prompt templates, preset YAML, CLI commands, and parser. ~20 files modified, ~8 new test files, 1 Alembic migration.
 
+**Cost impact:** Inline eval changes cost profile significantly. Per-book (17 sections, ~4 retries): V1.2 ~18 LLM calls ($1-2) → V1.3 ~294 LLM calls ($5-8, ~40-50 min). `--skip-eval` restores V1.2 behavior; `--no-retry` saves ~52 calls.
+
 ## Decision Log
 
 | # | Decision | Options | Choice | Rationale |
@@ -132,6 +134,7 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
   - `test_reasonable_length_tweet_thread` — 5% passes for tweet_thread
   - `test_reasonable_length_no_facets_defaults_standard` — missing facets defaults to standard
   - `test_reasonable_length_short_section_floor` — very short source uses 50-char floor
+  - `test_deterministic_trace_has_null_prompt` — EvalTrace for deterministic assertion has `prompt_sent=None`, `model_used="deterministic"`
 
 - [ ] Run: `cd backend && uv run python -m pytest tests/unit/test_eval_deterministic.py -v`
 
@@ -466,7 +469,7 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 
 **10c. Deprecate `eval_format_v1.txt`**
 
-- [ ] Add deprecation comment at top of `eval_format_v1.txt`: `{# DEPRECATED: All format assertions are now deterministic. See evaluator.py. #}`
+- [ ] Deprecate `eval_format_v1.txt`: Add comment at top `{# DEPRECATED: All format assertions are now deterministic. See evaluator.py. #}` and remove the LLM assertion sections for `reasonable_length`, `has_key_concepts`, and `image_refs_preserved` (retain file with deprecation comment only, as historical reference)
 
 **10d. Update eval_repo queries**
 
@@ -744,13 +747,17 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
      - Call `on_section_retry` callback
   3. Add best available summary to `cumulative_parts`
 
-**16c. Book-level summary retry**
+**16c. High retry rate warning**
+
+- [ ] After batch loop completes, if >50% of sections retried: log warning "High retry rate ({n}/{total}) — consider adjusting your preset or prompt."
+
+**16e. Book-level summary retry**
 
 - [ ] After `_generate_book_summary()`, if eval fails critical/important:
   - Same retry logic as sections
   - No cumulative context implications (it's the final step)
 
-**16d. Update CLI**
+**16f. Update CLI**
 
 - [ ] Add `--no-retry` flag to `summarize` command
 - [ ] `--skip-eval` implicitly disables retry
@@ -758,7 +765,7 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 - [ ] Add `on_section_retry` callback for progress output (spec §10.8.2)
 - [ ] Single-section mode: same inline eval + retry logic (spec §10.4.1)
 
-**16e. Integration tests**
+**16g. Integration tests**
 
 - [ ] Create `test_auto_retry.py` (integration):
   - `test_retry_creates_new_summary` — retry produces second Summary, original preserved
@@ -809,6 +816,19 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 **17d. Run existing CLI tests**
 
 - [ ] Run: `cd backend && uv run python -m pytest tests/unit/test_eval_display.py tests/e2e/ -v`
+
+**17e. E2E tests (spec §18)**
+
+- [ ] Add or verify these E2E test cases in `tests/e2e/`:
+  - `test_eval_command_shows_diagnostic_fields` — `eval <book_id> <section_id>` displays `likely_cause` and `suggestion`
+  - `test_eval_command_shows_book_level` — `eval <book_id>` includes book-level eval results
+  - `test_re_import_confirmation_prompt` — `add --force` shows confirmation with trace counts
+  - `test_summary_show_displays_warnings` — `summary show <id>` displays paraphrased quote warnings
+  - `test_summarize_with_retry_output` — `summarize <book_id> <section_id>` shows retry progress
+  - `test_summarize_no_retry_flag` — `--no-retry` skips retry on eval failure
+  - `test_summary_list_shows_retry_lineage` — `summary list <book_id>` shows "(retry of #N)"
+
+- [ ] Run: `cd backend && uv run python -m pytest tests/e2e/ -v`
 
 ---
 
@@ -918,27 +938,39 @@ V1.3 overhauls the eval system based on analysis of 17 section evaluations on bo
 - [ ] `uv run bookcompanion preset show practitioner_bullets` — verify skip_assertions displayed
 - [ ] `uv run bookcompanion --help` — verify no import errors
 
-**21c. Eval system verification (if book 2 exists in DB)**
+**21c. Book 2 full re-eval (spec decision D10 — ~221 LLM calls)**
+
+- [ ] Re-run eval on all 17 sections of book 2 to generate fresh EvalTrace rows with new schema fields:
+  `uv run bookcompanion eval 2 --force`
+- [ ] Verify results:
+  - `has_key_concepts` passes or is skipped for practitioner_bullets preset
+  - `reasonable_length` shows actual numbers (not "cannot evaluate")
+  - `no_hallucinated_facts` reduces false positives on sections 91, 99
+  - Diagnostic fields (`likely_cause`, `suggestion`) populated on failures
+- [ ] Run book-level eval: `uv run bookcompanion eval 2 --book-only`
+- [ ] Check paraphrased quote warnings: `uv run bookcompanion summary show <summary_id_for_section_93>`
+
+**21d. Eval display verification**
 
 - [ ] `uv run bookcompanion eval 2` — verify book-level display works
 - [ ] `uv run bookcompanion eval 2 <section_id>` — verify diagnostic fields display
 - [ ] `uv run bookcompanion summary list 2` — verify retry lineage display
 
-**21d. Re-import confirmation test**
+**21e. Re-import confirmation test**
 
 - [ ] `uv run bookcompanion add <book_path> --force` — verify confirmation prompt appears with trace/summary counts
 
-**21e. Summarize with retry (if willing to spend LLM cost)**
+**21f. Summarize with retry (if willing to spend LLM cost)**
 
 - [ ] `uv run bookcompanion summarize 2 <section_id> --preset practitioner_bullets` — verify inline eval + retry flow
 - [ ] `uv run bookcompanion summarize 2 <section_id> --no-retry` — verify retry is skipped
 - [ ] `uv run bookcompanion summarize 2 <section_id> --skip-eval` — verify eval and retry both skipped
 
-**21f. Quality warnings check**
+**21g. Quality warnings check**
 
 - [ ] After summarization, check: `uv run bookcompanion summary show <summary_id>` — verify quality_warnings displayed if present
 
-**21g. Final full test run**
+**21h. Final full test run**
 
 - [ ] `cd backend && uv run python -m pytest tests/ -v --tb=short`
 - [ ] `cd backend && uv run ruff check . && uv run ruff format --check .`
