@@ -201,7 +201,7 @@ class BookSection(Base):
         nullable=True,
     )
     section_type: Mapped[str] = mapped_column(
-        String(50), default="chapter", server_default="chapter"
+        String(50), default="chapter", server_default="chapter", index=True
     )
     derived_from: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -250,3 +250,93 @@ async def test_image_refs_uses_image_count_param(eval_service):
         source, summary_with_visual, 3, 1, 1, "run-1"
     )
     assert result2["passed"] is True
+
+
+@pytest.mark.asyncio
+async def test_image_refs_word_boundary_matching(eval_service):
+    """Visual keywords should match on word boundaries, including plurals."""
+    source = "See ![img](x.png) here"
+    # "visuals" should match (plural of "visual")
+    result = await eval_service._check_image_refs_preserved(
+        source, "The section includes key visuals.", 0, 1, 1, "run-1"
+    )
+    assert result["passed"] is True
+
+    # "figures" should match
+    result2 = await eval_service._check_image_refs_preserved(
+        source, "Several figures are discussed.", 0, 1, 1, "run-1"
+    )
+    assert result2["passed"] is True
+
+
+@pytest.mark.asyncio
+async def test_eval_run_id_generated_when_none(eval_service):
+    """evaluate_summary generates eval_run_id when not provided."""
+    mock_response = MagicMock()
+    mock_response.content = (
+        '{"passed": true, "reasoning": "ok", "likely_cause": null, "suggestion": null}'
+    )
+    mock_response.model = "test-model"
+    mock_response.input_tokens = 10
+    mock_response.output_tokens = 5
+    mock_response.latency_ms = 100
+    eval_service.llm.generate = AsyncMock(return_value=mock_response)
+
+    result = await eval_service.evaluate_summary(
+        section_id=1,
+        source_text="source",
+        summary_text="## Key Concepts\n\n**A**: desc\n**B**: desc\n**C**: desc",
+        preset_name="practitioner_bullets",
+    )
+    assert "eval_run_id" in result
+    assert result["eval_run_id"] is not None
+    assert len(result["eval_run_id"]) == 36  # UUID format
+
+
+@pytest.mark.asyncio
+async def test_reference_section_skips_covers_examples(eval_service):
+    """Glossary section type should skip covers_examples assertion."""
+    mock_response = MagicMock()
+    mock_response.content = (
+        '{"passed": true, "reasoning": "ok", "likely_cause": null, "suggestion": null}'
+    )
+    mock_response.model = "test-model"
+    mock_response.input_tokens = 10
+    mock_response.output_tokens = 5
+    mock_response.latency_ms = 100
+    eval_service.llm.generate = AsyncMock(return_value=mock_response)
+
+    result = await eval_service.evaluate_summary(
+        section_id=1,
+        source_text="Glossary content" * 100,
+        summary_text="## Key Concepts\n\n**A**: x\n**B**: y\n**C**: z\n" + "summary " * 50,
+        section_type="glossary",
+    )
+    assertions = result["assertions"]
+    # covers_examples should be skipped for glossary
+    assert assertions["covers_examples"].get("skipped") is True
+
+
+@pytest.mark.asyncio
+async def test_book_level_eval_skips_correct_assertions(eval_service):
+    """Book-level eval should skip image_refs_preserved and cross_summary_consistency."""
+    mock_response = MagicMock()
+    mock_response.content = (
+        '{"passed": true, "reasoning": "ok", "likely_cause": null, "suggestion": null}'
+    )
+    mock_response.model = "test-model"
+    mock_response.input_tokens = 10
+    mock_response.output_tokens = 5
+    mock_response.latency_ms = 100
+    eval_service.llm.generate = AsyncMock(return_value=mock_response)
+
+    result = await eval_service.evaluate_summary(
+        section_id=0,
+        source_text="book content" * 100,
+        summary_text="## Key Concepts\n\n**A**: x\n**B**: y\n**C**: z\n" + "summary " * 50,
+        eval_scope="book",
+        section_count=10,
+    )
+    assertions = result["assertions"]
+    assert assertions["image_refs_preserved"].get("skipped") is True
+    assert assertions["cross_summary_consistency"].get("skipped") is True

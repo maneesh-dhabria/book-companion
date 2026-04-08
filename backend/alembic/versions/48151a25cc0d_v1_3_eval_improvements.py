@@ -24,6 +24,9 @@ def upgrade() -> None:
         "book_sections",
         sa.Column("section_type", sa.String(length=50), server_default="chapter", nullable=False),
     )
+    op.create_index(
+        op.f("ix_book_sections_section_type"), "book_sections", ["section_type"], unique=False
+    )
     op.add_column(
         "eval_traces", sa.Column("is_stale", sa.Boolean(), server_default="false", nullable=False)
     )
@@ -102,5 +105,6 @@ def downgrade() -> None:
     op.drop_column("eval_traces", "likely_cause")
     op.drop_column("eval_traces", "eval_run_id")
     op.drop_column("eval_traces", "is_stale")
+    op.drop_index(op.f("ix_book_sections_section_type"), table_name="book_sections")
     op.drop_column("book_sections", "section_type")
     # ### end Alembic commands ###

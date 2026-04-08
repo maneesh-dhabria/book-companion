@@ -652,7 +652,7 @@ class EvalService:
                 "reasoning": reasoning,
             }
 
-        # Check summary for visual reference keywords
+        # Check summary for visual reference keywords (word-boundary matching)
         visual_keywords = [
             "figure",
             "diagram",
@@ -665,7 +665,9 @@ class EvalService:
             "visual",
         ]
         summary_lower = summary_text.lower()
-        found_keywords = [kw for kw in visual_keywords if kw in summary_lower]
+        found_keywords = [
+            kw for kw in visual_keywords if re.search(r"\b" + kw + r"s?\b", summary_lower)
+        ]
         passed = len(found_keywords) > 0
 
         if passed:
