@@ -1,5 +1,17 @@
 # Session Log
 
+## 2026-04-08 — V1.3 eval system improvements: full implementation + code review
+
+- Implemented all 10 spec changes for V1.3 eval overhaul: 3 deterministic assertions (reasonable_length, has_key_concepts, image_refs_preserved), preset-aware skipping, section-type detection, cumulative context for faithfulness eval, paraphrased quote detection, book-level eval, cascade-safe traces (is_stale + SET NULL FK), diagnostic fields (likely_cause/suggestion), and auto-retry on critical/important failures
+- Used git worktree (`.worktrees/v1.3-eval`) for isolated development — prevented main branch contamination during a 41-file, 2400-line change
+- Parallelized independent tasks with 3 background subagents (preset skipping, section type detection, diagnostic prompts) while implementing cumulative context and quote detection in foreground — cut wall-clock time significantly
+- Code review caught a critical bug: `section_id=0` for book-level eval caused FK violations silently swallowed by exception handler — book-level eval never actually ran. Fix: pass `None` instead, update signature to `int | None`
+- Code review caught section_type REPL persistence gap: the `type` command modified in-memory state but the save-to-DB path only handled deletes and creates, not updates to existing sections — changes were silently lost
+- Word-boundary regex matters for keyword matching: substring check for "visual" in "No visuals" was a false positive; switched to `\bkeywords?\b` pattern
+- Spec mentioned `ix_book_sections_section_type` index but Alembic autogenerate missed it because the column lacked `index=True` — always cross-check spec's index requirements against the generated migration
+- Gotcha: when adding a new key (`"retried"`) to `summarize_book()`'s return dict, existing tests that assert exact dict equality break — found and fixed in `test_summarizer.py`
+- Final state: 312 tests passing (58 new), 3 commits on `feature/v1.3-eval-improvements` branch
+
 ## 2026-04-07 — V1.3 eval improvements implementation plan
 
 - Built 21-task implementation plan for V1.3 eval system overhaul covering 10 spec changes: 3 deterministic assertion conversions, preset-aware skipping, cumulative context for faithfulness eval, section-type detection, diagnostic fields, cascade-safe traces, book-level eval, paraphrased quote detection, and auto-retry on eval failure
