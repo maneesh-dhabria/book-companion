@@ -161,7 +161,7 @@ class EvalService:
 
     async def evaluate_summary(
         self,
-        section_id: int,
+        section_id: int | None,
         source_text: str,
         summary_text: str,
         image_count: int = 0,
@@ -712,18 +712,6 @@ class EvalService:
             "passed": passed,
             "reasoning": reasoning,
         }
-
-    def _should_auto_retry(
-        self, results: dict[str, dict], retry_count: int, max_retries: int
-    ) -> bool:
-        """Return True if any critical assertion failed and retries remain."""
-        if retry_count >= max_retries:
-            return False
-        for name, result in results.items():
-            meta = ASSERTION_REGISTRY.get(name, {})
-            if meta.get("category") == "critical" and not result.get("passed"):
-                return True
-        return False
 
     @staticmethod
     def _should_retry(eval_results: dict) -> bool:

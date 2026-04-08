@@ -328,9 +328,19 @@ async def add(
                                         repo = SectionRepository(svc["session"])
                                         await repo.delete_by_ids(removed_ids)
 
-                                    # Create new sections (merged/split - id is None)
+                                    # Update existing sections (title, order, section_type)
                                     from app.db.models import BookSection
 
+                                    existing_map = {s.id: s for s in (book.sections or [])}
+                                    for item in final_sections:
+                                        if item.id is not None and item.id in existing_map:
+                                            db_section = existing_map[item.id]
+                                            db_section.title = item.title
+                                            db_section.order_index = item.index - 1
+                                            db_section.depth = item.depth
+                                            db_section.section_type = item.section_type
+
+                                    # Create new sections (merged/split - id is None)
                                     for item in final_sections:
                                         if item.id is None:
                                             new_section = BookSection(
@@ -341,6 +351,7 @@ async def add(
                                                 content_md=item.content,
                                                 content_token_count=item.char_count // 4,
                                                 derived_from=item.derived_from,
+                                                section_type=item.section_type,
                                             )
                                             svc["session"].add(new_section)
 

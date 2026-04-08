@@ -63,20 +63,16 @@ async def test_eval_result_parsing():
 
 @pytest.mark.asyncio
 async def test_critical_failure_triggers_retry():
-    mock_llm = AsyncMock()
-    mock_llm.generate.return_value = LLMResponse(
-        content=json.dumps({"passed": False, "reasoning": "Hallucinated fact found."}),
-        model="sonnet",
-        latency_ms=200,
-    )
-    mock_session = AsyncMock()
-    mock_config = MagicMock()
-    mock_config.llm.max_retries = 2
-
-    service = EvalService(db=mock_session, llm=mock_llm, config=mock_config)
-    result = service._should_auto_retry(
-        {"no_hallucinated_facts": {"passed": False}},
-        retry_count=0,
-        max_retries=2,
+    """Test that critical assertion failures trigger retry via _should_retry."""
+    result = EvalService._should_retry(
+        {
+            "assertions": {
+                "no_hallucinated_facts": {
+                    "category": "critical",
+                    "passed": False,
+                    "reasoning": "Hallucinated fact found.",
+                },
+            }
+        }
     )
     assert result is True  # Should retry on critical failure

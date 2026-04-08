@@ -390,7 +390,7 @@ class SummarizerService:
                     f"## {s['title']}\n{s['summary']}" for s in section_data
                 )
                 eval_results = await eval_service.evaluate_summary(
-                    section_id=0,  # book-level, no specific section
+                    section_id=None,  # book-level, no specific section
                     source_text=source_for_eval,
                     summary_text=summary_text,
                     facets_used=facets,
@@ -431,7 +431,7 @@ class SummarizerService:
 
                     # Re-eval retry
                     retry_eval = await eval_service.evaluate_summary(
-                        section_id=0,
+                        section_id=None,
                         source_text=source_for_eval,
                         summary_text=retry_text,
                         facets_used=facets,

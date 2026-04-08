@@ -331,7 +331,7 @@ async def test_book_level_eval_skips_correct_assertions(eval_service):
     eval_service.llm.generate = AsyncMock(return_value=mock_response)
 
     result = await eval_service.evaluate_summary(
-        section_id=0,
+        section_id=None,
         source_text="book content" * 100,
         summary_text="## Key Concepts\n\n**A**: x\n**B**: y\n**C**: z\n" + "summary " * 50,
         eval_scope="book",
