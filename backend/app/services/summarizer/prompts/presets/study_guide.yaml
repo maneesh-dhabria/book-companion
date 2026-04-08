@@ -6,3 +6,4 @@ facets:
   audience: practitioner
   compression: standard
   content_focus: full_coverage
+skip_assertions: []

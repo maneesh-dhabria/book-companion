@@ -12,10 +12,32 @@ from app.services.parser.base import BookParser, ParsedBook, ParsedImage, Parsed
 
 logger = structlog.get_logger()
 
+SECTION_TYPE_PATTERNS = {
+    "glossary": re.compile(r"\bglossary\b", re.IGNORECASE),
+    "notes": re.compile(r"\b(end\s*notes?|chapter\s*notes?|notes?)\b", re.IGNORECASE),
+    "appendix": re.compile(r"\bappendix\b", re.IGNORECASE),
+    "bibliography": re.compile(r"\b(bibliography|works?\s+cited|references)\b", re.IGNORECASE),
+    "index": re.compile(r"\bindex\b", re.IGNORECASE),
+    "about_author": re.compile(r"\babout\s+the\s+author\b", re.IGNORECASE),
+    "foreword": re.compile(r"\bforeword\b", re.IGNORECASE),
+    "preface": re.compile(r"\bpreface\b", re.IGNORECASE),
+    "introduction": re.compile(r"\bintroduction\b", re.IGNORECASE),
+    "epilogue": re.compile(r"\bepilogue\b", re.IGNORECASE),
+    "conclusion": re.compile(r"\bconclusion\b", re.IGNORECASE),
+}
+
 
 class EPUBParser(BookParser):
     def supports_format(self, file_format: str) -> bool:
         return file_format == "epub"
+
+    @staticmethod
+    def _detect_section_type(title: str) -> str:
+        """Detect section type from title using pattern matching."""
+        for section_type, pattern in SECTION_TYPE_PATTERNS.items():
+            if pattern.search(title):
+                return section_type
+        return "chapter"
 
     async def parse(self, file_path: Path) -> ParsedBook:
         book = epub.read_epub(str(file_path))
@@ -280,14 +302,14 @@ class EPUBParser(BookParser):
                     name = item.get_name()
                     content = content_map.get(name, "")
                     if content.strip():
+                        spine_title = name.split("/")[-1].replace(".xhtml", "").replace(".html", "")
                         sections.append(
                             ParsedSection(
-                                title=name.split("/")[-1]
-                                .replace(".xhtml", "")
-                                .replace(".html", ""),
+                                title=spine_title,
                                 content_md=content,
                                 depth=0,
                                 order_index=len(sections),
+                                section_type=self._detect_section_type(spine_title),
                             )
                         )
 
@@ -342,12 +364,14 @@ class EPUBParser(BookParser):
             if short_name in content:
                 section_images.append(img)
 
+        effective_title = title or f"Section {order_counter[0]}"
         sections.append(
             ParsedSection(
-                title=title or f"Section {order_counter[0]}",
+                title=effective_title,
                 content_md=content,
                 depth=depth,
                 order_index=order_counter[0],
+                section_type=self._detect_section_type(effective_title),
                 images=section_images,
             )
         )

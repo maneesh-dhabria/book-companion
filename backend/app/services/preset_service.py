@@ -15,6 +15,25 @@ PROMPTS_DIR = Path(__file__).parent / "summarizer" / "prompts"
 PRESETS_DIR = PROMPTS_DIR / "presets"
 FRAGMENTS_DIR = PROMPTS_DIR / "fragments"
 
+KNOWN_ASSERTIONS = {
+    "no_hallucinated_facts",
+    "no_contradictions",
+    "accurate_quotes",
+    "cross_summary_consistency",
+    "covers_main_argument",
+    "covers_key_concepts",
+    "covers_frameworks",
+    "covers_examples",
+    "standalone_readable",
+    "logical_flow",
+    "no_dangling_references",
+    "not_generic",
+    "preserves_author_terminology",
+    "has_key_concepts",
+    "reasonable_length",
+    "image_refs_preserved",
+}
+
 FACET_DIMENSIONS = {
     "style": [
         "bullet_points",
@@ -37,6 +56,11 @@ class Preset:
     system: bool
     facets: dict[str, str]
     file_path: Path
+    skip_assertions: list[str] = None
+
+    def __post_init__(self):
+        if self.skip_assertions is None:
+            self.skip_assertions = []
 
 
 class PresetService:
@@ -130,10 +154,32 @@ class PresetService:
             data = yaml.safe_load(f)
         if not data or "facets" not in data:
             raise PresetError(f"Invalid preset file: {path}")
+
+        skip_assertions = data.get("skip_assertions", [])
+        if not isinstance(skip_assertions, list):
+            skip_assertions = []
+
+        # Validate assertion names
+        unknown = set(skip_assertions) - KNOWN_ASSERTIONS
+        if unknown:
+            logger.warning(
+                "unknown_skip_assertions",
+                preset=path.stem,
+                unknown=sorted(unknown),
+            )
+
+        if len(skip_assertions) > 12:
+            logger.warning(
+                "too_many_skip_assertions",
+                preset=path.stem,
+                count=len(skip_assertions),
+            )
+
         return Preset(
             name=data.get("name", path.stem),
             description=data.get("description", ""),
             system=data.get("system", False),
             facets=data["facets"],
             file_path=path,
+            skip_assertions=skip_assertions,
         )

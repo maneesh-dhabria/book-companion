@@ -27,6 +27,7 @@ async def summarize(
         False, "--force", help="Re-summarize all sections, ignoring existing."
     ),
     skip_eval: bool = typer.Option(False, "--skip-eval", help="Skip eval assertions."),
+    no_retry: bool = typer.Option(False, "--no-retry", help="Skip auto-retry on eval failure."),
     skip_images: bool = typer.Option(False, "--skip-images", help="Skip image captioning."),
 ):
     """Generate summaries using faceted presets."""
@@ -96,20 +97,60 @@ async def summarize(
             console.print(f"  Done ({elapsed}s, {comp:.1f}%)")
 
             if not skip_eval and svc.get("eval"):
+                eval_svc = svc["eval"]
                 console.print("Running eval assertions...")
-                await svc["eval"].evaluate_summary(
+                section_type = getattr(section, "section_type", "chapter")
+                eval_results = await eval_svc.evaluate_summary(
                     section_id=section_id,
                     source_text=section.content_md or "",
                     summary_text=summary.summary_md,
                     facets_used=facets,
                     summary_id=summary.id,
+                    preset_name=resolved_preset,
+                    section_type=section_type,
                 )
+                from app.services.summarizer.evaluator import EvalService
+
+                summary.eval_json = EvalService.compute_eval_json(eval_results)
+
+                # Auto-retry
+                if not no_retry and EvalService._should_retry(eval_results):
+                    console.print("  Eval found issues, retrying summary...")
+                    fix_prompt = EvalService._build_fix_prompt(eval_results)
+                    retry_summary = await summarizer._summarize_single_section(
+                        book_id=book_id,
+                        section=section,
+                        facets=facets,
+                        preset_name=resolved_preset,
+                        model=model,
+                        cumulative_context="",
+                        fix_instructions=fix_prompt,
+                    )
+                    retry_summary.retry_of_id = summary.id
+                    await summarizer._section_repo.update_default_summary(
+                        section_id, retry_summary.id
+                    )
+                    # Re-eval
+                    retry_eval = await eval_svc.evaluate_summary(
+                        section_id=section_id,
+                        source_text=section.content_md or "",
+                        summary_text=retry_summary.summary_md,
+                        facets_used=facets,
+                        summary_id=retry_summary.id,
+                        preset_name=resolved_preset,
+                        section_type=section_type,
+                    )
+                    retry_summary.eval_json = EvalService.compute_eval_json(retry_eval)
+                    console.print("  Retry complete.")
+
+                await svc["session"].commit()
                 print_success("Eval complete.")
             return
 
         # Full book mode
         console.print(f'Summarizing {len(sections)} sections with preset "{preset_label}"...')
 
+        eval_svc = svc.get("eval") if not skip_eval else None
         stats = await summarizer.summarize_book(
             book_id=book_id,
             preset_name=resolved_preset,
@@ -117,6 +158,8 @@ async def summarize(
             force=force,
             model=model,
             skip_eval=skip_eval,
+            no_retry=no_retry,
+            eval_service=eval_svc,
             on_section_complete=lambda i, total, title, elapsed, comp: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} done  ({elapsed}s, {comp:.1f}%)"
             ),
@@ -126,12 +169,23 @@ async def summarize(
             on_section_fail=lambda i, total, title, err: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} FAILED ({err})"
             ),
+            on_section_retry=lambda i, total, title: console.print(
+                f"  [{i}/{total}] {title[:35]:<35} retried (eval issues found)"
+            ),
         )
 
         # Book-level summary
         console.print("Generating book-level summary...     ", end="")
         try:
-            await summarizer._generate_book_summary(book_id, facets, resolved_preset, model)
+            await summarizer._generate_book_summary(
+                book_id,
+                facets,
+                resolved_preset,
+                model,
+                eval_service=eval_svc,
+                skip_eval=skip_eval,
+                no_retry=no_retry,
+            )
             await svc["session"].commit()
             console.print("done")
         except Exception as e:
@@ -141,11 +195,14 @@ async def summarize(
         completed = stats.get("completed", 0)
         skipped = stats.get("skipped", 0)
         failed = stats.get("failed", [])
+        retried = stats.get("retried", [])
         parts = [f"{completed} section summaries"]
         if not failed:
             parts.append("1 book summary generated")
         if skipped:
             parts.append(f"{skipped} skipped")
+        if retried:
+            parts.append(f"{len(retried)} retried")
         if failed:
             parts.append(f"{len(failed)} failed")
         print_success(f"Done. {'. '.join(parts)}.")

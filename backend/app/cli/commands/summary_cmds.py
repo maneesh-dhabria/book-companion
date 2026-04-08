@@ -145,9 +145,13 @@ async def summary_list(
             table.add_column("Chars")
             table.add_column("Status")
             table.add_column("Results")
+            table.add_column("Lineage")
             table.add_column("Created")
             for s in summaries:
                 default_marker = " *" if section and section.default_summary_id == s.id else ""
+                lineage = ""
+                if hasattr(s, "retry_of_id") and s.retry_of_id:
+                    lineage = f"(retry of #{s.retry_of_id})"
                 table.add_row(
                     str(s.id) + default_marker,
                     s.preset_name or "-",
@@ -155,6 +159,7 @@ async def summary_list(
                     f"{s.summary_char_count:,}",
                     eval_status(s.eval_json),
                     eval_results(s.eval_json),
+                    lineage,
                     str(s.created_at.strftime("%Y-%m-%d %H:%M")),
                 )
             console.print(table)
@@ -219,7 +224,24 @@ async def summary_show(
         console.print(f"Input chars: {summary.input_char_count:,}")
         console.print(f"Summary chars: {summary.summary_char_count:,}")
         console.print(f"Eval: {eval_status(summary.eval_json)}")
+        if hasattr(summary, "retry_of_id") and summary.retry_of_id:
+            console.print(f"Retry of: #{summary.retry_of_id}")
         console.print(f"Created: {summary.created_at}")
+
+        # Display quality warnings
+        if summary.quality_warnings and isinstance(summary.quality_warnings, dict):
+            warnings = summary.quality_warnings
+            console.print()
+            console.print("[yellow]Quality Warnings:[/yellow]")
+            if "paraphrased_quotes" in warnings:
+                for w in warnings["paraphrased_quotes"]:
+                    quote_preview = w.get("quote", "")[:50]
+                    similarity = w.get("similarity", 0)
+                    console.print(
+                        f'  - Paraphrased quote detected: "{quote_preview}..." '
+                        f"({int(similarity * 100)}% match)"
+                    )
+
         console.print()
         print_markdown(summary.summary_md, use_pager=True)
 

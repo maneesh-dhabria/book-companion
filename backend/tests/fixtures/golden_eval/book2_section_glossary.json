@@ -1,0 +1,13 @@
+{
+  "source_text": "Glossary\n\nBarriers to Entry: Obstacles that make it difficult for new companies to enter an industry.\nCompetitive Advantage: A condition that puts a company in a favorable position.\nDifferentiation: Strategy of making products different from competitors.\nFive Forces: Porter's framework for industry analysis.\nOperational Effectiveness: Performing similar activities better than rivals.\nPositioning: Deliberately choosing a different set of activities to deliver unique value.\nStrategic Fit: When activities complement and reinforce each other.\nSubstitutes: Alternative products that can replace existing ones.\nSupply Chain: Network of organizations involved in producing goods.\nTrade-offs: Incompatibilities between competing strategic positions.\nValue Chain: Primary and support activities that create value.\nValue Proposition: The set of benefits a company offers to customers.",
+  "summary_text": "## Glossary Terms\n\n**Barriers to Entry**: Obstacles preventing new market entrants.\n**Competitive Advantage**: Favorable market position.\n**Differentiation**: Making products distinct from competitors.\n**Five Forces**: Porter's industry analysis framework.\n**Operational Effectiveness**: Performing activities better than rivals.\n**Positioning**: Choosing different activities for unique value.\n**Strategic Fit**: Mutually reinforcing activities.\n**Trade-offs**: Incompatibilities between positions.\n**Value Chain**: Activities creating value.",
+  "cumulative_context": null,
+  "facets_used": {"compression": "standard", "style": "bullet_points", "audience": "practitioner", "content_focus": "frameworks_examples"},
+  "section_type": "glossary",
+  "preset_name": "practitioner_bullets",
+  "expected_deterministic_results": {
+    "reasonable_length": true,
+    "has_key_concepts": true,
+    "image_refs_preserved": true
+  }
+}

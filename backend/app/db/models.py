@@ -91,6 +91,22 @@ class SummaryContentType(str, enum.Enum):
     ANNOTATION = "annotation"  # Reserved for Phase 2
 
 
+class SectionType(str, enum.Enum):
+    CHAPTER = "chapter"
+    FOREWORD = "foreword"
+    PREFACE = "preface"
+    INTRODUCTION = "introduction"
+    GLOSSARY = "glossary"
+    NOTES = "notes"
+    APPENDIX = "appendix"
+    BIBLIOGRAPHY = "bibliography"
+    INDEX = "index"
+    ABOUT_AUTHOR = "about_author"
+    EPILOGUE = "epilogue"
+    CONCLUSION = "conclusion"
+    OTHER = "other"
+
+
 # --- Models ---
 
 
@@ -130,7 +146,8 @@ class Book(Base):
 
     authors: Mapped[list["Author"]] = relationship(secondary="book_authors", back_populates="books")
     sections: Mapped[list["BookSection"]] = relationship(
-        back_populates="book", cascade="all, delete-orphan",
+        back_populates="book",
+        cascade="all, delete-orphan",
         order_by="BookSection.order_index",
     )
     processing_jobs: Mapped[list["ProcessingJob"]] = relationship(
@@ -182,6 +199,9 @@ class BookSection(Base):
         BigInteger,
         ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
+    )
+    section_type: Mapped[str] = mapped_column(
+        String(50), default="chapter", server_default="chapter", index=True
     )
     derived_from: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -280,10 +300,10 @@ class EvalTrace(Base):
     __tablename__ = "eval_traces"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    section_id: Mapped[int] = mapped_column(
+    section_id: Mapped[int | None] = mapped_column(
         BigInteger,
-        ForeignKey("book_sections.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("book_sections.id", ondelete="SET NULL"),
+        nullable=True,
     )
     summary_id: Mapped[int | None] = mapped_column(
         BigInteger,
@@ -293,7 +313,7 @@ class EvalTrace(Base):
     assertion_name: Mapped[str] = mapped_column(String(100), nullable=False)
     assertion_category: Mapped[str] = mapped_column(String(50), nullable=False)
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    prompt_sent: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_sent: Mapped[str | None] = mapped_column(Text, nullable=True)
     prompt_version: Mapped[str] = mapped_column(String(50), nullable=False)
     llm_response: Mapped[str] = mapped_column(Text, nullable=False)
     reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -301,11 +321,16 @@ class EvalTrace(Base):
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_stale: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    eval_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    likely_cause: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    suggestion: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
         Index("ix_eval_traces_section", "section_id"),
         Index("ix_eval_traces_assertion", "assertion_name", "passed"),
+        Index("ix_eval_traces_is_stale", "is_stale", postgresql_where="is_stale = FALSE"),
     )
 
 
@@ -331,6 +356,10 @@ class Summary(Base):
     summary_char_count: Mapped[int] = mapped_column(Integer, nullable=False)
     summary_md: Mapped[str] = mapped_column(Text, nullable=False)
     eval_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    quality_warnings: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    retry_of_id: Mapped[int | None] = mapped_column(
+        ForeignKey("summaries.id", ondelete="SET NULL"), nullable=True
+    )
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

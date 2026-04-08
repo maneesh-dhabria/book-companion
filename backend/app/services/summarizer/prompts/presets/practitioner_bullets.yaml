@@ -6,3 +6,5 @@ facets:
   audience: practitioner
   compression: standard
   content_focus: frameworks_examples
+skip_assertions:
+  - has_key_concepts

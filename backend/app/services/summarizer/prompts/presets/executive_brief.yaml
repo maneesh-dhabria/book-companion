@@ -6,3 +6,5 @@ facets:
   audience: executive
   compression: brief
   content_focus: key_concepts
+skip_assertions:
+  - has_key_concepts

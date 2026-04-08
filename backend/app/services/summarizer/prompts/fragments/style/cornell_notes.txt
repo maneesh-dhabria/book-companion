@@ -1,2 +1,4 @@
 ## Output Format
 Structure the summary using the Cornell Notes method: a left column with cue questions or keywords and a right column with detailed notes answering each cue. End with a "Summary" section (2-3 sentences) synthesizing the main idea.
+
+Include a "## Key Concepts" section listing the most important concepts with brief definitions.

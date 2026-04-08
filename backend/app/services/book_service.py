@@ -170,6 +170,7 @@ class BookService:
                 depth=ps.depth,
                 content_md=ps.content_md,
                 content_token_count=len(ps.content_md) // 4,
+                section_type=ps.section_type,
             )
             self.db.add(section)
             await self.db.flush()
@@ -228,6 +229,7 @@ class BookService:
                 section.depth = ps.depth
                 section.content_md = ps.content_md
                 section.content_token_count = len(ps.content_md) // 4
+                section.section_type = ps.section_type
             else:
                 # New section
                 section = BookSection(
@@ -237,6 +239,7 @@ class BookService:
                     depth=ps.depth,
                     content_md=ps.content_md,
                     content_token_count=len(ps.content_md) // 4,
+                    section_type=ps.section_type,
                 )
                 self.db.add(section)
             await self.db.flush()
@@ -256,8 +259,18 @@ class BookService:
                 self.db.add(image)
 
         # Remove sections that no longer exist in the new parse
+        # Mark eval traces as stale BEFORE deleting sections (cascade-safe)
+        from sqlalchemy import update as sa_update
+
+        from app.db.models import EvalTrace
+
         for order_idx, section in old_sections.items():
             if order_idx not in new_order_indices:
+                await self.db.execute(
+                    sa_update(EvalTrace)
+                    .where(EvalTrace.section_id == section.id)
+                    .values(is_stale=True)
+                )
                 await self.db.execute(delete(BookSection).where(BookSection.id == section.id))
 
         await self.db.commit()

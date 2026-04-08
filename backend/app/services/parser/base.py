@@ -21,6 +21,7 @@ class ParsedSection:
     content_md: str
     depth: int
     order_index: int
+    section_type: str = "chapter"
     images: list[ParsedImage] = field(default_factory=list)
 
 

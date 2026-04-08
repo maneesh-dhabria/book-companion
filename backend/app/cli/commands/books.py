@@ -39,7 +39,7 @@ def _run_edit_repl(edit_service):
     console.print(
         "\n[bold]Section Editor[/bold] — commands: "
         'show, merge 1,2 ["title"], split <n> --at-heading, '
-        "delete 1,2, move <n> --after <m>, undo, done"
+        "delete 1,2, move <n> --after <m>, type <n> <type>, undo, done"
     )
 
     while True:
@@ -114,6 +114,14 @@ def _run_edit_repl(edit_service):
                 print_error(str(e))
             continue
 
+        if cmd.action == "type":
+            try:
+                edit_service.set_type(cmd.indices[0], cmd.title)
+                console.print(f"Section {cmd.indices[0]} type set to '{cmd.title}'.")
+            except SectionEditError as e:
+                print_error(str(e))
+            continue
+
         print_error(f"Unknown command: {cmd.action}")
 
 
@@ -140,6 +148,47 @@ async def add(
         if not book_service:
             print_error("Book service not available. Service layer may not be implemented yet.")
             raise typer.Exit(1)
+
+        # Re-import confirmation: warn about eval traces and summaries
+        if force:
+            try:
+                import hashlib
+
+                file_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
+                existing_book = await book_service.book_repo.get_by_hash(file_hash)
+                if existing_book:
+                    # Reload with sections
+                    existing_book = await book_service.get_book(existing_book.id)
+                    section_ids = [s.id for s in (existing_book.sections or [])]
+                    if section_ids:
+                        from app.db.repositories.eval_repo import EvalTraceRepository
+
+                        eval_repo = EvalTraceRepository(svc["session"])
+                        trace_count = await eval_repo.count_by_section_ids(section_ids)
+
+                        from sqlalchemy import func, select
+
+                        from app.db.models import Summary
+
+                        result = await svc["session"].execute(
+                            select(func.count())
+                            .select_from(Summary)
+                            .where(Summary.book_id == existing_book.id)
+                        )
+                        summary_count = result.scalar() or 0
+
+                        if trace_count > 0 or summary_count > 0:
+                            console.print(
+                                f"\n[yellow]This book has {trace_count} eval traces "
+                                f"and {summary_count} summaries.[/yellow]"
+                            )
+                            console.print("Re-import will mark traces as stale.")
+                            if not typer.confirm("Proceed?", default=False):
+                                raise typer.Exit(0)
+            except typer.Exit:
+                raise
+            except Exception:
+                pass  # Can't check — proceed anyway
 
         console.print(f'\nParsing "{file_path.name}"...')
 
@@ -252,6 +301,7 @@ async def add(
                                         content=s.content_md or "",
                                         depth=s.depth,
                                         char_count=len(s.content_md or ""),
+                                        section_type=getattr(s, "section_type", "chapter"),
                                     )
                                     for s in (book.sections or [])
                                 ]
@@ -278,9 +328,19 @@ async def add(
                                         repo = SectionRepository(svc["session"])
                                         await repo.delete_by_ids(removed_ids)
 
-                                    # Create new sections (merged/split - id is None)
+                                    # Update existing sections (title, order, section_type)
                                     from app.db.models import BookSection
 
+                                    existing_map = {s.id: s for s in (book.sections or [])}
+                                    for item in final_sections:
+                                        if item.id is not None and item.id in existing_map:
+                                            db_section = existing_map[item.id]
+                                            db_section.title = item.title
+                                            db_section.order_index = item.index - 1
+                                            db_section.depth = item.depth
+                                            db_section.section_type = item.section_type
+
+                                    # Create new sections (merged/split - id is None)
                                     for item in final_sections:
                                         if item.id is None:
                                             new_section = BookSection(
@@ -291,6 +351,7 @@ async def add(
                                                 content_md=item.content,
                                                 content_token_count=item.char_count // 4,
                                                 derived_from=item.derived_from,
+                                                section_type=item.section_type,
                                             )
                                             svc["session"].add(new_section)
 

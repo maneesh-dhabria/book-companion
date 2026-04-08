@@ -1,5 +1,12 @@
 You are evaluating the faithfulness of a book summary.
+{% if cumulative_context %}
 
+## Prior Section Summaries (for context)
+The following are summaries of preceding sections in this book. Statements in the current summary that reference concepts from these earlier sections should NOT be treated as hallucinations — they are cross-chapter references.
+
+{{ cumulative_context }}
+
+{% endif %}
 ## Source Text
 {{ source_text }}
 
@@ -11,9 +18,15 @@ You are evaluating the faithfulness of a book summary.
 {% if assertion_name == "no_hallucinated_facts" %}
 Carefully compare the summary against the source text. Identify any claims, facts, statistics, or statements in the summary that are NOT supported by the source text.
 
+Distinguish between:
+- **Hard hallucinations**: Claims that directly contradict the source or introduce entirely fabricated information. These are FAILURES.
+- **Soft hallucinations**: Reasonable inferences or cross-chapter references that go slightly beyond the literal source text but are consistent with it.{% if cumulative_context %} Statements referencing concepts from prior sections (shown above) are soft hallucinations at most.{% endif %}
+
+Only FAIL for hard hallucinations. Soft hallucinations should be noted in reasoning but should PASS.
+
 If the summary is faithful (all claims supported by source): respond with {"passed": true, "reasoning": "All claims in the summary are supported by the source text."}
 
-If the summary contains unsupported claims: respond with {"passed": false, "reasoning": "The summary claims [specific claim] but the source text [what source actually says].", "unsupported_claims": ["claim1", "claim2"]}
+If the summary contains hard hallucinations: respond with {"passed": false, "reasoning": "The summary claims [specific claim] but the source text [what source actually says].", "unsupported_claims": ["claim1", "claim2"]}
 
 {% elif assertion_name == "no_contradictions" %}
 Carefully compare the summary against the source text. Identify any statements in the summary that directly contradict what the source text says.
@@ -29,6 +42,15 @@ If all quotes are accurate or no quotes present: respond with {"passed": true, "
 
 If inaccurate quotes found: respond with {"passed": false, "reasoning": "The quote [X] does not match the source. Source says [Y].", "inaccurate_quotes": ["quote1"]}
 
+{% elif assertion_name == "accurate_quotes_attribution" %}
+Extract all quoted passages from the summary (text in quotation marks or blockquotes). Verify that each quote is either:
+1. A verbatim or near-verbatim quote from the source, OR
+2. A paraphrase WITHOUT quotation marks
+
+If all quotes are verbatim and paraphrases lack quotation marks: respond with {"passed": true, "reasoning": "All quoted text is verbatim from the source."}
+
+If paraphrased content is in quotation marks: respond with {"passed": false, "reasoning": "The summary places paraphrased content in quotation marks: [example]."}
+
 {% elif assertion_name == "cross_summary_consistency" %}
 You are given the original source text and a summary. Generate your own brief summary of the source, then compare it with the provided summary for significant divergences in key claims or conclusions.
 
@@ -36,5 +58,11 @@ If summaries are consistent: respond with {"passed": true, "reasoning": "Both su
 
 If significant divergences: respond with {"passed": false, "reasoning": "The summary emphasizes [X] while the source primarily argues [Y].", "divergences": ["divergence1"]}
 {% endif %}
+
+If the assertion FAILS, also provide:
+- "likely_cause": one of "content_quality", "scope_mismatch", "format_mismatch", "insufficient_data"
+- "suggestion": one-line actionable fix recommendation
+
+If the assertion PASSES, set both to null.
 
 Output as JSON.
