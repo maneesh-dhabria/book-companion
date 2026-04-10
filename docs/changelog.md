@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-04-10 — V1.3: Eval system overhaul — fewer false positives, auto-retry, diagnostics
+
+- Three eval checks (length, key concepts, image references) now run instantly without LLM calls — faster, cheaper, and 100% reproducible
+- Summarization presets can now skip eval checks that don't apply to their format — `practitioner_bullets` no longer fails on "missing Key Concepts heading"
+- Eval now receives prior section summaries as context, so cross-chapter references are no longer flagged as hallucinations
+- Summaries that fail critical or important eval checks are automatically re-summarized with targeted fix instructions; use `--no-retry` to disable
+- Each eval failure now includes a root cause classification and a one-line fix suggestion, visible in `eval <book_id> <section_id>`
+- Book-level summaries are now evaluated with the same assertion battery (adapted for book scope); view with `eval <book_id> --book-only`
+- Re-importing a book preserves eval history — traces are marked stale rather than deleted; a confirmation prompt shows trace/summary counts before proceeding
+- Sections are auto-classified by type (chapter, glossary, appendix, etc.) during parsing; glossary and reference sections get relaxed completeness thresholds
+- Section types can be corrected in the editor via `type <index> <type_name>`
+- Paraphrased quotes (text in quotation marks that doesn't match the source) are detected and shown as warnings in `summary show`
+- Prompt guidance added for quote attribution accuracy and numeric precision (percentages vs multipliers)
+
+**References:**
+- [V1.3 spec](docs/specs/2026-04-05_v1_3_eval_improvements_spec.md)
+- [V1.3 requirements](docs/requirements/2026-04-05_v1_3_eval_improvements.md)
+- [V1.3 implementation plan](docs/plans/2026-04-07_v1_3_eval_improvements_implementation.md)
+
 ## 2026-04-04 — V1.2: EPUB parsing fixes, markdown output, eval display
 
 - Fixed: EPUB books that split chapters across multiple files now parse correctly — chapter content is aggregated from all spine items between TOC entries, not just the first file. Books like "Understanding Michael Porter" went from ~100 chars per chapter to 25K-46K chars
