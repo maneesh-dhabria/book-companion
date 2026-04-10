@@ -66,6 +66,9 @@ Book Companion is CLI-only. A web interface adds visual reading, annotation, AI 
 | D12 | No token budget for AI chat context | (a) No budget, (b) Configurable token limit | The coding agent CLI manages its own context limits. The service sends book summary + relevant section summaries + thread history without artificial truncation. |
 | D13 | QR code via lightweight JS library (client-side) | (a) JS library (qrcode.vue or qr-code-styling), (b) Server-generated image | Client-side generation avoids a server roundtrip. Library must be lightweight (<5KB gzipped). |
 | D14 | Scheduled backups via APScheduler within FastAPI process | (a) APScheduler in-process, (b) External cron/systemd timer | In-process is simpler for a personal tool — no system-level configuration needed. APScheduler's `AsyncIOScheduler` integrates with the existing event loop. Backup interval configurable via Settings. If the server is down, backups simply don't run (acceptable for personal use). |
+| D15 | Design system: shadcn-vue defaults + custom accent color | (a) shadcn-vue defaults only, (b) Fully custom Tailwind theme, (c) shadcn-vue base + custom accent | Pragmatic: start with shadcn-vue's CSS variable system and Tailwind preset. Customize the primary/accent color for app identity. Extend spacing/radius only where needed. |
+| D16 | Full app theming via CSS custom properties (design tokens) | (a) Content area only, (b) Full app theming | Reader themes (Light, Sepia, Dark, OLED, Dracula, custom) affect the entire app — sidebar, top bar, dialogs, content. Implemented via CSS custom properties on `:root` so theme changes cascade everywhere by updating token values, not per-component styles. |
+| D17 | Deep health check: DB + backend + migrations + disk + backups | (a) Container status only, (b) Deep health with diagnostics | `bookcompanion health` checks container status + DB connectivity + migration status + disk space + last backup age. Outputs a diagnostic table. Ollama is not checked (embeddings degrade gracefully). |
 
 ---
 
@@ -256,7 +259,7 @@ Requirements are organized by feature area. Detailed screen-by-screen behavior i
 | FR-04 | Top bar: page title (left), search input (center-right), Upload button (right) |
 | FR-05 | `Cmd+K` / `Ctrl+K` opens command palette; `Cmd+U` / `Ctrl+U` opens upload; `Escape` closes modals |
 | FR-06 | Active nav item shows accent-colored background + icon fill |
-| FR-06a | `bookcompanion health` CLI command: checks Docker container status (db, backend), reports health, prints web interface access URL (`http://localhost:8000` or LAN URL if enabled) |
+| FR-06a | `bookcompanion health` CLI command: deep health check — Docker container status (db, backend), DB connectivity (SELECT 1), migration status (current vs latest), disk space, last backup age, LAN status. Outputs diagnostic table. Prints web interface access URL (`http://localhost:8000` or LAN URL if enabled). |
 
 ### 7.2 Library Page
 
@@ -873,6 +876,62 @@ op.bulk_insert(library_views_table, [
 
 ## 11. Frontend Design
 
+### 11.0 Design Token Architecture
+
+Reader themes (Light, Sepia, Dark, OLED, Dracula, custom) apply to the **entire app** — not just the reading area. This is achieved via CSS custom properties on `:root` that cascade to all components.
+
+**Token layers:**
+
+```
+Layer 1: Semantic tokens (used by components)
+  --color-bg-primary         → app background (shell, content, dialogs)
+  --color-bg-secondary       → sidebar, cards, elevated surfaces
+  --color-bg-tertiary        → input fields, code blocks
+  --color-text-primary       → main text
+  --color-text-secondary     → muted/helper text
+  --color-text-accent        → links, active nav, primary buttons
+  --color-border             → borders, dividers
+  --color-surface-hover      → hover states
+  --color-surface-active     → active/selected states
+
+Layer 2: Theme definitions (map semantic tokens to values)
+  [data-theme="light"]       → --color-bg-primary: #FFFFFF; ...
+  [data-theme="sepia"]       → --color-bg-primary: #FBF0D9; ...
+  [data-theme="dark"]        → --color-bg-primary: #1E1E2E; ...
+  [data-theme="oled"]        → --color-bg-primary: #000000; ...
+  [data-theme="dracula"]     → --color-bg-primary: #282A36; ...
+  [data-theme="custom"]      → values from user's ReadingPreset bg_color/text_color
+
+Layer 3: shadcn-vue integration
+  shadcn-vue's CSS variables (--background, --foreground, --primary, etc.)
+  are aliased to our semantic tokens so all shadcn components inherit
+  the active theme automatically.
+```
+
+**Implementation:** A single `data-theme` attribute on `<html>` controls the entire app appearance. Switching themes = updating one attribute + 2 CSS variables (for custom colors). All components use semantic tokens via Tailwind classes (e.g., `bg-primary`, `text-secondary`) that map to the CSS custom properties.
+
+**Tailwind config:** Extend the default shadcn-vue preset with semantic color tokens:
+
+```typescript
+// tailwind.config.ts
+export default {
+  theme: {
+    extend: {
+      colors: {
+        'bg-primary': 'var(--color-bg-primary)',
+        'bg-secondary': 'var(--color-bg-secondary)',
+        'text-primary': 'var(--color-text-primary)',
+        'text-secondary': 'var(--color-text-secondary)',
+        'accent': 'var(--color-text-accent)',
+        // ... remaining semantic tokens
+      }
+    }
+  }
+}
+```
+
+**Accent color:** A single custom accent color (configurable in Settings) provides app identity. Applied via `--color-text-accent` across all themes. Each theme definition adjusts the accent slightly for contrast (e.g., brighter on dark backgrounds).
+
 ### 11.1 Project Structure
 
 ```
@@ -1394,3 +1453,4 @@ No open questions remain.
 | 1 | Initial draft | Full spec written from requirements + research |
 | 2 | Missing: reading re-entry card (§3.3.6), annotation cross-view visibility (§3.3.5), consistency indicator detail (§3.3.7) | Added FR-27a (re-entry), FR-29a (cross-view annotations), clarified FR-29 consistency metric |
 | 3 | User feedback: no `serve` command, use docker compose + `health` command instead. Resolved all 5 open questions. Added D12-D14 decisions. | Replaced D1 with health command, updated Dockerfile CMD, added FR-06a, added APScheduler decision (D14), updated rollout Phase 1, resolved open questions, updated verification checklist |
+| 4 | Multi-role review gap: Designer and DevOps roles were skipped. Designer identified missing design token architecture and full-app theming decision. DevOps identified need for deep health check. | Added D15 (design system), D16 (full app theming via CSS tokens), D17 (deep health check). Added §11.0 Design Token Architecture with semantic token layers, theme definitions, shadcn-vue integration, and Tailwind config. Updated FR-06a with deep health details. |
