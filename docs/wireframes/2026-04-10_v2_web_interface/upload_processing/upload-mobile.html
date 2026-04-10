@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion — Upload Mobile Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mobile-tab-bar {
+      display: flex;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .mobile-tab-bar .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .mobile-tab-bar .tab.active { color: var(--accent); }
+    .mobile-tab-bar .tab .tab-icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .mobile-status-bar {
+      height: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .annotation {
+      display: inline-block;
+      background: rgba(255, 159, 10, 0.1);
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: var(--warning);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Upload / Processing -- Mobile (320px)</h2>
+<p class="subtitle">Full-width wizard with step indicator, drag-drop zone adapted for touch, and stacked form fields</p>
+
+<div style="display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
+
+<!-- ============================================ -->
+<!-- UPLOAD — Step 1: File Selection -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Step 1: File Selection</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Mobile Upload — Step 1</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <span style="font-size:14px; font-weight:600;">Upload Book</span>
+      </div>
+
+      <!-- Wizard step dots (5 steps matching desktop) -->
+      <div style="display:flex; align-items:center; padding:12px 16px; gap:4px; flex-shrink:0;">
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--accent); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">1</div>
+        <div style="flex:1; height:2px; background:var(--accent);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">2</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">3</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">4</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">5</div>
+      </div>
+      <div style="display:flex; padding:0 16px 8px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--accent); font-weight:500;">Upload</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Meta</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Structure</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Preset</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Process</div>
+      </div>
+      <div class="annotation" style="margin:0 16px 8px;">5 compact numbered dots match desktop wizard steps</div>
+
+      <!-- Upload content -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
+
+        <!-- Drag-drop zone (touch-adapted) -->
+        <div style="border:2px dashed var(--border); border-radius:12px; padding:32px 16px; text-align:center; margin-bottom:16px;">
+          <div style="font-size:32px; opacity:0.3; margin-bottom:8px;">&#x1f4e4;</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:4px;">Drop file here</div>
+          <div style="font-size:10px; color:var(--text-secondary); margin-bottom:12px;">EPUB, PDF, or MOBI</div>
+          <div style="display:inline-block; padding:8px 20px; background:var(--accent); color:white; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer;">Browse Files</div>
+        </div>
+        <div class="annotation">Large touch target for "Browse Files" button. Drop zone works with iOS/Android file pickers.</div>
+
+        <!-- Or divider -->
+        <div style="display:flex; align-items:center; gap:8px; margin:16px 0;">
+          <div style="flex:1; height:1px; background:var(--border);"></div>
+          <span style="font-size:10px; color:var(--text-secondary);">or enter URL</span>
+          <div style="flex:1; height:1px; background:var(--border);"></div>
+        </div>
+
+        <!-- URL input (stacked) -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px; font-weight:500; margin-bottom:4px;">Book URL</div>
+          <input type="text" placeholder="https://example.com/book.epub" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-primary); font-size:12px; color:var(--text-primary);">
+        </div>
+
+        <!-- File info (after selection) -->
+        <div style="padding:10px 12px; border-radius:8px; background:var(--bg-tertiary); display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px; opacity:0.5;">&#x1f4d3;</span>
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:500;">atomic_habits.epub</div>
+            <div style="font-size:10px; color:var(--text-secondary);">2.4 MB</div>
+          </div>
+          <span style="font-size:12px; color:var(--text-secondary); cursor:pointer;">&#x2715;</span>
+        </div>
+      </div>
+
+      <!-- Continue button -->
+      <div style="padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="width:100%; padding:12px 0; background:var(--accent); color:white; text-align:center; border-radius:10px; font-size:13px; font-weight:500; cursor:pointer;">Continue</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- UPLOAD — Step 2: Book Details -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Step 2: Book Details</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Mobile Upload — Step 2</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <span style="font-size:14px; font-weight:600;">Upload Book</span>
+      </div>
+
+      <!-- Wizard step dots (5 steps, step 1 complete, step 2 active) -->
+      <div style="display:flex; align-items:center; padding:12px 16px; gap:4px; flex-shrink:0;">
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--success); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">&#x2713;</div>
+        <div style="flex:1; height:2px; background:var(--accent);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--accent); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">2</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">3</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">4</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">5</div>
+      </div>
+      <div style="display:flex; padding:0 16px 8px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--success); font-weight:500;">Upload</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--accent); font-weight:500;">Meta</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Structure</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Preset</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Process</div>
+      </div>
+
+      <!-- Stacked form fields -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:500; margin-bottom:4px;">Title</div>
+          <input type="text" value="Atomic Habits" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-primary); font-size:12px; color:var(--text-primary);">
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:500; margin-bottom:4px;">Author</div>
+          <input type="text" value="James Clear" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-primary); font-size:12px; color:var(--text-primary);">
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:500; margin-bottom:4px;">Tags</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--bg-primary);">
+            <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:var(--accent); color:white;">habits</span>
+            <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:var(--accent); color:white;">productivity</span>
+            <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer;">+ Add tag</span>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; font-weight:500; margin-bottom:4px;">Description (optional)</div>
+          <textarea placeholder="Add a personal note about this book..." style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-primary); font-size:12px; color:var(--text-primary); height:80px; resize:none;"></textarea>
+        </div>
+        <div class="annotation">All fields stacked vertically for mobile. Auto-populated from EPUB metadata.</div>
+      </div>
+
+      <!-- Continue button -->
+      <div style="padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="width:100%; padding:12px 0; background:var(--accent); color:white; text-align:center; border-radius:10px; font-size:13px; font-weight:500; cursor:pointer;">Continue</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- UPLOAD — Step 3: Processing Options -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Step 4: Preset &amp; Options</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Mobile Upload — Step 4</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <span style="font-size:14px; font-weight:600;">Upload Book</span>
+      </div>
+
+      <!-- Wizard step dots (5 steps, steps 1-3 complete, step 4 active — preset/options) -->
+      <div style="display:flex; align-items:center; padding:12px 16px; gap:4px; flex-shrink:0;">
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--success); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">&#x2713;</div>
+        <div style="flex:1; height:2px; background:var(--success);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--success); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">&#x2713;</div>
+        <div style="flex:1; height:2px; background:var(--success);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--success); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">&#x2713;</div>
+        <div style="flex:1; height:2px; background:var(--accent);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--accent); color:white; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">4</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:22px; height:22px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:600;">5</div>
+      </div>
+      <div style="display:flex; padding:0 16px 8px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--success); font-weight:500;">Upload</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--success); font-weight:500;">Meta</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--success); font-weight:500;">Structure</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--accent); font-weight:500;">Preset</div>
+        <div style="flex:1; text-align:center; font-size:8px; color:var(--text-tertiary);">Process</div>
+      </div>
+
+      <!-- Processing options -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Summarization Preset</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
+          <div style="padding:10px; border-radius:8px; border:2px solid var(--accent); background:var(--selected-bg); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Standard</div>
+            <div style="font-size:9px; color:var(--text-secondary);">20% compression</div>
+          </div>
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Brief</div>
+            <div style="font-size:9px; color:var(--text-secondary);">10% compression</div>
+          </div>
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Detailed</div>
+            <div style="font-size:9px; color:var(--text-secondary);">30% compression</div>
+          </div>
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Practitioner</div>
+            <div style="font-size:9px; color:var(--text-secondary);">Bullets + actions</div>
+          </div>
+        </div>
+
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Options</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px; height:20px; border-radius:10px; background:var(--accent); position:relative; cursor:pointer;">
+              <div style="width:16px; height:16px; border-radius:50%; background:white; position:absolute; top:2px; right:2px;"></div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Auto-summarize</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Start summarization after import</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px; height:20px; border-radius:10px; background:var(--accent); position:relative; cursor:pointer;">
+              <div style="width:16px; height:16px; border-radius:50%; background:white; position:absolute; top:2px; right:2px;"></div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Run eval</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Quality check after summarization</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px; height:20px; border-radius:10px; background:var(--bg-tertiary); position:relative; cursor:pointer;">
+              <div style="width:16px; height:16px; border-radius:50%; background:white; position:absolute; top:2px; left:2px;"></div>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Extract concepts</div>
+              <div style="font-size:10px; color:var(--text-secondary);">Build concept graph from content</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import button -->
+      <div style="padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="width:100%; padding:12px 0; background:var(--accent); color:white; text-align:center; border-radius:10px; font-size:13px; font-weight:500; cursor:pointer;">Import Book</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end grid -->
+
+<!-- Design notes -->
+<div style="margin-top:2rem; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:940px; margin-left:auto; margin-right:auto;">
+  <h3 style="margin-bottom:10px;">Upload Mobile -- Adaptations</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Compact step indicator</strong>: 5 numbered dots (matching desktop: Upload, Meta, Structure, Preset, Process) with connecting lines. Slightly smaller (22px) to fit at 320px. Completed steps show green checkmark.</li>
+    <li><strong>Large drag-drop zone</strong>: Adapted for touch with prominent "Browse Files" button. Works with native iOS/Android file pickers.</li>
+    <li><strong>Stacked form fields</strong>: All form fields are full-width and vertically stacked. No side-by-side fields at mobile width.</li>
+    <li><strong>Full-width CTA</strong>: "Continue" / "Import Book" button spans full width at bottom, fixed above keyboard when input is focused.</li>
+    <li><strong>Preset selection</strong>: 2-column grid for summarization presets, same pattern as reader settings.</li>
+    <li><strong>Toggle switches</strong>: iOS-style toggle switches for boolean options (auto-summarize, eval, concepts).</li>
+  </ul>
+</div>
+
+</body>
+</html>

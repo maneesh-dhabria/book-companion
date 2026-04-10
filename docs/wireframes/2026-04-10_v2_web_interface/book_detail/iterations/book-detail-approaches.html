@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Book Detail — Rethinking the Layout</h2>
+<p class="subtitle">4 approaches prioritizing reading experience, margin annotations, and LLM interaction</p>
+
+<!-- APPROACH A -->
+<div style="margin-bottom:32px;">
+  <h3 style="margin-bottom:4px;">A: Three-Panel with Collapsible Sides</h3>
+  <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Both sidebars collapse independently. Reading mode hides both for full focus.</p>
+  <div class="mockup" style="max-width:940px;">
+    <div class="mockup-header">All panels open</div>
+    <div class="mockup-body" style="display:flex; min-height:320px; font-size:12px; padding:0;">
+      <!-- Left: TOC (collapsible) -->
+      <div style="width:220px; border-right:1px solid var(--border); flex-shrink:0; padding:12px; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <span style="font-size:11px; font-weight:600;">Navigation</span>
+          <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</span>
+        </div>
+        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:4px;">← Library · Deep Work</div>
+        <div style="margin-top:8px;">
+          <div style="padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">📖 Book Summary</div>
+          <div style="padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; opacity:0.6;">1. Introduction</div>
+          <div style="padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; opacity:0.6;">2. Deep Work Is Valuable</div>
+          <div style="padding:4px 8px; border-radius:4px; background:rgba(0,122,255,0.08); font-size:10px; font-weight:500; color:var(--accent);">3. Deep Work Is Rare</div>
+          <div style="padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; opacity:0.6;">4. Deep Work Is Meaningful</div>
+          <div style="padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; opacity:0.6;">5. Work Deeply</div>
+        </div>
+      </div>
+
+      <!-- Center: Reading area -->
+      <div style="flex:1; padding:16px 24px; overflow-y:auto;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <span style="font-size:10px; cursor:pointer; color:var(--text-secondary);">☰</span>
+          <span style="font-size:14px; font-weight:600;">3. Deep Work Is Rare</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">Original</span>
+          <span style="font-size:10px; font-weight:500; border-bottom:1px solid var(--accent); color:var(--accent);">Summary</span>
+          <span style="font-size:10px; color:var(--text-secondary);">Eval</span>
+          <span style="font-size:10px; cursor:pointer; color:var(--text-secondary);">💬</span>
+        </div>
+        <div style="font-size:12px; line-height:1.8; max-width:640px;">
+          <p>Newport identifies three trends making deep work rare: <strong>open floor plans</strong>, instant messaging culture, and social media presence expectations.</p>
+          <p style="margin-top:8px;">The <span style="background:rgba(255,200,50,0.25); padding:1px 2px; border-radius:2px; cursor:pointer;">Metric Black Hole</span>: knowledge work lacks clear productivity metrics, so workers default to visible busyness.</p>
+          <p style="margin-top:8px;"><strong>Busyness as a Proxy for Productivity</strong>: without better measures, doing lots of stuff in a visible manner becomes the default.</p>
+        </div>
+      </div>
+
+      <!-- Right: Annotations panel (collapsible) -->
+      <div style="width:240px; border-left:1px solid var(--border); flex-shrink:0; padding:12px; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <span style="font-size:11px; font-weight:600;">Annotations</span>
+          <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</span>
+        </div>
+        <!-- Annotation aligned with highlighted text -->
+        <div style="margin-top:32px; padding:8px; background:rgba(255,200,50,0.08); border-left:2px solid rgb(255,200,50); border-radius:0 6px 6px 0; font-size:10px;">
+          <div style="font-weight:500; margin-bottom:4px;">"Metric Black Hole"</div>
+          <div style="color:var(--text-secondary);">This concept connects to Ch.5's discussion of lead vs lag measures. — <em>Apr 8</em></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mockup" style="max-width:940px; margin-top:8px;">
+    <div class="mockup-header">Focus mode — both panels collapsed</div>
+    <div class="mockup-body" style="min-height:120px; font-size:12px; padding:16px 24px; display:flex; flex-direction:column; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; width:100%; max-width:700px;">
+        <span style="font-size:10px; cursor:pointer; color:var(--text-secondary);">☰</span>
+        <span style="font-size:14px; font-weight:600;">3. Deep Work Is Rare</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary);">Original</span>
+        <span style="font-size:10px; font-weight:500; color:var(--accent);">Summary</span>
+        <span style="font-size:10px; color:var(--text-secondary);">Eval</span>
+        <span style="font-size:10px; cursor:pointer; color:var(--text-secondary);">💬</span>
+      </div>
+      <div style="font-size:12px; line-height:1.8; max-width:700px; color:var(--text-secondary);">
+        Full-width reading. ☰ reopens TOC. 💬 reopens annotations. Clean and focused.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APPROACH B -->
+<div style="margin-bottom:32px;">
+  <h3 style="margin-bottom:4px;">B: Clean Reader with Slide-Out Drawers</h3>
+  <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Reading is always full-width. TOC and annotations slide in as overlays when needed, not persistent panels.</p>
+  <div class="mockup" style="max-width:940px;">
+    <div class="mockup-header">Default reading state — clean, no sidebars</div>
+    <div class="mockup-body" style="min-height:320px; font-size:12px; padding:0; display:flex; flex-direction:column;">
+      <!-- Slim header bar -->
+      <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:10px; flex-shrink:0;">
+        <span style="font-size:11px; color:var(--text-secondary); cursor:pointer;">← Deep Work</span>
+        <span style="color:var(--border);">·</span>
+        <span style="font-size:12px; font-weight:500;">3. Deep Work Is Rare</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary);">← Prev</span>
+        <span style="font-size:10px; color:var(--accent);">Next →</span>
+        <span style="color:var(--border);">|</span>
+        <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">☰ TOC</span>
+        <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">💬 3</span>
+      </div>
+      <!-- Tab bar -->
+      <div style="display:flex; padding:0 20px; border-bottom:1px solid var(--border); gap:0;">
+        <div style="padding:8px 14px; font-size:11px; color:var(--text-secondary);">Original</div>
+        <div style="padding:8px 14px; font-size:11px; font-weight:500; border-bottom:2px solid var(--accent);">Summary</div>
+        <div style="padding:8px 14px; font-size:11px; color:var(--text-secondary);">Eval</div>
+      </div>
+      <!-- Content centered -->
+      <div style="flex:1; padding:24px; display:flex; justify-content:center;">
+        <div style="max-width:700px; line-height:1.8; font-size:13px;">
+          <p>Newport identifies three trends making deep work rare: <strong>open floor plans</strong>, instant messaging culture, and social media presence expectations.</p>
+          <p style="margin-top:10px;">The <span style="background:rgba(255,200,50,0.25); padding:1px 2px; border-radius:2px; cursor:pointer; position:relative;">Metric Black Hole<span style="position:absolute; right:-24px; top:0; font-size:10px; background:rgb(255,200,50); color:black; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;">1</span></span>: knowledge work lacks clear productivity metrics.</p>
+          <p style="margin-top:10px;"><strong>Busyness as a Proxy for Productivity</strong>: without better measures, doing lots of stuff in a visible manner becomes the default.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">Annotations show as numbered markers in text. Clicking a marker or "💬 3" slides in the annotation drawer from the right (overlays content, doesn't push it). TOC slides in from the left.</p>
+</div>
+
+<!-- APPROACH C -->
+<div style="margin-bottom:32px;">
+  <h3 style="margin-bottom:4px;">C: Notion-Style Page with Inline Blocks</h3>
+  <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">No panels at all. Everything is a single scrollable page. Annotations are inline expandable blocks. AI chat is a floating panel.</p>
+  <div class="mockup" style="max-width:940px;">
+    <div class="mockup-header">Single scrollable page — book → sections → content</div>
+    <div class="mockup-body" style="min-height:380px; font-size:12px; padding:0; display:flex; flex-direction:column;">
+      <!-- Breadcrumb -->
+      <div style="padding:10px 20px; border-bottom:1px solid var(--border); font-size:11px; color:var(--text-secondary);">
+        Library › <span style="color:var(--text-primary);">Deep Work</span> › <span style="color:var(--text-primary);">3. Deep Work Is Rare</span>
+      </div>
+      <!-- Content -->
+      <div style="flex:1; padding:24px; display:flex; justify-content:center;">
+        <div style="max-width:700px; width:100%;">
+          <!-- Section header -->
+          <div style="font-size:22px; font-weight:700; margin-bottom:4px;">3. Deep Work Is Rare</div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:16px; display:flex; gap:12px;">
+            <span>chapter · 4,230 chars</span>
+            <span>Eval: ✓ 16/16</span>
+            <span>practitioner_bullets</span>
+          </div>
+
+          <!-- Inline toggle: Original / Summary -->
+          <div style="display:flex; background:var(--bg-tertiary); border-radius:8px; padding:2px; gap:1px; width:fit-content; margin-bottom:16px;">
+            <span style="font-size:11px; padding:5px 14px; border-radius:6px; color:var(--text-secondary);">Original</span>
+            <span style="font-size:11px; padding:5px 14px; border-radius:6px; background:var(--bg-secondary); font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,0.1);">Summary</span>
+          </div>
+
+          <div style="line-height:1.8; font-size:13px;">
+            <p>Newport identifies three trends making deep work rare: <strong>open floor plans</strong>, instant messaging culture, and social media presence expectations.</p>
+
+            <!-- Inline annotation block -->
+            <div style="margin:12px 0; padding:10px 14px; background:rgba(255,200,50,0.06); border:1px solid rgba(255,200,50,0.2); border-radius:8px; font-size:12px;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                <span style="background:rgb(255,200,50); color:black; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:500;">Note</span>
+                <span style="color:var(--text-secondary); font-size:10px;">Apr 8</span>
+              </div>
+              <div style="color:var(--text-secondary);">This connects to Ch.5's discussion of lead vs lag measures.</div>
+            </div>
+
+            <p style="margin-top:8px;">The <strong>Metric Black Hole</strong>: knowledge work lacks clear productivity metrics, so workers default to visible busyness.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating AI button -->
+      <div style="position:relative;">
+        <div style="position:absolute; bottom:16px; right:16px; background:var(--accent); color:white; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 2px 8px rgba(0,0,0,0.2); cursor:pointer;">✦</div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">Section navigation via breadcrumb dropdown or keyboard. Annotations inline within content flow. AI via floating button or text selection. Very clean but annotations interrupt reading flow.</p>
+</div>
+
+<!-- APPROACH D -->
+<div style="margin-bottom:32px;">
+  <h3 style="margin-bottom:4px;">D: Reader + Context Sidebar (Recommended)</h3>
+  <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Clean reader by default. One right sidebar that switches between Annotations, AI Chat, and Concepts. TOC accessible via header dropdown, not a persistent panel.</p>
+  <div class="mockup" style="max-width:940px;">
+    <div class="mockup-header">Reading with annotation sidebar open</div>
+    <div class="mockup-body" style="display:flex; min-height:380px; font-size:12px; padding:0;">
+      <!-- Main reading area -->
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <!-- Header -->
+        <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:10px; flex-shrink:0;">
+          <span style="font-size:11px; color:var(--text-secondary); cursor:pointer;">← Deep Work</span>
+          <!-- Section dropdown -->
+          <div style="font-size:12px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:4px;">3. Deep Work Is Rare <span style="font-size:10px; color:var(--text-secondary);">▾</span></div>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">chapter</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">← Prev</span>
+          <span style="font-size:10px; color:var(--accent);">Next →</span>
+        </div>
+        <!-- Content tabs -->
+        <div style="display:flex; padding:0 20px; border-bottom:1px solid var(--border);">
+          <div style="padding:8px 14px; font-size:11px; color:var(--text-secondary);">Original</div>
+          <div style="padding:8px 14px; font-size:11px; font-weight:500; border-bottom:2px solid var(--accent);">Summary</div>
+          <div style="padding:8px 14px; font-size:11px; color:var(--text-secondary);">Eval</div>
+        </div>
+
+        <!-- Reading content -->
+        <div style="flex:1; padding:20px 24px; overflow-y:auto;">
+          <div style="max-width:680px; margin:0 auto; line-height:1.8; font-size:13px;">
+            <p>Newport identifies three trends making deep work rare: <strong>open floor plans</strong>, instant messaging culture, and social media presence expectations.</p>
+            <p style="margin-top:10px;">The <span style="background:rgba(255,200,50,0.25); padding:1px 2px; border-radius:2px; cursor:pointer;">Metric Black Hole</span>: knowledge work lacks clear productivity metrics, so workers default to visible busyness.</p>
+            <p style="margin-top:10px;"><strong>Busyness as a Proxy for Productivity</strong>: without better measures, doing lots of stuff in a visible manner becomes the default.</p>
+            <p style="margin-top:10px;">The <span style="background:rgba(100,200,255,0.2); padding:1px 2px; border-radius:2px; cursor:pointer;">cult of the Internet</span>: any technology is embraced without rigorous cost-benefit analysis of its impact on deep work capacity.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right context sidebar -->
+      <div style="width:300px; border-left:1px solid var(--border); flex-shrink:0; display:flex; flex-direction:column;">
+        <!-- Sidebar tab switcher -->
+        <div style="display:flex; border-bottom:1px solid var(--border); flex-shrink:0;">
+          <div style="flex:1; text-align:center; padding:10px; font-size:11px; font-weight:500; border-bottom:2px solid var(--accent);">Annotations</div>
+          <div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--text-secondary);">Ask AI ✦</div>
+          <div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--text-secondary);">Concepts</div>
+        </div>
+
+        <!-- Annotations aligned with text -->
+        <div style="flex:1; overflow-y:auto; padding:12px;">
+          <!-- Annotation 1 — positioned to align with highlighted text -->
+          <div style="margin-top:28px; padding:10px; background:rgba(255,200,50,0.06); border-left:3px solid rgb(255,200,50); border-radius:0 8px 8px 0; font-size:11px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;">
+              <span style="font-weight:500;">📌 Highlight</span>
+              <span style="flex:1;"></span>
+              <span style="color:var(--text-secondary); font-size:10px;">Apr 8</span>
+            </div>
+            <div style="font-style:italic; color:var(--text-secondary); margin-bottom:4px;">"Metric Black Hole"</div>
+            <div>This connects to Ch.5's discussion of lead vs lag measures.</div>
+            <div style="margin-top:6px; display:flex; gap:8px;">
+              <span style="font-size:10px; color:var(--accent); cursor:pointer;">Edit</span>
+              <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">Reply</span>
+              <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">Link</span>
+            </div>
+          </div>
+
+          <!-- Annotation 2 -->
+          <div style="margin-top:20px; padding:10px; background:rgba(100,200,255,0.06); border-left:3px solid rgb(100,200,255); border-radius:0 8px 8px 0; font-size:11px;">
+            <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;">
+              <span style="font-weight:500;">📝 Note</span>
+              <span style="flex:1;"></span>
+              <span style="color:var(--text-secondary); font-size:10px;">Apr 9</span>
+            </div>
+            <div style="font-style:italic; color:var(--text-secondary); margin-bottom:4px;">"cult of the Internet"</div>
+            <div>Compare with Neil Postman's "Amusing Ourselves to Death" — similar critique of uncritical tech adoption.</div>
+            <div style="margin-top:6px; display:flex; gap:8px;">
+              <span style="font-size:10px; color:var(--accent); cursor:pointer;">Edit</span>
+              <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">Reply</span>
+              <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">Link</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="max-width:940px; margin-top:8px;">
+    <div class="mockup-header">AI Chat tab — after selecting text and asking a question</div>
+    <div class="mockup-body" style="display:flex; min-height:320px; font-size:12px; padding:0;">
+      <!-- Main reading (abbreviated) -->
+      <div style="flex:1; padding:20px 24px; display:flex; flex-direction:column;">
+        <div style="font-size:14px; font-weight:600; margin-bottom:12px;">3. Deep Work Is Rare</div>
+        <div style="max-width:680px; line-height:1.8; font-size:13px;">
+          <p>Newport identifies three trends making deep work rare...</p>
+          <p style="margin-top:10px;">The <span style="background:rgba(175,82,222,0.25); padding:1px 2px; border-radius:2px;">Metric Black Hole: knowledge work lacks clear productivity metrics, so workers default to visible busyness</span></p>
+        </div>
+      </div>
+
+      <!-- AI Chat sidebar -->
+      <div style="width:300px; border-left:1px solid var(--border); flex-shrink:0; display:flex; flex-direction:column;">
+        <div style="display:flex; border-bottom:1px solid var(--border); flex-shrink:0;">
+          <div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--text-secondary);">Annotations</div>
+          <div style="flex:1; text-align:center; padding:10px; font-size:11px; font-weight:500; border-bottom:2px solid var(--accent);">Ask AI ✦</div>
+          <div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--text-secondary);">Concepts</div>
+        </div>
+
+        <div style="flex:1; overflow-y:auto; padding:12px;">
+          <!-- Selected text context -->
+          <div style="padding:8px; background:rgba(175,82,222,0.06); border-left:3px solid rgb(175,82,222); border-radius:0 6px 6px 0; font-size:10px; margin-bottom:12px;">
+            <div style="color:var(--text-secondary); margin-bottom:2px;">Selected text:</div>
+            <div style="font-style:italic;">"Metric Black Hole: knowledge work lacks clear productivity metrics..."</div>
+          </div>
+
+          <!-- User question -->
+          <div style="padding:8px 10px; background:var(--bg-tertiary); border-radius:8px; font-size:11px; margin-bottom:12px;">
+            Can you give me real-world examples of this concept in tech companies?
+          </div>
+
+          <!-- AI response -->
+          <div style="padding:10px; border:1px solid var(--border); border-radius:8px; font-size:11px; line-height:1.7;">
+            <div style="display:flex; align-items:center; gap:4px; margin-bottom:6px; font-size:10px; color:var(--text-secondary);">
+              <span>✦ AI</span>
+              <span>· based on this book + your library</span>
+            </div>
+            <p>Several tech companies illustrate the Metric Black Hole:</p>
+            <ul style="padding-left:16px; margin-top:4px;">
+              <li><strong>Yahoo's ban on remote work</strong> — Mayer equated office presence with productivity</li>
+              <li><strong>Slack/Teams adoption</strong> — response time becomes a de facto productivity metric</li>
+              <li><strong>Open office trend</strong> — Facebook's 430,000 sq ft open floor...</li>
+            </ul>
+            <div style="margin-top:8px; display:flex; gap:8px;">
+              <span style="font-size:10px; color:var(--accent); cursor:pointer;">Save as note</span>
+              <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">Copy</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input box -->
+        <div style="padding:8px 12px; border-top:1px solid var(--border); flex-shrink:0;">
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:8px; padding:8px 10px; gap:8px;">
+            <span style="font-size:11px; color:var(--text-secondary); flex:1;">Ask about this section...</span>
+            <span style="font-size:12px; cursor:pointer;">↑</span>
+          </div>
+          <div style="font-size:9px; color:var(--text-secondary); margin-top:4px; text-align:center;">Select text first for context-aware questions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;"><strong>Why recommended:</strong> Clean reading by default. Section nav via header dropdown (not a persistent panel). One right sidebar handles all contextual features — annotations, AI chat, concepts — as tabs. Sidebar is collapsible for focus. Text selection triggers a floating toolbar: Highlight, Note, Ask AI. The right sidebar naturally aligns annotations with the text they reference.</p>
+</div>
+
+<!-- TEXT SELECTION TOOLBAR (shown for all approaches) -->
+<div style="margin-top:8px; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px;">
+  <h3 style="margin-bottom:8px;">Text Selection → Floating Toolbar (shared across all approaches)</h3>
+  <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">When user selects text in the reading area, a floating toolbar appears:</p>
+  <div style="display:flex; align-items:center; justify-content:center;">
+    <div style="display:flex; background:var(--bg-primary); border:1px solid var(--border); border-radius:10px; padding:4px; gap:2px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+      <div style="padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">🖍 Highlight</div>
+      <div style="padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">📝 Note</div>
+      <div style="padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">✦ Ask AI</div>
+      <div style="padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">🔗 Link</div>
+      <div style="padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">📋 Copy</div>
+    </div>
+  </div>
+  <p style="font-size:11px; color:var(--text-secondary); margin-top:8px; text-align:center;">
+    Highlight → saves annotation | Note → opens note editor | Ask AI → opens AI sidebar with selection as context | Link → cross-book annotation link | Copy → clipboard
+  </p>
+</div>
+
+<!-- COMPARISON TABLE -->
+<div style="margin-top:24px;">
+  <h3>Comparison</h3>
+  <table style="font-size:12px; width:100%; border-collapse:collapse; margin-top:8px;">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border);">
+        <th style="padding:8px; text-align:left;"></th>
+        <th style="padding:8px; text-align:center;">A: Three-Panel</th>
+        <th style="padding:8px; text-align:center;">B: Slide-Out</th>
+        <th style="padding:8px; text-align:center;">C: Inline Blocks</th>
+        <th style="padding:8px; text-align:center; background:rgba(0,122,255,0.05);">D: Reader + Context ★</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">Reading focus</td>
+        <td style="padding:8px; text-align:center;">Good (collapsible)</td>
+        <td style="padding:8px; text-align:center;">Excellent</td>
+        <td style="padding:8px; text-align:center;">Good</td>
+        <td style="padding:8px; text-align:center; background:rgba(0,122,255,0.05);">Excellent</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">Annotation alignment</td>
+        <td style="padding:8px; text-align:center;">✓ Right panel</td>
+        <td style="padding:8px; text-align:center;">Overlay only</td>
+        <td style="padding:8px; text-align:center;">Inline (breaks flow)</td>
+        <td style="padding:8px; text-align:center; background:rgba(0,122,255,0.05);">✓ Right sidebar</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">AI chat placement</td>
+        <td style="padding:8px; text-align:center;">Extra panel?</td>
+        <td style="padding:8px; text-align:center;">Slide-out drawer</td>
+        <td style="padding:8px; text-align:center;">Floating modal</td>
+        <td style="padding:8px; text-align:center; background:rgba(0,122,255,0.05);">✓ Same sidebar tab</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">TOC access</td>
+        <td style="padding:8px; text-align:center;">Always visible</td>
+        <td style="padding:8px; text-align:center;">Slide-out</td>
+        <td style="padding:8px; text-align:center;">Breadcrumb dropdown</td>
+        <td style="padding:8px; text-align:center; background:rgba(0,122,255,0.05);">Header dropdown</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; font-weight:500;">Complexity</td>
+        <td style="padding:8px; text-align:center;">Medium</td>
+        <td style="padding:8px; text-align:center;">Low</td>
+        <td style="padding:8px; text-align:center;">Low</td>
+        <td style="padding:8px; text-align:center; background:rgba(0,122,255,0.05);">Medium</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

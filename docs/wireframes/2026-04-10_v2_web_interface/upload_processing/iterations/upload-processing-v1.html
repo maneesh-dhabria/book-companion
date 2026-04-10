@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Upload & Processing</h2>
+<p class="subtitle">Multi-step wizard for adding books + real-time progress tracking</p>
+
+<!-- STEP 1: UPLOAD -->
+<div class="mockup" style="max-width:640px; margin:0 auto;">
+  <div class="mockup-header">Step 1 of 3 — Upload</div>
+  <div class="mockup-body" style="font-size:13px; padding:24px;">
+    <!-- Progress steps -->
+    <div style="display:flex; align-items:center; justify-content:center; margin-bottom:28px; gap:0;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600;">1</div>
+        <span style="font-size:12px; font-weight:500;">Upload</span>
+      </div>
+      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:12px;">2</div>
+        <span style="font-size:12px; color:var(--text-secondary);">Metadata</span>
+      </div>
+      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:12px;">3</div>
+        <span style="font-size:12px; color:var(--text-secondary);">Review</span>
+      </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div style="border:2px dashed var(--border); border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer;">
+      <div style="font-size:32px; margin-bottom:8px;">📁</div>
+      <div style="font-size:14px; font-weight:500; margin-bottom:4px;">Drop your book here</div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">or click to browse</div>
+      <div style="font-size:11px; color:var(--text-secondary);">Supports EPUB, MOBI, PDF · Max 100MB</div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex; justify-content:flex-end; margin-top:20px; gap:8px;">
+      <div style="padding:8px 16px; border-radius:8px; background:var(--bg-tertiary); font-size:12px; color:var(--text-secondary); cursor:pointer;">Cancel</div>
+    </div>
+  </div>
+</div>
+
+<div style="height:24px;"></div>
+
+<!-- STEP 2: METADATA -->
+<div class="mockup" style="max-width:640px; margin:0 auto;">
+  <div class="mockup-header">Step 2 of 3 — Metadata (auto-extracted, editable)</div>
+  <div class="mockup-body" style="font-size:13px; padding:24px;">
+    <!-- Progress steps -->
+    <div style="display:flex; align-items:center; justify-content:center; margin-bottom:28px; gap:0;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:rgb(52,199,89); color:white; display:flex; align-items:center; justify-content:center; font-size:12px;">✓</div>
+        <span style="font-size:12px; color:var(--text-secondary);">Upload</span>
+      </div>
+      <div style="width:40px; height:1px; background:var(--accent); margin:0 8px;"></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600;">2</div>
+        <span style="font-size:12px; font-weight:500;">Metadata</span>
+      </div>
+      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:12px;">3</div>
+        <span style="font-size:12px; color:var(--text-secondary);">Review</span>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:20px;">
+      <!-- Cover preview -->
+      <div style="flex-shrink:0;">
+        <div style="width:120px; height:170px; background:linear-gradient(135deg, var(--border), var(--bg-secondary)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:36px;">📘</div>
+        <div style="font-size:10px; color:var(--accent); text-align:center; margin-top:6px; cursor:pointer;">Change cover</div>
+      </div>
+
+      <!-- Form fields -->
+      <div style="flex:1;">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Title</div>
+          <div style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); font-size:13px;">Deep Work: Rules for Focused Success in a Distracted World</div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Author</div>
+          <div style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); font-size:13px;">Cal Newport</div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Tags</div>
+          <div style="display:flex; align-items:center; gap:4px; padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); flex-wrap:wrap;">
+            <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent); display:flex; align-items:center; gap:3px;">Business <span style="opacity:0.5; cursor:pointer; font-size:9px;">✕</span></span>
+            <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:rgba(175,82,222,0.1); color:rgb(175,82,222); display:flex; align-items:center; gap:3px;">Productivity <span style="opacity:0.5; cursor:pointer; font-size:9px;">✕</span></span>
+            <span style="font-size:12px; color:var(--text-secondary); cursor:text;">+ add tag</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; font-size:11px; color:var(--text-secondary);">
+          <span>Format: EPUB</span>
+          <span>·</span>
+          <span>Size: 2.4 MB</span>
+          <span>·</span>
+          <span>Detected: 14 sections</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex; justify-content:space-between; margin-top:20px;">
+      <div style="padding:8px 16px; border-radius:8px; background:var(--bg-tertiary); font-size:12px; color:var(--text-secondary); cursor:pointer;">← Back</div>
+      <div style="padding:8px 16px; border-radius:8px; background:var(--accent); color:white; font-size:12px; cursor:pointer;">Next →</div>
+    </div>
+  </div>
+</div>
+
+<div style="height:24px;"></div>
+
+<!-- STEP 3: TOC REVIEW -->
+<div class="mockup" style="max-width:640px; margin:0 auto;">
+  <div class="mockup-header">Step 3 of 3 — Review Structure</div>
+  <div class="mockup-body" style="font-size:13px; padding:24px;">
+    <!-- Progress steps -->
+    <div style="display:flex; align-items:center; justify-content:center; margin-bottom:28px; gap:0;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:rgb(52,199,89); color:white; display:flex; align-items:center; justify-content:center; font-size:12px;">✓</div>
+        <span style="font-size:12px; color:var(--text-secondary);">Upload</span>
+      </div>
+      <div style="width:40px; height:1px; background:rgb(52,199,89); margin:0 8px;"></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:rgb(52,199,89); color:white; display:flex; align-items:center; justify-content:center; font-size:12px;">✓</div>
+        <span style="font-size:12px; color:var(--text-secondary);">Metadata</span>
+      </div>
+      <div style="width:40px; height:1px; background:var(--accent); margin:0 8px;"></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="width:28px; height:28px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600;">3</div>
+        <span style="font-size:12px; font-weight:500;">Review</span>
+      </div>
+    </div>
+
+    <!-- Quality info bar -->
+    <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(52,199,89,0.06); border-radius:8px; margin-bottom:16px; font-size:11px;">
+      <span style="color:rgb(52,199,89);">✓ 14 sections detected</span>
+      <span style="color:var(--text-secondary);">· 12 chapters · 1 appendix · 1 index</span>
+      <span style="flex:1;"></span>
+      <span style="color:var(--text-secondary);">Detection: embedded TOC</span>
+    </div>
+
+    <!-- Section list with quality warnings -->
+    <div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; padding:8px 12px; background:var(--bg-tertiary); font-size:10px; color:var(--text-secondary); border-bottom:1px solid var(--border);">
+        <span style="flex:2;">Section</span>
+        <span style="flex:0.5; text-align:center;">Type</span>
+        <span style="flex:0.5; text-align:right;">Chars</span>
+        <span style="width:60px; text-align:center;">Quality</span>
+        <span style="width:40px;"></span>
+      </div>
+
+      <div style="display:flex; align-items:center; padding:8px 12px; font-size:11px; border-bottom:1px solid var(--border);">
+        <span style="flex:2; display:flex; align-items:center; gap:6px;"><span style="cursor:grab; color:var(--text-secondary);">⠿</span> 1. Introduction</span>
+        <span style="flex:0.5; text-align:center; font-size:10px; color:var(--text-secondary);">chapter</span>
+        <span style="flex:0.5; text-align:right; font-size:10px;">3,420</span>
+        <span style="width:60px; text-align:center; font-size:10px; color:rgb(52,199,89);">✓</span>
+        <span style="width:40px; text-align:center; font-size:10px; color:var(--text-secondary); cursor:pointer;">⋯</span>
+      </div>
+      <div style="display:flex; align-items:center; padding:8px 12px; font-size:11px; border-bottom:1px solid var(--border);">
+        <span style="flex:2; display:flex; align-items:center; gap:6px;"><span style="cursor:grab; color:var(--text-secondary);">⠿</span> 2. Deep Work Is Valuable</span>
+        <span style="flex:0.5; text-align:center; font-size:10px; color:var(--text-secondary);">chapter</span>
+        <span style="flex:0.5; text-align:right; font-size:10px;">5,180</span>
+        <span style="width:60px; text-align:center; font-size:10px; color:rgb(52,199,89);">✓</span>
+        <span style="width:40px; text-align:center; font-size:10px; color:var(--text-secondary); cursor:pointer;">⋯</span>
+      </div>
+      <!-- Warning row -->
+      <div style="display:flex; align-items:center; padding:8px 12px; font-size:11px; border-bottom:1px solid var(--border); background:rgba(255,159,10,0.04);">
+        <span style="flex:2; display:flex; align-items:center; gap:6px;"><span style="cursor:grab; color:var(--text-secondary);">⠿</span> 3. Chapter 3 Cover</span>
+        <span style="flex:0.5; text-align:center; font-size:10px; color:var(--text-secondary);">chapter</span>
+        <span style="flex:0.5; text-align:right; font-size:10px; color:rgb(255,159,10);">132</span>
+        <span style="width:60px; text-align:center; font-size:10px; color:rgb(255,159,10);">⚠ stub</span>
+        <span style="width:40px; text-align:center; font-size:10px; color:var(--text-secondary); cursor:pointer;">⋯</span>
+      </div>
+      <!-- Suggested action for warning -->
+      <div style="padding:6px 12px 6px 36px; background:rgba(255,159,10,0.04); border-bottom:1px solid var(--border); font-size:10px; color:rgb(255,159,10); display:flex; align-items:center; gap:8px;">
+        ↳ Stub section (132 chars). Suggested:
+        <span style="padding:2px 8px; border-radius:4px; background:rgba(255,159,10,0.1); cursor:pointer;">Merge with next</span>
+        <span style="padding:2px 8px; border-radius:4px; background:rgba(255,159,10,0.1); cursor:pointer;">Delete</span>
+        <span style="padding:2px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">Keep</span>
+      </div>
+      <div style="display:flex; align-items:center; padding:8px 12px; font-size:11px; border-bottom:1px solid var(--border);">
+        <span style="flex:2; display:flex; align-items:center; gap:6px;"><span style="cursor:grab; color:var(--text-secondary);">⠿</span> 3. Deep Work Is Rare</span>
+        <span style="flex:0.5; text-align:center; font-size:10px; color:var(--text-secondary);">chapter</span>
+        <span style="flex:0.5; text-align:right; font-size:10px;">4,230</span>
+        <span style="width:60px; text-align:center; font-size:10px; color:rgb(52,199,89);">✓</span>
+        <span style="width:40px; text-align:center; font-size:10px; color:var(--text-secondary); cursor:pointer;">⋯</span>
+      </div>
+      <div style="padding:6px 12px; font-size:10px; color:var(--text-secondary); text-align:center;">
+        ... 10 more sections
+      </div>
+    </div>
+
+    <!-- Section actions hint -->
+    <div style="font-size:10px; color:var(--text-secondary); margin-bottom:16px; text-align:center;">
+      Drag to reorder · ⋯ menu for merge, split, delete, change type · Edit sections later from Book Detail
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex; justify-content:space-between;">
+      <div style="padding:8px 16px; border-radius:8px; background:var(--bg-tertiary); font-size:12px; color:var(--text-secondary); cursor:pointer;">← Back</div>
+      <div style="display:flex; gap:8px;">
+        <div style="padding:8px 16px; border-radius:8px; background:var(--bg-tertiary); font-size:12px; cursor:pointer;">Save without processing</div>
+        <div style="padding:8px 16px; border-radius:8px; background:var(--accent); color:white; font-size:12px; cursor:pointer;">Confirm & Summarize →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- SUMMARIZATION PRESET PICKER (shown when clicking "Confirm & Summarize") -->
+<div class="mockup" style="max-width:520px; margin:0 auto;">
+  <div class="mockup-header">Summarization Preset Picker (after Confirm & Summarize)</div>
+  <div class="mockup-body" style="font-size:12px; padding:20px;">
+    <div style="font-size:15px; font-weight:600; margin-bottom:4px;">Choose Summarization Preset</div>
+    <div style="font-size:11px; color:var(--text-secondary); margin-bottom:16px;">Presets control the style, audience, compression, and focus of generated summaries.</div>
+
+    <!-- Preset cards -->
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+      <div style="padding:12px; border-radius:10px; border:2px solid var(--accent); background:rgba(0,122,255,0.04); cursor:pointer;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px; font-weight:500;">Practitioner Bullets</span>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-secondary);">Actionable bullet points for practitioners · brief compression · key concepts focus</div>
+      </div>
+      <div style="padding:12px; border-radius:10px; border:1px solid var(--border); cursor:pointer;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px; font-weight:500;">Academic Detailed</span>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-secondary);">Comprehensive narrative for academic analysis · detailed compression · full coverage</div>
+      </div>
+      <div style="padding:12px; border-radius:10px; border:1px solid var(--border); cursor:pointer;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px; font-weight:500;">Executive Brief</span>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-secondary);">Concise bullet points for executives · brief compression · key concepts</div>
+      </div>
+      <div style="padding:12px; border-radius:10px; border:1px dashed var(--border); cursor:pointer;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:13px; color:var(--text-secondary);">+ Custom Preset</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">Configure facets manually</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; font-size:11px;">
+      <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary);">
+        <input type="checkbox" checked style="accent-color:var(--accent);"> Run eval after summarization
+      </label>
+      <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary);">
+        <input type="checkbox" checked style="accent-color:var(--accent);"> Auto-retry on eval failure
+      </label>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <div style="padding:8px 16px; border-radius:8px; background:var(--bg-tertiary); font-size:12px; cursor:pointer;">Cancel</div>
+      <div style="padding:8px 16px; border-radius:8px; background:var(--accent); color:white; font-size:12px; cursor:pointer;">Start Summarizing</div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- PROCESSING PROGRESS (in Book Detail) -->
+<div class="mockup" style="max-width:700px; margin:0 auto;">
+  <div class="mockup-header">Processing Progress — pinned card in Book Detail</div>
+  <div class="mockup-body" style="font-size:13px; padding:20px;">
+    <!-- Progress card -->
+    <div style="border:1px solid rgba(0,122,255,0.3); border-radius:12px; padding:16px; background:rgba(0,122,255,0.03);">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+        <div style="font-size:14px; font-weight:600;">Summarizing</div>
+        <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">practitioner_bullets</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:11px; color:var(--text-secondary);">5 of 14 sections</span>
+        <span style="font-size:11px; color:var(--text-secondary);">· ~8 min remaining</span>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="height:6px; background:var(--bg-tertiary); border-radius:3px; margin-bottom:14px; overflow:hidden;">
+        <div style="height:100%; width:36%; background:var(--accent); border-radius:3px; transition:width 0.3s;"></div>
+      </div>
+
+      <!-- Section status list -->
+      <div style="display:flex; flex-direction:column; gap:4px; font-size:11px;">
+        <div style="display:flex; align-items:center; gap:8px; color:rgb(52,199,89);">
+          <span>✓</span> <span>1. Introduction</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">16/16 · 42s</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; color:rgb(52,199,89);">
+          <span>✓</span> <span>2. Deep Work Is Valuable</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">16/16 · 38s</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; color:rgb(52,199,89);">
+          <span>✓</span> <span>3. Deep Work Is Rare</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">15/16 · 55s</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; color:rgb(52,199,89);">
+          <span>✓</span> <span>4. Deep Work Is Meaningful</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">16/16 · 41s</span>
+        </div>
+        <!-- Currently processing -->
+        <div style="display:flex; align-items:center; gap:8px; color:var(--accent);">
+          <span style="display:inline-block; width:12px; height:12px; border:2px solid var(--accent); border-top-color:transparent; border-radius:50; animation:none;">⟳</span>
+          <span style="font-weight:500;">5. Work Deeply</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">summarizing...</span>
+        </div>
+        <!-- Pending -->
+        <div style="display:flex; align-items:center; gap:8px; color:var(--text-secondary); opacity:0.5;">
+          <span>○</span> <span>6. Embrace Boredom</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; color:var(--text-secondary); opacity:0.5;">
+          <span>○</span> <span>7. Quit Social Media</span>
+        </div>
+        <div style="font-size:10px; color:var(--text-secondary); padding-left:20px;">... 7 more pending</div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+        <span style="font-size:11px; color:var(--text-secondary); cursor:pointer;">Completed sections are already browsable ↗</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:11px; color:rgb(255,59,48); cursor:pointer;">Cancel</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:700px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Upload & Processing — Summary</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>3-step wizard</strong>: Upload (drag-drop) → Metadata (auto-extracted, editable, tag assignment) → Review Structure (section list with quality warnings + suggested actions)</li>
+    <li><strong>Quality warnings</strong>: Inline on the section list — stub sections, empty content, encoding issues. Suggested actions: Merge, Delete, Keep.</li>
+    <li><strong>Section editing</strong>: Drag to reorder, ⋯ menu for merge/split/delete/change type. Can also edit later from Book Detail.</li>
+    <li><strong>Two exit paths</strong>: "Save without processing" (parse only) or "Confirm & Summarize" (opens preset picker).</li>
+    <li><strong>Preset picker</strong>: Select system or user preset, or configure custom facets. Options for eval and auto-retry.</li>
+    <li><strong>Progress tracking</strong>: Pinned card in Book Detail showing section-by-section progress with eval scores, timing, and estimated remaining. Completed sections immediately browsable. SSE-driven updates.</li>
+  </ul>
+</div>
+
+</body>
+</html>

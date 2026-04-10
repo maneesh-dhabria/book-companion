@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Book Detail — Hub Page</h2>
+<p class="subtitle">Two-panel layout: navigation left, content right</p>
+
+<div class="mockup" style="max-width:940px; margin:0 auto;">
+  <div class="mockup-header">Book Detail — Summary Tab Selected</div>
+  <div class="mockup-body" style="display:flex; min-height:520px; font-size:13px; padding:0;">
+
+    <!-- LEFT PANEL: Book meta + section TOC -->
+    <div style="width:280px; border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto;">
+
+      <!-- Book metadata -->
+      <div style="padding:16px; border-bottom:1px solid var(--border);">
+        <!-- Back link -->
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:12px; cursor:pointer;">← Library</div>
+
+        <div style="display:flex; gap:12px; margin-bottom:12px;">
+          <!-- Cover thumbnail -->
+          <div style="width:60px; height:80px; background:linear-gradient(135deg, var(--border), var(--bg-secondary)); border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:28px;">📘</div>
+          <div>
+            <div style="font-size:14px; font-weight:600; line-height:1.3;">Deep Work</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Cal Newport</div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+              <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">Productivity</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick stats -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:10px;">
+          <div style="background:var(--bg-tertiary); border-radius:6px; padding:6px 8px;">
+            <div style="color:var(--text-secondary);">Sections</div>
+            <div style="font-weight:600; font-size:13px;">14</div>
+          </div>
+          <div style="background:var(--bg-tertiary); border-radius:6px; padding:6px 8px;">
+            <div style="color:var(--text-secondary);">Eval</div>
+            <div style="font-weight:600; font-size:13px; color:rgb(52,199,89);">16/16</div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex; gap:6px; margin-top:10px;">
+          <div style="flex:1; text-align:center; padding:6px; border-radius:6px; background:var(--accent); color:white; font-size:11px; cursor:pointer;">Summarize</div>
+          <div style="flex:1; text-align:center; padding:6px; border-radius:6px; background:var(--bg-tertiary); font-size:11px; cursor:pointer;">Evaluate</div>
+          <div style="width:32px; text-align:center; padding:6px; border-radius:6px; background:var(--bg-tertiary); font-size:11px; cursor:pointer;">⋯</div>
+        </div>
+      </div>
+
+      <!-- Navigation tabs within left panel -->
+      <div style="display:flex; border-bottom:1px solid var(--border);">
+        <div style="flex:1; text-align:center; padding:8px; font-size:11px; font-weight:500; border-bottom:2px solid var(--accent);">Sections</div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:11px; color:var(--text-secondary);">Concepts</div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:11px; color:var(--text-secondary);">Notes</div>
+      </div>
+
+      <!-- Section TOC -->
+      <div style="flex:1; overflow-y:auto; padding:8px;">
+        <!-- Book summary item -->
+        <div style="padding:8px 10px; border-radius:6px; background:rgba(0,122,255,0.08); cursor:pointer; margin-bottom:4px; display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px;">📖</span>
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:500; color:var(--accent);">Book Summary</div>
+          </div>
+        </div>
+
+        <div style="font-size:10px; color:var(--text-secondary); padding:4px 10px; margin-top:4px;">CHAPTERS</div>
+
+        <!-- Section items -->
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px; margin-top:2px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">1. Introduction</div>
+          <span style="font-size:9px; color:var(--text-secondary);">✓</span>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">2. Deep Work Is Valuable</div>
+          <span style="font-size:9px; color:var(--text-secondary);">✓</span>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">3. Deep Work Is Rare</div>
+          <span style="font-size:9px; color:var(--text-secondary);">✓</span>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">4. Deep Work Is Meaningful</div>
+          <span style="font-size:9px; color:var(--text-secondary);">✓</span>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">5. Work Deeply</div>
+          <span style="font-size:9px; color:var(--text-secondary);">✓</span>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(255,159,10); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">6. Embrace Boredom</div>
+          <span style="font-size:9px; color:rgb(255,159,10);">12/16</span>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">7. Quit Social Media</div>
+          <span style="font-size:9px; color:var(--text-secondary);">✓</span>
+        </div>
+
+        <div style="font-size:10px; color:var(--text-secondary); padding:4px 10px; margin-top:8px;">BACK MATTER</div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; color:var(--text-secondary);">Notes</div>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0;"></span>
+          <div style="font-size:11px; flex:1; color:var(--text-secondary);">Index</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Content area -->
+    <div style="flex:1; display:flex; flex-direction:column; overflow-y:auto;">
+
+      <!-- Content header -->
+      <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-shrink:0;">
+        <div style="font-size:16px; font-weight:600;">Book Summary</div>
+        <div style="flex:1;"></div>
+        <!-- Summary version selector -->
+        <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer;">
+          practitioner_bullets · Apr 8 ▾
+        </div>
+        <div style="font-size:11px; padding:4px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Copy</div>
+        <div style="font-size:11px; padding:4px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Export</div>
+      </div>
+
+      <!-- Summary content -->
+      <div style="flex:1; padding:20px 24px; max-width:720px; line-height:1.7; font-size:13px;">
+
+        <!-- Eval badge -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; padding:8px 12px; background:rgba(52,199,89,0.08); border-radius:8px;">
+          <span style="color:rgb(52,199,89); font-size:12px; font-weight:500;">✓ 16/16 assertions passed</span>
+          <span style="font-size:11px; color:var(--text-secondary);">· practitioner_bullets · 42% compression</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:11px; color:var(--accent); cursor:pointer;">View details</span>
+        </div>
+
+        <!-- Key concepts -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">KEY CONCEPTS</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Deep Work</span>
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Shallow Work</span>
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Attention Residue</span>
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Deliberate Practice</span>
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Productive Meditation</span>
+          </div>
+        </div>
+
+        <!-- Summary text -->
+        <div style="margin-bottom:16px; line-height:1.8;">
+          <p style="margin-bottom:10px;">Newport argues that <strong>deep work</strong> — professional activities performed in a state of distraction-free concentration — is becoming increasingly rare and increasingly valuable in our economy.</p>
+          <p style="margin-bottom:10px;"><strong>The core thesis is built on two observations:</strong></p>
+          <ul style="padding-left:20px; margin-bottom:10px;">
+            <li style="margin-bottom:4px;">The ability to perform deep work is becoming rare due to open offices, instant messaging, and social media</li>
+            <li style="margin-bottom:4px;">At the same time, deep work is becoming more valuable as our economy shifts toward complex information work</li>
+            <li style="margin-bottom:4px;">Those who cultivate this ability will thrive; those who don't will struggle</li>
+          </ul>
+          <p style="margin-bottom:10px;">The book divides into two parts: <strong>The Idea</strong> (why deep work matters) and <strong>The Rules</strong> (four disciplines for cultivating it)...</p>
+          <p style="color:var(--text-secondary); font-style:italic; font-size:12px;">[Summary continues...]</p>
+        </div>
+
+        <!-- Key quotes -->
+        <div>
+          <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">KEY QUOTES</div>
+          <div style="border-left:3px solid var(--accent); padding:8px 12px; background:rgba(0,122,255,0.04); border-radius:0 6px 6px 0; font-size:12px; font-style:italic; line-height:1.6;">
+            "The ability to perform deep work is becoming increasingly rare at exactly the same time it is becoming increasingly valuable in our economy."
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<div class="mockup" style="max-width:940px; margin:0 auto;">
+  <div class="mockup-header">Section Selected — Original + Summary Tabs</div>
+  <div class="mockup-body" style="display:flex; min-height:420px; font-size:13px; padding:0;">
+
+    <!-- LEFT PANEL (abbreviated) -->
+    <div style="width:280px; border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0;">
+      <div style="padding:16px; border-bottom:1px solid var(--border);">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;">← Library</div>
+        <div style="font-size:14px; font-weight:600;">Deep Work</div>
+        <div style="font-size:11px; color:var(--text-secondary);">Cal Newport</div>
+      </div>
+
+      <div style="display:flex; border-bottom:1px solid var(--border);">
+        <div style="flex:1; text-align:center; padding:8px; font-size:11px; font-weight:500; border-bottom:2px solid var(--accent);">Sections</div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:11px; color:var(--text-secondary);">Concepts</div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:11px; color:var(--text-secondary);">Notes</div>
+      </div>
+
+      <div style="flex:1; overflow-y:auto; padding:8px;">
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:11px;">📖</span>
+          <div style="font-size:11px;">Book Summary</div>
+        </div>
+        <div style="font-size:10px; color:var(--text-secondary); padding:4px 10px; margin-top:4px;">CHAPTERS</div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px;">1. Introduction</div>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px;">2. Deep Work Is Valuable</div>
+        </div>
+        <!-- Active section highlighted -->
+        <div style="padding:6px 10px; border-radius:6px; background:rgba(0,122,255,0.08); cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px; font-weight:500; color:var(--accent);">3. Deep Work Is Rare</div>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px;">4. Deep Work Is Meaningful</div>
+        </div>
+        <div style="padding:6px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:rgb(52,199,89); flex-shrink:0;"></span>
+          <div style="font-size:11px;">5. Work Deeply</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Section content -->
+    <div style="flex:1; display:flex; flex-direction:column;">
+
+      <!-- Section header with tabs -->
+      <div style="padding:12px 24px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <div style="font-size:15px; font-weight:600;">3. Deep Work Is Rare</div>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">chapter · 4,230 chars</span>
+          <div style="flex:1;"></div>
+          <!-- Prev/Next -->
+          <div style="font-size:11px; color:var(--text-secondary); cursor:pointer;">← Prev</div>
+          <div style="font-size:11px; color:var(--accent); cursor:pointer;">Next →</div>
+        </div>
+        <!-- Content tabs -->
+        <div style="display:flex; gap:0;">
+          <div style="padding:6px 14px; font-size:11px; color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent;">Original</div>
+          <div style="padding:6px 14px; font-size:11px; font-weight:500; cursor:pointer; border-bottom:2px solid var(--accent);">Summary</div>
+          <div style="padding:6px 14px; font-size:11px; color:var(--text-secondary); cursor:pointer; border-bottom:2px solid transparent;">Eval</div>
+        </div>
+      </div>
+
+      <!-- Section summary content -->
+      <div style="flex:1; padding:20px 24px; max-width:720px; overflow-y:auto; line-height:1.7; font-size:13px;">
+        <!-- Summary version + eval -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary);">practitioner_bullets · Apr 8</span>
+          <span style="font-size:11px; color:rgb(52,199,89);">✓ 16/16</span>
+          <span style="font-size:11px; color:var(--text-secondary);">· 38% compression</span>
+          <div style="flex:1;"></div>
+          <span style="font-size:11px; color:var(--text-secondary); cursor:pointer;">History (3 versions) ▾</span>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">KEY CONCEPTS</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary);">Open Floor Plans</span>
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary);">The Metric Black Hole</span>
+            <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary);">Busyness as Proxy</span>
+          </div>
+        </div>
+
+        <ul style="padding-left:20px; line-height:2;">
+          <li>Newport identifies three trends making deep work rare: <strong>open floor plans</strong>, instant messaging culture, and social media presence expectations</li>
+          <li>The <strong>Metric Black Hole</strong>: knowledge work lacks clear productivity metrics, so workers default to visible busyness</li>
+          <li><strong>Busyness as a Proxy for Productivity</strong>: without better measures, doing lots of stuff in a visible manner becomes the default</li>
+          <li>The <strong>cult of the Internet</strong>: any technology that offers any benefit is embraced without cost-benefit analysis...</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:28px;">
+  <h3>Key Design Decisions</h3>
+  <ul style="margin-top:8px; padding-left:20px; font-size:14px; line-height:2.2;">
+    <li><strong>Left panel</strong>: Book meta + 3 sub-tabs (Sections TOC, Concepts list, Notes/Annotations). Stays visible while reading.</li>
+    <li><strong>Section TOC</strong>: Grouped by section_type (Chapters, Back Matter). Colored dot = eval status (green=pass, orange=partial, red=fail, gray=no eval). Active section highlighted.</li>
+    <li><strong>Right panel tabs</strong>: Original | Summary | Eval — for each section. Book Summary is a special top-level item in the TOC.</li>
+    <li><strong>Summary version selector</strong>: Dropdown showing preset + date. "History" link to see all versions and compare.</li>
+    <li><strong>Action buttons</strong>: Summarize (opens preset picker), Evaluate, ⋯ menu (Edit metadata, Edit sections, Export, Delete, Re-import).</li>
+    <li><strong>Prev/Next navigation</strong>: Quick section traversal without using the TOC.</li>
+    <li><strong>Concepts as clickable chips</strong>: Click to see definition inline or navigate to concept detail.</li>
+    <li><strong>Max-width 720px</strong> on content for comfortable reading line length.</li>
+  </ul>
+</div>
+
+</body>
+</html>

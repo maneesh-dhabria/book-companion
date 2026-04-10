@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Search Experience</h2>
+<p class="subtitle">Command palette (⌘K) + full search results page</p>
+
+<!-- CMD+K PALETTE -->
+<div class="mockup" style="max-width:600px; margin:0 auto;">
+  <div class="mockup-header">⌘K Command Palette — Quick Search</div>
+  <div class="mockup-body" style="font-size:12px; padding:0; min-height:400px; background:rgba(0,0,0,0.4); display:flex; align-items:flex-start; justify-content:center; padding-top:40px;">
+    <!-- Palette modal -->
+    <div style="width:520px; background:var(--bg-secondary); border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); overflow:hidden;">
+      <!-- Search input -->
+      <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;">
+        <span style="font-size:16px; opacity:0.4;">🔍</span>
+        <span style="font-size:14px; flex:1;">deep work attention</span>
+        <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">ESC</span>
+      </div>
+
+      <!-- Grouped results -->
+      <div style="max-height:340px; overflow-y:auto;">
+
+        <!-- Books -->
+        <div style="padding:6px 16px 2px; font-size:10px; color:var(--text-secondary); font-weight:500;">BOOKS</div>
+        <div style="padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; background:rgba(0,122,255,0.06);">
+          <span style="font-size:16px;">📘</span>
+          <div style="flex:1;">
+            <div style="font-size:12px; font-weight:500;">Deep Work</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Cal Newport · 14 sections</div>
+          </div>
+          <span style="font-size:10px; color:var(--text-secondary);">↵ open</span>
+        </div>
+
+        <!-- Sections -->
+        <div style="padding:10px 16px 2px; font-size:10px; color:var(--text-secondary); font-weight:500;">SECTIONS</div>
+        <div style="padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:14px; opacity:0.5;">📄</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;"><strong>Attention</strong> Residue — Ch.2 Deep Work Is Valuable</div>
+            <div style="font-size:10px; color:var(--text-secondary);">...when you switch tasks, your <strong>attention</strong> doesn't immediately follow...</div>
+          </div>
+        </div>
+        <div style="padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:14px; opacity:0.5;">📄</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;">Embrace Boredom — Ch.6</div>
+            <div style="font-size:10px; color:var(--text-secondary);">...improve your ability to concentrate by training <strong>attention</strong>...</div>
+          </div>
+        </div>
+
+        <!-- Concepts -->
+        <div style="padding:10px 16px 2px; font-size:10px; color:var(--text-secondary); font-weight:500;">CONCEPTS</div>
+        <div style="padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:14px; opacity:0.5;">💡</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;"><strong>Attention</strong> Residue</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Cognitive carry-over when switching tasks · Deep Work</div>
+          </div>
+        </div>
+        <div style="padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:14px; opacity:0.5;">💡</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;">Productive Meditation</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Focused <strong>attention</strong> on a problem during physical activity · Deep Work</div>
+          </div>
+        </div>
+
+        <!-- Annotations -->
+        <div style="padding:10px 16px 2px; font-size:10px; color:var(--text-secondary); font-weight:500;">ANNOTATIONS</div>
+        <div style="padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+          <span style="font-size:14px; opacity:0.5;">📝</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;">"<strong>Attention</strong> residue explains why multitasking is harmful"</div>
+            <div style="font-size:10px; color:var(--text-secondary);">My note on Ch.2 · Deep Work</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:8px 16px; border-top:1px solid var(--border); display:flex; align-items:center; gap:16px; font-size:10px; color:var(--text-secondary);">
+        <span>↑↓ navigate</span>
+        <span>↵ open</span>
+        <span>⇧↵ full results</span>
+        <span style="flex:1;"></span>
+        <span>Hybrid search: keyword + semantic</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- FULL SEARCH RESULTS PAGE -->
+<div class="mockup" style="max-width:940px; margin:0 auto;">
+  <div class="mockup-header">Full Search Results Page (⇧↵ from palette or sidebar Search)</div>
+  <div class="mockup-body" style="font-size:13px; padding:0; min-height:500px; display:flex; flex-direction:column;">
+
+    <!-- Top bar with search -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px; flex-shrink:0;">
+      <div style="font-size:16px; font-weight:600;">Search</div>
+      <div style="flex:1; display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--accent); border-radius:8px; padding:8px 12px; gap:8px;">
+        <span style="font-size:14px; opacity:0.4;">🔍</span>
+        <span style="font-size:13px;">deep work attention</span>
+      </div>
+    </div>
+
+    <div style="flex:1; display:flex;">
+      <!-- Left: Filters -->
+      <div style="width:200px; border-right:1px solid var(--border); padding:16px; flex-shrink:0;">
+        <div style="font-size:11px; font-weight:500; margin-bottom:10px;">Source Type</div>
+        <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:16px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>All</span> <span style="color:var(--text-secondary); margin-left:auto;">18</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Sections</span> <span style="color:var(--text-secondary); margin-left:auto;">8</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Summaries</span> <span style="color:var(--text-secondary); margin-left:auto;">5</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Concepts</span> <span style="color:var(--text-secondary); margin-left:auto;">3</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>Annotations</span> <span style="color:var(--text-secondary); margin-left:auto;">2</span>
+          </label>
+        </div>
+
+        <div style="font-size:11px; font-weight:500; margin-bottom:10px;">Book</div>
+        <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:16px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" checked style="accent-color:var(--accent);"> <span>All books</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" style="accent-color:var(--accent);"> <span>Deep Work</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" style="accent-color:var(--accent);"> <span>Atomic Habits</span>
+          </label>
+        </div>
+
+        <div style="font-size:11px; font-weight:500; margin-bottom:10px;">Tags</div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" style="accent-color:var(--accent);"> <span>Business</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" style="accent-color:var(--accent);"> <span>Psychology</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Right: Results grouped by book -->
+      <div style="flex:1; padding:16px; overflow-y:auto;">
+        <div style="display:flex; align-items:center; margin-bottom:16px;">
+          <span style="font-size:12px; color:var(--text-secondary);">18 results · hybrid search (BM25 + semantic)</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer;">Sort: Relevance ▾</span>
+        </div>
+
+        <!-- Book group 1 -->
+        <div style="margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+            <span style="font-size:14px;">📘</span>
+            <span style="font-size:13px; font-weight:600;">Deep Work</span>
+            <span style="font-size:11px; color:var(--text-secondary);">Cal Newport</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:11px; color:var(--text-secondary);">14 matches</span>
+          </div>
+
+          <!-- Result item -->
+          <div style="padding:10px 12px; border-radius:8px; cursor:pointer; margin-bottom:6px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">section</span>
+              <span style="font-size:12px; font-weight:500;">Ch.2 — Deep Work Is Valuable</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:10px; color:var(--text-secondary);">score: 0.92</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">
+              ...the concept of <strong style="color:var(--text-primary);">attention</strong> residue explains why multitasking reduces cognitive performance. When you switch from Task A to Task B, your <strong style="color:var(--text-primary);">attention</strong> doesn't immediately follow...
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; cursor:pointer; margin-bottom:6px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">concept</span>
+              <span style="font-size:12px; font-weight:500;">Attention Residue</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">
+              Cognitive carry-over effect when switching between tasks. Your <strong style="color:var(--text-primary);">attention</strong> leaves a "residue" on the previous task, reducing performance on the new one.
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; cursor:pointer; margin-bottom:6px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:rgb(52,199,89);">summary</span>
+              <span style="font-size:12px; font-weight:500;">Ch.6 — Embrace Boredom (Summary)</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">
+              ...train your brain to resist distraction. Improve your capacity for sustained <strong style="color:var(--text-primary);">attention</strong> through productive meditation...
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; cursor:pointer; margin-bottom:6px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.1); color:rgb(255,159,10);">annotation</span>
+              <span style="font-size:12px; font-weight:500;">Note on Ch.2</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">
+              "<strong style="color:var(--text-primary);">Attention</strong> residue explains why multitasking is harmful — connect this to Kahneman's System 1/2 framework"
+            </div>
+          </div>
+
+          <div style="font-size:11px; color:var(--accent); cursor:pointer; padding-left:12px;">Show 10 more results from this book →</div>
+        </div>
+
+        <!-- Book group 2 -->
+        <div style="margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--border);">
+            <span style="font-size:14px;">📙</span>
+            <span style="font-size:13px; font-weight:600;">Thinking, Fast and Slow</span>
+            <span style="font-size:11px; color:var(--text-secondary);">D. Kahneman</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:11px; color:var(--text-secondary);">4 matches</span>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; cursor:pointer; margin-bottom:6px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">section</span>
+              <span style="font-size:12px; font-weight:500;">Ch.4 — The Associative Machine</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">
+              ...System 2 allocates <strong style="color:var(--text-primary);">attention</strong> to effortful mental activities. When we think of ourselves, we identify with System 2...
+            </div>
+          </div>
+
+          <div style="font-size:11px; color:var(--accent); cursor:pointer; padding-left:12px;">Show 3 more results from this book →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- EMPTY STATE + RECENT SEARCHES -->
+<div class="mockup" style="max-width:600px; margin:0 auto;">
+  <div class="mockup-header">⌘K Palette — Empty query (recent searches)</div>
+  <div class="mockup-body" style="font-size:12px; padding:0;">
+    <div style="width:520px; margin:0 auto;">
+      <!-- Search input -->
+      <div style="padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;">
+        <span style="font-size:16px; opacity:0.4;">🔍</span>
+        <span style="font-size:14px; color:var(--text-secondary);">Search books, sections, concepts...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">ESC</span>
+      </div>
+
+      <!-- Recent searches -->
+      <div style="padding:10px 16px 4px; font-size:10px; color:var(--text-secondary); font-weight:500;">RECENT SEARCHES</div>
+      <div style="padding:6px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span style="opacity:0.4;">🕐</span> attention residue
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</span>
+      </div>
+      <div style="padding:6px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span style="opacity:0.4;">🕐</span> metric black hole
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</span>
+      </div>
+      <div style="padding:6px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span style="opacity:0.4;">🕐</span> productivity frameworks
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</span>
+      </div>
+
+      <!-- Quick actions -->
+      <div style="padding:12px 16px 4px; font-size:10px; color:var(--text-secondary); font-weight:500;">QUICK ACTIONS</div>
+      <div style="padding:6px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span style="opacity:0.5;">📁</span> Upload a book
+      </div>
+      <div style="padding:6px 16px 12px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span style="opacity:0.5;">📚</span> Go to Library
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:940px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Search — Design Summary</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>⌘K Command Palette</strong>: Centered modal, instant results grouped by type (Books, Sections, Concepts, Annotations). Keyboard navigation (↑↓ navigate, ↵ open, ⇧↵ full results). Match highlighting in bold. Empty state shows recent searches + quick actions.</li>
+    <li><strong>Full Results Page</strong>: Left sidebar filters (Source Type with counts, Book filter, Tag filter). Results grouped by book with match count. Each result shows: type badge (color-coded), title, snippet with highlights, relevance score.</li>
+    <li><strong>Hybrid search</strong>: BM25 (keyword) + semantic (embedding) + RRF fusion. Indicated in footer/header so user knows it's more than keyword matching.</li>
+    <li><strong>Result types</strong>: section (blue), summary (green), concept (purple), annotation (orange) — each color-coded consistently.</li>
+    <li><strong>Result actions</strong>: Click opens the source directly (section reader, concept tooltip, annotation in context). "Show N more" expands within book group.</li>
+    <li><strong>Sort</strong>: Relevance (default), Date, Book order.</li>
+  </ul>
+</div>
+
+</body>
+</html>

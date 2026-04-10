@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion — Library Mobile Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mobile-tab-bar {
+      display: flex;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .mobile-tab-bar .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .mobile-tab-bar .tab.active { color: var(--accent); }
+    .mobile-tab-bar .tab .tab-icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .mobile-status-bar {
+      height: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .annotation {
+      display: inline-block;
+      background: rgba(255, 159, 10, 0.1);
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: var(--warning);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Library -- Mobile (320px)</h2>
+<p class="subtitle">List view with scrollable status tabs, compact filter dropdowns, book rows with thumbnail + status badge</p>
+
+<div style="display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
+
+<!-- ============================================ -->
+<!-- MOBILE LIBRARY — Main View -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Library — List View</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Mobile Library</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <!-- Status bar -->
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:12px 16px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:16px; font-weight:600; flex:1;">Library</span>
+        <span style="font-size:16px; cursor:pointer; color:var(--accent);">+</span>
+      </div>
+
+      <!-- Scrollable custom view tabs (synced from desktop) -->
+      <div style="display:flex; gap:0; padding:0 16px; flex-shrink:0; overflow-x:auto;">
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; background:var(--accent); color:white; white-space:nowrap;">All Books</span>
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; color:var(--text-secondary); white-space:nowrap;">Currently Reading</span>
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; color:var(--text-secondary); white-space:nowrap;">Business Shelf</span>
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; color:var(--text-secondary); white-space:nowrap;">Needs Review</span>
+      </div>
+      <div class="annotation" style="margin:4px 16px 0;">Custom views synced from desktop-created views</div>
+
+      <!-- Compact filter row -->
+      <div style="display:flex; gap:6px; padding:8px 16px; flex-shrink:0;">
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--text-secondary);">Sort: Recent &#x25BE;</span>
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--text-secondary);">Tag &#x25BE;</span>
+      </div>
+
+      <!-- Book list (list view, not grid) -->
+      <div style="flex:1; overflow-y:auto; padding:0 16px;">
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d8;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Deep Work</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Cal Newport</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success); flex-shrink:0;">Summarized</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d9;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Atomic Habits</div>
+            <div style="font-size:10px; color:var(--text-secondary);">James Clear</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent); flex-shrink:0;">Processing</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d7;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Thinking, Fast and Slow</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Daniel Kahneman</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success); flex-shrink:0;">Summarized</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d5;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">The Lean Startup</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Eric Ries</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(174,174,178,0.15); color:var(--text-tertiary); flex-shrink:0;">Imported</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0;">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d3;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Range</div>
+            <div style="font-size:10px; color:var(--text-secondary);">David Epstein</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success); flex-shrink:0;">Summarized</span>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab active"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MOBILE LIBRARY — Empty State -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Library — Empty State</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Mobile Library — Empty</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <!-- Status bar -->
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:12px 16px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:16px; font-weight:600; flex:1;">Library</span>
+        <span style="font-size:16px; cursor:pointer; color:var(--accent);">+</span>
+      </div>
+
+      <!-- Empty state content -->
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px 24px; text-align:center;">
+        <!-- Welcome illustration -->
+        <div style="font-size:48px; margin-bottom:16px;">&#x1f4da;</div>
+
+        <div style="font-size:16px; font-weight:600; margin-bottom:6px;">Welcome to Book Companion</div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:24px; line-height:1.4;">Upload a non-fiction book and get AI-powered summaries, concepts, and a searchable knowledge base</div>
+
+        <!-- How it works — stacked vertically -->
+        <div style="width:100%; margin-bottom:24px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <div style="width:32px; height:32px; border-radius:8px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">&#x1f4e4;</div>
+            <div style="text-align:left; font-size:11px; color:var(--text-secondary);"><strong style="color:var(--text-primary);">1.</strong> Upload an EPUB, MOBI, or PDF</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <div style="width:32px; height:32px; border-radius:8px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">&#x1f916;</div>
+            <div style="text-align:left; font-size:11px; color:var(--text-secondary);"><strong style="color:var(--text-primary);">2.</strong> AI summarizes and extracts concepts</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:32px; height:32px; border-radius:8px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;">&#x1f4d6;</div>
+            <div style="text-align:left; font-size:11px; color:var(--text-secondary);"><strong style="color:var(--text-primary);">3.</strong> Browse, annotate, search &amp; ask AI</div>
+          </div>
+        </div>
+
+        <!-- Primary CTA — full width -->
+        <div style="width:100%; padding:12px; border-radius:10px; background:var(--accent); color:white; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px;">Upload Your First Book</div>
+        <div style="font-size:10px; color:var(--text-tertiary);">Supports EPUB, MOBI, and PDF files up to 100MB</div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab active"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end grid -->
+
+<!-- Design notes -->
+<div style="margin-top:2rem; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:600px; margin-left:auto; margin-right:auto;">
+  <h3 style="margin-bottom:10px;">Library Mobile -- Adaptations</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>List view only</strong>: No grid/card layout at mobile. Each row: small cover thumbnail (36x52px) + title + author + status badge.</li>
+    <li><strong>Custom view tabs (R5)</strong>: Horizontal pill bar syncs desktop-created views (All Books / Currently Reading / Business Shelf / Needs Review). Read-only on mobile; create/edit views on desktop.</li>
+    <li><strong>Compact filter row</strong>: Sort and Tag dropdowns in a single row below tabs. Tap to open native picker.</li>
+    <li><strong>Title truncation</strong>: Long titles use text-overflow:ellipsis. Author name shown below.</li>
+    <li><strong>"+" button</strong>: Top-right add button navigates to upload flow.</li>
+    <li><strong>Empty state</strong>: Stacked vertically with full-width CTA button. 3-step how-it-works shown as compact horizontal rows.</li>
+    <li><strong>Terminology (R12)</strong>: Bottom tab bar uses "Annotations" (not "Notes") to match desktop sidebar.</li>
+  </ul>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Library — Custom Views + Filter Bar</h2>
+<p class="subtitle">Notion-style saved views with tag pills + multi-select filter dropdowns</p>
+
+<div class="mockup" style="max-width:920px; margin:0 auto;">
+  <div class="mockup-header">Default View — "All Books"</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <!-- Top bar -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px;">
+      <div style="font-size:16px; font-weight:600;">Library</div>
+      <div style="font-size:11px; color:var(--text-secondary);">12 books</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:300px; gap:8px;">
+        <span style="font-size:13px; opacity:0.4;">🔍</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">⌘K</span>
+      </div>
+      <div style="padding:5px 14px; border-radius:8px; background:var(--accent); color:white; font-size:12px; font-weight:500;">+ Upload</div>
+    </div>
+
+    <!-- View tabs -->
+    <div style="display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--border); gap:0;">
+      <div style="padding:10px 16px; font-size:12px; font-weight:500; border-bottom:2px solid var(--accent); color:var(--text-primary); cursor:pointer;">All Books</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Currently Reading</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Business Shelf</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Needs Review</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer; opacity:0.5;">+ New View</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); cursor:pointer; padding:4px 8px;">⋯</div>
+    </div>
+
+    <!-- Row 1: Tag pills (primary filter) -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:6px; overflow-x:auto;">
+      <span style="font-size:10px; color:var(--text-secondary); margin-right:4px; flex-shrink:0;">Tags:</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--accent); color:white; cursor:pointer; white-space:nowrap;">All</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer; white-space:nowrap;">Business</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer; white-space:nowrap;">Psychology</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer; white-space:nowrap;">Science</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer; white-space:nowrap;">Technology</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer; white-space:nowrap;">Philosophy</span>
+    </div>
+
+    <!-- Row 2: Secondary filter dropdowns + sort + view -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:8px;">
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; gap:4px; flex-shrink:0;">
+        Status ▾
+      </div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; gap:4px; flex-shrink:0;">
+        Author ▾
+      </div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; gap:4px; flex-shrink:0;">
+        Eval ▾
+      </div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; gap:4px; flex-shrink:0;">
+        Format ▾
+      </div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; flex-shrink:0;">Sort: Recent ▾</div>
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:6px; padding:2px; gap:1px; flex-shrink:0;">
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1);">▦</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">☰</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">▤</span>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div style="padding:16px 20px;">
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px;">
+          <div style="width:100%;height:70px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">📘</div>
+          <div style="font-size:11px;font-weight:600;">Deep Work</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px;">Cal Newport</div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">✓ Summarized</span>
+        </div>
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px;">
+          <div style="width:100%;height:70px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">📙</div>
+          <div style="font-size:11px;font-weight:600;">Thinking, Fast...</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px;">D. Kahneman</div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.15); color:rgb(0,122,255);">⟳ 8/24</span>
+        </div>
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px;">
+          <div style="width:100%;height:70px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">📗</div>
+          <div style="font-size:11px;font-weight:600;">Atomic Habits</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px;">James Clear</div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.15); color:rgb(255,159,10);">Parsed only</span>
+        </div>
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:12px;">
+          <div style="width:100%;height:70px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">📕</div>
+          <div style="font-size:11px;font-weight:600;">Art of Strategy</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px;">A. Dixit</div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">✓ Summarized</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<div class="mockup" style="max-width:920px; margin:0 auto;">
+  <div class="mockup-header">"Needs Review" View — Pre-filtered: Status=Done + Eval=Partial/Failed, Table Mode</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <!-- Top bar (same) -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px;">
+      <div style="font-size:16px; font-weight:600;">Library</div>
+      <div style="font-size:11px; color:var(--text-secondary);">3 books</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:300px; gap:8px;">
+        <span style="font-size:13px; opacity:0.4;">🔍</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">⌘K</span>
+      </div>
+      <div style="padding:5px 14px; border-radius:8px; background:var(--accent); color:white; font-size:12px; font-weight:500;">+ Upload</div>
+    </div>
+
+    <!-- View tabs -->
+    <div style="display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--border); gap:0;">
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">All Books</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Currently Reading</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Business Shelf</div>
+      <div style="padding:10px 16px; font-size:12px; font-weight:500; border-bottom:2px solid var(--accent); color:var(--text-primary); cursor:pointer;">Needs Review</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer; opacity:0.5;">+ New View</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); cursor:pointer; padding:4px 8px;">⋯</div>
+    </div>
+
+    <!-- Tags row (still available for further filtering) -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:6px;">
+      <span style="font-size:10px; color:var(--text-secondary); margin-right:4px;">Tags:</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--accent); color:white; cursor:pointer;">All</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); cursor:pointer;">Business</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); cursor:pointer;">Psychology</span>
+      <span style="font-size:11px; padding:4px 12px; border-radius:14px; background:var(--bg-tertiary); cursor:pointer;">Science</span>
+    </div>
+
+    <!-- Secondary filters — showing active state for this view -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:8px;">
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:rgba(0,122,255,0.12); color:var(--accent); cursor:pointer; display:flex; align-items:center; gap:4px; flex-shrink:0;">
+        Status: Done ✕
+      </div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">
+        Author ▾
+      </div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:rgba(0,122,255,0.12); color:var(--accent); cursor:pointer; display:flex; align-items:center; gap:4px; flex-shrink:0;">
+        Eval: Partial, Failed ✕
+      </div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">
+        Format ▾
+      </div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer;">Sort: Eval Score ▾</div>
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:6px; padding:2px; gap:1px; flex-shrink:0;">
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">▦</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">☰</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1);">▤</span>
+      </div>
+    </div>
+
+    <!-- Table view -->
+    <div style="padding:0 20px 16px 20px;">
+      <table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:12px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border); text-align:left;">
+            <th style="padding:8px 8px; color:var(--text-secondary); font-weight:500;">Title</th>
+            <th style="padding:8px 8px; color:var(--text-secondary); font-weight:500;">Author</th>
+            <th style="padding:8px 8px; color:var(--text-secondary); font-weight:500;">Sections</th>
+            <th style="padding:8px 8px; color:var(--text-secondary); font-weight:500;">Eval Score</th>
+            <th style="padding:8px 8px; color:var(--text-secondary); font-weight:500;">Issues</th>
+            <th style="padding:8px 8px; color:var(--text-secondary); font-weight:500;">Added</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border); cursor:pointer;">
+            <td style="padding:10px 8px; font-weight:500;">Thinking, Fast and Slow</td>
+            <td style="padding:10px 8px; color:var(--text-secondary);">D. Kahneman</td>
+            <td style="padding:10px 8px;">24</td>
+            <td style="padding:10px 8px;"><span style="color:rgb(255,159,10);">12/16</span></td>
+            <td style="padding:10px 8px; font-size:10px;"><span style="padding:2px 6px; border-radius:4px; background:rgba(255,59,48,0.1); color:rgb(255,59,48);">3 hallucinations</span></td>
+            <td style="padding:10px 8px; color:var(--text-secondary);">Apr 2</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border); cursor:pointer;">
+            <td style="padding:10px 8px; font-weight:500;">The Innovator's Dilemma</td>
+            <td style="padding:10px 8px; color:var(--text-secondary);">C. Christensen</td>
+            <td style="padding:10px 8px;">18</td>
+            <td style="padding:10px 8px;"><span style="color:rgb(255,159,10);">13/16</span></td>
+            <td style="padding:10px 8px; font-size:10px;"><span style="padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.1); color:rgb(255,159,10);">2 paraphrased quotes</span></td>
+            <td style="padding:10px 8px; color:var(--text-secondary);">Mar 28</td>
+          </tr>
+          <tr style="cursor:pointer;">
+            <td style="padding:10px 8px; font-weight:500;">Antifragile</td>
+            <td style="padding:10px 8px; color:var(--text-secondary);">N.N. Taleb</td>
+            <td style="padding:10px 8px;">26</td>
+            <td style="padding:10px 8px;"><span style="color:rgb(255,59,48);">9/16</span></td>
+            <td style="padding:10px 8px; font-size:10px;"><span style="padding:2px 6px; border-radius:4px; background:rgba(255,59,48,0.1); color:rgb(255,59,48);">5 failures</span></td>
+            <td style="padding:10px 8px; color:var(--text-secondary);">Mar 25</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:28px;">
+  <h3>How it works</h3>
+  <ul style="margin-top:8px; padding-left:20px; font-size:14px; line-height:2.2;">
+    <li><strong>View tabs</strong> — Saved filter+sort+display combos. Switch in 1 click. "All Books" is the default.</li>
+    <li><strong>+ New View</strong> — Creates a view from current filter state, or from scratch. Name it, save it.</li>
+    <li><strong>⋯ menu</strong> — Edit view (rename, reorder), duplicate, delete, set as default</li>
+    <li><strong>Tag pills</strong> (primary) — Always visible, 1-click filtering. Works within any view.</li>
+    <li><strong>Filter dropdowns</strong> (secondary) — Status, Author, Eval, Format. Each is a multi-select popover. Active filters show as blue chips with values + ✕ to clear.</li>
+    <li><strong>View remembers everything</strong> — Filters, sort order, display mode (grid/list/table), and even visible table columns.</li>
+    <li><strong>Ad-hoc refinement</strong> — Change filters within a view without saving. A subtle indicator shows "unsaved changes" with option to save or revert.</li>
+  </ul>
+</div>
+
+</body>
+</html>

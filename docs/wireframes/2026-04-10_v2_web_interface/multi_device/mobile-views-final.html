@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Mobile Views Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+
+    /* Mobile frame helper */
+    .mobile-frame {
+      width: 320px;
+      min-height: 568px;
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      overflow: hidden;
+      background: var(--bg-primary);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      margin: 0 auto;
+    }
+    .mobile-status-bar {
+      height: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .mobile-tab-bar {
+      display: flex;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .mobile-tab-bar .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .mobile-tab-bar .tab.active {
+      color: var(--accent);
+    }
+    .mobile-tab-bar .tab .tab-icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .mobile-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+<h2>Mobile Views (320px)</h2>
+<p class="subtitle">Responsive wireframes for every major component at mobile viewport width</p>
+
+<!-- GRID OF MOBILE SCREENS -->
+<div class="mobile-grid">
+
+<!-- ============================================ -->
+<!-- A) MOBILE LIBRARY -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">A) Mobile Library</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <!-- Status bar -->
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:12px 16px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:16px; font-weight:600; flex:1;">Library</span>
+        <span style="font-size:16px; cursor:pointer;">+</span>
+      </div>
+
+      <!-- Scrollable view tabs -->
+      <div style="display:flex; gap:0; padding:0 16px; flex-shrink:0; overflow-x:auto;">
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; background:var(--accent); color:white; white-space:nowrap;">All</span>
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; color:var(--text-secondary); white-space:nowrap;">Reading</span>
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; color:var(--text-secondary); white-space:nowrap;">Summarized</span>
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; color:var(--text-secondary); white-space:nowrap;">Archived</span>
+      </div>
+
+      <!-- Compact filter row -->
+      <div style="display:flex; gap:6px; padding:8px 16px; flex-shrink:0;">
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--text-secondary);">Sort: Recent &#x25BE;</span>
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--text-secondary);">Tag &#x25BE;</span>
+      </div>
+
+      <!-- Book list -->
+      <div style="flex:1; overflow-y:auto; padding:0 16px;">
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d8;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Deep Work</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Cal Newport</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success); flex-shrink:0;">Summarized</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d9;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Atomic Habits</div>
+            <div style="font-size:10px; color:var(--text-secondary);">James Clear</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent); flex-shrink:0;">Processing</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d7;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Thinking, Fast and Slow</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Daniel Kahneman</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success); flex-shrink:0;">Summarized</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d5;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">The Lean Startup</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Eric Ries</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(174,174,178,0.15); color:var(--text-tertiary); flex-shrink:0;">Imported</span>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center; padding:10px 0;">
+          <div style="width:36px; height:52px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px; opacity:0.3;">&#x1f4d3;</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Range</div>
+            <div style="font-size:10px; color:var(--text-secondary);">David Epstein</div>
+          </div>
+          <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success); flex-shrink:0;">Summarized</span>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab active"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- B) MOBILE BOOK DETAIL / READER -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">B) Mobile Reader</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header with back + chapter dropdown -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <div style="flex:1; display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <span style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">Ch.3 Habit Formation</span>
+          <span style="font-size:10px; color:var(--text-secondary);">&#x25BE;</span>
+        </div>
+        <span style="font-size:12px; color:var(--text-secondary);">3/14</span>
+      </div>
+
+      <!-- Original / Summary toggle -->
+      <div style="display:flex; margin:8px 16px; background:var(--bg-tertiary); border-radius:8px; padding:2px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; padding:5px 0; font-size:11px; border-radius:6px; color:var(--text-secondary); cursor:pointer;">Original</div>
+        <div style="flex:1; text-align:center; padding:5px 0; font-size:11px; border-radius:6px; background:var(--bg-secondary); font-weight:500; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">Summary</div>
+      </div>
+
+      <!-- Reading content -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px; font-size:12px; line-height:1.8;">
+        <p style="margin-bottom:12px;"><strong>Key Takeaway:</strong> Habits are driven by a three-part neurological loop stored in the basal ganglia.</p>
+        <p style="margin-bottom:12px;">The brain converts repeated behavioral sequences into automatic routines through "chunking." The habit loop:</p>
+        <ul style="margin:0 0 12px 16px; line-height:2;">
+          <li><strong>Cue</strong> — trigger that initiates behavior</li>
+          <li><strong>Routine</strong> — the behavior itself</li>
+          <li><strong>Reward</strong> — benefit reinforcing the loop</li>
+        </ul>
+        <p style="margin-bottom:12px;">Once established, the basal ganglia encodes the full loop, reducing prefrontal cortex involvement. This means habits persist even when conscious attention is elsewhere.</p>
+        <p style="margin-bottom:12px;">The key finding: habit formation is not about willpower but about understanding and redesigning the loop components.</p>
+      </div>
+
+      <!-- Bottom action bar -->
+      <div style="display:flex; border-top:1px solid var(--border); background:var(--bg-secondary); padding:8px 0; flex-shrink:0;">
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0;">Aa</div>
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0;">&#x2728;</div>
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0;">&#x1f4ac;</div>
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0;">&#x22ef;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- C) MOBILE ANNOTATIONS BOTTOM SHEET -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">C) Annotations Bottom Sheet</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Dimmed reader content behind -->
+      <div style="flex:1; padding:12px 16px; font-size:11px; line-height:1.7; color:var(--text-tertiary); opacity:0.4; overflow:hidden;">
+        <p style="margin-bottom:8px;">Key Takeaway: Habits are driven by a three-part neurological loop stored in the basal ganglia.</p>
+        <p>The brain converts repeated behavioral sequences into automatic routines through "chunking."</p>
+      </div>
+
+      <!-- Bottom sheet -->
+      <div style="background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); flex-shrink:0;">
+        <!-- Drag handle -->
+        <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+          <div style="width:36px; height:4px; border-radius:2px; background:var(--bg-tertiary);"></div>
+        </div>
+
+        <!-- Sheet header -->
+        <div style="display:flex; align-items:center; padding:4px 16px 10px; gap:8px;">
+          <span style="font-size:13px; font-weight:600;">Annotations</span>
+          <span style="font-size:11px; color:var(--text-secondary);">3</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:12px; color:var(--accent); font-weight:500; cursor:pointer;">+ Add</span>
+        </div>
+
+        <!-- Annotation list -->
+        <div style="padding:0 16px 12px; max-height:240px; overflow-y:auto;">
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <div style="width:3px; height:16px; border-radius:2px; background:rgb(255,204,0);"></div>
+              <span style="font-size:11px; font-weight:500;">Highlight</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 8</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; padding-left:9px;">"The habit loop — cue, routine, reward — becomes encoded in the basal ganglia"</div>
+          </div>
+
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <div style="width:3px; height:16px; border-radius:2px; background:var(--accent);"></div>
+              <span style="font-size:11px; font-weight:500;">Note</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 8</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; padding-left:9px;">Connect this to Kahneman's System 1 — automatic processing = habits</div>
+          </div>
+
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <div style="width:3px; height:16px; border-radius:2px; background:rgb(255,204,0);"></div>
+              <span style="font-size:11px; font-weight:500;">Highlight</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 9</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; padding-left:9px;">"habits persist even when conscious attention is directed elsewhere"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- D) MOBILE AI CHAT BOTTOM SHEET -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">D) AI Chat Bottom Sheet</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Dimmed reader behind -->
+      <div style="height:80px; padding:12px 16px; font-size:10px; line-height:1.6; color:var(--text-tertiary); opacity:0.3; overflow:hidden; flex-shrink:0;">
+        <p>Key Takeaway: Habits are driven by a three-part neurological loop...</p>
+      </div>
+
+      <!-- AI Chat bottom sheet -->
+      <div style="flex:1; background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); display:flex; flex-direction:column;">
+        <!-- Drag handle -->
+        <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+          <div style="width:36px; height:4px; border-radius:2px; background:var(--bg-tertiary);"></div>
+        </div>
+
+        <!-- Sheet header -->
+        <div style="display:flex; align-items:center; padding:4px 16px 8px; gap:8px; flex-shrink:0;">
+          <span style="font-size:14px;">&#x2728;</span>
+          <span style="font-size:13px; font-weight:600;">AI Chat</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">Ch.3 context</span>
+        </div>
+
+        <!-- Thread list / messages -->
+        <div style="flex:1; overflow-y:auto; padding:0 12px;">
+
+          <!-- User message -->
+          <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <div style="max-width:80%; background:var(--accent); color:white; padding:8px 12px; border-radius:12px 12px 4px 12px; font-size:11px; line-height:1.5;">
+              Explain the habit loop in simple terms
+            </div>
+          </div>
+
+          <!-- AI response -->
+          <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
+            <div style="max-width:85%; background:var(--bg-tertiary); padding:8px 12px; border-radius:12px 12px 12px 4px; font-size:11px; line-height:1.5;">
+              <p style="margin-bottom:6px;">The habit loop has 3 simple parts:</p>
+              <p style="margin-bottom:4px;"><strong>1. Cue</strong> — Something triggers the behavior (a time, place, or feeling)</p>
+              <p style="margin-bottom:4px;"><strong>2. Routine</strong> — The actual behavior you do</p>
+              <p style="margin-bottom:4px;"><strong>3. Reward</strong> — The benefit your brain gets</p>
+              <p style="margin-top:6px;">Over time, your brain automates this entire loop so it requires almost zero effort.</p>
+            </div>
+          </div>
+
+          <!-- User follow-up -->
+          <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <div style="max-width:80%; background:var(--accent); color:white; padding:8px 12px; border-radius:12px 12px 4px 12px; font-size:11px; line-height:1.5;">
+              How do I break a bad habit?
+            </div>
+          </div>
+
+          <!-- AI typing -->
+          <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
+            <div style="background:var(--bg-tertiary); padding:8px 14px; border-radius:12px 12px 12px 4px; font-size:11px; color:var(--text-secondary);">
+              &#x25CF; &#x25CF; &#x25CF;
+            </div>
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div style="padding:8px 12px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <div style="flex:1; padding:8px 10px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border); font-size:11px; color:var(--text-tertiary);">Ask about this section...</div>
+          <div style="width:28px; height:28px; border-radius:6px; background:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <span style="color:white; font-size:12px;">&#x2191;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- E) MOBILE SEARCH -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">E) Mobile Search</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Search header -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <div style="flex:1; display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--accent); border-radius:8px; padding:8px 10px; gap:6px;">
+          <span style="font-size:12px; opacity:0.4;">&#x1f50d;</span>
+          <span style="font-size:12px;">attention residue</span>
+        </div>
+      </div>
+
+      <!-- Result count -->
+      <div style="padding:4px 16px 8px; font-size:10px; color:var(--text-secondary); flex-shrink:0;">
+        18 results · hybrid search
+      </div>
+
+      <!-- Grouped results -->
+      <div style="flex:1; overflow-y:auto; padding:0 12px;">
+
+        <!-- Book group header -->
+        <div style="display:flex; align-items:center; gap:6px; padding:8px 0 6px; border-bottom:1px solid var(--border);">
+          <span style="font-size:12px;">&#x1f4d8;</span>
+          <span style="font-size:12px; font-weight:600;">Deep Work</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">14</span>
+        </div>
+
+        <!-- Result items -->
+        <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">section</span>
+            <span style="font-size:11px; font-weight:500;">Ch.2 — Deep Work Is Valuable</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">
+            ...the concept of <strong style="color:var(--text-primary);">attention</strong> residue explains why multitasking reduces cognitive performance...
+          </div>
+        </div>
+
+        <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">concept</span>
+            <span style="font-size:11px; font-weight:500;">Attention Residue</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">
+            Cognitive carry-over effect when switching between tasks...
+          </div>
+        </div>
+
+        <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(52,199,89,0.1); color:rgb(52,199,89);">summary</span>
+            <span style="font-size:11px; font-weight:500;">Ch.6 — Embrace Boredom</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">
+            ...train your brain to resist distraction. Improve capacity for sustained <strong style="color:var(--text-primary);">attention</strong>...
+          </div>
+        </div>
+
+        <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(255,159,10,0.1); color:rgb(255,159,10);">annotation</span>
+            <span style="font-size:11px; font-weight:500;">Note on Ch.2</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">
+            "<strong style="color:var(--text-primary);">Attention</strong> residue explains why multitasking is harmful"
+          </div>
+        </div>
+
+        <div style="font-size:10px; color:var(--accent); padding:10px 0; cursor:pointer;">Show 10 more from Deep Work &#x2192;</div>
+
+        <!-- Second book -->
+        <div style="display:flex; align-items:center; gap:6px; padding:8px 0 6px; border-bottom:1px solid var(--border);">
+          <span style="font-size:12px;">&#x1f4d9;</span>
+          <span style="font-size:12px; font-weight:600;">Thinking, Fast and Slow</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">4</span>
+        </div>
+
+        <div style="padding:8px 0;">
+          <div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">section</span>
+            <span style="font-size:11px; font-weight:500;">Ch.4 — The Associative Machine</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">
+            ...System 2 allocates <strong style="color:var(--text-primary);">attention</strong> to effortful mental activities...
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab active"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- F) MOBILE UPLOAD -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">F) Mobile Upload</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <span style="font-size:14px; font-weight:600;">Upload Book</span>
+      </div>
+
+      <!-- Wizard steps -->
+      <div style="display:flex; align-items:center; padding:12px 16px; gap:4px; flex-shrink:0;">
+        <div style="width:24px; height:24px; border-radius:50%; background:var(--accent); color:white; font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:600;">1</div>
+        <div style="flex:1; height:2px; background:var(--accent);"></div>
+        <div style="width:24px; height:24px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:600;">2</div>
+        <div style="flex:1; height:2px; background:var(--bg-tertiary);"></div>
+        <div style="width:24px; height:24px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:600;">3</div>
+      </div>
+      <div style="display:flex; padding:0 16px 8px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; font-size:9px; color:var(--accent); font-weight:500;">File</div>
+        <div style="flex:1; text-align:center; font-size:9px; color:var(--text-tertiary);">Details</div>
+        <div style="flex:1; text-align:center; font-size:9px; color:var(--text-tertiary);">Options</div>
+      </div>
+
+      <!-- Upload content -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
+
+        <!-- Drag-drop zone -->
+        <div style="border:2px dashed var(--border); border-radius:12px; padding:32px 16px; text-align:center; margin-bottom:16px;">
+          <div style="font-size:32px; opacity:0.3; margin-bottom:8px;">&#x1f4e4;</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:4px;">Drop file here</div>
+          <div style="font-size:10px; color:var(--text-secondary); margin-bottom:12px;">EPUB, PDF, or MOBI</div>
+          <div style="display:inline-block; padding:8px 20px; background:var(--accent); color:white; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer;">Browse Files</div>
+        </div>
+
+        <!-- Or divider -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+          <div style="flex:1; height:1px; background:var(--border);"></div>
+          <span style="font-size:10px; color:var(--text-secondary);">or enter URL</span>
+          <div style="flex:1; height:1px; background:var(--border);"></div>
+        </div>
+
+        <!-- URL input -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px; font-weight:500; margin-bottom:4px;">Book URL</div>
+          <input type="text" placeholder="https://example.com/book.epub" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-primary); font-size:12px; color:var(--text-primary);">
+        </div>
+
+        <!-- File info (after selection) -->
+        <div style="padding:10px 12px; border-radius:8px; background:var(--bg-tertiary); display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px; opacity:0.5;">&#x1f4d3;</span>
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:500;">atomic_habits.epub</div>
+            <div style="font-size:10px; color:var(--text-secondary);">2.4 MB</div>
+          </div>
+          <span style="font-size:12px; color:var(--text-secondary); cursor:pointer;">&#x2715;</span>
+        </div>
+      </div>
+
+      <!-- Continue button -->
+      <div style="padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="width:100%; padding:12px 0; background:var(--accent); color:white; text-align:center; border-radius:10px; font-size:13px; font-weight:500; cursor:pointer;">Continue</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- G) MOBILE CONCEPTS -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">G) Mobile Concepts</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:12px 16px; display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <span style="font-size:16px; font-weight:600; flex:1;">Concepts</span>
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--text-secondary);">Sort &#x25BE;</span>
+      </div>
+
+      <!-- Filter chips -->
+      <div style="display:flex; gap:6px; padding:0 16px 10px; overflow-x:auto; flex-shrink:0;">
+        <span style="font-size:10px; padding:3px 10px; border-radius:12px; background:var(--accent); color:white; white-space:nowrap;">All</span>
+        <span style="font-size:10px; padding:3px 10px; border-radius:12px; border:1px solid var(--border); color:var(--text-secondary); white-space:nowrap;">Deep Work</span>
+        <span style="font-size:10px; padding:3px 10px; border-radius:12px; border:1px solid var(--border); color:var(--text-secondary); white-space:nowrap;">Atomic Habits</span>
+      </div>
+
+      <!-- Concept list (single column, no split) -->
+      <div style="flex:1; overflow-y:auto; padding:0 16px;">
+
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:13px;">&#x1f4a1;</span>
+            <span style="font-size:12px; font-weight:500;">Attention Residue</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:14px; color:var(--text-tertiary);">&#x203A;</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">Cognitive carry-over when switching tasks</div>
+          <div style="display:flex; gap:4px; margin-top:6px;">
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Deep Work</span>
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.2</span>
+          </div>
+        </div>
+
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:13px;">&#x1f4a1;</span>
+            <span style="font-size:12px; font-weight:500;">Productive Meditation</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:14px; color:var(--text-tertiary);">&#x203A;</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">Focused attention on a problem during physical activity</div>
+          <div style="display:flex; gap:4px; margin-top:6px;">
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Deep Work</span>
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.6</span>
+          </div>
+        </div>
+
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:13px;">&#x1f4a1;</span>
+            <span style="font-size:12px; font-weight:500;">Habit Loop</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:14px; color:var(--text-tertiary);">&#x203A;</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">Cue-routine-reward cycle that drives automatic behavior</div>
+          <div style="display:flex; gap:4px; margin-top:6px;">
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Atomic Habits</span>
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.3, Ch.5</span>
+          </div>
+        </div>
+
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:13px;">&#x1f4a1;</span>
+            <span style="font-size:12px; font-weight:500;">Implementation Intention</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:14px; color:var(--text-tertiary);">&#x203A;</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">"I will [behavior] at [time] in [location]" planning format</div>
+          <div style="display:flex; gap:4px; margin-top:6px;">
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Atomic Habits</span>
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.4</span>
+          </div>
+        </div>
+
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:13px;">&#x1f4a1;</span>
+            <span style="font-size:12px; font-weight:500;">System 1 / System 2</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:14px; color:var(--text-tertiary);">&#x203A;</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">Dual-process theory: fast intuitive vs slow deliberate thinking</div>
+          <div style="display:flex; gap:4px; margin-top:6px;">
+            <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Thinking, Fast and Slow</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab active"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- H) MOBILE READER SETTINGS -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">H) Mobile Reader Settings</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header -->
+      <div style="padding:10px 16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:14px; font-weight:600; flex:1;">Reader Settings</span>
+        <span style="font-size:13px; color:var(--accent); cursor:pointer;">Done</span>
+      </div>
+
+      <div style="flex:1; overflow-y:auto; padding:12px 16px;">
+
+        <!-- Presets (2 per row) -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Presets</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px;">
+          <div style="padding:10px; border-radius:8px; border:2px solid var(--accent); background:var(--selected-bg); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Default</div>
+            <div style="font-size:9px; color:var(--text-secondary);">16px / 1.6</div>
+          </div>
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Compact</div>
+            <div style="font-size:9px; color:var(--text-secondary);">14px / 1.4</div>
+          </div>
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Large</div>
+            <div style="font-size:9px; color:var(--text-secondary);">20px / 1.8</div>
+          </div>
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; cursor:pointer;">
+            <div style="font-size:11px; font-weight:500;">Dyslexia</div>
+            <div style="font-size:9px; color:var(--text-secondary);">18px / 2.0</div>
+          </div>
+        </div>
+
+        <!-- Font family -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Font</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">System</span>
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-family:Georgia,serif;">Serif</span>
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-family:monospace;">Mono</span>
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer;">OpenDyslexic</span>
+        </div>
+
+        <!-- Font size slider -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Size</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+          <span style="font-size:10px; color:var(--text-secondary);">A</span>
+          <div style="flex:1; height:4px; background:var(--bg-tertiary); border-radius:2px; position:relative;">
+            <div style="width:40%; height:100%; background:var(--accent); border-radius:2px;"></div>
+            <div style="position:absolute; top:-4px; left:40%; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid white; transform:translateX(-50%);"></div>
+          </div>
+          <span style="font-size:14px; color:var(--text-secondary);">A</span>
+          <span style="font-size:10px; color:var(--text-secondary); width:28px; text-align:right;">16px</span>
+        </div>
+
+        <!-- Line spacing slider -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Line Spacing</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+          <span style="font-size:10px; color:var(--text-secondary);">&#x2261;</span>
+          <div style="flex:1; height:4px; background:var(--bg-tertiary); border-radius:2px; position:relative;">
+            <div style="width:50%; height:100%; background:var(--accent); border-radius:2px;"></div>
+            <div style="position:absolute; top:-4px; left:50%; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid white; transform:translateX(-50%);"></div>
+          </div>
+          <span style="font-size:10px; color:var(--text-secondary);">&#x2630;</span>
+          <span style="font-size:10px; color:var(--text-secondary); width:28px; text-align:right;">1.6</span>
+        </div>
+
+        <!-- Background swatches -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Background</div>
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#ffffff; border:2px solid var(--accent); cursor:pointer; box-shadow:0 0 0 2px var(--accent);"></div>
+          <div style="width:36px; height:36px; border-radius:50%; background:#f5f0e8; border:1px solid var(--border); cursor:pointer;"></div>
+          <div style="width:36px; height:36px; border-radius:50%; background:#e8e8e8; border:1px solid var(--border); cursor:pointer;"></div>
+          <div style="width:36px; height:36px; border-radius:50%; background:#2d2d2f; border:1px solid var(--border); cursor:pointer;"></div>
+          <div style="width:36px; height:36px; border-radius:50%; background:#1a1a1a; border:1px solid var(--border); cursor:pointer;"></div>
+        </div>
+
+        <!-- Live preview -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Preview</div>
+        <div style="padding:12px; border-radius:8px; background:var(--bg-secondary); border:1px solid var(--border); font-size:13px; line-height:1.6;">
+          The brain converts repeated behavioral sequences into automatic routines through a process called "chunking."
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- I) MOBILE PROCESSING PROGRESS -->
+<!-- ============================================ -->
+<div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">I) Mobile Processing Progress</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Minimized bar at top (when browsing elsewhere) -->
+      <div style="padding:8px 16px; background:rgba(0,122,255,0.08); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; cursor:pointer;">
+        <div style="width:16px; height:16px; border-radius:50%; border:2px solid var(--accent); border-top-color:transparent; animation:none;"></div>
+        <span style="font-size:11px; font-weight:500;">Processing: Atomic Habits</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--accent);">7/14</span>
+        <span style="font-size:12px; color:var(--text-secondary);">&#x25BC;</span>
+      </div>
+
+      <!-- Label: Minimized state above, expanded below -->
+      <div style="padding:8px 16px; font-size:10px; color:var(--text-tertiary); text-align:center; flex-shrink:0;">&#x2191; Minimized bar shown above &#x2014; tap to expand &#x2193;</div>
+
+      <!-- EXPANDED: Full-screen progress view -->
+      <div style="flex:1; overflow-y:auto; padding:16px;">
+
+        <!-- Book info -->
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+          <div style="width:40px; height:56px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center;">
+            <span style="font-size:18px; opacity:0.3;">&#x1f4d9;</span>
+          </div>
+          <div>
+            <div style="font-size:13px; font-weight:600;">Atomic Habits</div>
+            <div style="font-size:11px; color:var(--text-secondary);">James Clear</div>
+          </div>
+        </div>
+
+        <!-- Overall progress -->
+        <div style="margin-bottom:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:500;">Summarizing sections</span>
+            <span style="font-size:11px; color:var(--text-secondary);">7 / 14</span>
+          </div>
+          <div style="height:6px; background:var(--bg-tertiary); border-radius:3px; overflow:hidden;">
+            <div style="width:50%; height:100%; background:var(--accent); border-radius:3px;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); margin-top:4px;">Est. 12 min remaining</div>
+        </div>
+
+        <!-- Section progress list -->
+        <div style="font-size:11px; font-weight:500; margin-bottom:8px;">Sections</div>
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--bg-tertiary);">
+            <span style="font-size:12px; color:var(--success);">&#x2713;</span>
+            <span style="font-size:11px; flex:1;">Ch.1 The Surprising Power</span>
+            <span style="font-size:9px; color:var(--success);">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--bg-tertiary);">
+            <span style="font-size:12px; color:var(--success);">&#x2713;</span>
+            <span style="font-size:11px; flex:1;">Ch.2 How Habits Shape Identity</span>
+            <span style="font-size:9px; color:var(--success);">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--bg-tertiary);">
+            <span style="font-size:12px; color:var(--success);">&#x2713;</span>
+            <span style="font-size:11px; flex:1;">Ch.3 Build Better Habits</span>
+            <span style="font-size:9px; color:var(--success);">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--bg-tertiary);">
+            <span style="font-size:12px; color:var(--success);">&#x2713;</span>
+            <span style="font-size:11px; flex:1;">Ch.4 The Man Who Didn't Look Right</span>
+            <span style="font-size:9px; color:var(--success);">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--bg-tertiary);">
+            <span style="font-size:12px; color:var(--success);">&#x2713;</span>
+            <span style="font-size:11px; flex:1;">Ch.5 Best Way to Start</span>
+            <span style="font-size:9px; color:var(--success);">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; background:var(--bg-tertiary);">
+            <span style="font-size:12px; color:var(--success);">&#x2713;</span>
+            <span style="font-size:11px; flex:1;">Ch.6 Motivation Is Overrated</span>
+            <span style="font-size:9px; color:var(--success);">Done</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; border:1px solid var(--accent); background:var(--selected-bg);">
+            <div style="width:12px; height:12px; border-radius:50%; border:2px solid var(--accent); border-top-color:transparent;"></div>
+            <span style="font-size:11px; flex:1; font-weight:500;">Ch.7 The Secret to Self-Control</span>
+            <span style="font-size:9px; color:var(--accent);">Running...</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; opacity:0.5;">
+            <span style="font-size:12px; color:var(--text-tertiary);">&#x25CB;</span>
+            <span style="font-size:11px; flex:1;">Ch.8 Make It Attractive</span>
+            <span style="font-size:9px; color:var(--text-tertiary);">Pending</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; opacity:0.5;">
+            <span style="font-size:12px; color:var(--text-tertiary);">&#x25CB;</span>
+            <span style="font-size:11px; flex:1;">Ch.9 Role of Family</span>
+            <span style="font-size:9px; color:var(--text-tertiary);">Pending</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab active"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end mobile-grid -->
+
+<div style="height:20px;"></div>
+
+<!-- DESIGN SUMMARY -->
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:940px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Mobile Views — Design Summary</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Bottom tab bar</strong>: 5 tabs (Library, Search, Concepts, Annotations, Settings) shown consistently across main screens. Reader and detail views hide the tab bar in favor of action bars.</li>
+    <li><strong>Library</strong>: Scrollable status filter tabs, compact sort/tag dropdowns, list view with cover thumbnail + title + author + status badge. "+" button for upload.</li>
+    <li><strong>Reader</strong>: Back arrow + chapter dropdown in header with position indicator. Segmented Original/Summary toggle. Full-width content. Bottom action bar: Aa (settings), AI chat, annotations, more.</li>
+    <li><strong>Bottom sheets</strong>: Annotations and AI Chat use draggable bottom sheets with handle. Dimmed reader content visible above. Sheets can be swiped to dismiss.</li>
+    <li><strong>Search</strong>: Full-screen takeover with search input at top, back button, grouped results by book. Same type badges (section/concept/summary/annotation) as desktop.</li>
+    <li><strong>Upload</strong>: Full-width 3-step wizard with progress dots. Large drag-drop zone, stacked form fields, full-width Continue button.</li>
+    <li><strong>Concepts</strong>: Single-column list (no split panel). Tap concept row to push to detail screen (right chevron hint). Book/chapter tags below each concept.</li>
+    <li><strong>Reader Settings</strong>: Full-screen modal. Preset cards in 2-column grid. Font buttons wrap. Sliders for size/spacing. Background color swatches. Live preview at bottom.</li>
+    <li><strong>Processing</strong>: Minimized progress bar at top of any screen (tap to expand). Expanded view shows book info, overall progress bar, per-section status list with spinner on active section.</li>
+  </ul>
+</div>
+
+</body>
+</html>

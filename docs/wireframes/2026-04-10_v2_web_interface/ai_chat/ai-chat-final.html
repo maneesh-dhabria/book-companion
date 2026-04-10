@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Reader Settings + AI Chat — Refined</h2>
+<p class="subtitle">Reading presets with power-user controls, multi-threaded AI chat per book</p>
+
+<!-- UPDATED HEADER BAR showing Ask AI button -->
+<div class="mockup" style="max-width:960px; margin:0 auto;">
+  <div class="mockup-header">Updated Header — Ask AI always accessible</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <div style="display:flex; align-items:center; padding:10px 20px; gap:6px;">
+      <span style="font-size:11px; color:var(--accent); cursor:pointer;">Library</span>
+      <span style="font-size:11px; color:var(--text-secondary);">›</span>
+      <span style="font-size:11px; color:var(--accent); cursor:pointer;">Deep Work</span>
+      <span style="font-size:11px; color:var(--text-secondary);">›</span>
+      <div style="font-size:11px; font-weight:500; padding:2px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">3. Deep Work Is Rare <span style="font-size:9px; color:var(--text-secondary);">▾</span></div>
+      <div style="flex:1;"></div>
+      <span style="font-size:11px; color:var(--text-secondary); cursor:pointer;">←</span>
+      <span style="font-size:11px; color:var(--text-secondary); cursor:pointer;">→</span>
+      <span style="width:1px; height:16px; background:var(--border);"></span>
+      <span style="font-size:12px; cursor:pointer; opacity:0.6; padding:2px 6px; border-radius:4px;" title="Reading settings">Aa</span>
+      <!-- Ask AI button - always visible -->
+      <div style="font-size:11px; cursor:pointer; padding:3px 10px; border-radius:6px; background:rgba(175,82,222,0.1); color:rgb(175,82,222); display:flex; align-items:center; gap:4px;" title="Ask AI">✦ AI</div>
+      <!-- Annotations toggle -->
+      <span style="font-size:13px; cursor:pointer; position:relative;">💬<span style="position:absolute; top:-4px; right:-6px; font-size:8px; background:var(--accent); color:white; width:14px; height:14px; border-radius:50%; display:flex; align-items:center; justify-content:center;">2</span></span>
+    </div>
+  </div>
+</div>
+
+<p style="font-size:12px; color:var(--text-secondary); max-width:960px; margin:8px auto 0; padding-left:4px;">
+  <strong>✦ AI</strong> button opens the sidebar on the Ask AI tab — always visible, even in focus mode. <strong>💬</strong> opens on the Annotations tab. Clicking the active one closes the sidebar.
+</p>
+
+<div style="height:28px;"></div>
+
+<!-- READER SETTINGS — FULL -->
+<div class="split" style="gap:20px; max-width:960px; margin:0 auto;">
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Aa Reader Settings — Presets + Controls</div>
+    <div class="mockup-body" style="font-size:12px; padding:16px;">
+
+      <!-- Preset bar -->
+      <div style="margin-bottom:18px;">
+        <div style="display:flex; align-items:center; margin-bottom:8px;">
+          <span style="font-size:11px; color:var(--text-secondary);">Preset</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--accent); cursor:pointer;">+ Save Current</span>
+        </div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          <span style="font-size:10px; padding:4px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">Comfortable</span>
+          <span style="font-size:10px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Night Reading</span>
+          <span style="font-size:10px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Study Mode</span>
+          <span style="font-size:10px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Compact</span>
+          <span style="font-size:10px; padding:4px 10px; border-radius:6px; border:1px dashed var(--border); color:var(--text-secondary); cursor:pointer;">My Preset ✎</span>
+        </div>
+      </div>
+
+      <!-- Font family -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Font</div>
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer; font-family:Georgia,serif;">Serif</span>
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:system-ui,sans-serif;">Sans</span>
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:monospace;">Mono</span>
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; border:1px solid var(--border); cursor:pointer; color:var(--text-secondary);">More ▾</span>
+        </div>
+      </div>
+
+      <!-- Font size — buttons + input -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; color:var(--text-secondary);">Size</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="display:flex; gap:2px;">
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">14</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--accent); color:white; cursor:pointer;">16</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">18</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">20</span>
+          </div>
+          <div style="width:1px; height:16px; background:var(--border);"></div>
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:2px;">
+            <span style="padding:2px 6px; cursor:pointer; font-size:11px;">−</span>
+            <span style="padding:2px 8px; font-size:11px; font-weight:500; min-width:28px; text-align:center;">16</span>
+            <span style="padding:2px 6px; cursor:pointer; font-size:11px;">+</span>
+          </div>
+          <span style="font-size:10px; color:var(--text-secondary);">px</span>
+        </div>
+      </div>
+
+      <!-- Line spacing — buttons + input -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Line Spacing</div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="display:flex; gap:2px;">
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">1.4</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">1.6</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--accent); color:white; cursor:pointer;">1.8</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">2.0</span>
+          </div>
+          <div style="width:1px; height:16px; background:var(--border);"></div>
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:2px;">
+            <span style="padding:2px 6px; cursor:pointer; font-size:11px;">−</span>
+            <span style="padding:2px 8px; font-size:11px; font-weight:500; min-width:28px; text-align:center;">1.8</span>
+            <span style="padding:2px 6px; cursor:pointer; font-size:11px;">+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content width — buttons + input -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Content Width</div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="display:flex; gap:2px;">
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">560</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--accent); color:white; cursor:pointer;">680</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">800</span>
+            <span style="font-size:10px; padding:4px 8px; border-radius:4px; background:var(--bg-tertiary); cursor:pointer;">Full</span>
+          </div>
+          <div style="width:1px; height:16px; background:var(--border);"></div>
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:2px;">
+            <span style="padding:2px 6px; cursor:pointer; font-size:11px;">−</span>
+            <span style="padding:2px 8px; font-size:11px; font-weight:500; min-width:34px; text-align:center;">680</span>
+            <span style="padding:2px 6px; cursor:pointer; font-size:11px;">+</span>
+          </div>
+          <span style="font-size:10px; color:var(--text-secondary);">px</span>
+        </div>
+      </div>
+
+      <!-- Background theme -->
+      <div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Background</div>
+        <div style="display:flex; gap:8px;">
+          <div style="text-align:center; cursor:pointer;">
+            <div style="width:36px; height:36px; border-radius:50%; background:#ffffff; border:2px solid var(--border);"></div>
+            <div style="font-size:9px; color:var(--text-secondary); margin-top:3px;">Light</div>
+          </div>
+          <div style="text-align:center; cursor:pointer;">
+            <div style="width:36px; height:36px; border-radius:50%; background:#fdf6e3; border:2px solid var(--border);"></div>
+            <div style="font-size:9px; color:var(--text-secondary); margin-top:3px;">Sepia</div>
+          </div>
+          <div style="text-align:center; cursor:pointer;">
+            <div style="width:36px; height:36px; border-radius:50%; background:#1a1a2e; border:2px solid var(--accent);"></div>
+            <div style="font-size:9px; color:var(--text-secondary); margin-top:3px;">Dark</div>
+          </div>
+          <div style="text-align:center; cursor:pointer;">
+            <div style="width:36px; height:36px; border-radius:50%; background:#0d1117; border:2px solid var(--border);"></div>
+            <div style="font-size:9px; color:var(--text-secondary); margin-top:3px;">OLED</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FONT "MORE" DROPDOWN -->
+  <div class="mockup" style="flex:0.7;">
+    <div class="mockup-header">Font "More ▾" Dropdown</div>
+    <div class="mockup-body" style="font-size:12px; padding:12px;">
+      <div style="padding:8px; background:var(--bg-tertiary); border-radius:6px; margin-bottom:8px;">
+        <span style="font-size:11px; color:var(--text-secondary);">🔍 Search fonts...</span>
+      </div>
+
+      <div style="font-size:10px; color:var(--text-secondary); margin-bottom:4px;">SERIF</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-family:Georgia,serif; font-size:13px; background:rgba(0,122,255,0.08); color:var(--accent); font-weight:500;">Georgia</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-size:13px;">Merriweather</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-size:13px;">Lora</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-size:13px;">Literata</div>
+
+      <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; margin-bottom:4px;">SANS-SERIF</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-family:system-ui; font-size:13px;">System UI</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-size:13px;">Inter</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-size:13px;">Open Sans</div>
+
+      <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; margin-bottom:4px;">MONOSPACE</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-family:monospace; font-size:13px;">JetBrains Mono</div>
+      <div style="padding:6px 8px; border-radius:4px; cursor:pointer; font-family:monospace; font-size:13px;">Fira Code</div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- AI CHAT — THREAD LIST + ACTIVE THREAD -->
+<div class="split" style="gap:20px; max-width:960px; margin:0 auto;">
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Ask AI — Thread List</div>
+    <div class="mockup-body" style="font-size:12px; padding:0; min-height:360px; display:flex; flex-direction:column;">
+      <!-- Tab header -->
+      <div style="display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--text-secondary); cursor:pointer;">Annotations</div>
+        <div style="flex:1; text-align:center; padding:10px; font-size:11px; font-weight:500; border-bottom:2px solid rgb(175,82,222); color:rgb(175,82,222);">Ask AI ✦</div>
+        <div style="padding:10px 12px; font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</div>
+      </div>
+
+      <!-- Context indicator -->
+      <div style="padding:8px 12px; background:rgba(175,82,222,0.04); border-bottom:1px solid var(--border); font-size:10px; color:var(--text-secondary);">
+        Context: <strong>Deep Work</strong> · reading Ch.3
+      </div>
+
+      <!-- Thread list -->
+      <div style="flex:1; padding:10px; overflow-y:auto;">
+        <div style="padding:10px; border-radius:8px; background:var(--bg-tertiary); cursor:pointer; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:500;">Key arguments analysis</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:9px; color:var(--text-secondary);">4 msgs · Apr 9</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">What are the strongest counterarguments to Newport's...</div>
+        </div>
+
+        <div style="padding:10px; border-radius:8px; cursor:pointer; margin-bottom:8px; border:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:500;">Practical applications</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:9px; color:var(--text-secondary);">7 msgs · Apr 8</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Can you give me a weekly schedule based on the...</div>
+        </div>
+
+        <div style="padding:10px; border-radius:8px; cursor:pointer; margin-bottom:8px; border:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:500;">Compare with Atomic Habits</span>
+            <span style="flex:1;"></span>
+            <span style="font-size:9px; color:var(--text-secondary);">2 msgs · Apr 7</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">How does Newport's approach to habits differ from...</div>
+        </div>
+      </div>
+
+      <!-- New thread button -->
+      <div style="padding:10px; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="display:flex; align-items:center; justify-content:center; padding:8px; border-radius:8px; border:1px dashed var(--border); color:var(--text-secondary); font-size:11px; cursor:pointer; gap:4px;">
+          + New Thread
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Inside a Thread — with selected text context</div>
+    <div class="mockup-body" style="font-size:12px; padding:0; min-height:360px; display:flex; flex-direction:column;">
+      <!-- Thread header -->
+      <div style="display:flex; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; gap:6px;">
+        <span style="font-size:11px; color:var(--accent); cursor:pointer;">← Threads</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:11px; font-weight:500;">Key arguments analysis</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">⋯</span>
+      </div>
+
+      <!-- Messages -->
+      <div style="flex:1; overflow-y:auto; padding:10px;">
+
+        <!-- Selected text context block -->
+        <div style="padding:8px; background:rgba(175,82,222,0.06); border-left:3px solid rgb(175,82,222); border-radius:0 6px 6px 0; font-size:10px; margin-bottom:10px;">
+          <div style="color:var(--text-secondary); margin-bottom:2px;">From Ch.3:</div>
+          <div style="font-style:italic;">"Metric Black Hole: knowledge work lacks clear productivity metrics..."</div>
+        </div>
+
+        <!-- User message -->
+        <div style="padding:8px 10px; background:var(--bg-tertiary); border-radius:10px 10px 2px 10px; font-size:11px; margin-bottom:10px; max-width:85%;">
+          Can you give me real-world examples of this in tech companies?
+        </div>
+
+        <!-- AI response -->
+        <div style="padding:10px; border:1px solid var(--border); border-radius:2px 10px 10px 10px; font-size:11px; line-height:1.7; margin-bottom:10px;">
+          <p>Several tech companies illustrate the Metric Black Hole:</p>
+          <ul style="padding-left:16px; margin-top:4px; margin-bottom:8px;">
+            <li><strong>Yahoo's ban on remote work</strong> — equated office presence with productivity</li>
+            <li><strong>Slack/Teams adoption</strong> — response time as de facto productivity metric</li>
+            <li><strong>Open office trend</strong> — Facebook's massive open floor plan</li>
+          </ul>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <span style="font-size:10px; color:var(--accent); cursor:pointer;">📝 Save as note</span>
+            <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">📋 Copy</span>
+            <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">🔄 Regenerate</span>
+          </div>
+        </div>
+
+        <!-- Follow-up user message -->
+        <div style="padding:8px 10px; background:var(--bg-tertiary); border-radius:10px 10px 2px 10px; font-size:11px; margin-bottom:10px; max-width:85%;">
+          How does this relate to what Newport says in Chapter 5?
+        </div>
+
+        <!-- AI response with cross-section context -->
+        <div style="padding:10px; border:1px solid var(--border); border-radius:2px 10px 10px 10px; font-size:11px; line-height:1.7;">
+          <div style="font-size:9px; color:var(--text-secondary); margin-bottom:4px; padding:3px 6px; background:var(--bg-tertiary); border-radius:4px; display:inline-block;">📖 Using context from Ch.3 + Ch.5</div>
+          <p style="margin-top:6px;">In Chapter 5, Newport proposes <strong>lead measures</strong> as the antidote to the Metric Black Hole...</p>
+        </div>
+      </div>
+
+      <!-- Input with multi-section context chips -->
+      <div style="padding:8px 10px; border-top:1px solid var(--border); flex-shrink:0;">
+        <!-- Context chips (R16) -->
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px;">
+          <span style="font-size:9px; padding:3px 8px; border-radius:12px; background:rgba(175,82,222,0.1); color:rgb(175,82,222); display:inline-flex; align-items:center; gap:4px;">Using Chapter 3 <span style="cursor:pointer; opacity:0.6;">&times;</span></span>
+          <span style="font-size:9px; padding:3px 8px; border-radius:12px; background:rgba(175,82,222,0.1); color:rgb(175,82,222); display:inline-flex; align-items:center; gap:4px;">Using Chapter 5 <span style="cursor:pointer; opacity:0.6;">&times;</span></span>
+          <span style="font-size:9px; padding:3px 8px; border-radius:12px; background:rgba(175,82,222,0.1); color:rgb(175,82,222); display:inline-flex; align-items:center; gap:4px;">Using Chapter 8 <span style="cursor:pointer; opacity:0.6;">&times;</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:10px; padding:8px 12px; gap:8px; flex:1;">
+            <span style="font-size:11px; color:var(--text-secondary); flex:1;">Ask about this book...</span>
+            <span style="font-size:14px; cursor:pointer; color:var(--accent);">&#x2191;</span>
+          </div>
+          <!-- + Add context pill -->
+          <div style="font-size:10px; padding:6px 10px; border-radius:16px; border:1px solid var(--border); color:var(--text-secondary); cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:3px;">
+            <span style="font-size:12px; font-weight:500; line-height:1;">+</span> Context
+          </div>
+        </div>
+        <div style="font-size:9px; color:var(--text-secondary); margin-top:4px; text-align:center;">
+          Select text in the reading area or use "+ Context" to add sections
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI CHAT — Section Picker Popover (triggered by "+ Context") -->
+<div style="max-width:960px; margin:0 auto 0; display:flex; justify-content:flex-end;">
+  <div class="mockup" style="width:260px; margin-bottom:0;">
+    <div class="mockup-header">Section Picker — dropdown from "+ Context"</div>
+    <div class="mockup-body" style="font-size:12px; padding:10px;">
+      <div style="font-size:10px; color:var(--text-secondary); margin-bottom:8px; font-weight:500;">Add sections as context</div>
+      <div style="display:flex; flex-direction:column; gap:2px; margin-bottom:10px;">
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+          <span style="font-size:13px;">&#9744;</span> Ch.1 Introduction
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+          <span style="font-size:13px;">&#9744;</span> Ch.2 Deep Work Is Valuable
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px; background:rgba(175,82,222,0.06);">
+          <span style="font-size:13px; color:rgb(175,82,222);">&#9745;</span> Ch.3 Deep Work Is Rare
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+          <span style="font-size:13px;">&#9744;</span> Ch.4 Deep Work Is Meaningful
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px; background:rgba(175,82,222,0.06);">
+          <span style="font-size:13px; color:rgb(175,82,222);">&#9745;</span> Ch.5 The Rules
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+          <span style="font-size:13px;">&#9744;</span> Ch.6 Rule #1: Work Deeply
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+          <span style="font-size:13px;">&#9744;</span> Ch.7 Rule #2: Embrace Boredom
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:11px; background:rgba(175,82,222,0.06);">
+          <span style="font-size:13px; color:rgb(175,82,222);">&#9745;</span> Ch.8 Rule #3: Quit Social Media
+        </label>
+      </div>
+      <div style="display:flex; justify-content:flex-end;">
+        <div style="font-size:11px; padding:6px 16px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">Done</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- SYSTEM PRESETS TABLE -->
+<div style="max-width:960px; margin:0 auto;">
+  <h3 style="margin-bottom:8px;">System Reading Presets</h3>
+  <table style="font-size:12px; width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border);">
+        <th style="padding:8px; text-align:left;">Preset</th>
+        <th style="padding:8px; text-align:left;">Font</th>
+        <th style="padding:8px; text-align:center;">Size</th>
+        <th style="padding:8px; text-align:center;">Spacing</th>
+        <th style="padding:8px; text-align:center;">Width</th>
+        <th style="padding:8px; text-align:left;">Background</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">Comfortable</td>
+        <td style="padding:8px;">Georgia (serif)</td>
+        <td style="padding:8px; text-align:center;">16px</td>
+        <td style="padding:8px; text-align:center;">1.8</td>
+        <td style="padding:8px; text-align:center;">680px</td>
+        <td style="padding:8px;">System (auto)</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">Night Reading</td>
+        <td style="padding:8px;">Literata (serif)</td>
+        <td style="padding:8px; text-align:center;">18px</td>
+        <td style="padding:8px; text-align:center;">2.0</td>
+        <td style="padding:8px; text-align:center;">620px</td>
+        <td style="padding:8px;">OLED Black</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px; font-weight:500;">Study Mode</td>
+        <td style="padding:8px;">Inter (sans)</td>
+        <td style="padding:8px; text-align:center;">14px</td>
+        <td style="padding:8px; text-align:center;">1.6</td>
+        <td style="padding:8px; text-align:center;">800px</td>
+        <td style="padding:8px;">Light</td>
+      </tr>
+      <tr>
+        <td style="padding:8px; font-weight:500;">Compact</td>
+        <td style="padding:8px;">System UI (sans)</td>
+        <td style="padding:8px; text-align:center;">13px</td>
+        <td style="padding:8px; text-align:center;">1.4</td>
+        <td style="padding:8px; text-align:center;">Full</td>
+        <td style="padding:8px;">System (auto)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:11px; color:var(--text-secondary); margin-top:6px;">User presets work the same way — pick a system preset as starting point, tweak, then "+ Save Current" with a name. Presets stored per user in the database.</p>
+</div>
+
+<div style="height:20px;"></div>
+
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:960px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Design Updates Summary</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Header bar</strong>: Added dedicated <code>✦ AI</code> button — always visible, even in focus mode. Separate from <code>💬</code> (annotations).</li>
+    <li><strong>Reader settings</strong>: Presets at top (system + user-created). Quick buttons for common values + stepper (−/+) for exact values. Font picker with Serif/Sans/Mono shortcuts + searchable "More" dropdown. Background themes: Light/Sepia/Dark/OLED.</li>
+    <li><strong>AI threads</strong>: Per-book, multi-thread. Thread list shows title + message count + last date + preview. Inside a thread: chat-style messages with selected text context blocks. AI can reference multiple sections. Responses can be saved as annotations or copied.</li>
+    <li><strong>Multi-section context (R16)</strong>: "+ Context" pill next to chat input opens a section picker dropdown with checkboxes. Selected sections appear as dismissible chips above the input. AI uses all checked sections as context for responses.</li>
+    <li><strong>"+ Save Current"</strong>: Saves current reader settings as a named preset for reuse.</li>
+  </ul>
+</div>
+
+</body>
+</html>

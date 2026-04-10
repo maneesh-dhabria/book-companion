@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>App Shell & Navigation</h2>
+<p class="subtitle">The persistent frame that wraps all pages</p>
+
+<div class="split">
+  <div class="mockup" style="flex: 1;">
+    <div class="mockup-header">Option A: Icon Rail Sidebar</div>
+    <div class="mockup-body" style="display:flex; min-height:360px; font-size:13px;" data-choice="a" onclick="toggleSelect(this.parentElement.parentElement)">
+      <!-- Sidebar -->
+      <div style="width:56px; background:var(--bg-tertiary); display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:20px; border-right:1px solid var(--border); flex-shrink:0;">
+        <div style="font-size:18px;">📚</div>
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;" title="Library">📖</div>
+        <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;opacity:0.5;" title="Search">🔍</div>
+        <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;opacity:0.5;" title="Concepts">💡</div>
+        <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;opacity:0.5;" title="Annotations">✏️</div>
+        <div style="flex:1;"></div>
+        <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;opacity:0.5;" title="Settings">⚙️</div>
+      </div>
+      <!-- Main content -->
+      <div style="flex:1; padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div>
+            <div style="font-size:18px; font-weight:600;">Library</div>
+            <div style="font-size:11px; color:var(--text-secondary);">12 books</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="padding:4px 12px; border-radius:6px; background:var(--bg-tertiary); font-size:11px; cursor:pointer;">⌘K Search</div>
+            <div style="padding:4px 12px; border-radius:6px; background:var(--accent); color:white; font-size:11px;">+ Upload</div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+          <div style="background:var(--bg-tertiary); border-radius:8px; padding:12px; height:120px;">
+            <div style="width:100%;height:50px;background:var(--border);border-radius:4px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;font-weight:500;">Deep Work</div>
+            <div style="font-size:10px;color:var(--text-secondary);">Cal Newport</div>
+          </div>
+          <div style="background:var(--bg-tertiary); border-radius:8px; padding:12px; height:120px;">
+            <div style="width:100%;height:50px;background:var(--border);border-radius:4px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;font-weight:500;">Thinking, Fast...</div>
+            <div style="font-size:10px;color:var(--text-secondary);">D. Kahneman</div>
+          </div>
+          <div style="background:var(--bg-tertiary); border-radius:8px; padding:12px; height:120px;">
+            <div style="width:100%;height:50px;background:var(--border);border-radius:4px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;font-weight:500;">Atomic Habits</div>
+            <div style="font-size:10px;color:var(--text-secondary);">James Clear</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="flex: 1;">
+    <div class="mockup-header">Option B: Top Nav + Breadcrumb</div>
+    <div class="mockup-body" style="min-height:360px; font-size:13px;" data-choice="b" onclick="toggleSelect(this.parentElement.parentElement)">
+      <!-- Top nav -->
+      <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:24px;">
+        <div style="font-weight:600; font-size:15px;">📚 BookCompanion</div>
+        <div style="display:flex; gap:16px; font-size:12px;">
+          <span style="font-weight:500; color:var(--accent);">Library</span>
+          <span style="opacity:0.5;">Search</span>
+          <span style="opacity:0.5;">Concepts</span>
+          <span style="opacity:0.5;">Annotations</span>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="padding:4px 12px; border-radius:6px; background:var(--bg-tertiary); font-size:11px;">⌘K</div>
+        <div style="padding:4px 12px; border-radius:6px; background:var(--accent); color:white; font-size:11px;">+ Upload</div>
+      </div>
+      <!-- Breadcrumb -->
+      <div style="padding:8px 20px; font-size:11px; color:var(--text-secondary); border-bottom:1px solid var(--border);">
+        Library
+      </div>
+      <!-- Content -->
+      <div style="padding:20px;">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+          <div style="background:var(--bg-tertiary); border-radius:8px; padding:12px; height:120px;">
+            <div style="width:100%;height:50px;background:var(--border);border-radius:4px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;font-weight:500;">Deep Work</div>
+            <div style="font-size:10px;color:var(--text-secondary);">Cal Newport</div>
+          </div>
+          <div style="background:var(--bg-tertiary); border-radius:8px; padding:12px; height:120px;">
+            <div style="width:100%;height:50px;background:var(--border);border-radius:4px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;font-weight:500;">Thinking, Fast...</div>
+            <div style="font-size:10px;color:var(--text-secondary);">D. Kahneman</div>
+          </div>
+          <div style="background:var(--bg-tertiary); border-radius:8px; padding:12px; height:120px;">
+            <div style="width:100%;height:50px;background:var(--border);border-radius:4px;margin-bottom:8px;"></div>
+            <div style="font-size:11px;font-weight:500;">Atomic Habits</div>
+            <div style="font-size:10px;color:var(--text-secondary);">James Clear</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px;">
+  <h3>Key decisions in both options:</h3>
+  <ul style="margin-top:8px; padding-left:20px; font-size:14px; line-height:1.8;">
+    <li><strong>Cmd+K command palette</strong> — always available for quick navigation, search, and actions</li>
+    <li><strong>4 top-level destinations</strong>: Library, Search, Concepts, Annotations (+ Settings)</li>
+    <li><strong>Upload button</strong> — persistent, always accessible</li>
+    <li><strong>Library is home</strong> — the default landing page</li>
+  </ul>
+</div>
+
+</body>
+</html>

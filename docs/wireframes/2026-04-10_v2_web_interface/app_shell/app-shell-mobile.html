@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion — App Shell Mobile Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .mobile-tab-bar {
+      display: flex;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .mobile-tab-bar .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .mobile-tab-bar .tab.active {
+      color: var(--accent);
+    }
+    .mobile-tab-bar .tab .tab-icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .mobile-status-bar {
+      height: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .annotation {
+      display: inline-block;
+      background: rgba(255, 159, 10, 0.1);
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: var(--warning);
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .mobile-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+<h2>App Shell -- Mobile (320px)</h2>
+<p class="subtitle">Mobile app shell skeleton: simplified header, bottom tab navigation, and content area structure</p>
+
+<div class="mobile-grid">
+
+<!-- ============================================ -->
+<!-- SHELL SKELETON — Library Tab Active -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Shell Skeleton — Library Tab Active</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">App Shell — Library Active</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <!-- Status bar -->
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Simplified mobile header -->
+      <div style="padding:10px 16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--bg-secondary);">
+        <span style="font-size:18px; cursor:pointer;">&#x2630;</span>
+        <span class="annotation">Hamburger menu for overflow nav</span>
+        <span style="font-size:16px; font-weight:600; flex:1;">Library</span>
+        <span style="font-size:16px; cursor:pointer; color:var(--accent);">+</span>
+      </div>
+
+      <!-- Content area placeholder -->
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; background:var(--bg-primary);">
+        <div style="width:100%; border:2px dashed var(--border); border-radius:12px; padding:32px 16px; text-align:center;">
+          <div style="font-size:24px; opacity:0.3; margin-bottom:8px;">&#x1f4da;</div>
+          <div style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Content Area</div>
+          <div style="font-size:10px; color:var(--text-tertiary);">Loads component for active tab</div>
+        </div>
+        <div style="margin-top:16px; font-size:10px; color:var(--text-tertiary); text-align:center; line-height:1.6;">
+          Header adapts per screen:<br>
+          "Library" shows title + add button<br>
+          "Search" shows search input<br>
+          Detail views show back arrow
+        </div>
+      </div>
+
+      <!-- Bottom tab bar — persistent across all main screens -->
+      <div class="mobile-tab-bar">
+        <div class="tab active"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SHELL SKELETON — Detail View (Back Arrow) -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Shell Skeleton — Detail View (Back Navigation)</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">App Shell — Detail View</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <!-- Status bar -->
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Detail header with back arrow -->
+      <div style="padding:10px 16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--bg-secondary);">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <span class="annotation">Back replaces hamburger in detail views</span>
+        <span style="font-size:14px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Deep Work</span>
+        <span style="font-size:14px; cursor:pointer; color:var(--text-secondary);">&#x22ef;</span>
+      </div>
+
+      <!-- Content area placeholder -->
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; background:var(--bg-primary);">
+        <div style="width:100%; border:2px dashed var(--border); border-radius:12px; padding:32px 16px; text-align:center;">
+          <div style="font-size:24px; opacity:0.3; margin-bottom:8px;">&#x1f4d6;</div>
+          <div style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Detail Content</div>
+          <div style="font-size:10px; color:var(--text-tertiary);">Reader, concept detail, etc.</div>
+        </div>
+        <div style="margin-top:16px; font-size:10px; color:var(--text-tertiary); text-align:center; line-height:1.6;">
+          Tab bar hidden in reader/detail views<br>
+          Replaced by contextual action bar<br>
+          (Aa, AI chat, annotations, more)
+        </div>
+      </div>
+
+      <!-- Bottom action bar (replaces tab bar in detail views) -->
+      <div style="display:flex; border-top:1px solid var(--border); background:var(--bg-secondary); padding:8px 0; flex-shrink:0;">
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0; color:var(--text-secondary);">Aa</div>
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0; color:var(--text-secondary);">&#x2728;</div>
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0; color:var(--text-secondary);">&#x1f4ac;</div>
+        <div style="flex:1; text-align:center; font-size:14px; cursor:pointer; padding:4px 0; color:var(--text-secondary);">&#x22ef;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SHELL SKELETON — Search Tab Active -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Shell Skeleton — Search Tab Active</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">App Shell — Search Active</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <!-- Status bar -->
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Search header — replaces hamburger/title with search input -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; flex-shrink:0; background:var(--bg-secondary); border-bottom:1px solid var(--border);">
+        <div style="flex:1; display:flex; align-items:center; background:var(--bg-tertiary); border-radius:8px; padding:8px 10px; gap:6px;">
+          <span style="font-size:12px; opacity:0.4;">&#x1f50d;</span>
+          <span style="font-size:12px; color:var(--text-tertiary);">Search books, concepts...</span>
+        </div>
+        <span style="font-size:12px; color:var(--accent); cursor:pointer;">Cancel</span>
+      </div>
+
+      <!-- Content area placeholder -->
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; background:var(--bg-primary);">
+        <div style="width:100%; border:2px dashed var(--border); border-radius:12px; padding:32px 16px; text-align:center;">
+          <div style="font-size:24px; opacity:0.3; margin-bottom:8px;">&#x1f50d;</div>
+          <div style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">Search Results</div>
+          <div style="font-size:10px; color:var(--text-tertiary);">Grouped by type with filter chips</div>
+        </div>
+      </div>
+
+      <!-- Bottom tab bar -->
+      <div class="mobile-tab-bar">
+        <div class="tab"><span class="tab-icon">&#x1f4da;</span>Library</div>
+        <div class="tab active"><span class="tab-icon">&#x1f50d;</span>Search</div>
+        <div class="tab"><span class="tab-icon">&#x1f4a1;</span>Concepts</div>
+        <div class="tab"><span class="tab-icon">&#x1f4dd;</span>Annotations</div>
+        <div class="tab"><span class="tab-icon">&#x2699;</span>Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end mobile-grid -->
+
+<!-- Design notes -->
+<div style="margin-top:2rem; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:940px; margin-left:auto; margin-right:auto;">
+  <h3 style="margin-bottom:10px;">Mobile App Shell -- Adaptations</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Bottom tab bar</strong>: 5 tabs (Library, Search, Concepts, Annotations, Settings) replace desktop sidebar navigation. Persistent on all main screens.</li>
+    <li><strong>Header varies by context</strong>: Main tabs show hamburger + title; Search tab shows full-width search input; Detail views show back arrow + title.</li>
+    <li><strong>No desktop sidebar</strong>: Navigation is entirely via bottom tabs. Hamburger menu provides overflow items (profile, help, import/export).</li>
+    <li><strong>Detail views hide tabs</strong>: Reader, concept detail, and annotation detail replace the bottom tab bar with a contextual action bar.</li>
+    <li><strong>Search accessible via tab</strong>: Tapping Search tab activates full-screen search with auto-focused input field.</li>
+  </ul>
+</div>
+
+</body>
+</html>

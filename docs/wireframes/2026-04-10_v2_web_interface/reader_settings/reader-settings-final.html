@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Reader Settings — Redesigned</h2>
+<p class="subtitle">Visual presets, named options with manual override, live preview</p>
+
+<div class="mockup" style="max-width:520px; margin:0 auto;">
+  <div class="mockup-header">Aa Reader Settings Popover</div>
+  <div class="mockup-body" style="font-size:12px; padding:16px;">
+
+    <!-- PRESETS — visual square cards -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex; align-items:center; margin-bottom:8px;">
+        <span style="font-size:11px; color:var(--text-secondary);">Presets</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--accent); cursor:pointer;">+ Save Current</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <!-- Comfortable preset -->
+        <div style="width:90px; height:80px; border-radius:10px; background:#1a1a2e; border:2px solid var(--accent); cursor:pointer; padding:8px; display:flex; flex-direction:column; justify-content:space-between; position:relative;">
+          <div style="font-family:Georgia,serif; font-size:18px; color:#e0e0e0; font-weight:500;">Aa</div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+            <div style="font-size:8px; color:#aaa; line-height:1.1;">
+              <div>Georgia</div>
+              <div>1.8 spacing</div>
+            </div>
+          </div>
+          <div style="position:absolute; top:4px; right:6px; font-size:8px; color:var(--accent);">✓</div>
+        </div>
+
+        <!-- Night Reading preset -->
+        <div style="width:90px; height:80px; border-radius:10px; background:#0d1117; border:1px solid var(--border); cursor:pointer; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div style="font-family:'Literata',serif; font-size:18px; color:#c0c0c0; font-weight:500;">Aa</div>
+          <div style="font-size:8px; color:#777; line-height:1.1;">
+            <div>Literata</div>
+            <div>2.0 spacing</div>
+          </div>
+        </div>
+
+        <!-- Study Mode preset -->
+        <div style="width:90px; height:80px; border-radius:10px; background:#ffffff; border:1px solid var(--border); cursor:pointer; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div style="font-family:Inter,system-ui,sans-serif; font-size:18px; color:#222; font-weight:500;">Aa</div>
+          <div style="font-size:8px; color:#888; line-height:1.1;">
+            <div>Inter</div>
+            <div>1.6 spacing</div>
+          </div>
+        </div>
+
+        <!-- Sepia Calm preset -->
+        <div style="width:90px; height:80px; border-radius:10px; background:#fdf6e3; border:1px solid var(--border); cursor:pointer; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div style="font-family:'Merriweather',Georgia,serif; font-size:18px; color:#5c4b37; font-weight:500;">Aa</div>
+          <div style="font-size:8px; color:#8a7a6a; line-height:1.1;">
+            <div>Merriweather</div>
+            <div>1.8 spacing</div>
+          </div>
+        </div>
+
+        <!-- User preset -->
+        <div style="width:90px; height:80px; border-radius:10px; background:#1e1e2e; border:1px dashed var(--border); cursor:pointer; padding:8px; display:flex; flex-direction:column; justify-content:space-between; position:relative;">
+          <div style="font-family:'Fira Code',monospace; font-size:18px; color:#cdd6f4; font-weight:500;">Aa</div>
+          <div style="font-size:8px; color:#777; line-height:1.1;">
+            <div>Fira Code</div>
+            <div>1.6 spacing</div>
+          </div>
+          <div style="position:absolute; top:4px; right:6px; font-size:8px; color:var(--text-secondary);">✎</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FONT — specific font names -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Font</div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap;">
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer; font-family:Georgia,serif;">Georgia</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Merriweather</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Literata</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:system-ui;">Inter</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:system-ui;">Open Sans</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:monospace;">Fira Code</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:monospace;">JetBrains</span>
+        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Lora</span>
+      </div>
+    </div>
+
+    <!-- SIZE — named presets + manual -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Size</div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Small</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">Medium</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Large</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">XL</span>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 2px;"></div>
+        <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:2px; border:1px solid var(--border);">
+          <span style="padding:2px 6px; cursor:pointer; font-size:10px; color:var(--text-secondary);">−</span>
+          <span style="padding:2px 6px; font-size:10px; font-weight:500; min-width:28px; text-align:center;">16</span>
+          <span style="padding:2px 6px; cursor:pointer; font-size:10px; color:var(--text-secondary);">+</span>
+        </div>
+        <span style="font-size:9px; color:var(--text-secondary);">px</span>
+      </div>
+    </div>
+
+    <!-- LINE SPACING — named presets + manual -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Line Spacing</div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Tight</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Normal</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">Relaxed</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Spacious</span>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 2px;"></div>
+        <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:2px; border:1px solid var(--border);">
+          <span style="padding:2px 6px; cursor:pointer; font-size:10px; color:var(--text-secondary);">−</span>
+          <span style="padding:2px 6px; font-size:10px; font-weight:500; min-width:28px; text-align:center;">1.8</span>
+          <span style="padding:2px 6px; cursor:pointer; font-size:10px; color:var(--text-secondary);">+</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT WIDTH — named presets + manual -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Content Width</div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Narrow</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">Medium</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Wide</span>
+        <span style="font-size:10px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Full</span>
+        <div style="width:1px; height:20px; background:var(--border); margin:0 2px;"></div>
+        <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:2px; border:1px solid var(--border);">
+          <span style="padding:2px 6px; cursor:pointer; font-size:10px; color:var(--text-secondary);">−</span>
+          <span style="padding:2px 6px; font-size:10px; font-weight:500; min-width:34px; text-align:center;">680</span>
+          <span style="padding:2px 6px; cursor:pointer; font-size:10px; color:var(--text-secondary);">+</span>
+        </div>
+        <span style="font-size:9px; color:var(--text-secondary);">px</span>
+      </div>
+    </div>
+
+    <!-- BACKGROUND — preset swatches + color picker -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Background</div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="text-align:center; cursor:pointer;">
+          <div style="width:34px; height:34px; border-radius:8px; background:#ffffff; border:1px solid var(--border);"></div>
+          <div style="font-size:8px; color:var(--text-secondary); margin-top:2px;">Light</div>
+        </div>
+        <div style="text-align:center; cursor:pointer;">
+          <div style="width:34px; height:34px; border-radius:8px; background:#fdf6e3; border:1px solid var(--border);"></div>
+          <div style="font-size:8px; color:var(--text-secondary); margin-top:2px;">Sepia</div>
+        </div>
+        <div style="text-align:center; cursor:pointer;">
+          <div style="width:34px; height:34px; border-radius:8px; background:#1a1a2e; border:2px solid var(--accent);"></div>
+          <div style="font-size:8px; color:var(--text-secondary); margin-top:2px;">Dark</div>
+        </div>
+        <div style="text-align:center; cursor:pointer;">
+          <div style="width:34px; height:34px; border-radius:8px; background:#0d1117; border:1px solid var(--border);"></div>
+          <div style="font-size:8px; color:var(--text-secondary); margin-top:2px;">OLED</div>
+        </div>
+        <div style="text-align:center; cursor:pointer;">
+          <div style="width:34px; height:34px; border-radius:8px; background:#282a36; border:1px solid var(--border);"></div>
+          <div style="font-size:8px; color:var(--text-secondary); margin-top:2px;">Dracula</div>
+        </div>
+        <div style="width:1px; height:28px; background:var(--border);"></div>
+        <!-- Color picker trigger -->
+        <div style="text-align:center; cursor:pointer;">
+          <div style="width:34px; height:34px; border-radius:8px; border:1px dashed var(--border); display:flex; align-items:center; justify-content:center;">
+            <span style="font-size:14px;">🎨</span>
+          </div>
+          <div style="font-size:8px; color:var(--text-secondary); margin-top:2px;">Custom</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIVIDER -->
+    <div style="border-top:1px solid var(--border); margin-bottom:14px;"></div>
+
+    <!-- LIVE PREVIEW -->
+    <div>
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;">Preview</div>
+      <div style="background:#1a1a2e; border-radius:10px; padding:16px 20px; max-height:140px; overflow:hidden;">
+        <div style="max-width:340px; margin:0 auto;">
+          <p style="font-family:Georgia,serif; font-size:14px; color:#e0e0e0; line-height:1.8; margin:0;">
+            Newport argues that <strong style="color:#f0f0f0;">deep work</strong> — professional activities performed in a state of distraction-free concentration — is becoming increasingly rare and increasingly valuable in our economy.
+          </p>
+          <p style="font-family:Georgia,serif; font-size:14px; color:#e0e0e0; line-height:1.8; margin:10px 0 0 0;">
+            The <strong style="color:#f0f0f0;">Metric Black Hole</strong>: knowledge work lacks clear productivity metrics, so workers default to visible busyness.
+          </p>
+        </div>
+      </div>
+      <div style="font-size:9px; color:var(--text-secondary); margin-top:4px; text-align:center;">
+        Georgia · 16px · 1.8 spacing · 680px width · Dark background
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- SHOWING DIFFERENT PREVIEW STATES SIDE BY SIDE -->
+<h3 style="max-width:960px; margin:0 auto 12px;">Preview updates live as you change settings</h3>
+
+<div class="split" style="gap:16px; max-width:960px; margin:0 auto;">
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Night Reading preset</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#0d1117; border-radius:0 0 8px 8px; padding:16px 20px;">
+        <p style="font-size:15px; color:#b0b8c4; line-height:2.0; margin:0;">
+          Newport argues that <strong style="color:#d0d8e4;">deep work</strong> — professional activities performed in a state of distraction-free concentration — is becoming increasingly rare.
+        </p>
+      </div>
+      <div style="font-size:9px; color:var(--text-secondary); padding:6px; text-align:center;">
+        Literata · 18px · 2.0 spacing · OLED
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Study Mode preset</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#ffffff; border-radius:0 0 8px 8px; padding:16px 20px;">
+        <p style="font-family:Inter,system-ui,sans-serif; font-size:13px; color:#222; line-height:1.6; margin:0;">
+          Newport argues that <strong>deep work</strong> — professional activities performed in a state of distraction-free concentration — is becoming increasingly rare and increasingly valuable in our economy. The Metric Black Hole: knowledge work lacks clear productivity metrics.
+        </p>
+      </div>
+      <div style="font-size:9px; color:var(--text-secondary); padding:6px; text-align:center;">
+        Inter · 14px · 1.6 spacing · Light
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Sepia Calm preset</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#fdf6e3; border-radius:0 0 8px 8px; padding:16px 20px;">
+        <p style="font-size:15px; color:#5c4b37; line-height:1.8; margin:0;">
+          Newport argues that <strong style="color:#3c2b17;">deep work</strong> — professional activities performed in a state of distraction-free concentration — is becoming increasingly rare.
+        </p>
+      </div>
+      <div style="font-size:9px; color:var(--text-secondary); padding:6px; text-align:center;">
+        Merriweather · 16px · 1.8 spacing · Sepia
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:24px;"></div>
+
+<!-- CUSTOM COLOR PICKER POPOVER -->
+<div class="mockup" style="max-width:280px; margin:0 auto;">
+  <div class="mockup-header">Custom Background (🎨 click)</div>
+  <div class="mockup-body" style="font-size:12px; padding:14px;">
+    <!-- Color picker gradient area -->
+    <div style="width:100%; height:120px; border-radius:8px; background:linear-gradient(to bottom, transparent, black), linear-gradient(to right, white, hsl(230,50%,40%)); margin-bottom:10px; position:relative;">
+      <div style="position:absolute; top:30%; left:60%; width:12px; height:12px; border-radius:50%; border:2px solid white; transform:translate(-50%,-50%); box-shadow:0 0 4px rgba(0,0,0,0.4);"></div>
+    </div>
+    <!-- Hue slider -->
+    <div style="width:100%; height:12px; border-radius:6px; background:linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red); margin-bottom:10px; position:relative;">
+      <div style="position:absolute; top:-2px; left:63%; width:16px; height:16px; border-radius:50%; border:2px solid white; transform:translateX(-50%); box-shadow:0 0 4px rgba(0,0,0,0.3); background:hsl(230,50%,30%);"></div>
+    </div>
+    <!-- Hex input -->
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:28px; height:28px; border-radius:6px; background:#1a1a2e; border:1px solid var(--border);"></div>
+      <div style="flex:1; display:flex; align-items:center; background:var(--bg-tertiary); border-radius:6px; padding:5px 8px; border:1px solid var(--border);">
+        <span style="font-size:10px; color:var(--text-secondary); margin-right:2px;">#</span>
+        <span style="font-size:11px; font-family:monospace;">1a1a2e</span>
+      </div>
+      <div style="padding:5px 12px; border-radius:6px; background:var(--accent); color:white; font-size:11px; cursor:pointer;">Apply</div>
+    </div>
+    <div style="margin-top:8px; font-size:10px; color:var(--text-secondary);">
+      Text color auto-adjusts for contrast.
+    </div>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:960px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Reader Settings — Final Summary</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Presets</strong>: Visual square cards showing background color + font "Aa" rendering + font name + spacing value. Active preset has accent border + check. User presets show edit icon. "+ Save Current" to create new.</li>
+    <li><strong>Font</strong>: Pre-selected named fonts as buttons (Georgia, Merriweather, Literata, Inter, Open Sans, Fira Code, JetBrains, Lora). No abstract categories.</li>
+    <li><strong>Size</strong>: Named buttons (Small / Medium / Large / XL) + manual stepper (−/+ with px value).</li>
+    <li><strong>Line Spacing</strong>: Named buttons (Tight / Normal / Relaxed / Spacious) + manual stepper.</li>
+    <li><strong>Content Width</strong>: Named buttons (Narrow / Medium / Wide / Full) + manual stepper (px).</li>
+    <li><strong>Background</strong>: Preset swatches (Light / Sepia / Dark / OLED / Dracula) + 🎨 Custom button → opens full color picker with gradient area, hue slider, and hex input. Text color auto-adjusts for contrast.</li>
+    <li><strong>Live preview</strong>: Sample text at bottom updates in real-time with current settings. Shows font + size + spacing + width + background summary below.</li>
+  </ul>
+</div>
+
+</body>
+</html>

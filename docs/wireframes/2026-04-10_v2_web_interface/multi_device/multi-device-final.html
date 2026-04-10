@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Multi-Device & Mobile Access</h2>
+<p class="subtitle">LAN access, responsive layouts, mobile-adapted interactions</p>
+
+<!-- NETWORK ACCESS -->
+<div style="max-width:800px; margin:0 auto 28px;">
+  <h3 style="margin-bottom:8px;">Network Access Architecture</h3>
+  <div style="padding:16px; border:1px solid var(--border); border-radius:10px; font-size:13px; line-height:2;">
+    <div style="display:flex; gap:24px; margin-bottom:12px;">
+      <div style="flex:1; padding:12px; background:var(--bg-tertiary); border-radius:8px;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">DEFAULT MODE</div>
+        <div style="font-size:13px; font-weight:500;">localhost:8080</div>
+        <div style="font-size:11px; color:var(--text-secondary);">Only accessible from this machine</div>
+      </div>
+      <div style="display:flex; align-items:center; font-size:18px; color:var(--text-secondary);">→</div>
+      <div style="flex:1; padding:12px; background:rgba(0,122,255,0.06); border:1px solid rgba(0,122,255,0.2); border-radius:8px;">
+        <div style="font-size:11px; color:var(--accent); margin-bottom:4px;">LAN MODE</div>
+        <div style="font-size:13px; font-weight:500;">192.168.1.42:8080</div>
+        <div style="font-size:11px; color:var(--text-secondary);">Any device on the same network</div>
+      </div>
+    </div>
+    <ul style="padding-left:20px; font-size:12px; color:var(--text-secondary);">
+      <li><strong>Config toggle</strong>: <code>network.allow_lan: true</code> — binds to 0.0.0.0 instead of 127.0.0.1</li>
+      <li><strong>mDNS discovery</strong>: Optionally advertise as <code>bookcompanion.local</code> via Bonjour/Avahi — no IP memorization</li>
+      <li><strong>QR code</strong>: Settings page shows a QR code with the access URL for easy phone setup</li>
+      <li><strong>Optional token auth</strong>: <code>network.access_token: "my-secret"</code> — appended as query param or entered once on device</li>
+      <li><strong>LAN indicator</strong>: When LAN mode is active, header shows a subtle icon + device count</li>
+    </ul>
+  </div>
+</div>
+
+<!-- MOBILE: LIBRARY -->
+<div class="split" style="gap:16px; max-width:800px; margin:0 auto;">
+  <div class="mockup" style="flex:0 0 320px;">
+    <div class="mockup-header">Mobile — Library</div>
+    <div class="mockup-body" style="font-size:11px; padding:0; min-height:520px; display:flex; flex-direction:column; width:320px;">
+      <!-- Mobile header -->
+      <div style="display:flex; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); gap:8px;">
+        <div style="font-size:15px; font-weight:600;">Library</div>
+        <div style="font-size:10px; color:var(--text-secondary);">12 books</div>
+        <div style="flex:1;"></div>
+        <span style="font-size:12px; opacity:0.5;">🔍</span>
+        <div style="padding:4px 10px; border-radius:6px; background:var(--accent); color:white; font-size:10px;">+ Upload</div>
+      </div>
+
+      <!-- View tabs (scrollable) -->
+      <div style="display:flex; padding:0 14px; border-bottom:1px solid var(--border); gap:0; overflow-x:auto;">
+        <div style="padding:8px 12px; font-size:10px; font-weight:500; border-bottom:2px solid var(--accent); white-space:nowrap;">All Books</div>
+        <div style="padding:8px 12px; font-size:10px; color:var(--text-secondary); white-space:nowrap;">Reading</div>
+        <div style="padding:8px 12px; font-size:10px; color:var(--text-secondary); white-space:nowrap;">Business</div>
+        <div style="padding:8px 12px; font-size:10px; color:var(--text-secondary); white-space:nowrap;">Review</div>
+      </div>
+
+      <!-- Filter row (compact) -->
+      <div style="display:flex; align-items:center; padding:6px 14px; border-bottom:1px solid var(--border); gap:4px; overflow-x:auto;">
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); white-space:nowrap;">Tags ▾</span>
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); white-space:nowrap;">Status ▾</span>
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); white-space:nowrap;">Author ▾</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:10px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary);">Sort ▾</span>
+      </div>
+
+      <!-- Book list (mobile = list view by default) -->
+      <div style="flex:1; overflow-y:auto; padding:8px 14px;">
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer;">
+          <div style="width:40px; height:56px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📘</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Deep Work</div>
+            <div style="font-size:10px; color:var(--text-secondary);">Cal Newport</div>
+            <div style="display:flex; gap:4px; margin-top:3px;">
+              <span style="font-size:8px; padding:1px 4px; border-radius:3px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">✓ 16/16</span>
+              <span style="font-size:8px; color:var(--text-secondary);">14 sections</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer;">
+          <div style="width:40px; height:56px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📙</div>
+          <div style="flex:1;">
+            <div style="font-size:12px; font-weight:500;">Thinking, Fast and Slow</div>
+            <div style="font-size:10px; color:var(--text-secondary);">D. Kahneman</div>
+            <div style="display:flex; gap:4px; margin-top:3px;">
+              <span style="font-size:8px; padding:1px 4px; border-radius:3px; background:rgba(0,122,255,0.15); color:rgb(0,122,255);">⟳ 8/24</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer;">
+          <div style="width:40px; height:56px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">📗</div>
+          <div style="flex:1;">
+            <div style="font-size:12px; font-weight:500;">Atomic Habits</div>
+            <div style="font-size:10px; color:var(--text-secondary);">James Clear</div>
+            <div style="display:flex; gap:4px; margin-top:3px;">
+              <span style="font-size:8px; padding:1px 4px; border-radius:3px; background:rgba(255,159,10,0.15); color:rgb(255,159,10);">Parsed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom nav -->
+      <div style="display:flex; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="flex:1; text-align:center; padding:8px; font-size:9px; color:var(--accent);">
+          <div style="font-size:16px; margin-bottom:2px;">📖</div>Library
+        </div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:9px; color:var(--text-secondary);">
+          <div style="font-size:16px; margin-bottom:2px;">🔍</div>Search
+        </div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:9px; color:var(--text-secondary);">
+          <div style="font-size:16px; margin-bottom:2px;">💡</div>Concepts
+        </div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:9px; color:var(--text-secondary);">
+          <div style="font-size:16px; margin-bottom:2px;">✏️</div>Notes
+        </div>
+        <div style="flex:1; text-align:center; padding:8px; font-size:9px; color:var(--text-secondary);">
+          <div style="font-size:16px; margin-bottom:2px;">⚙️</div>Settings
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE: READER -->
+  <div class="mockup" style="flex:0 0 320px;">
+    <div class="mockup-header">Mobile — Section Reader</div>
+    <div class="mockup-body" style="font-size:11px; padding:0; min-height:520px; display:flex; flex-direction:column; width:320px;">
+      <!-- Header with back + chapter dropdown -->
+      <div style="display:flex; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); gap:6px;">
+        <span style="font-size:12px; color:var(--accent); cursor:pointer;">←</span>
+        <div style="font-size:12px; font-weight:500; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;">Ch.3 Deep Work Is Rare ▾</div>
+        <span style="font-size:10px; color:var(--text-secondary);">←</span>
+        <span style="font-size:10px; color:var(--text-secondary);">→</span>
+      </div>
+
+      <!-- Toggle bar -->
+      <div style="display:flex; align-items:center; padding:6px 14px; border-bottom:1px solid var(--border); gap:8px;">
+        <div style="display:flex; background:var(--bg-tertiary); border-radius:6px; padding:2px; gap:1px;">
+          <span style="font-size:10px; padding:3px 10px; border-radius:4px; color:var(--text-secondary);">Original</span>
+          <span style="font-size:10px; padding:3px 10px; border-radius:4px; background:var(--bg-secondary); font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,0.1);">Summary</span>
+        </div>
+        <div style="flex:1;"></div>
+        <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">practitioner_bullets ▾</span>
+      </div>
+
+      <!-- Reading content (full width) -->
+      <div style="flex:1; padding:16px; overflow-y:auto; font-size:13px; line-height:1.8;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px; padding:4px 8px; background:rgba(52,199,89,0.06); border-radius:6px; font-size:10px;">
+          <span style="color:rgb(52,199,89);">✓ 16/16</span>
+          <span style="color:var(--text-secondary);">· 38% compression</span>
+        </div>
+
+        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:12px;">
+          <span style="font-size:10px; padding:2px 8px; border-radius:10px; background:var(--bg-tertiary); border:1px solid var(--border);">Open Floor Plans</span>
+          <span style="font-size:10px; padding:2px 8px; border-radius:10px; background:var(--bg-tertiary); border:1px solid var(--border);">Metric Black Hole</span>
+        </div>
+
+        <ul style="padding-left:16px; font-size:12px; line-height:1.9;">
+          <li style="margin-bottom:6px;">Newport identifies three trends making deep work rare: <strong>open floor plans</strong>, instant messaging culture, and social media</li>
+          <li style="margin-bottom:6px;">The <span style="background:rgba(255,200,50,0.25); padding:0 2px; border-radius:2px;">Metric Black Hole</span>: knowledge work lacks clear productivity metrics</li>
+          <li style="margin-bottom:6px;"><strong>Busyness as a Proxy for Productivity</strong>: visible activity substitutes for real output</li>
+        </ul>
+      </div>
+
+      <!-- Bottom action bar -->
+      <div style="display:flex; align-items:center; border-top:1px solid var(--border); padding:8px 14px; gap:4px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; padding:6px; font-size:10px; cursor:pointer; border-radius:6px; background:var(--bg-tertiary);">Aa</div>
+        <div style="flex:1; text-align:center; padding:6px; font-size:10px; cursor:pointer; border-radius:6px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">✦ AI</div>
+        <div style="flex:1; text-align:center; padding:6px; font-size:10px; cursor:pointer; border-radius:6px; background:var(--bg-tertiary); position:relative;">💬 <span style="position:absolute; top:2px; right:16px; font-size:7px; background:var(--accent); color:white; width:12px; height:12px; border-radius:50%; display:flex; align-items:center; justify-content:center;">2</span></div>
+        <div style="flex:1; text-align:center; padding:6px; font-size:10px; cursor:pointer; border-radius:6px; background:var(--bg-tertiary);">⋯</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:24px;"></div>
+
+<!-- MOBILE: BOTTOM SHEETS -->
+<div class="split" style="gap:16px; max-width:800px; margin:0 auto;">
+  <div class="mockup" style="flex:0 0 320px;">
+    <div class="mockup-header">Mobile — Annotations Bottom Sheet</div>
+    <div class="mockup-body" style="font-size:11px; padding:0; min-height:400px; display:flex; flex-direction:column; width:320px; position:relative;">
+      <!-- Dimmed content behind -->
+      <div style="flex:1; padding:16px; opacity:0.3; font-size:12px; line-height:1.8;">
+        <p>Newport identifies three trends making deep work rare...</p>
+      </div>
+
+      <!-- Bottom sheet -->
+      <div style="background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 16px rgba(0,0,0,0.1); padding:0; position:absolute; bottom:0; left:0; right:0;">
+        <!-- Handle -->
+        <div style="text-align:center; padding:8px;"><div style="width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto;"></div></div>
+
+        <div style="display:flex; align-items:center; padding:0 14px 8px; gap:8px;">
+          <span style="font-size:13px; font-weight:500;">Annotations</span>
+          <span style="font-size:10px; color:var(--text-secondary);">2 on this section</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--accent);">+ Add</span>
+        </div>
+
+        <!-- Annotation cards -->
+        <div style="padding:0 14px 14px; max-height:200px; overflow-y:auto;">
+          <div style="padding:10px; background:rgba(255,200,50,0.06); border-left:3px solid rgb(255,200,50); border-radius:0 8px 8px 0; font-size:11px; margin-bottom:8px;">
+            <div style="font-style:italic; color:var(--text-secondary); margin-bottom:3px; font-size:10px;">"Metric Black Hole"</div>
+            <div>Connects to Ch.5's lead vs lag measures.</div>
+          </div>
+          <div style="padding:10px; background:rgba(100,200,255,0.06); border-left:3px solid rgb(100,200,255); border-radius:0 8px 8px 0; font-size:11px;">
+            <div style="font-style:italic; color:var(--text-secondary); margin-bottom:3px; font-size:10px;">"cult of the Internet"</div>
+            <div>Compare with Postman's critique.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="flex:0 0 320px;">
+    <div class="mockup-header">Mobile — AI Chat Bottom Sheet</div>
+    <div class="mockup-body" style="font-size:11px; padding:0; min-height:400px; display:flex; flex-direction:column; width:320px; position:relative;">
+      <!-- Dimmed content -->
+      <div style="flex:1; padding:16px; opacity:0.3; font-size:12px;">
+        <p>Newport identifies three trends...</p>
+      </div>
+
+      <!-- AI Chat bottom sheet (taller) -->
+      <div style="background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 16px rgba(0,0,0,0.1); position:absolute; bottom:0; left:0; right:0;">
+        <div style="text-align:center; padding:8px;"><div style="width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto;"></div></div>
+
+        <div style="display:flex; align-items:center; padding:0 14px 8px; gap:6px;">
+          <span style="font-size:11px; color:rgb(175,82,222); cursor:pointer;">← Threads</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:12px; font-weight:500;">Key arguments</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">⋯</span>
+        </div>
+
+        <div style="padding:8px 14px; max-height:200px; overflow-y:auto;">
+          <div style="padding:6px 10px; background:var(--bg-tertiary); border-radius:8px; font-size:11px; margin-bottom:8px; max-width:80%;">
+            What are real-world examples of the Metric Black Hole?
+          </div>
+          <div style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:11px; line-height:1.6; margin-bottom:8px;">
+            <ul style="padding-left:14px; margin:0;">
+              <li>Yahoo's remote work ban</li>
+              <li>Slack response time as metric</li>
+              <li>Facebook's open floor plan</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="padding:8px 14px; border-top:1px solid var(--border);">
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border-radius:8px; padding:8px 10px; gap:6px;">
+            <span style="font-size:11px; color:var(--text-secondary); flex:1;">Ask about this book...</span>
+            <span style="font-size:14px; color:var(--accent);">↑</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:800px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Multi-Device — Design Summary</h3>
+
+  <h4 style="margin-bottom:6px; font-size:13px;">Network Access</h4>
+  <ul style="padding-left:20px; font-size:12px; line-height:1.8; margin-bottom:12px;">
+    <li><strong>Config toggle</strong>: <code>network.allow_lan: true</code> binds to 0.0.0.0</li>
+    <li><strong>mDNS</strong>: Optional <code>bookcompanion.local</code> discovery via Bonjour</li>
+    <li><strong>QR code</strong>: Settings page shows QR for easy phone pairing</li>
+    <li><strong>Token auth</strong>: Optional <code>network.access_token</code> for security</li>
+  </ul>
+
+  <h4 style="margin-bottom:6px; font-size:13px;">Responsive Breakpoints</h4>
+  <ul style="padding-left:20px; font-size:12px; line-height:1.8; margin-bottom:12px;">
+    <li><strong>Desktop (≥1024px)</strong>: Full layout — sidebar icon rail + two/three panel views</li>
+    <li><strong>Tablet (768–1023px)</strong>: Sidebar collapses to icons only, panels stack as needed</li>
+    <li><strong>Mobile (&lt;768px)</strong>: Single column, bottom tab navigation, bottom sheets for annotations/AI/settings</li>
+  </ul>
+
+  <h4 style="margin-bottom:6px; font-size:13px;">Mobile Adaptations</h4>
+  <ul style="padding-left:20px; font-size:12px; line-height:1.8;">
+    <li><strong>Sidebar → Bottom tab bar</strong>: Library, Search, Concepts, Notes, Settings</li>
+    <li><strong>Icon rail hidden</strong>: Bottom tabs replace it entirely</li>
+    <li><strong>Library defaults to list view</strong>: More space-efficient than grid on small screens</li>
+    <li><strong>Book detail</strong>: Single column reader. Breadcrumb becomes back arrow + chapter dropdown.</li>
+    <li><strong>Context sidebar → Bottom sheets</strong>: Annotations and AI Chat open as draggable bottom sheets (swipe up to expand, swipe down to dismiss)</li>
+    <li><strong>Action bar at bottom</strong>: Aa settings, AI button, annotations toggle, more menu — all thumb-reachable</li>
+    <li><strong>Text selection</strong>: Long-press triggers the floating toolbar (Highlight, Note, Ask AI, Copy)</li>
+    <li><strong>Upload</strong>: Same wizard, full-width steps. File picker uses native mobile file selector.</li>
+    <li><strong>Filters</strong>: Dropdowns open as full-screen modal on mobile for easier touch selection.</li>
+  </ul>
+</div>
+
+</body>
+</html>

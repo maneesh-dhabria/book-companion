@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Image Handling Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Image Handling</h2>
+<p class="subtitle">How images appear in original content, summaries, lightbox, and AI context</p>
+
+<!-- A) ORIGINAL CONTENT WITH IMAGES -->
+<div class="mockup" style="max-width:720px; margin:0 auto;">
+  <div class="mockup-header">A) Original Content with Images</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+
+    <!-- Reader toolbar -->
+    <div style="display:flex; align-items:center; padding:8px 16px; border-bottom:1px solid var(--border); gap:8px;">
+      <span style="font-size:12px; color:var(--text-secondary);">Ch.3 — The Science of Habit Formation</span>
+      <span style="flex:1;"></span>
+      <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">Original</span>
+      <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">Summary</span>
+    </div>
+
+    <!-- Reading content -->
+    <div style="padding:20px 24px; line-height:1.8; font-size:13px;">
+      <p style="margin-bottom:16px;">The basal ganglia, a golf-ball-sized lump of tissue near the center of the skull, plays a critical role in habit formation. Researchers at MIT discovered that this brain structure stores habits even when the rest of the brain is asleep.</p>
+
+      <!-- KEY image - shown inline with full treatment -->
+      <div style="margin:20px 0; border:1px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer;">
+        <!-- Image placeholder -->
+        <div style="background:var(--bg-tertiary); height:180px; display:flex; align-items:center; justify-content:center; position:relative;">
+          <div style="text-align:center;">
+            <div style="font-size:28px; opacity:0.3;">&#x1f5bc;</div>
+            <div style="font-size:11px; color:var(--text-tertiary); margin-top:4px;">680 x 340 px</div>
+          </div>
+          <!-- Relevance badge -->
+          <div style="position:absolute; top:8px; right:8px; padding:2px 8px; border-radius:4px; background:rgba(0,122,255,0.85); color:white; font-size:10px; font-weight:500;">KEY</div>
+          <!-- Expand hint -->
+          <div style="position:absolute; bottom:8px; right:8px; padding:2px 8px; border-radius:4px; background:rgba(0,0,0,0.5); color:white; font-size:10px;">Click to expand</div>
+        </div>
+        <!-- Caption -->
+        <div style="padding:8px 12px; font-size:11px; color:var(--text-secondary); border-top:1px solid var(--border);">
+          <strong style="color:var(--text-primary);">Figure 3.1</strong> — The Habit Loop: cue, routine, reward. The basal ganglia converts repeated sequences into automatic routines.
+          <div style="font-size:10px; color:var(--text-tertiary); margin-top:4px; font-style:italic;" title="Alt text: Diagram showing a circular loop with three nodes labeled Cue, Routine, and Reward, with arrows connecting them in sequence.">Hover for alt text</div>
+        </div>
+      </div>
+
+      <p style="margin-bottom:16px;">As the loop becomes more automatic, the brain's decision-making center actually decreases in activity. The habit loop — cue, routine, reward — becomes encoded in the basal ganglia.</p>
+
+      <!-- SUPPLEMENTARY image -->
+      <div style="margin:20px 0; border:1px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer;">
+        <div style="background:var(--bg-tertiary); height:120px; display:flex; align-items:center; justify-content:center; position:relative;">
+          <div style="text-align:center;">
+            <div style="font-size:24px; opacity:0.3;">&#x1f5bc;</div>
+            <div style="font-size:10px; color:var(--text-tertiary); margin-top:4px;">520 x 240 px</div>
+          </div>
+          <div style="position:absolute; top:8px; right:8px; padding:2px 8px; border-radius:4px; background:rgba(255,159,10,0.85); color:white; font-size:10px; font-weight:500;">SUPPLEMENTARY</div>
+        </div>
+        <div style="padding:8px 12px; font-size:11px; color:var(--text-secondary); border-top:1px solid var(--border);">
+          <strong style="color:var(--text-primary);">Figure 3.2</strong> — fMRI scans showing basal ganglia activity during habit formation (week 1 vs week 8).
+        </div>
+      </div>
+
+      <p style="margin-bottom:16px;">This is why habits are so powerful: once formed, the brain barely needs to think about them. The chunking process — converting a sequence of actions into an automatic routine — is at the root of how habits form.</p>
+
+      <!-- DECORATIVE image -->
+      <div style="margin:20px 0; border:1px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer; opacity:0.7;">
+        <div style="background:var(--bg-tertiary); height:80px; display:flex; align-items:center; justify-content:center; position:relative;">
+          <div style="text-align:center;">
+            <div style="font-size:20px; opacity:0.3;">&#x1f5bc;</div>
+            <div style="font-size:10px; color:var(--text-tertiary); margin-top:2px;">400 x 160 px</div>
+          </div>
+          <div style="position:absolute; top:8px; right:8px; padding:2px 8px; border-radius:4px; background:rgba(134,134,139,0.85); color:white; font-size:10px; font-weight:500;">DECORATIVE</div>
+        </div>
+        <div style="padding:6px 12px; font-size:11px; color:var(--text-tertiary); border-top:1px solid var(--border);">
+          Chapter divider illustration
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- B) SUMMARY WITH IMAGE REFERENCES -->
+<div class="mockup" style="max-width:720px; margin:0 auto;">
+  <div class="mockup-header">B) Summary with Image References</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+
+    <!-- Reader toolbar -->
+    <div style="display:flex; align-items:center; padding:8px 16px; border-bottom:1px solid var(--border); gap:8px;">
+      <span style="font-size:12px; color:var(--text-secondary);">Ch.3 — The Science of Habit Formation</span>
+      <span style="flex:1;"></span>
+      <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">Summary</span>
+      <span style="font-size:10px; color:var(--text-secondary);">practitioner_bullets preset</span>
+    </div>
+
+    <!-- Summary content -->
+    <div style="padding:20px 24px; line-height:1.8; font-size:13px;">
+      <p style="margin-bottom:16px;"><strong>Key Takeaway:</strong> Habits are driven by a three-part neurological loop stored in the basal ganglia, which operates independently of conscious decision-making.</p>
+
+      <p style="margin-bottom:12px;">The brain converts repeated behavioral sequences into automatic routines through a process called "chunking." This habit loop consists of three components:</p>
+
+      <!-- KEY image shown inline in summary -->
+      <div style="margin:16px 0; border:1px solid var(--accent); border-radius:10px; overflow:hidden; cursor:pointer; background:var(--selected-bg);">
+        <div style="background:var(--bg-tertiary); height:140px; display:flex; align-items:center; justify-content:center; position:relative;">
+          <div style="text-align:center;">
+            <div style="font-size:24px; opacity:0.3;">&#x1f5bc;</div>
+            <div style="font-size:10px; color:var(--text-tertiary); margin-top:4px;">Figure 3.1 — The Habit Loop</div>
+          </div>
+          <div style="position:absolute; top:8px; right:8px; padding:2px 8px; border-radius:4px; background:rgba(0,122,255,0.85); color:white; font-size:10px; font-weight:500;">KEY</div>
+        </div>
+        <div style="padding:8px 12px; font-size:11px; color:var(--text-secondary); border-top:1px solid var(--border); display:flex; align-items:center; gap:6px;">
+          <span>The Habit Loop: cue, routine, reward</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--accent); cursor:pointer;">View in original context</span>
+        </div>
+      </div>
+
+      <ul style="margin:12px 0 16px 20px; line-height:2;">
+        <li><strong>Cue</strong> — the trigger that initiates the behavior</li>
+        <li><strong>Routine</strong> — the behavior itself (physical, mental, or emotional)</li>
+        <li><strong>Reward</strong> — the benefit that reinforces the loop</li>
+      </ul>
+
+      <p style="margin-bottom:20px;">Once established, the basal ganglia encodes the full loop, reducing prefrontal cortex involvement. This means habits persist even when conscious attention is directed elsewhere.</p>
+
+      <!-- Image References section (collapsed by default for supplementary) -->
+      <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+        <div style="padding:10px 14px; background:var(--bg-tertiary); display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <span style="font-size:12px;">&#x25B6;</span>
+          <span style="font-size:12px; font-weight:500;">Image References</span>
+          <span style="font-size:11px; color:var(--text-secondary);">1 supplementary image</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">click to expand</span>
+        </div>
+
+        <!-- Expanded state shown -->
+        <div style="padding:12px 14px; border-top:1px solid var(--border);">
+          <div style="display:flex; gap:12px; align-items:center; padding:8px; border-radius:6px; border:1px solid var(--border);">
+            <!-- Thumbnail -->
+            <div style="width:64px; height:48px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <span style="font-size:16px; opacity:0.3;">&#x1f5bc;</span>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:12px; font-weight:500;">Figure 3.2 — fMRI Scans</div>
+              <div style="font-size:11px; color:var(--text-secondary);">Basal ganglia activity: week 1 vs week 8</div>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.1); color:rgb(255,159,10);">supplementary</span>
+                <span style="font-size:10px; color:var(--accent); cursor:pointer;">Referenced in paragraph 2 &#x2197;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- C) IMAGE GALLERY / LIGHTBOX -->
+<div class="mockup" style="max-width:720px; margin:0 auto;">
+  <div class="mockup-header">C) Image Gallery / Lightbox</div>
+  <div class="mockup-body" style="font-size:13px; padding:0; min-height:480px; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; position:relative;">
+
+    <!-- Close button -->
+    <div style="position:absolute; top:12px; right:16px; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white; font-size:18px; font-weight:300;">&#x2715;</div>
+    <div style="position:absolute; top:14px; right:56px; font-size:11px; color:rgba(255,255,255,0.5);">ESC to close</div>
+
+    <!-- Navigation arrows -->
+    <div style="position:absolute; left:16px; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white; font-size:18px;">&#x2039;</div>
+    <div style="position:absolute; right:16px; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; cursor:pointer; color:white; font-size:18px;">&#x203A;</div>
+
+    <!-- Image counter -->
+    <div style="position:absolute; top:14px; left:50%; transform:translateX(-50%); font-size:12px; color:rgba(255,255,255,0.7);">1 / 3 images in section</div>
+
+    <!-- Lightbox content -->
+    <div style="max-width:560px; width:100%; padding:0 60px;">
+      <!-- Enlarged image placeholder -->
+      <div style="background:var(--bg-tertiary); height:280px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:48px; opacity:0.3;">&#x1f5bc;</div>
+          <div style="font-size:12px; color:var(--text-tertiary); margin-top:8px;">680 x 340 px (enlarged)</div>
+        </div>
+      </div>
+
+      <!-- Caption & metadata -->
+      <div style="text-align:center;">
+        <div style="font-size:14px; color:white; font-weight:500; margin-bottom:6px;">Figure 3.1 — The Habit Loop</div>
+        <div style="font-size:12px; color:rgba(255,255,255,0.7); margin-bottom:8px;">The cue-routine-reward loop stored in the basal ganglia converts repeated sequences into automatic routines.</div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:8px;">
+          <span style="font-size:10px; padding:3px 8px; border-radius:4px; background:rgba(0,122,255,0.3); color:rgba(100,180,255,1);">KEY</span>
+          <span style="font-size:11px; color:rgba(255,255,255,0.5);">Ch.3 — The Science of Habit Formation</span>
+        </div>
+        <div style="font-size:11px; color:rgba(255,255,255,0.4); font-style:italic;">Alt: Diagram showing a circular loop with three nodes labeled Cue, Routine, and Reward, with arrows connecting them in sequence.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:28px;"></div>
+
+<!-- D) IMAGE IN AI CONTEXT -->
+<div class="mockup" style="max-width:720px; margin:0 auto;">
+  <div class="mockup-header">D) Image in AI Context</div>
+  <div class="mockup-body" style="font-size:13px; padding:0; display:flex; flex-direction:column; min-height:460px;">
+
+    <!-- Chat header -->
+    <div style="padding:10px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+      <span style="font-size:14px;">&#x2728;</span>
+      <span style="font-size:13px; font-weight:500;">AI Chat</span>
+      <span style="flex:1;"></span>
+      <span style="font-size:11px; color:var(--text-secondary);">Ch.3 — Habit Formation</span>
+    </div>
+
+    <!-- Context indicator -->
+    <div style="padding:8px 16px; background:var(--selected-bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+      <span style="font-size:12px; opacity:0.6;">&#x1f4ce;</span>
+      <span style="font-size:11px; color:var(--accent);">Context: Ch.3 section content</span>
+      <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">includes 2 images</span>
+      <span style="flex:1;"></span>
+      <span style="font-size:10px; color:var(--text-secondary); cursor:pointer;">View context</span>
+    </div>
+
+    <!-- Chat messages -->
+    <div style="flex:1; padding:16px; overflow-y:auto;">
+
+      <!-- User message -->
+      <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+        <div style="max-width:75%; background:var(--accent); color:white; padding:10px 14px; border-radius:14px 14px 4px 14px; font-size:12px; line-height:1.6;">
+          Can you explain the habit loop diagram? How does the cue trigger the routine?
+        </div>
+      </div>
+
+      <!-- AI response with image reference -->
+      <div style="display:flex; justify-content:flex-start; margin-bottom:16px;">
+        <div style="max-width:80%; background:var(--bg-tertiary); padding:10px 14px; border-radius:14px 14px 14px 4px; font-size:12px; line-height:1.6;">
+          <p style="margin-bottom:10px;">The diagram in <strong>Figure 3.1</strong> illustrates the three-part loop that forms the neurological basis of every habit:</p>
+
+          <!-- Inline image reference card -->
+          <div style="margin:10px 0; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg-secondary); display:flex; gap:10px; align-items:center; cursor:pointer;">
+            <div style="width:48px; height:36px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <span style="font-size:14px; opacity:0.3;">&#x1f5bc;</span>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Figure 3.1 — The Habit Loop</div>
+              <div style="font-size:10px; color:var(--accent);">Click to view full image</div>
+            </div>
+          </div>
+
+          <p style="margin-bottom:8px;">The <strong>cue</strong> acts as a trigger — it can be a location, time of day, emotional state, or preceding action. When the brain detects this cue, it automatically initiates the <strong>routine</strong> (the behavior itself).</p>
+          <p>The key insight from the fMRI data (Figure 3.2) is that once the loop is established, the prefrontal cortex essentially "hands off" control to the basal ganglia, making the routine nearly effortless.</p>
+        </div>
+      </div>
+
+      <!-- User follow-up -->
+      <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+        <div style="max-width:75%; background:var(--accent); color:white; padding:10px 14px; border-radius:14px 14px 4px 14px; font-size:12px; line-height:1.6;">
+          What does the fMRI data in Figure 3.2 show specifically?
+        </div>
+      </div>
+
+      <!-- AI response referencing supplementary image -->
+      <div style="display:flex; justify-content:flex-start; margin-bottom:16px;">
+        <div style="max-width:80%; background:var(--bg-tertiary); padding:10px 14px; border-radius:14px 14px 14px 4px; font-size:12px; line-height:1.6;">
+          <p style="margin-bottom:10px;"><strong>Figure 3.2</strong> compares brain scans from week 1 and week 8 of the experiment:</p>
+
+          <!-- Inline supplementary image reference -->
+          <div style="margin:10px 0; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg-secondary); display:flex; gap:10px; align-items:center; cursor:pointer;">
+            <div style="width:48px; height:36px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <span style="font-size:14px; opacity:0.3;">&#x1f5bc;</span>
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Figure 3.2 — fMRI Scans</div>
+              <div style="font-size:10px; color:rgb(255,159,10);">Supplementary image</div>
+            </div>
+          </div>
+
+          <ul style="margin:8px 0 0 16px; line-height:1.8;">
+            <li><strong>Week 1:</strong> High activity across basal ganglia AND prefrontal cortex — the brain is actively learning the sequence</li>
+            <li><strong>Week 8:</strong> Basal ganglia activity remains steady, but prefrontal cortex activity drops significantly — the habit is now automatic</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input bar -->
+    <div style="padding:10px 16px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+      <div style="flex:1; padding:8px 12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border); font-size:12px; color:var(--text-tertiary);">Ask about this section...</div>
+      <div style="width:32px; height:32px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+        <span style="color:white; font-size:14px;">&#x2191;</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<!-- DESIGN SUMMARY -->
+<div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:720px; margin:0 auto;">
+  <h3 style="margin-bottom:10px;">Image Handling — Design Summary</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Relevance badges</strong>: KEY (blue), SUPPLEMENTARY (orange), DECORATIVE (gray). Positioned top-right of each image. Controls how images appear in summaries.</li>
+    <li><strong>Original content</strong>: All images shown inline with captions and alt text. KEY images are full-width; DECORATIVE images are smaller and slightly faded.</li>
+    <li><strong>Summary view</strong>: KEY images are shown inline at the point they are referenced. SUPPLEMENTARY images are collapsed in an "Image References" section at the bottom with thumbnails, captions, and links to original context.</li>
+    <li><strong>Lightbox</strong>: Clicking any image opens full-screen overlay with enlarged view, caption, relevance badge, alt text, and prev/next navigation. ESC or close button to dismiss.</li>
+    <li><strong>AI context</strong>: Image count shown as context indicator. AI can reference images by figure number. Clickable image cards within AI responses link to the lightbox view.</li>
+    <li><strong>Alt text</strong>: Always available via tooltip in reader view and shown in full in lightbox. Passed to AI context for image understanding.</li>
+  </ul>
+</div>
+
+</body>
+</html>

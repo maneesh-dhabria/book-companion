@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion Web UI — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .options { display: flex; flex-direction: column; gap: 0.75rem; }
+    .option {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option.selected { background: var(--selected-bg); border-color: var(--selected-border); }
+    .option .letter {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      width: 1.75rem; height: 1.75rem;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .option.selected .letter { background: var(--accent); color: white; }
+    .option .content { flex: 1; }
+    .option .content h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .option .content p { color: var(--text-secondary); font-size: 0.85rem; margin: 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--bg-tertiary); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--text-secondary); font-size: 0.85rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--bg-secondary); border-radius: 8px; padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+
+    .placeholder {
+      background: var(--bg-tertiary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-tertiary);
+    }
+
+    .mock-nav { background: var(--accent); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--bg-tertiary); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; }
+    .mock-input { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; width: 100%; }
+  </style>
+</head>
+<body>
+<h2>Library Page — Final Design</h2>
+<p class="subtitle">Custom views + uniform multi-select filter dropdowns</p>
+
+<div class="mockup" style="max-width:920px; margin:0 auto;">
+  <div class="mockup-header">Complete Library Page</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <!-- Top bar -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px;">
+      <div style="font-size:16px; font-weight:600;">Library</div>
+      <div style="font-size:11px; color:var(--text-secondary);">12 books</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:300px; gap:8px;">
+        <span style="font-size:13px; opacity:0.4;">🔍</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search books, sections, concepts...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">⌘K</span>
+      </div>
+      <div style="padding:5px 14px; border-radius:8px; background:var(--accent); color:white; font-size:12px; font-weight:500;">+ Upload</div>
+    </div>
+
+    <!-- View tabs -->
+    <div style="display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--border); gap:0;">
+      <div style="padding:10px 16px; font-size:12px; font-weight:500; border-bottom:2px solid var(--accent); color:var(--text-primary); cursor:pointer;">All Books</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Currently Reading</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Business Shelf</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Needs Review</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer; opacity:0.5;">+ New View</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); cursor:pointer; padding:4px 8px;">⋯</div>
+    </div>
+
+    <!-- Single filter row -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap;">
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Tags ▾</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Status ▾</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Author ▾</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Eval ▾</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Format ▾</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; flex-shrink:0;">Sort: Recent ▾</div>
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:6px; padding:2px; gap:1px; flex-shrink:0;">
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1);">▦</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">☰</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">▤</span>
+      </div>
+    </div>
+
+    <!-- Grid content -->
+    <div style="padding:16px 20px; overflow-y:auto;">
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;">
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer;">
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">📘</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Deep Work</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">Cal Newport</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px; flex-wrap:wrap;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">Productivity</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">✓ 16/16</span>
+            <span style="font-size:9px; color:var(--text-secondary);">14 sections</span>
+          </div>
+        </div>
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer;">
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">📙</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Thinking, Fast...</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">D. Kahneman</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">Psychology</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.15); color:rgb(0,122,255);">⟳ 8/24 sections</span>
+            <span style="font-size:9px; color:var(--text-secondary);">24 sections</span>
+          </div>
+        </div>
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer;">
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">📗</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Atomic Habits</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">James Clear</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.15); color:rgb(255,159,10);">Parsed only</span>
+            <span style="font-size:9px; color:var(--text-secondary);">18 sections</span>
+          </div>
+        </div>
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer;">
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">📕</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Art of Strategy</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">A. Dixit</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(52,199,89,0.1); color:rgb(52,199,89);">Strategy</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">✓ 15/16</span>
+            <span style="font-size:9px; color:var(--text-secondary);">22 sections</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:920px; margin-left:auto; margin-right:auto;">
+  <h3 style="margin-bottom:12px;">✓ Library Page — Approved Design</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>App shell</strong>: 56px icon rail sidebar (Library, Concepts, Annotations, Settings)</li>
+    <li><strong>Top bar</strong>: Page title + persistent search input (⌘K) + Upload button</li>
+    <li><strong>View tabs</strong>: Saved filter+sort+display combos with + New View</li>
+    <li><strong>Filter row</strong>: Uniform multi-select dropdowns (Tags, Status, Author, Eval, Format) + Sort + View switcher (Grid/List/Table)</li>
+    <li><strong>Book cards</strong>: Cover, title, author, tags, processing status + eval score, section count</li>
+    <li><strong>Views save</strong>: All filters, sort, display mode, table columns</li>
+  </ul>
+</div>
+
+<!-- ============================================ -->
+<!-- EMPTY LIBRARY STATE (R4) -->
+<!-- ============================================ -->
+<div class="mockup" style="max-width:920px; margin:24px auto 0;">
+  <div class="mockup-header">Empty Library State (R4) — First-time user</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <!-- Top bar -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px;">
+      <div style="font-size:16px; font-weight:600;">Library</div>
+      <div style="font-size:11px; color:var(--text-secondary);">0 books</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:300px; gap:8px;">
+        <span style="font-size:13px; opacity:0.4;">&#x1f50d;</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search books, sections, concepts...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">&#x2318;K</span>
+      </div>
+      <div style="padding:5px 14px; border-radius:8px; background:var(--accent); color:white; font-size:12px; font-weight:500;">+ Upload</div>
+    </div>
+
+    <!-- Empty state content -->
+    <div style="padding:60px 40px; text-align:center;">
+      <!-- Welcome illustration -->
+      <div style="font-size:64px; margin-bottom:20px;">&#x1f4da;</div>
+
+      <div style="font-size:20px; font-weight:600; margin-bottom:8px;">Welcome to Book Companion</div>
+      <div style="font-size:13px; color:var(--text-secondary); max-width:460px; margin:0 auto 32px;">Upload a non-fiction book and get AI-powered summaries, concepts, and a searchable knowledge base</div>
+
+      <!-- How it works row -->
+      <div style="display:flex; gap:32px; justify-content:center; margin-bottom:36px;">
+        <div style="text-align:center; max-width:180px;">
+          <div style="width:48px; height:48px; border-radius:12px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:20px;">&#x1f4e4;</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:2px;">1. Upload</div>
+          <div style="font-size:11px; color:var(--text-secondary);">Upload an EPUB, MOBI, or PDF</div>
+        </div>
+        <div style="text-align:center; max-width:180px;">
+          <div style="width:48px; height:48px; border-radius:12px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:20px;">&#x1f916;</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:2px;">2. AI Processing</div>
+          <div style="font-size:11px; color:var(--text-secondary);">AI summarizes and extracts concepts</div>
+        </div>
+        <div style="text-align:center; max-width:180px;">
+          <div style="width:48px; height:48px; border-radius:12px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:20px;">&#x1f4d6;</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:2px;">3. Explore</div>
+          <div style="font-size:11px; color:var(--text-secondary);">Browse, annotate, search &amp; ask AI</div>
+        </div>
+      </div>
+
+      <!-- Primary CTA -->
+      <div style="padding:12px 32px; border-radius:10px; background:var(--accent); color:white; font-size:15px; font-weight:600; display:inline-block; cursor:pointer; margin-bottom:12px;">Upload Your First Book</div>
+      <div style="font-size:11px; color:var(--text-tertiary);">Supports EPUB, MOBI, and PDF files up to 100MB</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- TABLE VIEW MODE (R9) -->
+<!-- ============================================ -->
+<div class="mockup" style="max-width:920px; margin:24px auto 0;">
+  <div class="mockup-header">Table View Mode (R9) — Data table display</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <!-- Top bar -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px;">
+      <div style="font-size:16px; font-weight:600;">Library</div>
+      <div style="font-size:11px; color:var(--text-secondary);">12 books</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:300px; gap:8px;">
+        <span style="font-size:13px; opacity:0.4;">&#x1f50d;</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search books, sections, concepts...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">&#x2318;K</span>
+      </div>
+      <div style="padding:5px 14px; border-radius:8px; background:var(--accent); color:white; font-size:12px; font-weight:500;">+ Upload</div>
+    </div>
+
+    <!-- View tabs -->
+    <div style="display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--border); gap:0;">
+      <div style="padding:10px 16px; font-size:12px; font-weight:500; border-bottom:2px solid var(--accent); color:var(--text-primary); cursor:pointer;">All Books</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Currently Reading</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Business Shelf</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Needs Review</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer; opacity:0.5;">+ New View</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); cursor:pointer; padding:4px 8px;">&#x22ef;</div>
+    </div>
+
+    <!-- Filter row with Table view active -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap;">
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Tags &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Status &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Author &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Eval &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Format &#x25BE;</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; flex-shrink:0;">Sort: Recent &#x25BE;</div>
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:6px; padding:2px; gap:1px; flex-shrink:0;">
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">&#x25a6;</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">&#x2630;</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1);">&#x25a4;</span>
+      </div>
+      <!-- Column visibility gear -->
+      <div style="font-size:13px; color:var(--text-secondary); cursor:pointer; flex-shrink:0;" title="Toggle column visibility">&#x2699;</div>
+    </div>
+
+    <!-- Table content -->
+    <div style="padding:0; overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:11px; min-width:1100px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border); background:var(--bg-primary);">
+            <th style="width:36px; padding:8px 10px; text-align:center;"><input type="checkbox" disabled style="opacity:0.5;"></th>
+            <th style="min-width:200px; padding:8px 10px; text-align:left; font-weight:500; color:var(--text-secondary); position:sticky; left:36px; background:var(--bg-primary); cursor:pointer;">Title &#x25B4;</th>
+            <th style="width:150px; padding:8px 10px; text-align:left; font-weight:500; color:var(--text-secondary); cursor:pointer;">Author</th>
+            <th style="width:100px; padding:8px 10px; text-align:left; font-weight:500; color:var(--text-secondary); cursor:pointer;">Status</th>
+            <th style="width:150px; padding:8px 10px; text-align:left; font-weight:500; color:var(--text-secondary); cursor:pointer;">Tags</th>
+            <th style="width:80px; padding:8px 10px; text-align:center; font-weight:500; color:var(--text-secondary); cursor:pointer;">Format</th>
+            <th style="width:80px; padding:8px 10px; text-align:center; font-weight:500; color:var(--text-secondary); cursor:pointer;">Sections</th>
+            <th style="width:100px; padding:8px 10px; text-align:center; font-weight:500; color:var(--text-secondary); cursor:pointer;">Eval</th>
+            <th style="width:120px; padding:8px 10px; text-align:left; font-weight:500; color:var(--text-secondary); cursor:pointer;">Added &#x25BE;</th>
+            <th style="width:120px; padding:8px 10px; text-align:left; font-weight:500; color:var(--text-secondary); cursor:pointer;">Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border); cursor:pointer;" onmouseover="this.style.background='var(--bg-primary)'" onmouseout="this.style.background=''">
+            <td style="padding:8px 10px; text-align:center;"><input type="checkbox" disabled></td>
+            <td style="padding:8px 10px; font-weight:500; position:sticky; left:36px; background:inherit;">Deep Work</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Cal Newport</td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">Summarized</span></td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent); margin-right:3px;">Business</span><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">Productivity</span></td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">EPUB</span></td>
+            <td style="padding:8px 10px; text-align:center;">14</td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">&#x2713; 16/16</span></td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 2, 2026</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 8, 2026</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border); cursor:pointer;" onmouseover="this.style.background='var(--bg-primary)'" onmouseout="this.style.background=''">
+            <td style="padding:8px 10px; text-align:center;"><input type="checkbox" disabled></td>
+            <td style="padding:8px 10px; font-weight:500; position:sticky; left:36px; background:inherit;">Thinking, Fast and Slow</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">D. Kahneman</td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.15); color:rgb(0,122,255);">Processing</span></td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">Psychology</span></td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">EPUB</span></td>
+            <td style="padding:8px 10px; text-align:center;">24</td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.15); color:rgb(0,122,255);">&#x27f3; 8/24</span></td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Mar 28, 2026</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 9, 2026</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border); cursor:pointer;" onmouseover="this.style.background='var(--bg-primary)'" onmouseout="this.style.background=''">
+            <td style="padding:8px 10px; text-align:center;"><input type="checkbox" disabled></td>
+            <td style="padding:8px 10px; font-weight:500; position:sticky; left:36px; background:inherit;">Atomic Habits</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">James Clear</td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.15); color:rgb(255,159,10);">Parsed only</span></td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span></td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">PDF</span></td>
+            <td style="padding:8px 10px; text-align:center;">18</td>
+            <td style="padding:8px 10px; text-align:center; color:var(--text-tertiary);">--</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 5, 2026</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 5, 2026</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border); cursor:pointer;" onmouseover="this.style.background='var(--bg-primary)'" onmouseout="this.style.background=''">
+            <td style="padding:8px 10px; text-align:center;"><input type="checkbox" disabled></td>
+            <td style="padding:8px 10px; font-weight:500; position:sticky; left:36px; background:inherit;">Art of Strategy</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">A. Dixit</td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">Summarized</span></td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent); margin-right:3px;">Business</span><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(52,199,89,0.1); color:rgb(52,199,89);">Strategy</span></td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">MOBI</span></td>
+            <td style="padding:8px 10px; text-align:center;">22</td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">&#x2713; 15/16</span></td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Mar 15, 2026</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 7, 2026</td>
+          </tr>
+          <tr style="cursor:pointer;" onmouseover="this.style.background='var(--bg-primary)'" onmouseout="this.style.background=''">
+            <td style="padding:8px 10px; text-align:center;"><input type="checkbox" disabled></td>
+            <td style="padding:8px 10px; font-weight:500; position:sticky; left:36px; background:inherit;">The Lean Startup</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Eric Ries</td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(174,174,178,0.15); color:var(--text-tertiary);">Imported</span></td>
+            <td style="padding:8px 10px;"><span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span></td>
+            <td style="padding:8px 10px; text-align:center;"><span style="font-size:9px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">EPUB</span></td>
+            <td style="padding:8px 10px; text-align:center;">12</td>
+            <td style="padding:8px 10px; text-align:center; color:var(--text-tertiary);">--</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 1, 2026</td>
+            <td style="padding:8px 10px; color:var(--text-secondary);">Apr 1, 2026</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- BULK OPERATIONS (R15) -->
+<!-- ============================================ -->
+<div class="mockup" style="max-width:920px; margin:24px auto 0;">
+  <div class="mockup-header">Bulk Operations (R15) — Multi-select with floating toolbar</div>
+  <div class="mockup-body" style="font-size:13px; padding:0;">
+    <!-- Top bar -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px;">
+      <div style="font-size:16px; font-weight:600;">Library</div>
+      <div style="font-size:11px; color:var(--text-secondary);">12 books</div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:300px; gap:8px;">
+        <span style="font-size:13px; opacity:0.4;">&#x1f50d;</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search books, sections, concepts...</span>
+        <span style="flex:1;"></span>
+        <span style="font-size:10px; color:var(--text-secondary); background:var(--bg-secondary); padding:2px 6px; border-radius:4px; border:1px solid var(--border);">&#x2318;K</span>
+      </div>
+      <div style="padding:5px 14px; border-radius:8px; background:var(--accent); color:white; font-size:12px; font-weight:500;">+ Upload</div>
+    </div>
+
+    <!-- View tabs -->
+    <div style="display:flex; align-items:center; padding:0 20px; border-bottom:1px solid var(--border); gap:0;">
+      <div style="padding:10px 16px; font-size:12px; font-weight:500; border-bottom:2px solid var(--accent); color:var(--text-primary); cursor:pointer;">All Books</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Currently Reading</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Business Shelf</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer;">Needs Review</div>
+      <div style="padding:10px 16px; font-size:12px; color:var(--text-secondary); cursor:pointer; opacity:0.5;">+ New View</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); cursor:pointer; padding:4px 8px;">&#x22ef;</div>
+    </div>
+
+    <!-- Filter row -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap;">
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Tags &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Status &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Author &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Eval &#x25BE;</div>
+      <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Format &#x25BE;</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px; color:var(--text-secondary); padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; flex-shrink:0;">Sort: Recent &#x25BE;</div>
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:6px; padding:2px; gap:1px; flex-shrink:0;">
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1);">&#x25a6;</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">&#x2630;</span>
+        <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">&#x25a4;</span>
+      </div>
+    </div>
+
+    <!-- Grid content with 3 selected cards -->
+    <div style="padding:16px 20px; overflow-y:auto; position:relative;">
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;">
+        <!-- Card 1 — SELECTED -->
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer; border:2px solid var(--selected-border); position:relative;">
+          <div style="position:absolute; top:8px; left:8px; width:18px; height:18px; border-radius:4px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:700;">&#x2713;</div>
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">&#x1f4d8;</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Deep Work</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">Cal Newport</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px; flex-wrap:wrap;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">&#x2713; 16/16</span>
+            <span style="font-size:9px; color:var(--text-secondary);">14 sections</span>
+          </div>
+        </div>
+        <!-- Card 2 — SELECTED -->
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer; border:2px solid var(--selected-border); position:relative;">
+          <div style="position:absolute; top:8px; left:8px; width:18px; height:18px; border-radius:4px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:700;">&#x2713;</div>
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">&#x1f4d9;</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Thinking, Fast...</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">D. Kahneman</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">Psychology</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(0,122,255,0.15); color:rgb(0,122,255);">&#x27f3; 8/24 sections</span>
+            <span style="font-size:9px; color:var(--text-secondary);">24 sections</span>
+          </div>
+        </div>
+        <!-- Card 3 — SELECTED -->
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer; border:2px solid var(--selected-border); position:relative;">
+          <div style="position:absolute; top:8px; left:8px; width:18px; height:18px; border-radius:4px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:700;">&#x2713;</div>
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">&#x1f4d7;</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Atomic Habits</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">James Clear</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(255,159,10,0.15); color:rgb(255,159,10);">Parsed only</span>
+            <span style="font-size:9px; color:var(--text-secondary);">18 sections</span>
+          </div>
+        </div>
+        <!-- Card 4 — NOT selected -->
+        <div style="background:var(--bg-tertiary); border-radius:10px; padding:14px; cursor:pointer;">
+          <div style="width:100%;height:80px;background:linear-gradient(135deg, var(--border), var(--bg-secondary));border-radius:6px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">&#x1f4d5;</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;">Art of Strategy</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-bottom:6px;">A. Dixit</div>
+          <div style="display:flex; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+            <span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(52,199,89,0.1); color:rgb(52,199,89);">Strategy</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(52,199,89,0.15); color:rgb(52,199,89);">&#x2713; 15/16</span>
+            <span style="font-size:9px; color:var(--text-secondary);">22 sections</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating bulk action toolbar -->
+      <div style="margin-top:20px; background:var(--text-primary); color:var(--bg-primary); border-radius:12px; padding:10px 20px; display:flex; align-items:center; gap:16px; box-shadow:0 8px 24px rgba(0,0,0,0.25);">
+        <span style="font-size:12px; font-weight:500;">3 books selected</span>
+        <div style="width:1px; height:20px; background:rgba(128,128,128,0.3);"></div>
+        <span style="font-size:11px; cursor:pointer; padding:4px 10px; border-radius:6px; background:rgba(255,255,255,0.1);">&#x1f3f7; Tag</span>
+        <span style="font-size:11px; cursor:pointer; padding:4px 10px; border-radius:6px; background:rgba(255,255,255,0.1);">&#x2728; Summarize</span>
+        <span style="font-size:11px; cursor:pointer; padding:4px 10px; border-radius:6px; background:rgba(255,255,255,0.1);">&#x1f4e5; Export</span>
+        <span style="font-size:11px; cursor:pointer; padding:4px 10px; border-radius:6px; background:rgba(255,59,48,0.2); color:rgb(255,100,100);">&#x1f5d1; Delete</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:11px; cursor:pointer; color:rgba(255,255,255,0.6);">Deselect All</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

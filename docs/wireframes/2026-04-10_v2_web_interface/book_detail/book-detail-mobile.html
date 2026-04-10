@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion — Book Detail / Reader Mobile Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mobile-tab-bar {
+      display: flex;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .mobile-tab-bar .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0 4px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .mobile-tab-bar .tab.active { color: var(--accent); }
+    .mobile-tab-bar .tab .tab-icon {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    .mobile-status-bar {
+      height: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .annotation {
+      display: inline-block;
+      background: rgba(255, 159, 10, 0.1);
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: var(--warning);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Book Detail / Reader -- Mobile (320px)</h2>
+<p class="subtitle">Reading view with chapter navigation, Original/Summary toggle, action bar, and annotation bottom sheet</p>
+
+<div style="display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
+
+<!-- ============================================ -->
+<!-- READER — Reading State -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Reader — Reading State</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Mobile Reader</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Header with back + chapter dropdown -->
+      <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <span style="font-size:16px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+        <div style="flex:1; display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <span style="font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">Ch.2 Deep Work Is Rare</span>
+          <span style="font-size:10px; color:var(--text-secondary);">&#x25BE;</span>
+        </div>
+        <span style="font-size:12px; color:var(--text-secondary);">2/14</span>
+      </div>
+      <div class="annotation" style="margin:2px 12px;">Tap chapter title to open chapter picker dropdown</div>
+
+      <!-- Original / Summary toggle -->
+      <div style="display:flex; margin:8px 16px; background:var(--bg-tertiary); border-radius:8px; padding:2px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; padding:5px 0; font-size:11px; border-radius:6px; color:var(--text-secondary); cursor:pointer;">Original</div>
+        <div style="flex:1; text-align:center; padding:5px 0; font-size:11px; border-radius:6px; background:var(--bg-secondary); font-weight:500; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1);">Summary</div>
+      </div>
+
+      <!-- Reading content -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px; font-size:12px; line-height:1.8;">
+        <p style="margin-bottom:12px;"><strong>Key Takeaway:</strong> Deep work is becoming increasingly rare precisely as it becomes increasingly valuable in the modern economy.</p>
+        <p style="margin-bottom:12px;">Newport identifies three trends undermining deep work in the modern workplace:</p>
+        <ul style="margin:0 0 12px 16px; line-height:2;">
+          <li><strong>Open offices</strong> -- constant interruptions and noise
+            <!-- R3: Cross-view annotation indicator (mobile inline) -->
+            <div style="display:inline-flex; align-items:center; gap:3px; border:1px dashed rgba(255,200,50,0.5); background:rgba(255,200,50,0.06); padding:1px 6px; border-radius:4px; opacity:0.5; font-size:9px; color:var(--text-secondary); font-style:italic; margin-left:2px; vertical-align:middle; cursor:pointer;">&#x1F4CC; Highlighted in Original</div>
+          </li>
+          <li><strong>Instant messaging</strong> -- expectation of immediate response</li>
+          <li><strong>Social media</strong> -- algorithmic attention capture</li>
+        </ul>
+        <p style="margin-bottom:12px;">The concept of "attention residue" is central: when you switch between tasks, part of your cognitive capacity remains stuck on the previous task. This residue reduces performance on the current task.
+          <!-- R3: Cross-view annotation indicator (mobile inline) -->
+          <span style="display:inline-flex; align-items:center; gap:3px; border:1px dashed rgba(100,200,255,0.5); background:rgba(100,200,255,0.06); padding:1px 6px; border-radius:4px; opacity:0.5; font-size:9px; color:var(--text-secondary); font-style:italic; margin-left:2px; vertical-align:middle; cursor:pointer;">&#x1F4CC; Note in Original</span>
+        </p>
+        <p style="margin-bottom:12px;">Newport argues that knowledge workers who cultivate the ability to perform deep work will thrive, while those who do not will fall behind as shallow tasks become increasingly automated.</p>
+      </div>
+
+      <!-- Bottom action bar (replaces tab bar in reader) — R10: text labels added -->
+      <div style="display:flex; border-top:1px solid var(--border); background:var(--bg-secondary); padding:6px 0 4px; flex-shrink:0;">
+        <div style="flex:1; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px;" title="Reader Settings">
+          <span style="font-size:14px;">Aa</span>
+          <span style="font-size:10px; color:var(--text-tertiary);">Settings</span>
+        </div>
+        <div style="flex:1; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px;" title="AI Chat">
+          <span style="font-size:14px;">&#x2728;</span>
+          <span style="font-size:10px; color:var(--text-tertiary);">AI Chat</span>
+        </div>
+        <div style="flex:1; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px;" title="Annotations">
+          <span style="font-size:14px;">&#x1f4ac;</span>
+          <span style="font-size:10px; color:var(--text-tertiary);">Annotations</span>
+        </div>
+        <div style="flex:1; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px;" title="More Actions">
+          <span style="font-size:14px;">&#x22ef;</span>
+          <span style="font-size:10px; color:var(--text-tertiary);">More</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- READER — Annotation Bottom Sheet State -->
+<!-- ============================================ -->
+<div>
+  <div class="label">Reader — Annotation Bottom Sheet</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">Annotation Bottom Sheet</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Dimmed reader content behind -->
+      <div style="flex:1; padding:12px 16px; font-size:11px; line-height:1.7; color:var(--text-tertiary); opacity:0.4; overflow:hidden;">
+        <p style="margin-bottom:8px;">Key Takeaway: Deep work is becoming increasingly rare precisely as it becomes increasingly valuable...</p>
+        <p style="margin-bottom:8px;">Newport identifies three trends undermining deep work in the modern workplace...</p>
+        <p>The concept of "attention residue" is central: when you switch between tasks...</p>
+      </div>
+      <div class="annotation" style="position:relative; top:-8px; margin:0 12px;">Reader content dimmed behind bottom sheet</div>
+
+      <!-- Bottom sheet -->
+      <div style="background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); flex-shrink:0;">
+        <!-- Drag handle -->
+        <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+          <div style="width:36px; height:4px; border-radius:2px; background:var(--bg-tertiary);"></div>
+        </div>
+
+        <!-- Sheet header -->
+        <div style="display:flex; align-items:center; padding:4px 16px 10px; gap:8px;">
+          <span style="font-size:13px; font-weight:600;">Annotations</span>
+          <span style="font-size:11px; color:var(--text-secondary);">3</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:12px; color:var(--accent); font-weight:500; cursor:pointer;">+ Add</span>
+        </div>
+
+        <!-- Annotation list -->
+        <div style="padding:0 16px 12px; max-height:240px; overflow-y:auto;">
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <div style="width:3px; height:16px; border-radius:2px; background:rgb(255,204,0);"></div>
+              <span style="font-size:11px; font-weight:500;">Highlight</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 8</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; padding-left:9px;">"attention residue explains why multitasking reduces cognitive performance"</div>
+          </div>
+
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <div style="width:3px; height:16px; border-radius:2px; background:var(--accent);"></div>
+              <span style="font-size:11px; font-weight:500;">Note</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 8</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; padding-left:9px;">Connect this to Kahneman's System 1 -- automatic processing = habits</div>
+          </div>
+
+          <div style="padding:10px; border-radius:8px; border:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <div style="width:3px; height:16px; border-radius:2px; background:rgb(255,204,0);"></div>
+              <span style="font-size:11px; font-weight:500;">Highlight</span>
+              <span style="flex:1;"></span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 9</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; padding-left:9px;">"knowledge workers who cultivate deep work will thrive"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end grid -->
+
+<!-- Design notes -->
+<div style="margin-top:2rem; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:700px; margin-left:auto; margin-right:auto;">
+  <h3 style="margin-bottom:10px;">Book Detail Mobile -- Adaptations</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Back arrow + chapter dropdown header</strong>: Back returns to library. Tapping chapter title opens a scrollable chapter picker. Position indicator (2/14) on right.</li>
+    <li><strong>Segmented toggle</strong>: Original/Summary toggle replaces desktop tab bar. Stays fixed below header.</li>
+    <li><strong>Full-width reading content</strong>: Content fills entire width with 16px padding. No sidebar or split view.</li>
+    <li><strong>Bottom action bar</strong>: Replaces bottom tab bar in reader context. Four actions: Aa (reader settings), AI chat, annotations, more.</li>
+    <li><strong>Annotation bottom sheet</strong>: Draggable sheet slides up from bottom. Drag handle at top. Reader content dimmed behind. Swipe down to dismiss.</li>
+    <li><strong>No tab bar in reader</strong>: Bottom tabs hidden to maximize reading space. Navigate back to library via back arrow.</li>
+  </ul>
+</div>
+
+</body>
+</html>

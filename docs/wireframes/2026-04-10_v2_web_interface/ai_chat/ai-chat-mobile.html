@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book Companion — AI Chat Mobile Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-y: auto; }
+
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e5e5e7;
+      --border: #d1d1d6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #aeaeb2;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: #e8f4fd;
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1d1d1f;
+        --bg-secondary: #2d2d2f;
+        --bg-tertiary: #3d3d3f;
+        --border: #424245;
+        --text-primary: #f5f5f7;
+        --text-secondary: #86868b;
+        --text-tertiary: #636366;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .mockup {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .mockup-header {
+      background: var(--bg-tertiary);
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mobile-status-bar {
+      height: 20px;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 9px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .annotation {
+      display: inline-block;
+      background: rgba(255, 159, 10, 0.1);
+      border: 1px solid rgba(255, 159, 10, 0.3);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: var(--warning);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>AI Chat -- Mobile (320px)</h2>
+<p class="subtitle">Bottom sheet chat with thread list and active thread views, selected text context, multi-section context picker, and chat input</p>
+
+<div style="display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
+
+<!-- ============================================ -->
+<!-- AI CHAT — Thread List View -->
+<!-- ============================================ -->
+<div>
+  <div class="label">State 1: Thread List View</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">AI Chat — Thread List</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Dimmed reader behind -->
+      <div style="height:60px; padding:12px 16px; font-size:10px; line-height:1.6; color:var(--text-tertiary); opacity:0.3; overflow:hidden; flex-shrink:0;">
+        <p>Deep work is becoming increasingly rare precisely as it becomes increasingly valuable...</p>
+      </div>
+
+      <!-- AI Chat bottom sheet — thread list -->
+      <div style="flex:1; background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); display:flex; flex-direction:column;">
+        <!-- Drag handle -->
+        <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+          <div style="width:36px; height:4px; border-radius:2px; background:var(--bg-tertiary);"></div>
+        </div>
+
+        <!-- Sheet header -->
+        <div style="display:flex; align-items:center; padding:4px 16px 8px; gap:8px; flex-shrink:0;">
+          <span style="font-size:14px;">&#x2728;</span>
+          <span style="font-size:13px; font-weight:600;">AI Chat</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:12px; color:var(--accent); font-weight:500; cursor:pointer;">+ New</span>
+        </div>
+        <div class="annotation" style="margin:0 16px 8px;">Thread list: tap a thread to open, or "+ New" to start fresh</div>
+
+        <!-- Thread list -->
+        <div style="flex:1; overflow-y:auto; padding:0 12px;">
+
+          <div style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+              <span style="font-size:11px; font-weight:500; flex:1;">Attention residue explained</span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 10</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">Can you explain how attention residue affects productivity in practice?</div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.2</span>
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">4 messages</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+              <span style="font-size:11px; font-weight:500; flex:1;">Deep work scheduling strategies</span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 9</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">What are the four scheduling philosophies Newport describes?</div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.4</span>
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">6 messages</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+              <span style="font-size:11px; font-weight:500; flex:1;">Habit loop basics</span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 8</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">Explain the habit loop in simple terms</div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Ch.3</span>
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">3 messages</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+              <span style="font-size:11px; font-weight:500; flex:1;">Compare with Kahneman</span>
+              <span style="font-size:9px; color:var(--text-tertiary);">Apr 7</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">How does Newport's deep work relate to System 2 thinking?</div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">Book-level</span>
+              <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:var(--bg-tertiary); color:var(--text-secondary);">2 messages</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick input -->
+        <div style="padding:8px 12px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0;">
+          <div style="flex:1; padding:8px 10px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border); font-size:11px; color:var(--text-tertiary);">Ask about this book...</div>
+          <div style="width:28px; height:28px; border-radius:6px; background:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <span style="color:white; font-size:12px;">&#x2191;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- AI CHAT — Active Thread View -->
+<!-- ============================================ -->
+<div>
+  <div class="label">State 2: Active Thread with Context</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">AI Chat — Active Thread</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Dimmed reader behind -->
+      <div style="height:80px; padding:12px 16px; font-size:10px; line-height:1.6; color:var(--text-tertiary); opacity:0.3; overflow:hidden; flex-shrink:0;">
+        <p>Deep work is becoming increasingly rare precisely as it becomes increasingly valuable...</p>
+      </div>
+
+      <!-- AI Chat bottom sheet — active conversation -->
+      <div style="flex:1; background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.1); display:flex; flex-direction:column;">
+        <!-- Drag handle -->
+        <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+          <div style="width:36px; height:4px; border-radius:2px; background:var(--bg-tertiary);"></div>
+        </div>
+
+        <!-- Sheet header with back to threads -->
+        <div style="display:flex; align-items:center; padding:4px 16px 8px; gap:8px; flex-shrink:0;">
+          <span style="font-size:14px; color:var(--accent); cursor:pointer;">&#x2190;</span>
+          <span style="font-size:14px;">&#x2728;</span>
+          <span style="font-size:13px; font-weight:600;">AI Chat</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">Ch.2 context</span>
+        </div>
+        <div class="annotation" style="margin:0 16px 4px;">Back arrow returns to thread list</div>
+
+        <!-- Selected text context block -->
+        <div style="margin:0 12px 8px; padding:8px 10px; border-radius:8px; background:rgba(0,113,227,0.06); border-left:3px solid var(--accent);">
+          <div style="font-size:9px; color:var(--accent); font-weight:500; margin-bottom:2px;">SELECTED TEXT</div>
+          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4;">"attention residue explains why multitasking reduces cognitive performance"</div>
+        </div>
+        <div class="annotation" style="margin:0 12px 4px;">Selected text sent as context with question</div>
+
+        <!-- Thread messages -->
+        <div style="flex:1; overflow-y:auto; padding:0 12px;">
+
+          <!-- User message -->
+          <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <div style="max-width:80%; background:var(--accent); color:white; padding:8px 12px; border-radius:12px 12px 4px 12px; font-size:11px; line-height:1.5;">
+              Can you explain how attention residue affects daily productivity?
+            </div>
+          </div>
+
+          <!-- AI response -->
+          <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
+            <div style="max-width:85%; background:var(--bg-tertiary); padding:8px 12px; border-radius:12px 12px 12px 4px; font-size:11px; line-height:1.5;">
+              <p style="margin-bottom:6px;">Attention residue works like this:</p>
+              <p style="margin-bottom:4px;"><strong>1. Task switch</strong> -- You move from Task A to Task B</p>
+              <p style="margin-bottom:4px;"><strong>2. Residue forms</strong> -- Part of your mind stays on Task A</p>
+              <p style="margin-bottom:4px;"><strong>3. Performance drops</strong> -- Task B gets reduced cognitive capacity</p>
+              <p style="margin-top:6px;">Newport cites Sophie Leroy's research: even brief checks of email or Slack create residue that lasts 10-20 minutes.</p>
+            </div>
+          </div>
+
+          <!-- User follow-up -->
+          <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <div style="max-width:80%; background:var(--accent); color:white; padding:8px 12px; border-radius:12px 12px 4px 12px; font-size:11px; line-height:1.5;">
+              How do I minimize attention residue?
+            </div>
+          </div>
+
+          <!-- AI typing -->
+          <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
+            <div style="background:var(--bg-tertiary); padding:8px 14px; border-radius:12px 12px 12px 4px; font-size:11px; color:var(--text-secondary);">
+              &#x25CF; &#x25CF; &#x25CF;
+            </div>
+          </div>
+        </div>
+
+        <!-- Input with multi-section context chips (R16) -->
+        <div style="padding:8px 12px; border-top:1px solid var(--border); flex-shrink:0;">
+          <!-- Context chips -->
+          <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px;">
+            <span style="font-size:9px; padding:2px 7px; border-radius:10px; background:rgba(0,113,227,0.08); color:var(--accent); display:inline-flex; align-items:center; gap:3px;">Using Chapter 3 <span style="cursor:pointer; opacity:0.6;">&times;</span></span>
+            <span style="font-size:9px; padding:2px 7px; border-radius:10px; background:rgba(0,113,227,0.08); color:var(--accent); display:inline-flex; align-items:center; gap:3px;">Using Chapter 5 <span style="cursor:pointer; opacity:0.6;">&times;</span></span>
+            <span style="font-size:9px; padding:2px 7px; border-radius:10px; background:rgba(0,113,227,0.08); color:var(--accent); display:inline-flex; align-items:center; gap:3px;">Using Chapter 8 <span style="cursor:pointer; opacity:0.6;">&times;</span></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="flex:1; padding:8px 10px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border); font-size:11px; color:var(--text-tertiary);">Ask about this section...</div>
+            <!-- + Add context pill -->
+            <div style="font-size:9px; padding:5px 8px; border-radius:12px; border:1px solid var(--border); color:var(--text-secondary); cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:2px;">
+              <span style="font-size:11px; font-weight:500; line-height:1;">+</span>
+            </div>
+            <div style="width:28px; height:28px; border-radius:6px; background:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;">
+              <span style="color:white; font-size:12px;">&#x2191;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- AI CHAT — Section Picker Bottom Sheet (R16) -->
+<!-- ============================================ -->
+<div>
+  <div class="label">State 3: Section Picker Bottom Sheet (from "+")</div>
+  <div class="mockup" style="width:320px; margin:0; border-radius:24px;">
+    <div class="mockup-header" style="border-radius:24px 24px 0 0;">AI Chat — Section Picker</div>
+    <div style="display:flex; flex-direction:column; height:568px;">
+
+      <div class="mobile-status-bar">
+        <span>9:41</span>
+        <span>&#x1f4f6; &#x1f50b;</span>
+      </div>
+
+      <!-- Dimmed content behind -->
+      <div style="height:80px; padding:12px 16px; font-size:10px; line-height:1.6; color:var(--text-tertiary); opacity:0.15; overflow:hidden; flex-shrink:0;">
+        <p>Deep work is becoming increasingly rare precisely as it becomes increasingly valuable...</p>
+      </div>
+
+      <!-- Section picker bottom sheet -->
+      <div style="flex:1; background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.15); display:flex; flex-direction:column;">
+        <!-- Drag handle -->
+        <div style="display:flex; justify-content:center; padding:8px 0 4px;">
+          <div style="width:36px; height:4px; border-radius:2px; background:var(--bg-tertiary);"></div>
+        </div>
+
+        <!-- Sheet header -->
+        <div style="display:flex; align-items:center; padding:4px 16px 8px; gap:8px; flex-shrink:0;">
+          <span style="font-size:13px; font-weight:600;">Add Context</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; color:var(--text-secondary);">3 selected</span>
+        </div>
+        <div class="annotation" style="margin:0 16px 8px;">Swipe down to dismiss. Tap sections to toggle.</div>
+
+        <!-- Section checkbox list -->
+        <div style="flex:1; overflow-y:auto; padding:0 12px;">
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:14px;">&#9744;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.1 Introduction</div>
+              <div style="font-size:9px; color:var(--text-secondary);">12 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:14px;">&#9744;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.2 Deep Work Is Valuable</div>
+              <div style="font-size:9px; color:var(--text-secondary);">18 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px; background:rgba(0,113,227,0.06); border:1px solid rgba(0,113,227,0.2);">
+            <span style="font-size:14px; color:var(--accent);">&#9745;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.3 Deep Work Is Rare</div>
+              <div style="font-size:9px; color:var(--text-secondary);">22 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:14px;">&#9744;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.4 Deep Work Is Meaningful</div>
+              <div style="font-size:9px; color:var(--text-secondary);">16 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px; background:rgba(0,113,227,0.06); border:1px solid rgba(0,113,227,0.2);">
+            <span style="font-size:14px; color:var(--accent);">&#9745;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.5 The Rules</div>
+              <div style="font-size:9px; color:var(--text-secondary);">8 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:14px;">&#9744;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.6 Rule #1: Work Deeply</div>
+              <div style="font-size:9px; color:var(--text-secondary);">28 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:14px;">&#9744;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.7 Rule #2: Embrace Boredom</div>
+              <div style="font-size:9px; color:var(--text-secondary);">20 pages</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px; border-radius:8px; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; gap:10px; background:rgba(0,113,227,0.06); border:1px solid rgba(0,113,227,0.2);">
+            <span style="font-size:14px; color:var(--accent);">&#9745;</span>
+            <div>
+              <div style="font-size:11px; font-weight:500;">Ch.8 Rule #3: Quit Social Media</div>
+              <div style="font-size:9px; color:var(--text-secondary);">24 pages</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Done button -->
+        <div style="padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0;">
+          <div style="padding:10px; border-radius:10px; background:var(--accent); color:white; text-align:center; font-size:13px; font-weight:500; cursor:pointer;">
+            Done
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end grid -->
+
+<!-- Design notes -->
+<div style="margin-top:2rem; padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:700px; margin-left:auto; margin-right:auto;">
+  <h3 style="margin-bottom:10px;">AI Chat Mobile -- Adaptations</h3>
+  <ul style="padding-left:20px; font-size:13px; line-height:2;">
+    <li><strong>Bottom sheet</strong>: AI chat opens as a draggable bottom sheet over dimmed reader content. Swipe down to minimize.</li>
+    <li><strong>Thread list view</strong>: Shows all chat threads for the current book. Each thread card shows title, first message preview, chapter context, and message count.</li>
+    <li><strong>Active thread view</strong>: Back arrow navigates to thread list. Messages in chat bubble style. AI typing indicator shown as dots.</li>
+    <li><strong>Selected text context</strong>: When user selects text in reader and opens AI chat, the selected text appears as a context block above the conversation.</li>
+    <li><strong>Chat input at bottom</strong>: Fixed input bar with send button. Auto-focuses keyboard when sheet opens.</li>
+    <li><strong>Multi-section context (R16)</strong>: "+" pill next to chat input opens a section picker as a full bottom sheet with checkboxes and page counts. Selected sections appear as dismissible chips above the input. Swipe down to dismiss the picker.</li>
+    <li><strong>Thread navigation</strong>: Back arrow in thread header returns to thread list. "+ New" creates a fresh thread.</li>
+  </ul>
+</div>
+
+</body>
+</html>
