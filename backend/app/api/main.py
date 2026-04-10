@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import books, health, sections
+from app.api.routes import books, eval, health, sections, summaries, views
 from app.config import Settings
 from app.db.session import create_session_factory
 
@@ -50,6 +50,9 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(books.router)
     app.include_router(sections.router)
+    app.include_router(summaries.router)
+    app.include_router(eval.router)
+    app.include_router(views.router)
 
     # Serve static files (built Vue SPA) if directory exists
     settings = Settings()
