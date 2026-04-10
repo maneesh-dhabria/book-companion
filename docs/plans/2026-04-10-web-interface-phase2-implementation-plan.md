@@ -13,40 +13,44 @@ Phase 2 adds the rich interactive features on top of Phase 1's foundation: reade
 
 **Done when:** Reader settings persist across sessions and apply live to the reading area; text selection shows a floating toolbar that creates highlights/notes; the annotation sidebar lists section annotations and the global annotations page supports filter/group/sort/export; AI chat sends messages to the coding agent CLI and displays complete responses; Cmd+K opens a command palette with grouped instant results and Enter navigates to the source; the concepts explorer shows a two-panel layout with editable definitions; the upload wizard guides through 5 steps (drop zone, metadata, structure review, preset selection, processing); and processing progress displays via SSE in a pinned card minimizable to a bottom bar. All new backend endpoints pass integration tests and all frontend pages build without errors.
 
-**Execution order:**
+**Execution order (18 tasks):**
 ```
 Backend (API endpoints):
-  T1 (Annotations API) ─┐
-  T2 (AI Threads API)  ──┤── all parallelizable [P]
-  T3 (Search API)      ──┤
-  T4 (Concepts API)    ──┤
+  T1 (Annotations API) ──┐
+  T2a (AIThreadService)  ─┤── all parallelizable [P]
+  T3 (Search API)        ─┤
+  T4 (Concepts API)      ─┤
   T5 (Reading Presets API)┘
        │
+       ├─ T2b (AI Threads API endpoints) ← depends on T2a
        ▼
 Frontend (features — each depends on its backend API):
-  T6 (Reader Settings popover + persistence) ← depends on T5
+  T6a (Reader settings store + API + PresetCards) ← depends on T5
+  T6b (Settings controls + integration) ← depends on T6a
   T7 (Text selection + floating toolbar) ← standalone composable
        │
        ▼
-  T8 (Annotation sidebar + global page) ← depends on T1, T7
-  T9 (AI chat sidebar) ← depends on T2
+  T8a (Annotation sidebar) ← depends on T1, T7
+  T8b (Global annotations page) ← depends on T8a
+  T9 (AI chat sidebar) ← depends on T2b
        │
-       ▼ (T8 and T9 parallelizable)
+       ▼ (T8b and T9 parallelizable)
   T10 (Command palette + search results page) ← depends on T3
   T11 (Concepts explorer) ← depends on T4
        │
        ▼ (T10 and T11 parallelizable)
-  T12 (Upload wizard) ← depends on Phase 1 T4 (books API)
+  T12a (Upload wizard steps 1-2) ← depends on Phase 1 T4 (books API)
+  T12b (Upload wizard steps 3-5) ← depends on T12a
   T13 (Processing progress card + bottom bar) ← depends on Phase 1 T7 (SSE)
        │
-       ▼ (T12 and T13 parallelizable)
+       ▼ (T12b and T13 parallelizable)
   T14 (Final verification) ← depends on all
 
-[P] = T1–T5 are fully parallelizable
-T6, T7 can proceed in parallel after T5
-T8 requires T1 + T7; T9 requires T2
-T10, T11 are parallelizable after T8/T9
-T12, T13 are parallelizable, depend on Phase 1 APIs
+[P] = T1, T2a, T3, T4, T5 are fully parallelizable
+T2b depends on T2a; T6a depends on T5; T6b depends on T6a
+T7 is standalone; T8a requires T1 + T7; T8b requires T8a
+T9 requires T2b; T10, T11 are parallelizable after T8b/T9
+T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 ```
 
 ---
@@ -166,6 +170,13 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 | Test | `backend/tests/integration/test_api/test_ai_threads_api.py` | AI thread endpoint tests |
 | Test | `backend/tests/integration/test_api/test_search_api.py` | Search endpoint tests |
 | Test | `backend/tests/integration/test_api/test_concepts_api.py` | Concept endpoint tests |
+| Test | `frontend/tests/unit/stores/readerSettings.test.ts` | Reader settings store unit tests |
+| Test | `frontend/tests/unit/composables/useTextSelection.test.ts` | Text selection composable unit tests |
+| Test | `frontend/tests/unit/stores/annotations.test.ts` | Annotations store unit tests |
+| Test | `frontend/tests/unit/stores/aiThreads.test.ts` | AI threads store unit tests |
+| Test | `frontend/tests/unit/stores/search.test.ts` | Search store unit tests |
+| Test | `frontend/tests/unit/stores/concepts.test.ts` | Concepts store unit tests |
+| Test | `frontend/tests/unit/composables/useSSE.test.ts` | SSE composable unit tests |
 | Test | `backend/tests/integration/test_api/test_reading_presets_api.py` | Reading preset endpoint tests |
 | Test | `backend/tests/unit/test_ai_thread_service.py` | AI thread service unit tests |
 
@@ -256,8 +267,9 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 
 - [ ] Step 2: Add annotation schemas to `backend/app/api/schemas.py`
   Add:
-  - `AnnotationCreateRequest(content_type: str, content_id: int, text_start: int | None, text_end: int | None, selected_text: str | None, note: str | None, type: str)`
-  - `AnnotationUpdateRequest(note: str | None, type: str | None)`
+  - `AnnotationType(str, Enum)` with values `HIGHLIGHT = "highlight"`, `NOTE = "note"`, `FREEFORM = "freeform"`
+  - `AnnotationCreateRequest(content_type: str, content_id: int, text_start: int | None, text_end: int | None, selected_text: str | None, note: str | None, type: AnnotationType)`
+  - `AnnotationUpdateRequest(note: str | None, type: AnnotationType | None)`
   - `AnnotationResponse(id, content_type, content_id, text_start, text_end, selected_text, note, type, linked_annotation_id, created_at, updated_at)` with `model_config = ConfigDict(from_attributes=True)`
   - `AnnotationLinkRequest(target_annotation_id: int)`
   - `AnnotationExportFormat` literal type: `"markdown" | "json" | "csv"`
@@ -299,19 +311,14 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 
 ---
 
-### T2: AI Threads API Endpoints
+### T2a: AIThreadService Implementation
 
-**Goal:** Expose AI thread CRUD and message sending via REST endpoints. The message endpoint builds a context prompt (book summary + section content + thread history + selected text), invokes the coding agent CLI subprocess, and returns the complete response.
-**Spec refs:** FR-31, FR-32; Requirements §9.12; Spec §6.2.2 (AI Chat Flow), D3, D4, D12
+**Goal:** Implement the AIThreadService class with context building, LLM invocation, and DB persistence for AI chat threads.
+**Spec refs:** FR-31, FR-32; Spec §6.2.2 (AI Chat Flow), D3, D4, D12
 
 **Files:**
-- Modify: `backend/app/api/schemas.py` (add AI thread/message schemas)
-- Modify: `backend/app/api/deps.py` (add `get_ai_thread_service()`)
 - Create: `backend/app/services/ai_thread_service.py`
-- Create: `backend/app/api/routes/ai_threads.py`
-- Modify: `backend/app/api/main.py` (register router)
 - Test: `backend/tests/unit/test_ai_thread_service.py`
-- Test: `backend/tests/integration/test_api/test_ai_threads_api.py`
 
 **Steps:**
 
@@ -392,7 +399,33 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py -v`
   Expected: PASS
 
-- [ ] Step 3: Write failing integration tests for AI thread endpoints
+- [ ] Step 3: Commit
+  ```bash
+  git add backend/app/services/ai_thread_service.py backend/tests/unit/test_ai_thread_service.py
+  git commit -m "feat: AIThreadService with context building and LLM invocation"
+  ```
+
+**Inline verification:**
+- `cd backend && uv run ruff check app/services/ai_thread_service.py` — no lint errors
+- `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py -v` — all passed
+
+---
+
+### T2b: AI Threads API Endpoints
+
+**Goal:** Expose AI thread CRUD and message sending via REST endpoints, wrapping the AIThreadService from T2a.
+**Spec refs:** FR-31, FR-32; Requirements §9.12; Spec §6.2.2 (AI Chat Flow)
+
+**Files:**
+- Modify: `backend/app/api/schemas.py` (add AI thread/message schemas)
+- Modify: `backend/app/api/deps.py` (add `get_ai_thread_service()`)
+- Create: `backend/app/api/routes/ai_threads.py`
+- Modify: `backend/app/api/main.py` (register router)
+- Test: `backend/tests/integration/test_api/test_ai_threads_api.py`
+
+**Steps:**
+
+- [ ] Step 1: Write failing integration tests for AI thread endpoints
   ```python
   # backend/tests/integration/test_api/test_ai_threads_api.py
   import pytest
@@ -423,7 +456,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v`
   Expected: FAIL — routes not defined
 
-- [ ] Step 4: Add AI thread/message schemas to `backend/app/api/schemas.py`
+- [ ] Step 2: Add AI thread/message schemas to `backend/app/api/schemas.py`
   Add:
   - `AIThreadCreateRequest(title: str | None = "New Thread")`
   - `AIThreadUpdateRequest(title: str)`
@@ -432,9 +465,9 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - `AIThreadResponse(id, book_id, title, messages: list[AIMessageResponse], created_at, updated_at)` with `from_attributes=True`
   - `AIThreadListItem(id, book_id, title, message_count, last_message_preview, created_at, updated_at)`
 
-- [ ] Step 5: Add `get_ai_thread_service()` to `backend/app/api/deps.py`
+- [ ] Step 3: Add `get_ai_thread_service()` to `backend/app/api/deps.py`
 
-- [ ] Step 6: Implement AI threads router in `backend/app/api/routes/ai_threads.py`
+- [ ] Step 4: Implement AI threads router in `backend/app/api/routes/ai_threads.py`
   Endpoints:
   - `GET /api/v1/books/{book_id}/ai-threads` — list threads for book, ordered by `updated_at` DESC
   - `POST /api/v1/books/{book_id}/ai-threads` — create new thread
@@ -447,15 +480,15 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v`
   Expected: PASS
 
-- [ ] Step 7: Commit
+- [ ] Step 5: Commit
   ```bash
-  git add backend/app/services/ai_thread_service.py backend/app/api/routes/ai_threads.py backend/app/api/schemas.py backend/app/api/deps.py backend/app/api/main.py backend/tests/unit/test_ai_thread_service.py backend/tests/integration/test_api/test_ai_threads_api.py
-  git commit -m "feat: AI threads API with coding agent CLI integration"
+  git add backend/app/api/routes/ai_threads.py backend/app/api/schemas.py backend/app/api/deps.py backend/app/api/main.py backend/tests/integration/test_api/test_ai_threads_api.py
+  git commit -m "feat: AI threads API endpoints (CRUD, message send)"
   ```
 
 **Inline verification:**
-- `cd backend && uv run ruff check app/api/routes/ai_threads.py app/services/ai_thread_service.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py tests/integration/test_api/test_ai_threads_api.py -v` — all passed
+- `cd backend && uv run ruff check app/api/routes/ai_threads.py` — no lint errors
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v` — all passed
 
 ---
 
@@ -526,7 +559,8 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Add:
   - `QuickSearchResponse(query: str, results: QuickSearchResults)` where `QuickSearchResults` has `books: list[BookSearchHit]`, `sections: list[SectionSearchHit]`, `concepts: list[ConceptSearchHit]`, `annotations: list[AnnotationSearchHit]`
   - Each hit type: `id`, `title`/`term`/`note_snippet`, `book_title`, `snippet`/`highlight` with `<mark>` tags, `section_title` where applicable
-  - `FullSearchResponse` extending `PaginatedResponse` with items as `SearchResultItem(source_type, source_id, book_id, book_title, section_title, chunk_text, score, highlight)`
+  - `SearchResultItem(BaseModel)` with explicit fields: `source_type: str` (one of "book", "section", "concept", "annotation"), `source_id: int`, `book_id: int`, `book_title: str`, `section_title: str | None = None`, `snippet: str`, `score: float`, `highlight: str` (HTML with `<mark>` tags)
+  - `FullSearchResponse` extending `PaginatedResponse` with `items: list[SearchResultItem]`
   - `RecentSearchResponse(id, query, result_count, created_at)`
 
 - [ ] Step 3: Add `get_search_service()` to `backend/app/api/deps.py`
@@ -749,23 +783,17 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 
 ---
 
-### T6: Reader Settings Popover + Persistence
+### T6a: Reader Settings Store + API Client + PresetCards
 
-**Goal:** Build the reader settings popover (380px desktop / bottom sheet mobile) with visual preset cards, font/size/spacing/width/background controls, live preview, and database persistence via the reading presets API.
-**Spec refs:** FR-34, FR-35, FR-36, FR-37, FR-38, FR-39, FR-40, FR-41, FR-42, FR-43
+**Goal:** Build the reader settings Pinia store, API client, and preset card grid — the data layer and preset selection UI for reader settings.
+**Spec refs:** FR-34, FR-35, FR-42, FR-43
 
 **Files:**
 - Create: `frontend/src/api/readingPresets.ts`
 - Create: `frontend/src/stores/readerSettings.ts`
-- Create: `frontend/src/components/settings/ReaderSettingsPopover.vue`
 - Create: `frontend/src/components/settings/PresetCards.vue`
-- Create: `frontend/src/components/settings/FontSelector.vue`
-- Create: `frontend/src/components/settings/SizeStepper.vue`
-- Create: `frontend/src/components/settings/BackgroundPicker.vue`
-- Create: `frontend/src/components/settings/LivePreview.vue`
-- Modify: `frontend/src/components/reader/ReaderHeader.vue` (wire Aa button)
-- Modify: `frontend/src/components/reader/ReadingArea.vue` (apply settings)
 - Modify: `frontend/src/types/index.ts` (add ReadingPreset type)
+- Test: `frontend/tests/unit/stores/readerSettings.test.ts`
 
 **Steps:**
 
@@ -804,13 +832,53 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Getters: `themeFromBgColor` (maps bg_color to data-theme attribute), `cssVariables` (returns object with CSS custom property overrides)
   - Side effect: `watch(currentSettings)` applies CSS custom properties to `:root` for live preview (FR-41)
 
-- [ ] Step 4: Create sub-components
+- [ ] Step 4: Create PresetCards component
   `frontend/src/components/settings/PresetCards.vue`:
   - Grid of 4 system presets + user presets as visual cards
   - Each card shows a mini-preview (color swatch, font name, size)
   - Click applies the preset
   - Active preset has a check indicator
 
+- [ ] Step 5: Write unit tests for readerSettings store
+  `frontend/tests/unit/stores/readerSettings.test.ts`:
+  - Test `applyPreset()` — updates `currentSettings` and `activePreset`
+  - Test `updateSetting(key, value)` — updates `currentSettings` immediately
+  - Test `saveAsPreset(name)` — calls API and adds to `presets` list
+  - Test `detectSystemPreference()` — applies dark preset when `prefers-color-scheme: dark`
+  - Test `cssVariables` getter — returns correct CSS custom property map
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/readerSettings.test.ts`
+  Expected: PASS
+
+- [ ] Step 6: Commit
+  ```bash
+  git add frontend/src/api/readingPresets.ts frontend/src/stores/readerSettings.ts frontend/src/components/settings/PresetCards.vue frontend/src/types/index.ts frontend/tests/unit/stores/readerSettings.test.ts
+  git commit -m "feat: reader settings store, API client, preset cards"
+  ```
+
+**Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/readerSettings.test.ts` — all passed
+- `cd frontend && npm run type-check` — no errors
+- `cd frontend && npm run build` — builds without errors
+
+---
+
+### T6b: Settings Controls + Integration
+
+**Goal:** Build the individual settings controls (FontSelector, SizeStepper, BackgroundPicker, LivePreview), the ReaderSettingsPopover container, and wire everything into ReaderHeader and ReadingArea.
+**Spec refs:** FR-36, FR-37, FR-38, FR-39, FR-40, FR-41
+
+**Files:**
+- Create: `frontend/src/components/settings/ReaderSettingsPopover.vue`
+- Create: `frontend/src/components/settings/FontSelector.vue`
+- Create: `frontend/src/components/settings/SizeStepper.vue`
+- Create: `frontend/src/components/settings/BackgroundPicker.vue`
+- Create: `frontend/src/components/settings/LivePreview.vue`
+- Modify: `frontend/src/components/reader/ReaderHeader.vue` (wire Aa button)
+- Modify: `frontend/src/components/reader/ReadingArea.vue` (apply settings)
+
+**Steps:**
+
+- [ ] Step 1: Create sub-components
   `frontend/src/components/settings/FontSelector.vue`:
   - Primary fonts: Georgia, Merriweather, Inter, Fira Code as large buttons (FR-36)
   - "All fonts" expandable section for additional system fonts
@@ -830,15 +898,15 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Sample text paragraph styled with current settings
   - Summary line: "Georgia 18px / 1.8 / 720px" showing current values (FR-41)
 
-- [ ] Step 5: Create ReaderSettingsPopover
+- [ ] Step 2: Create ReaderSettingsPopover
   `frontend/src/components/settings/ReaderSettingsPopover.vue`:
   - 380px wide popover on desktop, bottom sheet on mobile (use `useBreakpoint()`)
   - Sections: Presets, Font, Size, Line Spacing, Content Width, Background
-  - Each section uses the sub-components from Step 4
+  - Each section uses the sub-components from Step 1
   - All changes apply instantly to `readerSettings` store (FR-41)
   - Uses shadcn-vue Popover component
 
-- [ ] Step 6: Wire into reader
+- [ ] Step 3: Wire into reader
   Modify `frontend/src/components/reader/ReaderHeader.vue`:
   - Aa button opens/closes the settings popover
 
@@ -850,7 +918,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   On app initialization (`main.ts` or `App.vue`):
   - Call `readerSettings.loadPresets()` and `readerSettings.detectSystemPreference()` on mount
 
-- [ ] Step 7: Verify
+- [ ] Step 4: Verify
   Run: `cd frontend && npm run dev`
   Open reader at `/books/1/sections/1`:
   - Click Aa button — settings popover opens
@@ -861,10 +929,10 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 8: Commit
+- [ ] Step 5: Commit
   ```bash
-  git add frontend/src/api/readingPresets.ts frontend/src/stores/readerSettings.ts frontend/src/components/settings/ frontend/src/types/index.ts frontend/src/components/reader/ReaderHeader.vue frontend/src/components/reader/ReadingArea.vue
-  git commit -m "feat: reader settings popover with presets, live preview, persistence"
+  git add frontend/src/components/settings/ReaderSettingsPopover.vue frontend/src/components/settings/FontSelector.vue frontend/src/components/settings/SizeStepper.vue frontend/src/components/settings/BackgroundPicker.vue frontend/src/components/settings/LivePreview.vue frontend/src/components/reader/ReaderHeader.vue frontend/src/components/reader/ReadingArea.vue
+  git commit -m "feat: reader settings controls, popover, live preview integration"
   ```
 
 **Inline verification:**
@@ -884,6 +952,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Create: `frontend/src/components/reader/FloatingToolbar.vue`
 - Create: `frontend/src/components/common/UndoToast.vue`
 - Modify: `frontend/src/components/reader/ReadingArea.vue` (integrate selection detection)
+- Test: `frontend/tests/unit/composables/useTextSelection.test.ts`
 
 **Steps:**
 
@@ -929,13 +998,24 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Initialize `useTextSelection(readingAreaRef)`
   - Render `FloatingToolbar` when `isSelecting` is true
   - Handle toolbar events:
-    - `highlight`: emit to parent (wired to annotation creation in T8)
-    - `note`: emit to parent (wired to annotation creation in T8)
+    - `highlight`: emit to parent (wired to annotation creation in T8a)
+    - `note`: emit to parent (wired to annotation creation in T8a)
     - `ask-ai`: emit to parent (wired to AI sidebar in T9)
     - `copy`: copy `selectedText` to clipboard via `navigator.clipboard.writeText()`
+  - **Note:** FloatingToolbar emits `highlight` and `note` events. These are wired to `annotationsStore.createAnnotation()` in T8a. For now, emit events to parent with no handler — T8a will wire the handler.
   - Initialize `useKeyboard` with section navigation shortcuts (Left/Right arrows, Alt+P/Alt+N per FR-27)
 
-- [ ] Step 6: Verify
+- [ ] Step 6: Write unit tests for useTextSelection composable
+  `frontend/tests/unit/composables/useTextSelection.test.ts`:
+  - Test selection detection — simulates mouseup with `document.getSelection()` mock
+  - Test toolbar positioning — verifies position calculation above selection
+  - Test toolbar flips below when near viewport top
+  - Test clearSelection resets state
+  - Test debounce prevents flicker during drag-select
+  Run: `cd frontend && npm run test:unit -- tests/unit/composables/useTextSelection.test.ts`
+  Expected: PASS
+
+- [ ] Step 7: Verify
   Run: `cd frontend && npm run dev`
   Open reader at `/books/1/sections/1`:
   - Select text — floating toolbar appears above selection
@@ -946,22 +1026,23 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 7: Commit
+- [ ] Step 8: Commit
   ```bash
-  git add frontend/src/composables/useTextSelection.ts frontend/src/composables/useKeyboard.ts frontend/src/components/reader/FloatingToolbar.vue frontend/src/components/common/UndoToast.vue frontend/src/components/reader/ReadingArea.vue
+  git add frontend/src/composables/useTextSelection.ts frontend/src/composables/useKeyboard.ts frontend/src/components/reader/FloatingToolbar.vue frontend/src/components/common/UndoToast.vue frontend/src/components/reader/ReadingArea.vue frontend/tests/unit/composables/useTextSelection.test.ts
   git commit -m "feat: text selection composable, floating toolbar, keyboard shortcuts"
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/composables/useTextSelection.test.ts` — all passed
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
 
 ---
 
-### T8: Annotation Sidebar + Global Annotations Page
+### T8a: Annotation Sidebar
 
-**Goal:** Build the annotation sidebar tab (within the reader's context sidebar) showing section annotations, and the global annotations page at `/annotations` with filtering, grouping, sorting, and export.
-**Spec refs:** FR-20, FR-29a, FR-30, FR-62, FR-63, FR-64, FR-65, FR-66, FR-67
+**Goal:** Build the annotation API client, Pinia store, ContextSidebar, AnnotationsTab, AnnotationCard, and wire into BookDetailView for in-reader annotation CRUD.
+**Spec refs:** FR-20, FR-29a, FR-30
 
 **Files:**
 - Create: `frontend/src/api/annotations.ts`
@@ -970,8 +1051,8 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Create: `frontend/src/components/sidebar/AnnotationsTab.vue`
 - Create: `frontend/src/components/sidebar/AnnotationCard.vue`
 - Modify: `frontend/src/views/BookDetailView.vue` (add sidebar)
-- Modify: `frontend/src/views/AnnotationsView.vue` (global annotations page)
 - Modify: `frontend/src/types/index.ts` (add Annotation type)
+- Test: `frontend/tests/unit/stores/annotations.test.ts`
 
 **Steps:**
 
@@ -1038,17 +1119,16 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Pass current section info to sidebar for loading annotations
   - Handle `ask-ai` event from FloatingToolbar — switch sidebar tab to "Ask AI" (wired in T9)
 
-- [ ] Step 8: Build global AnnotationsView page
-  Modify `frontend/src/views/AnnotationsView.vue`:
-  - Filter bar: Book dropdown, Type dropdown (highlight/note/freeform), Tags multi-select
-  - Group by: Book / Tag / Section / None (FR-63)
-  - Sort: Newest / Oldest / Book order / Recently edited (FR-63)
-  - Results: AnnotationCard list with breadcrumbs
-  - Click breadcrumb navigates to `/books/{id}/sections/{sectionId}` with sidebar open (FR-65)
-  - Auto-filter: arriving via `?book_id=X` pre-sets the Book filter (FR-66)
-  - "+ Add Note" button: opens dialog with book + section selector for retrospective freeform notes (FR-67)
-  - Export button: Markdown / JSON / CSV dropdown, triggers file download (FR-62)
-  - Count display at top: "42 annotations" (FR-62)
+- [ ] Step 8: Write unit tests for annotations store
+  `frontend/tests/unit/stores/annotations.test.ts`:
+  - Test `createAnnotation()` — calls API and adds to `sectionAnnotations`
+  - Test `deleteAnnotation()` — sets `pendingDelete` and starts undo timer
+  - Test `undoDelete()` — restores annotation and clears `pendingDelete`
+  - Test `confirmDelete()` — calls API delete after timer expires
+  - Test `updateFilters()` — updates filter state and triggers reload
+  - Test `annotationsByPosition` getter — sorts by `text_start`
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts`
+  Expected: PASS
 
 - [ ] Step 9: Verify
   Run: `cd frontend && npm run dev` with backend running and a book with sections
@@ -1057,18 +1137,59 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Select text, click Note — annotation with note field appears
   - Edit note inline — saves on blur
   - Delete annotation — undo toast appears for 5 seconds
-  Navigate to `/annotations`:
-  - All annotations listed with breadcrumbs
-  - Click breadcrumb — navigates to reader
-  - Filter by book — list updates
-  - Export as Markdown — file downloads
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
 - [ ] Step 10: Commit
   ```bash
-  git add frontend/src/api/annotations.ts frontend/src/stores/annotations.ts frontend/src/components/sidebar/ frontend/src/views/AnnotationsView.vue frontend/src/views/BookDetailView.vue frontend/src/types/index.ts
-  git commit -m "feat: annotation sidebar + global annotations page with CRUD, export"
+  git add frontend/src/api/annotations.ts frontend/src/stores/annotations.ts frontend/src/components/sidebar/ frontend/src/views/BookDetailView.vue frontend/src/types/index.ts frontend/tests/unit/stores/annotations.test.ts
+  git commit -m "feat: annotation sidebar with CRUD, undo delete, position ordering"
+  ```
+
+**Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts` — all passed
+- `cd frontend && npm run type-check` — no errors
+- `cd frontend && npm run build` — builds without errors
+
+---
+
+### T8b: Global Annotations Page
+
+**Goal:** Build the global annotations page at `/annotations` with filtering, grouping, sorting, export, and auto-filtering from reader navigation.
+**Spec refs:** FR-62, FR-63, FR-64, FR-65, FR-66, FR-67
+
+**Files:**
+- Modify: `frontend/src/views/AnnotationsView.vue` (global annotations page)
+
+**Steps:**
+
+- [ ] Step 1: Build global AnnotationsView page
+  Modify `frontend/src/views/AnnotationsView.vue`:
+  - Filter bar: Book dropdown, Type dropdown (highlight/note/freeform), Tags multi-select
+  - Group by: Book / Tag / Section / None (FR-63)
+  - Sort: Newest / Oldest / Book order / Recently edited (FR-63)
+  - Results: AnnotationCard list with breadcrumbs (`showBreadcrumb: true`)
+  - Click breadcrumb navigates to `/books/{id}/sections/{sectionId}` with sidebar open (FR-65)
+  - Auto-filter: arriving via `?book_id=X` pre-sets the Book filter (FR-66)
+  - "+ Add Note" button: opens dialog with book + section selector for retrospective freeform notes (FR-67)
+  - Export button: Markdown / JSON / CSV dropdown, triggers file download (FR-62)
+  - Count display at top: "42 annotations" (FR-62)
+
+- [ ] Step 2: Verify
+  Run: `cd frontend && npm run dev` with backend running
+  Navigate to `/annotations`:
+  - All annotations listed with breadcrumbs
+  - Click breadcrumb — navigates to reader
+  - Filter by book — list updates
+  - Export as Markdown — file downloads
+  - Navigate from reader via `?book_id=X` — filter pre-set
+  Run: `cd frontend && npm run type-check && npm run build`
+  Expected: No errors
+
+- [ ] Step 3: Commit
+  ```bash
+  git add frontend/src/views/AnnotationsView.vue
+  git commit -m "feat: global annotations page with filter, group, sort, export"
   ```
 
 **Inline verification:**
@@ -1092,6 +1213,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Modify: `frontend/src/components/sidebar/ContextSidebar.vue` (wire AI tab)
 - Modify: `frontend/src/views/BookDetailView.vue` (wire "Ask AI" from floating toolbar)
 - Modify: `frontend/src/types/index.ts` (add AIThread, AIMessage types)
+- Test: `frontend/tests/unit/stores/aiThreads.test.ts`
 
 **Steps:**
 
@@ -1144,7 +1266,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - User messages: right-aligned, accent background
   - Assistant messages: left-aligned, secondary background, markdown-rendered content
   - Context block: if `selected_text` present, show quoted block above user message
-  - Metadata: model_used, latency_ms (on assistant messages only, shown on hover)
+  - Metadata: `model_used` and `latency_ms` displayed on assistant messages only, shown on hover via tooltip (not visible by default to keep the chat clean)
   - "Save as note" button on assistant messages (FR-32)
 
 - [ ] Step 5: Create ThreadView component
@@ -1181,25 +1303,37 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
     3. Create new thread (or use active thread)
     4. Pre-populate message input with selected text as context
 
-- [ ] Step 9: Verify
+- [ ] Step 9: Write unit tests for aiThreads store
+  `frontend/tests/unit/stores/aiThreads.test.ts`:
+  - Test `createThread()` — calls API and adds to `threads` list
+  - Test `sendMessage()` — sets `isLoading`, calls API, adds user + assistant messages
+  - Test `saveAsNote(messageId)` — creates freeform annotation from assistant message content
+  - Test `elapsedTime` getter — computes from `loadingStartTime`
+  - Test `deleteThread()` — removes from `threads` list
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/aiThreads.test.ts`
+  Expected: PASS
+
+- [ ] Step 10: Verify
   Run: `cd frontend && npm run dev` with backend running
   In reader:
   - Click "Ask AI" tab in sidebar — thread list appears
   - Click "+ New Thread" — empty thread view appears
   - Type message and send — loading indicator with timer appears
   - After response (5-30s) — assistant message renders with markdown
+  - Hover assistant message — tooltip shows model_used and latency_ms
   - Click "Save as note" on assistant message — annotation created
   - Select text in reader, click "Ask AI" from floating toolbar — sidebar opens with context
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 10: Commit
+- [ ] Step 11: Commit
   ```bash
-  git add frontend/src/api/aiThreads.ts frontend/src/stores/aiThreads.ts frontend/src/components/sidebar/AIChatTab.vue frontend/src/components/sidebar/ThreadList.vue frontend/src/components/sidebar/ThreadView.vue frontend/src/components/sidebar/ChatMessage.vue frontend/src/components/sidebar/ContextSidebar.vue frontend/src/views/BookDetailView.vue frontend/src/types/index.ts
+  git add frontend/src/api/aiThreads.ts frontend/src/stores/aiThreads.ts frontend/src/components/sidebar/AIChatTab.vue frontend/src/components/sidebar/ThreadList.vue frontend/src/components/sidebar/ThreadView.vue frontend/src/components/sidebar/ChatMessage.vue frontend/src/components/sidebar/ContextSidebar.vue frontend/src/views/BookDetailView.vue frontend/src/types/index.ts frontend/tests/unit/stores/aiThreads.test.ts
   git commit -m "feat: AI chat sidebar with thread management and coding agent integration"
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/aiThreads.test.ts` — all passed
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
 
@@ -1220,6 +1354,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Modify: `frontend/src/components/app/AppShell.vue` (render command palette)
 - Modify: `frontend/src/stores/ui.ts` (command palette state)
 - Modify: `frontend/src/types/index.ts` (add search types)
+- Test: `frontend/tests/unit/stores/search.test.ts`
 
 **Steps:**
 
@@ -1296,7 +1431,17 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Result click navigates to source location (book → `/books/{id}`, section → `/books/{id}/sections/{sectionId}`, etc.) — FR-60
   - Pagination at bottom
 
-- [ ] Step 7: Verify
+- [ ] Step 7: Write unit tests for search store
+  `frontend/tests/unit/stores/search.test.ts`:
+  - Test `quickSearch()` — debounces by 200ms, cancels previous request
+  - Test `fullSearch()` — calls API with filters and updates `fullResults`
+  - Test debounce behavior — rapid calls result in single API call
+  - Test `navigateToResult()` — resolves correct route for each hit type
+  - Test `clearRecent()` — empties `recentSearches`
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/search.test.ts`
+  Expected: PASS
+
+- [ ] Step 8: Verify
   Run: `cd frontend && npm run dev` with backend running and indexed books
   - Press Cmd+K — palette opens with recent searches
   - Type "anchoring" — results appear grouped by type within 300ms
@@ -1306,13 +1451,14 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 8: Commit
+- [ ] Step 9: Commit
   ```bash
-  git add frontend/src/api/search.ts frontend/src/stores/search.ts frontend/src/components/search/ frontend/src/views/SearchResultsView.vue frontend/src/components/app/TopBar.vue frontend/src/components/app/AppShell.vue frontend/src/stores/ui.ts frontend/src/types/index.ts
+  git add frontend/src/api/search.ts frontend/src/stores/search.ts frontend/src/components/search/ frontend/src/views/SearchResultsView.vue frontend/src/components/app/TopBar.vue frontend/src/components/app/AppShell.vue frontend/src/stores/ui.ts frontend/src/types/index.ts frontend/tests/unit/stores/search.test.ts
   git commit -m "feat: command palette with instant search + full search results page"
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/search.test.ts` — all passed
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
 
@@ -1330,6 +1476,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Create: `frontend/src/components/concepts/ConceptDetail.vue`
 - Modify: `frontend/src/views/ConceptsView.vue`
 - Modify: `frontend/src/types/index.ts` (add Concept types)
+- Test: `frontend/tests/unit/stores/concepts.test.ts`
 
 **Steps:**
 
@@ -1398,7 +1545,17 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Mobile: single panel, concept detail replaces list when selected (back button to return) (FR-68)
   - Load concepts on mount
 
-- [ ] Step 7: Verify
+- [ ] Step 7: Write unit tests for concepts store
+  `frontend/tests/unit/stores/concepts.test.ts`:
+  - Test `fetchConcepts()` — calls API and populates `concepts` list
+  - Test `updateConcept()` — calls API and updates concept in list, sets `user_edited=true`
+  - Test `resetConcept()` — calls API and sets `user_edited=false`
+  - Test `deleteConcept()` — removes from list
+  - Test `groupedConcepts` getter — groups by selected dimension
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/concepts.test.ts`
+  Expected: PASS
+
+- [ ] Step 8: Verify
   Run: `cd frontend && npm run dev` with backend running and books with extracted concepts
   Navigate to `/concepts`:
   - Concept list loads on left
@@ -1410,22 +1567,23 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 8: Commit
+- [ ] Step 9: Commit
   ```bash
-  git add frontend/src/api/concepts.ts frontend/src/stores/concepts.ts frontend/src/components/concepts/ frontend/src/views/ConceptsView.vue frontend/src/types/index.ts
+  git add frontend/src/api/concepts.ts frontend/src/stores/concepts.ts frontend/src/components/concepts/ frontend/src/views/ConceptsView.vue frontend/src/types/index.ts frontend/tests/unit/stores/concepts.test.ts
   git commit -m "feat: concepts explorer with two-panel layout, edit, reset, copy"
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/concepts.test.ts` — all passed
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
 
 ---
 
-### T12: Upload Wizard
+### T12a: Upload Wizard Steps 1-2
 
-**Goal:** Build the 5-step upload wizard: file drop zone with validation, metadata editing, structure review with merge/split/delete, preset selection, and processing start. Includes duplicate detection, quick upload fast path, and persistent wizard state.
-**Spec refs:** FR-44, FR-45, FR-46, FR-47, FR-48, FR-49, FR-50, FR-51, FR-52, FR-53
+**Goal:** Build the upload Pinia store, UploadWizard container, StepIndicator, DropZone with validation and duplicate detection, and MetadataForm.
+**Spec refs:** FR-44, FR-45, FR-46, FR-47, FR-48, FR-49
 
 **Files:**
 - Create: `frontend/src/stores/upload.ts`
@@ -1433,11 +1591,9 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Create: `frontend/src/components/upload/StepIndicator.vue`
 - Create: `frontend/src/components/upload/DropZone.vue`
 - Create: `frontend/src/components/upload/MetadataForm.vue`
-- Create: `frontend/src/components/upload/StructureReview.vue`
-- Create: `frontend/src/components/upload/PresetPicker.vue`
 - Modify: `frontend/src/views/UploadView.vue`
-- Modify: `frontend/src/components/app/TopBar.vue` (wire Upload button)
 - Modify: `frontend/src/router/index.ts` (upload sub-routes)
+- Modify: `frontend/src/components/app/TopBar.vue` (wire Upload button)
 
 **Steps:**
 
@@ -1487,31 +1643,15 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - "Looks good" banner when all fields are cleanly populated (FR-49)
   - Next button to proceed to Step 3
 
-- [ ] Step 5: Create StructureReview component
-  `frontend/src/components/upload/StructureReview.vue`:
-  - Section table: order, title, type (auto-detected), word count, quality warnings
-  - Quality warnings shown as colored badges (from QualityService checks in backend, FR-50)
-  - Operations: merge (select multiple → merge button), split (click section → split dialog), delete (with 10-second undo toast, FR-50), reorder (drag-and-drop)
-  - Inline title editing (click to rename)
-  - Section type override dropdown (chapter, glossary, notes, appendix, etc.)
-
-- [ ] Step 6: Create PresetPicker component
-  `frontend/src/components/upload/PresetPicker.vue`:
-  - Summarization preset cards (from `/api/v1/presets` — existing PresetService)
-  - Each card: name, description, facet details (style, audience, compression, content_focus)
-  - "+ Create New" button (navigates to Settings > Presets)
-  - Processing profile section with advanced options: run_eval toggle, auto_retry toggle
-  - Cost/time estimate display when `settings.show_cost_estimates` is enabled (FR-52)
-
-- [ ] Step 7: Create UploadWizard container
+- [ ] Step 5: Create UploadWizard container (initial wiring for steps 1-2)
   `frontend/src/components/upload/UploadWizard.vue`:
   - Renders StepIndicator + current step component
   - Step navigation: Next/Back buttons
   - Each step has a sub-route (preserves browser history for back button, spec E7):
     - `/upload` (Step 1), `/upload/metadata` (Step 2), `/upload/structure` (Step 3), `/upload/preset` (Step 4), `/upload/processing` (Step 5)
-  - Step 5 redirects to `/books/{id}` with processing progress card
+  - Steps 3-5 render placeholder components (built in T12b)
 
-- [ ] Step 8: Wire into app
+- [ ] Step 6: Wire into app
   Modify `frontend/src/views/UploadView.vue`:
   - Render `UploadWizard`
 
@@ -1522,24 +1662,75 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   - Upload button navigates to `/upload`
   - Wire `useKeyboard` Cmd+U shortcut to navigate to `/upload`
 
-- [ ] Step 9: Verify
+- [ ] Step 7: Verify
   Run: `cd frontend && npm run dev` with backend running
   - Click Upload button — wizard opens at Step 1
   - Drop an EPUB file — file validates, hash computed
   - Click "Next" — metadata form with pre-populated fields
-  - Click "Next" — structure review with section table
+  - Press browser Back — returns to step 1 with state preserved
+  - Test Quick Upload: drop file, click "Start with Recommended Settings" — triggers quick upload flow
+  Run: `cd frontend && npm run type-check && npm run build`
+  Expected: No errors
+
+- [ ] Step 8: Commit
+  ```bash
+  git add frontend/src/stores/upload.ts frontend/src/components/upload/UploadWizard.vue frontend/src/components/upload/StepIndicator.vue frontend/src/components/upload/DropZone.vue frontend/src/components/upload/MetadataForm.vue frontend/src/views/UploadView.vue frontend/src/router/index.ts frontend/src/components/app/TopBar.vue
+  git commit -m "feat: upload wizard steps 1-2 (drop zone, duplicate detection, metadata form)"
+  ```
+
+**Inline verification:**
+- `cd frontend && npm run type-check` — no errors
+- `cd frontend && npm run build` — builds without errors
+
+---
+
+### T12b: Upload Wizard Steps 3-5
+
+**Goal:** Build StructureReview (merge/split/reorder/delete), PresetPicker, and ProcessingProgress trigger. Complete the UploadWizard with all 5 steps and the quick upload fast path.
+**Spec refs:** FR-50, FR-51, FR-52, FR-53
+
+**Files:**
+- Create: `frontend/src/components/upload/StructureReview.vue`
+- Create: `frontend/src/components/upload/PresetPicker.vue`
+- Modify: `frontend/src/components/upload/UploadWizard.vue` (wire steps 3-5)
+
+**Steps:**
+
+- [ ] Step 1: Create StructureReview component
+  `frontend/src/components/upload/StructureReview.vue`:
+  - Section table: order, title, type (auto-detected), word count, quality warnings
+  - Quality warnings shown as colored badges (from QualityService checks in backend, FR-50)
+  - Operations: merge (select multiple → merge button), split (click section → split dialog), delete (with 10-second undo toast, FR-50), reorder (drag-and-drop)
+  - Inline title editing (click to rename)
+  - Section type override dropdown (chapter, glossary, notes, appendix, etc.)
+
+- [ ] Step 2: Create PresetPicker component
+  `frontend/src/components/upload/PresetPicker.vue`:
+  - Summarization preset cards (from `/api/v1/presets` — existing PresetService)
+  - Each card: name, description, facet details (style, audience, compression, content_focus)
+  - "+ Create New" button (navigates to Settings > Presets)
+  - Processing profile section with advanced options: run_eval toggle, auto_retry toggle
+  - Cost/time estimate display when `settings.show_cost_estimates` is enabled (FR-52)
+
+- [ ] Step 3: Wire steps 3-5 into UploadWizard
+  Modify `frontend/src/components/upload/UploadWizard.vue`:
+  - Replace step 3-5 placeholders with StructureReview, PresetPicker, and processing trigger
+  - Step 5: calls `startProcessing()` and redirects to `/books/{id}` with processing progress card
+
+- [ ] Step 4: Verify
+  Run: `cd frontend && npm run dev` with backend running
+  - Complete steps 1-2, click "Next" — structure review with section table
   - Merge two sections — they combine, undo toast appears
   - Click "Next" — preset selection
   - Select a preset, click "Start Processing" — redirects to book detail
   - Press browser Back — returns to previous wizard step with state preserved
-  - Test Quick Upload: drop file, click "Start with Recommended Settings" — skips to processing
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 10: Commit
+- [ ] Step 5: Commit
   ```bash
-  git add frontend/src/stores/upload.ts frontend/src/components/upload/ frontend/src/views/UploadView.vue frontend/src/router/index.ts frontend/src/components/app/TopBar.vue
-  git commit -m "feat: 5-step upload wizard with drag-drop, structure review, preset selection"
+  git add frontend/src/components/upload/StructureReview.vue frontend/src/components/upload/PresetPicker.vue frontend/src/components/upload/UploadWizard.vue
+  git commit -m "feat: upload wizard steps 3-5 (structure review, preset picker, processing)"
   ```
 
 **Inline verification:**
@@ -1560,6 +1751,7 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 - Create: `frontend/src/components/app/ProcessingBar.vue`
 - Modify: `frontend/src/views/BookDetailView.vue` (show progress card)
 - Modify: `frontend/src/components/app/AppShell.vue` (add bottom bar)
+- Test: `frontend/tests/unit/composables/useSSE.test.ts`
 
 **Steps:**
 
@@ -1621,7 +1813,17 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Modify `frontend/src/components/app/AppShell.vue`:
   - Render ProcessingBar at the bottom when `processingStore.hasActiveJobs` is true
 
-- [ ] Step 6: Verify
+- [ ] Step 6: Write unit tests for useSSE composable
+  `frontend/tests/unit/composables/useSSE.test.ts`:
+  - Test connection — creates EventSource with correct URL
+  - Test reconnect — retries up to 3 times with exponential backoff on connection drop
+  - Test fallback — switches to REST polling after 3 reconnect failures
+  - Test cleanup — closes EventSource on unmount
+  - Test event handling — dispatches events to correct handlers
+  Run: `cd frontend && npm run test:unit -- tests/unit/composables/useSSE.test.ts`
+  Expected: PASS
+
+- [ ] Step 7: Verify
   Run: `cd frontend && npm run dev` with backend running
   Upload a book and start processing:
   - Progress card appears with section-by-section updates
@@ -1636,13 +1838,14 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
-- [ ] Step 7: Commit
+- [ ] Step 8: Commit
   ```bash
-  git add frontend/src/composables/useSSE.ts frontend/src/stores/processing.ts frontend/src/components/upload/ProcessingProgress.vue frontend/src/components/app/ProcessingBar.vue frontend/src/views/BookDetailView.vue frontend/src/components/app/AppShell.vue
+  git add frontend/src/composables/useSSE.ts frontend/src/stores/processing.ts frontend/src/components/upload/ProcessingProgress.vue frontend/src/components/app/ProcessingBar.vue frontend/src/views/BookDetailView.vue frontend/src/components/app/AppShell.vue frontend/tests/unit/composables/useSSE.test.ts
   git commit -m "feat: processing progress card + bottom bar with SSE integration"
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/composables/useSSE.test.ts` — all passed
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
 
@@ -1651,6 +1854,12 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 ### T14: Final Verification
 
 **Goal:** Verify the entire Phase 2 implementation works end-to-end, no regressions, clean lint/type-check/build.
+
+**Phase 1 Dependencies (edge cases):**
+- E2 (server crash during processing): Assumes Phase 1 implements orphan process detection in `GET /processing/{id}/status`
+- E4 (section edit during processing): Assumes Phase 1 blocks section edits when `ProcessingJob.status == 'running'`
+- E5 (stale eval after re-import): Assumes Phase 1 marks eval traces as `is_stale=True` on re-import
+- E6 (very large sections >100KB): Deferred to V1.1 optimization. V1 renders synchronously.
 
 - [ ] **Lint & format (backend):**
   Run: `cd backend && uv run ruff check . && uv run ruff format --check .`
@@ -1727,3 +1936,4 @@ T12, T13 are parallelizable, depend on Phase 1 APIs
 | Loop | Findings | Changes Made |
 |------|----------|-------------|
 | 1    | Initial plan draft | Full plan with 14 tasks covering all Phase 2 scope items |
+| 2    | Review loop: frontend tasks lack unit tests, 4 tasks too large, type inconsistency, edge case gaps, T7 forward-reference | Added frontend test files to T6-T13, split T2/T6/T8/T12 into sub-tasks (now 18 tasks), fixed AnnotationType/SearchResultItem schemas, documented edge case assumptions in T14, clarified T7 toolbar event forwarding |
