@@ -5,6 +5,9 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import FilterRow from '@/components/library/FilterRow.vue'
 import BookGrid from '@/components/library/BookGrid.vue'
 import BookList from '@/components/library/BookList.vue'
+import BookTable from '@/components/library/BookTable.vue'
+import ViewTabs from '@/components/library/ViewTabs.vue'
+import BulkToolbar from '@/components/library/BulkToolbar.vue'
 
 const store = useBooksStore()
 
@@ -16,6 +19,7 @@ onMounted(() => {
 
 <template>
   <div class="library-page">
+    <ViewTabs />
     <FilterRow />
 
     <template v-if="store.isEmpty && !store.hasActiveFilters">
@@ -51,12 +55,17 @@ onMounted(() => {
         :selected-ids="store.selectedIds"
         @toggle-select="store.toggleSelection"
       />
-      <div v-else>
-        <p style="text-align: center; padding: 32px; color: var(--color-text-muted)">
-          Table view coming in T13b
-        </p>
-      </div>
+      <BookTable
+        v-else
+        :books="store.books"
+        :loading="store.loading"
+        :selected-ids="store.selectedIds"
+        @toggle-select="store.toggleSelection"
+        @select-all="store.selectAll"
+      />
     </template>
+
+    <BulkToolbar />
 
     <div v-if="store.pages > 1" class="pagination">
       <button
