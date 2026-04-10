@@ -89,9 +89,7 @@ async def set_default(
         content_type = content_type.value
 
     if content_type == "section":
-        result = await db.execute(
-            select(BookSection).where(BookSection.id == summary.content_id)
-        )
+        result = await db.execute(select(BookSection).where(BookSection.id == summary.content_id))
         section = result.scalar_one_or_none()
         if section:
             section.default_summary_id = summary.id

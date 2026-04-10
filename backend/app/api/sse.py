@@ -23,9 +23,7 @@ class EventBus:
     def unsubscribe(self, job_id: str, queue: asyncio.Queue) -> None:
         """Remove a queue from a job's subscriber list."""
         if job_id in self._subscribers:
-            self._subscribers[job_id] = [
-                q for q in self._subscribers[job_id] if q is not queue
-            ]
+            self._subscribers[job_id] = [q for q in self._subscribers[job_id] if q is not queue]
             if not self._subscribers[job_id]:
                 del self._subscribers[job_id]
 

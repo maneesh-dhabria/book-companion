@@ -79,9 +79,7 @@ async def start_processing(
                     max_budget_usd=settings.llm.max_budget_usd,
                 )
                 captioner = (
-                    ImageCaptioner(llm_provider=llm)
-                    if settings.images.captioning_enabled
-                    else None
+                    ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
                 )
                 summarizer = SummarizerService(
                     db=bg_session, llm=llm, config=settings, captioner=captioner

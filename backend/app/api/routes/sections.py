@@ -144,9 +144,7 @@ async def merge_sections(
     if len(body.section_ids) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 sections to merge")
     try:
-        merged = await section_edit_service.merge_sections(
-            book_id, body.section_ids, body.title
-        )
+        merged = await section_edit_service.merge_sections(book_id, body.section_ids, body.title)
         await db.commit()
         return SectionResponse(**_section_to_response(merged))
     except Exception as e:

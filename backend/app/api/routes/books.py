@@ -31,9 +31,7 @@ def _book_to_list_item(book: Book) -> dict:
     for ba in getattr(book, "_authors_with_role", []):
         authors.append({"id": ba.author_id, "name": ba.name, "role": ba.role})
     if not authors:
-        authors = [
-            {"id": a.id, "name": a.name, "role": "author"} for a in (book.authors or [])
-        ]
+        authors = [{"id": a.id, "name": a.name, "role": "author"} for a in (book.authors or [])]
 
     section_count = len(book.sections) if book.sections else 0
 
@@ -61,9 +59,7 @@ def _book_to_list_item(book: Book) -> dict:
 
 def _book_to_response(book: Book) -> dict:
     """Convert a Book ORM instance to BookResponse dict."""
-    authors = [
-        {"id": a.id, "name": a.name, "role": "author"} for a in (book.authors or [])
-    ]
+    authors = [{"id": a.id, "name": a.name, "role": "author"} for a in (book.authors or [])]
     sections = [
         SectionBriefResponse(
             id=s.id,
