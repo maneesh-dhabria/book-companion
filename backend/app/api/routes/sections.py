@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from sqlalchemy.orm import selectinload
 
@@ -13,8 +13,9 @@ from app.api.schemas import (
     SectionReorderRequest,
     SectionResponse,
     SectionSplitRequest,
+    SummaryBriefResponse,
 )
-from app.db.models import Book, BookSection
+from app.db.models import Book, BookSection, Summary
 
 router = APIRouter(prefix="/api/v1/books/{book_id}/sections", tags=["sections"])
 
@@ -29,10 +30,35 @@ async def _get_book_or_404(book_id: int, db: AsyncSession) -> Book:
     return book
 
 
-def _section_to_response(section: BookSection) -> dict:
-    default_summary = None
-    summary_count = 0
+async def _build_section_response(
+    section: BookSection,
+    db: AsyncSession,
+    include_content: bool = False,
+) -> dict:
+    """Build section response dict, fetching summary data from DB."""
     has_summary = section.default_summary_id is not None
+    default_summary = None
+
+    if has_summary:
+        result = await db.execute(select(Summary).where(Summary.id == section.default_summary_id))
+        summary = result.scalar_one_or_none()
+        if summary:
+            default_summary = SummaryBriefResponse(
+                id=summary.id,
+                preset_name=summary.preset_name,
+                model_used=summary.model_used,
+                summary_char_count=summary.summary_char_count,
+                created_at=summary.created_at,
+            ).model_dump()
+
+    # Count all summaries for this section
+    count_result = await db.execute(
+        select(func.count(Summary.id)).where(
+            Summary.content_id == section.id,
+            Summary.content_type == "section",
+        )
+    )
+    summary_count = count_result.scalar() or 0
 
     return {
         "id": section.id,
@@ -41,7 +67,7 @@ def _section_to_response(section: BookSection) -> dict:
         "order_index": section.order_index,
         "section_type": section.section_type,
         "content_token_count": section.content_token_count,
-        "content_md": section.content_md,
+        "content_md": section.content_md if include_content else None,
         "default_summary": default_summary,
         "summary_count": summary_count,
         "annotation_count": 0,
@@ -56,10 +82,10 @@ async def list_sections(
 ):
     """List all sections for a book."""
     book = await _get_book_or_404(book_id, db)
-    return [
-        SectionResponse(**_section_to_response(s))
-        for s in sorted(book.sections, key=lambda s: s.order_index)
-    ]
+    results = []
+    for s in sorted(book.sections, key=lambda s: s.order_index):
+        results.append(SectionResponse(**await _build_section_response(s, db)))
+    return results
 
 
 @router.get("/{section_id}")
@@ -79,7 +105,7 @@ async def get_section(
     section = result.scalar_one_or_none()
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
-    return SectionResponse(**_section_to_response(section))
+    return SectionResponse(**await _build_section_response(section, db, include_content=True))
 
 
 @router.patch("/{section_id}")
@@ -107,7 +133,7 @@ async def update_section(
     if section_type is not None:
         section.section_type = section_type
     await db.commit()
-    return SectionResponse(**_section_to_response(section))
+    return SectionResponse(**await _build_section_response(section, db))
 
 
 @router.delete("/{section_id}", status_code=204)
@@ -146,7 +172,7 @@ async def merge_sections(
     try:
         merged = await section_edit_service.merge_sections(book_id, body.section_ids, body.title)
         await db.commit()
-        return SectionResponse(**_section_to_response(merged))
+        return SectionResponse(**await _build_section_response(merged, db))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
 
@@ -166,7 +192,10 @@ async def split_section(
             book_id, section_id, body.mode, body.positions
         )
         await db.commit()
-        return [SectionResponse(**_section_to_response(s)) for s in new_sections]
+        results = []
+        for s in new_sections:
+            results.append(SectionResponse(**await _build_section_response(s, db)))
+        return results
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
 
@@ -184,7 +213,7 @@ async def reorder_sections(
         if sid in section_map:
             section_map[sid].order_index = idx
     await db.commit()
-    return [
-        SectionResponse(**_section_to_response(s))
-        for s in sorted(book.sections, key=lambda s: s.order_index)
-    ]
+    results = []
+    for s in sorted(book.sections, key=lambda s: s.order_index):
+        results.append(SectionResponse(**await _build_section_response(s, db)))
+    return results

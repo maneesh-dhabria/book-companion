@@ -33,19 +33,7 @@ async def list_summaries(
     return [SummaryResponse.model_validate(s) for s in summaries]
 
 
-@router.get("/api/v1/summaries/{summary_id}")
-async def get_summary(
-    summary_id: int,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a single summary."""
-    result = await db.execute(select(Summary).where(Summary.id == summary_id))
-    summary = result.scalar_one_or_none()
-    if not summary:
-        raise HTTPException(status_code=404, detail="Summary not found")
-    return SummaryResponse.model_validate(summary)
-
-
+# compare must be before {summary_id} to avoid path parameter match on "compare"
 @router.get("/api/v1/summaries/compare")
 async def compare_summaries(
     id1: int = Query(...),
@@ -71,6 +59,19 @@ async def compare_summaries(
         summary_b=SummaryResponse.model_validate(s2),
         concept_diff=concept_diff,
     )
+
+
+@router.get("/api/v1/summaries/{summary_id}")
+async def get_summary(
+    summary_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single summary."""
+    result = await db.execute(select(Summary).where(Summary.id == summary_id))
+    summary = result.scalar_one_or_none()
+    if not summary:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    return SummaryResponse.model_validate(summary)
 
 
 @router.post("/api/v1/summaries/{summary_id}/set-default")
