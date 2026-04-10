@@ -376,6 +376,49 @@
     </div>
   </div>
 
+  <!-- Creativity: M4 — Auto-create AI thread on first open -->
+  <div class="mockup" style="flex:1;">
+    <div class="mockup-header">Ask AI — First-Time / Empty State (auto-created thread)</div>
+    <div class="mockup-body" style="font-size:12px; padding:0; min-height:360px; display:flex; flex-direction:column;">
+      <!-- Tab header -->
+      <div style="display:flex; align-items:center; border-bottom:1px solid var(--border); flex-shrink:0;">
+        <div style="flex:1; text-align:center; padding:10px; font-size:11px; color:var(--text-secondary); cursor:pointer;">Annotations</div>
+        <div style="flex:1; text-align:center; padding:10px; font-size:11px; font-weight:500; border-bottom:2px solid rgb(175,82,222); color:rgb(175,82,222);">Ask AI ✦</div>
+        <div style="padding:10px 12px; font-size:10px; color:var(--text-secondary); cursor:pointer;">✕</div>
+      </div>
+
+      <!-- Context indicator -->
+      <div style="padding:8px 12px; background:rgba(175,82,222,0.04); border-bottom:1px solid var(--border); font-size:10px; color:var(--text-secondary);">
+        Context: <strong>Deep Work</strong> · reading Ch.3
+      </div>
+
+      <!-- M4: Empty thread body — thread auto-created, no "New Thread" click needed -->
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center;">
+        <div style="font-size:24px; margin-bottom:10px; opacity:0.3;">✦</div>
+        <div style="font-size:12px; font-weight:500; margin-bottom:4px;">Ask anything about this book</div>
+        <div style="font-size:10px; color:var(--text-secondary); line-height:1.6; max-width:200px;">
+          A thread has been started for you. Ask a question below, or select text in the reader and tap "Ask AI".
+        </div>
+      </div>
+
+      <!-- M4: Input is immediately focused (shown with active border) -->
+      <div style="padding:8px 10px; border-top:1px solid var(--border); flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1.5px solid var(--accent); border-radius:10px; padding:8px 12px; gap:8px; flex:1;">
+            <span style="font-size:11px; color:var(--text-secondary); flex:1; opacity:0.7;">Ask about this book...</span>
+            <span style="font-size:14px; cursor:pointer; color:var(--accent);">&#x2191;</span>
+          </div>
+          <div style="font-size:10px; padding:6px 10px; border-radius:16px; border:1px solid var(--border); color:var(--text-secondary); cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:3px;">
+            <span style="font-size:12px; font-weight:500; line-height:1;">+</span> Context
+          </div>
+        </div>
+        <div style="font-size:9px; color:var(--text-secondary); margin-top:4px; text-align:center;">
+          No "New Thread" step needed — just start typing
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="mockup" style="flex:1;">
     <div class="mockup-header">Inside a Thread — with selected text context</div>
     <div class="mockup-body" style="font-size:12px; padding:0; min-height:360px; display:flex; flex-direction:column;">
@@ -512,6 +555,28 @@
   </div>
 </div>
 
+<!-- Creativity: S1 — Concept Chip → AI On-Ramp -->
+<div style="max-width:960px; margin:20px auto 0;">
+  <div class="mockup" style="max-width:480px;">
+    <div class="mockup-header">Concept Chip → AI On-Ramp (S1)</div>
+    <div class="mockup-body" style="font-size:12px; padding:16px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">
+        When a user clicks a concept chip in the reader (e.g., "Metric Black Hole"), the tooltip offers an "Ask AI" action. Clicking it opens the AI sidebar with a pre-seeded question:
+      </div>
+      <!-- Simulated AI input with seeded question -->
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1.5px solid var(--accent); border-radius:10px; padding:8px 12px; gap:8px; flex:1;">
+          <span style="font-size:11px; color:var(--text-primary); flex:1;">Explain "Metric Black Hole" as discussed in Ch.3 Deep Work Is Rare</span>
+          <span style="font-size:14px; cursor:pointer; color:var(--accent);">&#x2191;</span>
+        </div>
+      </div>
+      <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; line-height:1.6;">
+        The question is editable before sending. Context is automatically set to the current section. This creates a frictionless path from curiosity (seeing a concept) to understanding (AI explanation).
+      </div>
+    </div>
+  </div>
+</div>
+
 <div style="height:28px;"></div>
 
 <!-- SYSTEM PRESETS TABLE -->
@@ -573,7 +638,8 @@
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
     <li><strong>Header bar</strong>: Added dedicated <code>✦ AI</code> button — always visible, even in focus mode. Separate from <code>💬</code> (annotations).</li>
     <li><strong>Reader settings</strong>: Presets at top (system + user-created). Quick buttons for common values + stepper (−/+) for exact values. Font picker with Serif/Sans/Mono shortcuts + searchable "More" dropdown. Background themes: Light/Sepia/Dark/OLED.</li>
-    <li><strong>AI threads</strong>: Per-book, multi-thread. Thread list shows title + message count + last date + preview. Inside a thread: chat-style messages with selected text context blocks. AI can reference multiple sections. Responses can be saved as annotations or copied.</li>
+    <li><strong>AI threads</strong>: Per-book, multi-thread. <strong>First thread auto-created when AI tab opens (M4)</strong> — no "New Thread" click needed for first use; input is immediately focused. Thread list shows title + message count + last date + preview. Inside a thread: chat-style messages with selected text context blocks. AI can reference multiple sections. Responses can be saved as annotations or copied.</li>
+    <li><strong>Concept chip on-ramp (S1)</strong>: Clicking a concept chip in the reader opens the AI tab with a pre-seeded question: "Explain [concept] as discussed in [section]". Editable before sending. Creates a frictionless curiosity-to-understanding path.</li>
     <li><strong>Multi-section context (R16)</strong>: "+ Context" pill next to chat input opens a section picker dropdown with checkboxes. Selected sections appear as dismissible chips above the input. AI uses all checked sections as context for responses.</li>
     <li><strong>"+ Save Current"</strong>: Saves current reader settings as a named preset for reuse.</li>
     <li><strong>Save-as-note toast (P7)</strong>: After saving an AI response as a note, a green confirmation toast appears with "Saved as annotation on Chapter N" and an "Open" link to navigate to it.</li>

@@ -1,9 +1,10 @@
 # Book Companion Web Interface - V1 Requirements
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** 2026-04-10
 **Status:** Draft
 **MSF Analysis:** [Web Interface MSF Analysis](../msf/2026-04-10_web_interface_msf_analysis.md)
+**Creativity Analysis:** [Web Interface Creativity Analysis](../creativity/2026-04-10_web_interface_creativity_analysis.md)
 **Predecessor:** [V1 CLI Requirements](2026-04-01_book_companion_v1_requirements.md)
 **Wireframes:** [V2 Web Interface Wireframes](../wireframes/2026-04-10_v2_web_interface/README.md)
 
@@ -70,6 +71,7 @@ Inherits all terms from V1 CLI requirements. Additional web-specific terms:
 | **Bottom Sheet** | Mobile-adapted modal that slides up from the bottom of the screen. |
 | **SSE** | Server-Sent Events, used for streaming progress of long-running operations. |
 | **Icon Rail** | A narrow (56px) sidebar showing only icons for primary navigation. |
+| **Verify / Verification** | User-facing term for the eval assertion system. Internal code uses "eval" — the UI always says "Verify." *(Creativity: M8)* |
 
 ---
 
@@ -229,6 +231,7 @@ frontend/
 | `Cmd+U` / `Ctrl+U` | Open upload dialog |
 | `Escape` | Close any modal/palette/popover |
 | `Cmd+/` / `Ctrl+/` | Toggle keyboard shortcuts help |
+| `f` | Toggle Focus Mode in reader *(Nice-to-have — V1.1+)* *(Creativity: N5)* |
 
 ---
 
@@ -273,7 +276,7 @@ Single horizontal row of uniform multi-select dropdown buttons:
 - **Within dimension**: OR logic (e.g., Status="completed" OR Status="summarizing")
 - **Active filter display**: Selected values shown as pills inside the dropdown button. "x" to remove individual values.
 - **Clear all**: "Clear filters" link appears when any filter is active.
-- **Filter counts**: Each dropdown option shows count of matching books (e.g., "completed (12)").
+- **Filter counts**: Each dropdown option shows count of matching books (e.g., "completed (12)"). Counts update dynamically as other filters change (cross-filter counts), so users always see how many books will match before applying. *(Creativity: M5)*
 
 #### 3.2.3 Sort Control
 
@@ -303,7 +306,7 @@ Toggle group (3 icon buttons) to the right of sort:
   - Eval score (if available): green/yellow/red ring with "14/16" text
   - Section count: "24 sections" in muted text
 - **Card click**: Navigate to Book Detail (`/books/{id}`)
-- **Card right-click / long-press**: Context menu with: Open, Summarize, Evaluate, Edit metadata, Export, Delete
+- **Card right-click / long-press**: Context menu with: Open, Summarize, Verify, Edit metadata, Export, Delete *(Creativity: M8)*
 
 **List Mode:**
 - Compact rows, one book per row
@@ -386,7 +389,8 @@ Toggle group (3 icon buttons) to the right of sort:
 
 - **Library segment**: Always links to `/` (Library page)
 - **Book Title segment**: Links to book's first section (or book summary if available). Click opens dropdown with:
-  - Book actions: Summarize, Evaluate, Edit metadata, Edit sections, Export, Delete, Re-import
+  - Book actions: Summarize, Verify, Edit metadata, Edit sections, Export, Delete, Re-import *(Creativity: M8)*
+  - "Quick export" -- copies the current section's default summary as plain text to clipboard and optionally saves as `.txt` in Downloads. No dialog, no checkboxes -- a one-tap share path. *(Nice-to-have — V1.1+)* *(Creativity: N6)*
   - Book summary link (if default summary exists)
 - **Chapter Name segment**: Click opens full Table of Contents dropdown:
   - Search input at top for filtering sections
@@ -397,20 +401,20 @@ Toggle group (3 icon buttons) to the right of sort:
 
 #### 3.3.3 Original/Summary Toggle
 
-- **Segmented control** (not tabs): Two options, "Original" and "Summary"
+- **Segmented control** (not tabs): Two options, "Original" and "Summary". When the book has summaries, the toggle defaults to "Summary" on first load. Users switch to "Original" on demand. *(Creativity: M1)*
 - When "Summary" is active:
   - If no summary exists: Show "No summary yet" message + "Summarize" button
   - If summary exists: Render default summary markdown
   - **Summary version**: The default summary (`default_summary_id`) is always shown automatically — no version picker is displayed unless multiple versions exist. When multiple versions exist, a "History (N versions)" link appears below the eval badge. Clicking it opens the comparison view. This avoids the "which version am I reading?" decision during normal reading. Users who want to switch versions do so intentionally via History.
   - **Edit preserves original**: When a user edits a summary (via inline editing), the edit is saved as a **new summary version** (with `user_edited=True`) rather than overwriting the AI-generated version. Both "AI version" and "My edit" appear in the version selector. The user-edited version becomes the new default.
   - **Eval trust badge**: Single compact badge within summary view (not an expandable accordion):
-    - Green badge: "Trusted" with checkmark (16/16 or 15/16 passed)
-    - Yellow badge: "Review" with warning icon (12-14/16 passed)
-    - Red badge: "Issues" with alert icon (< 12/16 passed)
-    - Gray badge: "Not evaluated" with "Run eval" link
+    - Green badge: "This summary is solid" with checkmark (16/16 or 15/16 passed) *(Creativity: M3)*
+    - Yellow badge: "Worth a quick review" with warning icon (12-14/16 passed) *(Creativity: M3)*
+    - Red badge: "Some issues found" with alert icon (< 12/16 passed) *(Creativity: M3)*
+    - Gray badge: "Not verified" with "Verify" link *(Creativity: M3, M8)*
     - Score shown as "14/16" next to the badge label
     - **"View details" link** navigates to a dedicated eval detail view (route: `/books/{id}/sections/{section_id}/eval`) rather than expanding inline. This keeps the reading experience clean and avoids QA-dashboard friction during study.
-    - The eval detail view shows the full grouped accordion (Faithfulness, Completeness, Coherence, Specificity, Format) with assertion names, pass/fail, reasoning, and Re-evaluate button.
+    - The eval detail view shows the full grouped accordion (Faithfulness, Completeness, Coherence, Specificity, Format) with assertion names, pass/fail, reasoning, and Re-verify button. Each assertion name includes a plain-language tooltip explaining what it checks (e.g., `no_hallucinated_facts` → "Checks that the summary doesn't include facts not present in the source text"). *(Creativity: M3, M8)*
 - When "Original" is active:
   - Render `content_md` from `BookSection`
   - No eval banner, no version selector
@@ -424,6 +428,7 @@ Toggle group (3 icon buttons) to the right of sort:
   - "Appears in N sections" with clickable list
   - Related concepts as clickable pills
   - "Edit" link (opens concept editing inline)
+  - **"Ask AI about this" button** -- opens the AI sidebar tab and creates a new thread seeded with: "Explain [concept term] as discussed in [section title]". The concept definition and section context are included in the AI prompt. *(Creativity: S1)*
 - Concept detection: Match `Concept.term` values against rendered summary text. Case-insensitive, word-boundary matching.
 
 #### 3.3.5 Text Selection Floating Toolbar
@@ -440,6 +445,7 @@ When user selects text in the reading area, a floating toolbar appears above the
 
 - Toolbar positioning: Centered above selection, flips below if near top of viewport
 - Disappears when selection is cleared or user clicks elsewhere
+- **Highlight style**: Text highlights use a hand-drawn marker stroke aesthetic (CSS with SVG clip-path for slightly irregular edges) rather than flat rectangular backgrounds. This references the physical act of highlighting in a book and gives the reader a distinctive, warm visual identity. *(Nice-to-have — V1.1+)* *(Creativity: N7)*
 - **Annotation visibility across views**: Annotations created in either Original or Summary view are **visible in both views**. When viewing the alternate content type, annotations from the other view appear as subtle indicators (dimmed highlight, dashed border) with a label showing their source: "Highlighted in Summary" or "Highlighted in Original". Clicking the indicator scrolls to the approximate location in the other view. The `content_type` field still tracks where the annotation was created, but it does not restrict display.
 
 #### 3.3.6 Section Navigation
@@ -450,13 +456,15 @@ When user selects text in the reading area, a floating toolbar appears above the
   - `Right arrow` or `Alt+N`: Next section
 - At first section: Prev is disabled. At last section: Next is disabled.
 - Navigation preserves toggle state (original/summary) and sidebar state
+- **Reading re-entry**: When a user navigates to a section they previously visited (detected by `last_opened_at` timestamp with >24h gap), a subtle re-entry card appears above the content: "Last time here, you highlighted: '[quoted text]...'" with a link to scroll to that annotation. Dismissed on scroll or close. Uses the most recent annotation on that section. *(Creativity: S3)*
 
 #### 3.3.7 Book-Level Summary View
 
 - Accessed from breadcrumb Book Title dropdown or directly via URL `/books/{id}/summary`
 - Shows the book's `default_summary_id` summary
 - Same eval banner, version selector, and concept chip behavior as section summaries
-- Actions available: Summarize (opens preset picker), Evaluate, Export
+- **Consistency indicator**: In addition to the book-level eval badge, show a consistency metric: the variance (or range) of eval scores across all sections. Example: "Sections range from 12/16 to 16/16 -- 3 sections need attention." Sections below the book average are listed as clickable links. This surfaces uneven quality that per-section scores alone do not reveal. *(Creativity: S9)*
+- Actions available: Summarize (opens preset picker), Verify, Export *(Creativity: M8)*
 
 #### 3.3.8 Context Sidebar - Annotations Tab
 
@@ -481,8 +489,9 @@ When user selects text in the reading area, a floating toolbar appears above the
 
 - **Thread list** (default view when no thread is active):
   - Each thread: Title (auto-generated or user-set), message count, last activity date, preview of last message (truncated)
-  - "New Thread" button at top
+  - "New Thread" button at top (for creating additional threads)
   - Click thread to open it
+  - When no threads exist for this book, opening the AI tab auto-creates a new thread seeded with the current section as context. The input area is immediately focused — no "New Thread" click needed. *(Creativity: M4)*
 
 - **Thread view** (active conversation):
   - Back arrow to return to thread list
@@ -503,6 +512,10 @@ When user selects text in the reading area, a floating toolbar appears above the
   - Context includes: current section content, current section summary (if exists), book title, author
   - Multi-section queries: AI can be asked about the entire book. Context window includes book summary + relevant section summaries. When additional sections are selected via "+ Add context", their content/summaries are included in the prompt.
   - Streaming: AI responses stream token-by-token via SSE. During generation, a thin progress bar animates below the AI message bubble (indeterminate style) to provide visual feedback beyond the typing indicator dots.
+
+#### 3.3.10 Focus Mode
+
+- **Focus Mode**: Keyboard shortcut `f` (or toggle button in header) collapses the header bar, hides the sidebar, removes the eval banner, and leaves only the centered reading area with arrow-key section navigation. Press `f` or `Escape` to exit. *(Nice-to-have — V1.1+)* *(Creativity: N5)*
 
 ---
 
@@ -580,6 +593,7 @@ When user selects text in the reading area, a floating toolbar appears above the
 - Reader settings are saved to database (per-user, since single user: global)
 - Applied immediately on load across all book pages
 - Persisted across sessions (not just localStorage -- survives browser clearing)
+- **System preference detection**: On first load (no saved reading preferences), the app detects the system color scheme (`prefers-color-scheme` media query). If dark mode is detected, the "Dark" background swatch is pre-selected. If light, "Light" is pre-selected. Users can change at any time. *(Creativity: S10)*
 
 ---
 
@@ -646,6 +660,7 @@ The indicator shows 3 numbered circles connected by lines. Step 2 ("Configure") 
 - **Tags**: Tag chips with "+ Add tag" button. Autocomplete from existing tags. Create new tags inline.
 - **Format**: Read-only badge (EPUB/MOBI/PDF)
 - **File size**: Read-only display
+- All fields are pre-populated from book metadata. If metadata extraction is complete and no quality issues are detected, a "Looks good" confirmation banner appears with a prominent "Next" button — the default path is a single tap to advance without editing. *(Creativity: M2)*
 - **Navigation**: Back to Step 1, Next to Step 3
 
 #### 3.5.4 Step 3: Structure Review
@@ -719,10 +734,11 @@ The indicator shows 3 numbered circles connected by lines. Step 2 ("Configure") 
 
 - **"Manage Presets" link**: Navigates to Settings > Summarization Presets
 
-- **Processing options**: The primary view shows only the "Start Summarizing" button and cost estimate. An **"Advanced options"** disclosure link expands to show:
-  - "Run evaluation after summarization" checkbox (default: checked)
-  - "Auto-retry on eval failure" checkbox (default: checked, disabled if eval unchecked)
-  - First-time users see only the preset selection and Start button. Power users expand Advanced for eval/retry control.
+- **Processing Profile**: The primary view shows preset selection and a single "Start Processing" button. The preset card, verification toggle, and auto-retry toggle are bundled into a named **Processing Profile** -- one choice instead of three. Default profile: preset=balanced, verify=on, auto-retry=on (labeled "Recommended"). Users can save custom profiles for reuse across books. *(Creativity: S2)*
+  - An **"Advanced options"** disclosure link expands to show individual control over:
+    - "Run verification after summarization" checkbox (default: checked) *(Creativity: M8)*
+    - "Auto-retry on verification failure" checkbox (default: checked, disabled if verification unchecked) *(Creativity: M8)*
+  - First-time users see only the profile selection and Start button. Power users expand Advanced for granular verification/retry control.
 
 - **Cost & time estimate** (shown when `settings.show_cost_estimates` is enabled):
   - Displayed below processing options as an informational card
@@ -791,7 +807,10 @@ After clicking "Start Summarizing," user is redirected to the Book Detail page. 
   - "Upload a book" (opens upload flow)
   - "Go to Library" (navigates to library)
   - "Browse Concepts" (navigates to concepts)
+  - "Surprise me" — returns a random high-verification-score section the user hasn't visited recently. Designed for serendipitous rediscovery in growing libraries. *(Nice-to-have — V1.1+)* *(Creativity: N10)*
 - **No results state**: "No results for [query]" + suggestion "Try different keywords or check spelling"
+- **Filter-scoped search**: When the command palette is opened from the Library page with active filters, search results are automatically scoped to the filtered book set. A "Searching within: [filter summary]" indicator appears below the input. Users can click "Search all books" to remove the scope. *(Creativity: S5)*
+- **Command mode**: In addition to search, the palette accepts commands prefixed with `>` (e.g., `> Night Reading`, `> set font Serif`, `> Focus Mode`). Commands are auto-completed from available actions: reading preset names, font names, display modes. This unifies search and settings into one keyboard-driven surface. *(Nice-to-have — V1.1+)* *(Creativity: N1)*
 
 #### 3.6.2 Full Search Results Page
 
@@ -835,7 +854,9 @@ Route: `/annotations`
 
 #### 3.7.1 Header
 
-- Page title: "Annotations"
+> **UI label**: The user-facing label for annotations is "Your Notes" (navigation, page title, sidebar tab). Internal code and API endpoints continue to use "annotations". The term "Your Notes" signals personal knowledge capture rather than document markup. *(Nice-to-have — V1.1+)* *(Creativity: N11)*
+
+- Page title: "Your Notes" *(see N11 above — user-facing label)*
 - Count: "(N total)"
 - **"+ Add Note" button**: Opens an inline form at the top of the page for creating a freeform annotation. Form fields: Book selector (dropdown), Section selector (dropdown, populated after book selection), Note text area, Tags. Creates a freeform annotation attached to the selected section. Allows retrospective note-taking without navigating to the reader.
 - Search input: Filter annotations by text content
@@ -882,6 +903,13 @@ When navigating to Annotations from within a book's reader (via sidebar), the pa
 
 - "No annotations yet. Start highlighting and taking notes while reading."
 - "Go to Library" button
+
+#### 3.7.6 Browse vs Review Modes
+
+**Two modes**: The Annotations page has a mode toggle (Browse | Review): *(Creativity: S7)*
+
+- **Browse** (default): Full filter, grouping, sort, and export -- the current layout described above.
+- **Review**: A sequential flashcard-style view. Shows one annotation at a time: quoted text, note, source breadcrumb. Navigation: "Previous" / "Next" buttons + swipe on mobile. Optionally prompts "Still relevant?" (Yes / Archive). Designed for periodic annotation review sessions, especially on mobile.
 
 ---
 
@@ -959,9 +987,10 @@ Left sidebar with sections:
 #### 3.9.2 General Settings
 
 - **Network**:
-  - `allow_lan` toggle: When enabled, binds to 0.0.0.0 instead of 127.0.0.1. Warning: "This exposes the application to your local network."
+  - `Read on your phone` toggle (internally: `allow_lan`): When enabled, binds to 0.0.0.0 instead of 127.0.0.1. Friendly copy: "Your library will be readable from any device on your home network." *(Creativity: M7)*
   - **LAN Info**: When LAN is enabled, displays the access URL (`http://<ip>:<port>`) prominently.
   - **QR Code**: When LAN is enabled, shows a QR code encoding the access URL for easy phone pairing.
+  - **Mobile Setup Kit**: A single "Set up mobile reading" action that enables LAN access, generates the QR code, and pre-caches the 5 most recently opened books for faster mobile loading. *(Creativity: M7)*
 - **Default preset**: Dropdown of all presets (used when no preset specified)
 - **Show cost estimates** toggle (default: off): When enabled, the upload wizard Step 4 and processing progress card show estimated API cost and processing time based on section count and average token usage.
 - **LLM Settings** (read-only display from config):
@@ -1015,6 +1044,7 @@ Left sidebar with sections:
 - **Create backup**: Button triggers `pg_dump`. Shows progress. Download link when complete.
 - **Backup history**: List of previous backups with date, size, download link, delete button
 - **Restore from backup**: File upload for `.sql` backup file. Warning: "This will replace all current data."
+- **Scheduled backups**: Configurable automatic backup (daily or weekly) to a local directory. Silent background `pg_dump` runs at the configured interval. Backup history page shows both manual and scheduled backups. A "Last backup: N days ago" indicator appears in the Settings sidebar navigation. *(Creativity: M6)*
 - **Export library**:
   - Format: Markdown or JSON
   - Scope: All books or selected books (multi-select)
@@ -1031,7 +1061,7 @@ Left sidebar with sections:
 #### 3.10.1 Network Configuration
 
 - Default: Binds to `127.0.0.1` (localhost only)
-- `network.allow_lan: true` in config (or Settings toggle): Binds to `0.0.0.0`
+- `network.allow_lan: true` in config (or Settings `Read on your phone` toggle): Binds to `0.0.0.0` *(Creativity: M7)*
 - QR code in Settings: Encodes `http://<lan-ip>:<port>` for easy phone setup
 
 #### 3.10.2 Responsive Breakpoints
@@ -1098,6 +1128,10 @@ Left sidebar with sections:
 - Skeleton loaders for perceived performance
 - Service worker for caching static assets (PWA potential)
 - Reduced animation on `prefers-reduced-motion`
+
+#### 3.10.6 Reading Position Sync
+
+- **Reading position sync**: The server tracks the last-viewed book and section per session (`last_book_id`, `last_section_id`, `last_viewed_at` on a new `reading_state` table). When a user opens the app on a different device (detected by different user-agent), a "Continue where you left off" banner appears: "You were reading [Book Title], [Section Name]" with a "Continue" button that navigates directly. *(Creativity: S4)*
 
 ---
 
@@ -1204,9 +1238,9 @@ Left sidebar with sections:
 6. Clicks "Start Summarizing"
 7. Progress card appears at top of Book Detail
 8. Sections process one by one:
-   - Section 1: Summarized (1.2s) > Evaluated (2.1s) > 16/16 passed
-   - Section 2: Summarized (0.9s) > Evaluated (1.8s) > 15/16 passed (auto-retry not triggered, 15/16 is acceptable)
-   - Section 5: Summarized (1.1s) > Evaluated (2.3s) > 12/16 passed > Auto-retry triggered > Re-summarized (1.3s) > Re-evaluated (2.0s) > 15/16 passed
+   - Section 1: Summarized (1.2s) > Verified (2.1s) > 16/16 passed
+   - Section 2: Summarized (0.9s) > Verified (1.8s) > 15/16 passed (auto-retry not triggered, 15/16 is acceptable)
+   - Section 5: Summarized (1.1s) > Verified (2.3s) > 12/16 passed > Auto-retry triggered > Re-summarized (1.3s) > Re-verified (2.0s) > 15/16 passed
 9. After all sections: Book-level summary generated from section summaries
 10. Book status changes to "completed"
 11. User can now toggle to "Summary" view and read summaries
@@ -1250,9 +1284,9 @@ Left sidebar with sections:
 **Happy Path:**
 
 1. User navigates to Library, clicks on a completed book
-2. Book Detail opens at the first section, "Original" view active
-3. User reads the original content
-4. User clicks "Summary" in the segmented control
+2. Book Detail opens at the first section, "Summary" view active (default when summaries exist) *(Creativity: M1)*
+3. User reads the summary content
+4. User clicks "Original" in the segmented control to see the source text
 5. Summary view shows: summary markdown rendered with concept chips, eval banner ("16/16 passed"), version selector showing "practitioner_bullets - Apr 10"
 6. User clicks a concept chip ("Anchoring Effect")
 7. Tooltip shows: definition, "Appears in 8 sections", related concepts (Availability Heuristic, Priming)
@@ -1566,6 +1600,7 @@ Left sidebar with sections:
    - Two-column layout
    - Left dropdown: Select summary A (e.g., "practitioner_bullets - Apr 10")
    - Right dropdown: Select summary B (e.g., "academic - Apr 8")
+   - **Auto-selection**: The two most recent summary versions are auto-selected in the dropdowns -- no manual selection needed for the most common comparison. Dropdowns remain available to change selections. *(Creativity: S8)*
 4. Side-by-side rendering of both summaries
 5. **Diff highlighting**: Sections unique to A highlighted in red, unique to B in green, shared in neutral
 6. **Concept diff**: Below the summaries, a section shows:
@@ -1574,6 +1609,7 @@ Left sidebar with sections:
    - Concepts in both
 7. **Metadata comparison**: Compression ratio, token counts, eval scores for each
 8. User can click "Set as default" on either summary to make it the active one
+9. **"What changed?" auto-explanation**: When the divergence between two summaries exceeds 60% (measured by concept diff and text overlap), an auto-generated one-sentence explanation appears above the columns: e.g., "Version 2 emphasizes implementation steps; Version 1 focuses on theory." Generated from concept diff data. *(Nice-to-have — V1.1+)* *(Creativity: N2)*
 
 **Edge Case: Only One Summary**
 
@@ -1582,14 +1618,14 @@ Left sidebar with sections:
 
 ---
 
-### 4.11 Evaluate Summaries
+### 4.11 Verify Summaries *(Creativity: M8)*
 
-**Happy Path: View Eval Results**
+**Happy Path: View Verification Results**
 
 1. User navigates to a completed book
 2. Switches to Summary view on a section
-3. Eval banner shows: "Eval: 14/16 passed" (yellow)
-4. Clicks "View eval details"
+3. Verification banner shows: "Verified: 14/16 passed" (yellow) *(Creativity: M8)*
+4. Clicks "View details"
 5. Inline expansion shows assertions grouped by category:
    - **Faithfulness** (4/4): All green checks
    - **Completeness** (3/3): All green checks
@@ -1600,29 +1636,32 @@ Left sidebar with sections:
    - **Format** (3/3): All green checks
 6. User reads the reasoning to understand why assertions failed
 
-**Happy Path: Force Re-evaluation**
+**Happy Path: Force Re-verification** *(Creativity: M8)*
 
-1. User views eval results, sees 2 failures
-2. Clicks "Re-evaluate" button (or navigates to book actions > "Evaluate")
-3. Eval runs again on the current default summary
-4. SSE events stream eval progress (assertion by assertion)
+1. User views verification results, sees 2 failures
+2. Clicks "Re-verify" button (or navigates to book actions > "Verify") *(Creativity: M8)*
+3. Verification runs again on the current default summary
+4. SSE events stream verification progress (assertion by assertion)
 5. New eval traces created (old traces still exist but new `eval_run_id`)
 6. Results update in real-time
+7. **Score animation on re-verification**: When a re-verification improves the score, the trust badge animates: the score counter ticks up, the badge color transitions with a brief glow effect, and a one-liner appears: "Improved from 'Worth a quick review' to 'This summary is solid.'" *(Nice-to-have — V1.1+)* *(Creativity: N8)*
 
-**Edge Case: Stale Eval Data**
+**Edge Case: Stale Verification Data** *(Creativity: M8)*
 
 1. User re-imports a book (updates sections)
 2. Existing eval traces marked `is_stale=True`
-3. Eval banner shows: "Evaluation data is stale (book was re-imported). Re-evaluate?"
-4. "Re-evaluate" button triggers new eval run
+3. Verification banner shows: "Verification data is stale (book was re-imported). Re-verify?" *(Creativity: M8)*
+4. "Re-verify" button triggers new verification run
 5. New traces with `is_stale=False` replace the display
 
-**Edge Case: Book-Level Eval**
+**Edge Case: Book-Level Verification** *(Creativity: M8)*
 
 1. User navigates to the book's overall summary (book-level, not section-level)
-2. Eval banner shows results for the book-level summary
-3. "View eval details" shows the same grouped assertion view
+2. Verification banner shows results for the book-level summary
+3. "View details" shows the same grouped assertion view
 4. Book-level eval may have different assertions applicable vs. section-level
+
+**One-click fix flow** *(Nice-to-have — V1.1+)* *(Creativity: N12)*: On a failed assertion card, a "Fix & Re-verify" button opens the summary editor pre-scrolled to the likely problem span (identified from the assertion's reasoning text). After the user saves the edit (creating a new summary version), re-verification triggers automatically via SSE. Closes the find-fix-verify loop in one action.
 
 ---
 
@@ -1638,6 +1677,7 @@ Left sidebar with sections:
 4. Clicks "Export"
 5. Server generates markdown file. Download starts automatically.
 6. Toast: "Exported Thinking, Fast and Slow.md"
+7. **Export stats card**: After export completes, show an "Export complete" card with library stats: "Exported N books, N summaries, N concepts — that's N years of reading." Reinforces the value of the user's knowledge base. *(Nice-to-have — V1.1+)* *(Creativity: N9)*
 
 **Happy Path: Full Library Export**
 
@@ -1721,7 +1761,7 @@ Left sidebar with sections:
 | Concepts page (no concepts) | "No concepts yet. Concepts are generated during summarization." + Library link |
 | Annotations sidebar (no annotations for section) | "No annotations for this section. Select text to highlight or add a note." |
 | AI sidebar (no threads) | "Ask AI about this book. Select text for context or start a new conversation." |
-| Eval banner (not evaluated) | "Not evaluated" + "Run eval" link |
+| Verification banner (not verified) | "Not verified" + "Verify" link *(Creativity: M8)* |
 | Summary view (no summary) | "No summary available." + "Summarize" button |
 | Search results sidebar filters (empty category) | Category hidden (don't show "Concepts (0)") |
 
@@ -1739,7 +1779,7 @@ Left sidebar with sections:
 
 | Scenario | Behavior |
 |----------|----------|
-| Re-import marks eval traces stale | Eval banner: "Evaluation data is stale. Re-evaluate?" All queries filter `is_stale=FALSE`. |
+| Re-import marks eval traces stale | Verification banner: "Verification data is stale. Re-verify?" *(Creativity: M8)* All queries filter `is_stale=FALSE`. |
 | Summary exists but section content changed (re-import) | Summary still displayed but with warning: "Section content has changed since this summary was generated." |
 | Concept definition outdated after re-summarization | Concepts are regenerated during summarization. Old user edits are preserved (`user_edited=True`). |
 
@@ -1773,7 +1813,7 @@ Left sidebar with sections:
 | LIB-10 | Unsaved changes indicator | In a saved view, change a filter | Dot appears on tab |
 | LIB-11 | Empty library state | No books in database | Empty state illustration + upload CTA |
 | LIB-12 | Table column visibility | In Table mode, toggle off "Tags" column | Tags column hidden. Persistence on reload. |
-| LIB-13 | Book card context menu | Right-click book card | Menu: Open, Summarize, Evaluate, Edit metadata, Export, Delete |
+| LIB-13 | Book card context menu | Right-click book card | Menu: Open, Summarize, Verify, Edit metadata, Export, Delete |
 | LIB-14 | Mobile list view | View on 375px viewport | List view default, 2-col grid available, bottom tab nav |
 
 ### 6.2 Upload Tests
@@ -2115,12 +2155,30 @@ Table: recent_searches
   INDEX ix_recent_searches_created_at (created_at DESC)
 ```
 
+#### 8.2.6 ReadingState
+
+Tracks reading position for cross-device sync. *(Creativity: S4)*
+
+```
+Table: reading_state
+  id                BIGINT PRIMARY KEY
+  user_agent        VARCHAR(500) NOT NULL
+  last_book_id      BIGINT REFERENCES books(id) ON DELETE CASCADE
+  last_section_id   BIGINT REFERENCES book_sections(id) ON DELETE SET NULL
+  last_viewed_at    TIMESTAMPTZ DEFAULT now()
+  created_at        TIMESTAMPTZ DEFAULT now()
+  updated_at        TIMESTAMPTZ DEFAULT now()
+
+  UNIQUE ix_reading_state_user_agent (user_agent)
+```
+
 ### 8.3 Model Relationships
 
 ```
 Book  1──N  AIThread  1──N  AIMessage
                               └──?  BookSection (context)
 
+ReadingState   ──?  Book, BookSection
 ReadingPreset  (standalone, no FKs)
 LibraryView    (standalone, no FKs)
 RecentSearch   (standalone, no FKs)

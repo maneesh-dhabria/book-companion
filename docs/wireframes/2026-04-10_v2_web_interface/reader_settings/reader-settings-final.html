@@ -281,9 +281,13 @@
       </div>
     </div>
 
+    <!-- Creativity: S10 — Detect system dark mode -->
     <!-- BACKGROUND — preset swatches + color picker -->
     <div style="margin-bottom:16px;">
-      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Background</div>
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+        <div style="font-size:11px; color:var(--text-secondary);">Background</div>
+        <div style="font-size:9px; color:var(--text-tertiary); font-style:italic;">Auto-detects <code style="font-size:8px; background:var(--bg-tertiary); padding:1px 3px; border-radius:2px;">prefers-color-scheme</code> on first load and pre-selects Light or Dark</div>
+      </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="text-align:center; cursor:pointer;">
           <div style="width:34px; height:34px; border-radius:8px; background:#ffffff; border:1px solid var(--border);"></div>
@@ -427,7 +431,7 @@
     <li><strong>Size</strong>: Named buttons (Small / Medium / Large / XL) + manual stepper (−/+ with px value).</li>
     <li><strong>Line Spacing</strong>: Named buttons (Tight / Normal / Relaxed / Spacious) + manual stepper.</li>
     <li><strong>Content Width</strong>: Named buttons (Narrow / Medium / Wide / Full) + manual stepper (px).</li>
-    <li><strong>Background</strong>: Preset swatches (Light / Sepia / Dark / OLED / Dracula) + 🎨 Custom button → opens full color picker with gradient area, hue slider, and hex input. Text color auto-adjusts for contrast.</li>
+    <li><strong>Background</strong>: Preset swatches (Light / Sepia / Dark / OLED / Dracula) + 🎨 Custom button → opens full color picker with gradient area, hue slider, and hex input. Text color auto-adjusts for contrast. <strong>(S10)</strong> On first load, auto-detects <code>prefers-color-scheme</code> and pre-selects the matching swatch (Light or Dark).</li>
     <li><strong>Live preview</strong>: Sample text at bottom updates in real-time with current settings. Shows font + size + spacing + width + background summary below.</li>
   </ul>
 </div>

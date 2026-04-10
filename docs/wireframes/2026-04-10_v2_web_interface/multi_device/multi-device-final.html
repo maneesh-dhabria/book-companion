@@ -144,9 +144,10 @@
 <h2>Multi-Device & Mobile Access</h2>
 <p class="subtitle">LAN access, responsive layouts, mobile-adapted interactions</p>
 
+<!-- Creativity: M7 — "Read on your phone" rename + Mobile Setup Kit -->
 <!-- NETWORK ACCESS -->
 <div style="max-width:800px; margin:0 auto 28px;">
-  <h3 style="margin-bottom:8px;">Network Access Architecture</h3>
+  <h3 style="margin-bottom:8px;">Read on Your Phone</h3>
   <div style="padding:16px; border:1px solid var(--border); border-radius:10px; font-size:13px; line-height:2;">
     <div style="display:flex; gap:24px; margin-bottom:12px;">
       <div style="flex:1; padding:12px; background:var(--bg-tertiary); border-radius:8px;">
@@ -154,13 +155,25 @@
         <div style="font-size:13px; font-weight:500;">localhost:8080</div>
         <div style="font-size:11px; color:var(--text-secondary);">Only accessible from this machine</div>
       </div>
-      <div style="display:flex; align-items:center; font-size:18px; color:var(--text-secondary);">→</div>
+      <div style="display:flex; align-items:center; font-size:18px; color:var(--text-secondary);">&#x2192;</div>
       <div style="flex:1; padding:12px; background:rgba(0,122,255,0.06); border:1px solid rgba(0,122,255,0.2); border-radius:8px;">
-        <div style="font-size:11px; color:var(--accent); margin-bottom:4px;">LAN MODE</div>
+        <div style="font-size:11px; color:var(--accent); margin-bottom:4px;">READ ON YOUR PHONE</div>
         <div style="font-size:13px; font-weight:500;">192.168.1.42:8080</div>
-        <div style="font-size:11px; color:var(--text-secondary);">Any device on the same network</div>
+        <div style="font-size:11px; color:var(--text-secondary);">Your library will be readable from any device on your home network.</div>
       </div>
     </div>
+
+    <!-- Mobile Setup Kit — one-action button -->
+    <div style="padding:14px 16px; border-radius:10px; background:rgba(0,122,255,0.04); border:1px solid rgba(0,122,255,0.15); margin-bottom:14px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div>
+          <div style="font-size:13px; font-weight:500;">Mobile Setup Kit</div>
+          <div style="font-size:11px; color:var(--text-secondary);">One tap: enables network access, shows QR code, and pre-caches your 3 most recent books for fast mobile reading.</div>
+        </div>
+        <div style="padding:8px 18px; border-radius:8px; background:var(--accent); color:white; font-size:12px; cursor:pointer; white-space:nowrap; flex-shrink:0;">Set Up Mobile</div>
+      </div>
+    </div>
+
     <ul style="padding-left:20px; font-size:12px; color:var(--text-secondary);">
       <li><strong>Config toggle</strong>: <code>network.allow_lan: true</code> — binds to 0.0.0.0 instead of 127.0.0.1</li>
       <li><strong>mDNS discovery</strong>: Optionally advertise as <code>bookcompanion.local</code> via Bonjour/Avahi — no IP memorization</li>
@@ -170,6 +183,29 @@
     </ul>
   </div>
 </div>
+<!-- End Creativity: M7 -->
+
+<!-- Creativity: S4 — Cross-device reading position -->
+<div style="max-width:800px; margin:0 auto 28px;">
+  <h3 style="margin-bottom:8px;">Continue Where You Left Off</h3>
+  <div class="mockup" style="max-width:400px; margin:0 auto;">
+    <div class="mockup-header">Mobile — New device connection</div>
+    <div class="mockup-body" style="font-size:12px; padding:16px;">
+      <!-- Resume reading banner -->
+      <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(0,122,255,0.06); border:1px solid rgba(0,122,255,0.15); margin-bottom:12px;">
+        <div style="width:36px; height:50px; background:var(--bg-tertiary); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;">&#x1F4D8;</div>
+        <div style="flex:1;">
+          <div style="font-size:11px; color:var(--text-secondary);">You were reading</div>
+          <div style="font-size:13px; font-weight:500;">Deep Work</div>
+          <div style="font-size:11px; color:var(--text-secondary);">Ch. 3: Deep Work Is Rare</div>
+        </div>
+        <div style="padding:7px 14px; border-radius:8px; background:var(--accent); color:white; font-size:11px; cursor:pointer; flex-shrink:0;">Continue</div>
+      </div>
+      <div style="font-size:10px; color:var(--text-tertiary); text-align:center;">Reading position syncs automatically across all connected devices.</div>
+    </div>
+  </div>
+</div>
+<!-- End Creativity: S4 -->
 
 <!-- MOBILE: LIBRARY -->
 <div class="split" style="gap:16px; max-width:800px; margin:0 auto;">
@@ -398,12 +434,20 @@
 <div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:800px; margin:0 auto;">
   <h3 style="margin-bottom:10px;">Multi-Device — Design Summary</h3>
 
-  <h4 style="margin-bottom:6px; font-size:13px;">Network Access</h4>
+  <h4 style="margin-bottom:6px; font-size:13px;">Read on Your Phone (M7)</h4>
   <ul style="padding-left:20px; font-size:12px; line-height:1.8; margin-bottom:12px;">
+    <li><strong>"Read on your phone"</strong>: Friendly label replaces "Allow LAN Access". Description: "Your library will be readable from any device on your home network."</li>
+    <li><strong>Mobile Setup Kit</strong>: One-action button that enables LAN, shows QR code, and pre-caches recent books for fast mobile reading.</li>
     <li><strong>Config toggle</strong>: <code>network.allow_lan: true</code> binds to 0.0.0.0</li>
     <li><strong>mDNS</strong>: Optional <code>bookcompanion.local</code> discovery via Bonjour</li>
     <li><strong>QR code</strong>: Settings page shows QR for easy phone pairing</li>
     <li><strong>Token auth</strong>: Optional <code>network.access_token</code> for security</li>
+  </ul>
+
+  <h4 style="margin-bottom:6px; font-size:13px;">Cross-Device Reading Position (S4)</h4>
+  <ul style="padding-left:20px; font-size:12px; line-height:1.8; margin-bottom:12px;">
+    <li><strong>Continue where you left off</strong>: When connecting from a new device, a banner shows "You were reading [Book Title], [Section Name]" with a Continue button.</li>
+    <li><strong>Auto-sync</strong>: Reading position syncs automatically across all connected devices.</li>
   </ul>
 
   <h4 style="margin-bottom:6px; font-size:13px;">Responsive Breakpoints</h4>

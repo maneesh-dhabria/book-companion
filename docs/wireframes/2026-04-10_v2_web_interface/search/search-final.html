@@ -224,6 +224,11 @@
         <span style="flex:1;"></span>
         <span>Hybrid search: keyword + semantic</span>
       </div>
+
+      <!-- Creativity: N1 — Command mode annotation -->
+      <div style="padding:6px 16px; border-top:1px solid var(--border); background:rgba(255,159,10,0.06); font-size:10px; color:var(--text-secondary); line-height:1.6;">
+        <strong style="color:rgb(255,159,10);">Nice-to-have V1.1+</strong>: Typing <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px; font-size:9px;">&gt;</code> prefix activates command mode — accepts commands like <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px; font-size:9px;">&gt; Night Reading</code> (switch theme preset), <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px; font-size:9px;">&gt; set font Serif</code> (change reader font), <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px; font-size:9px;">&gt; export Deep Work</code>. Palette footer updates to show available commands.
+      </div>
     </div>
   </div>
 </div>
@@ -242,6 +247,16 @@
         <span style="font-size:14px; opacity:0.4;">🔍</span>
         <span style="font-size:13px;">deep work attention</span>
       </div>
+    </div>
+
+    <!-- Creativity: S5 — Filter-scoped search indicator -->
+    <!-- Shown when search is opened from Library with active filters applied -->
+    <div style="display:flex; align-items:center; padding:6px 20px; border-bottom:1px solid var(--border); background:rgba(0,113,227,0.04); gap:8px; flex-shrink:0;">
+      <span style="font-size:11px; color:var(--text-secondary);">Searching within:</span>
+      <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">Business</span>
+      <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:rgba(52,199,89,0.1); color:rgb(52,199,89);">Summarized</span>
+      <span style="flex:1;"></span>
+      <span style="font-size:11px; color:var(--accent); cursor:pointer;">Search all books</span>
     </div>
 
     <div style="flex:1; display:flex;">
@@ -489,6 +504,11 @@
 
       <!-- Quick actions -->
       <div style="padding:12px 16px 4px; font-size:10px; color:var(--text-secondary); font-weight:500;">QUICK ACTIONS</div>
+      <!-- Creativity: N10 — "Surprise me" action in empty search state -->
+      <div style="padding:6px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span style="opacity:0.5;">🎲</span> Surprise me
+        <span style="font-size:10px; color:var(--text-secondary); margin-left:auto;">Random highlight or concept</span>
+      </div>
       <div style="padding:6px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:12px;">
         <span style="opacity:0.5;">📁</span> Upload a book
       </div>
@@ -504,8 +524,14 @@
 <div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:940px; margin:0 auto;">
   <h3 style="margin-bottom:10px;">Search — Design Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
-    <li><strong>⌘K Command Palette</strong>: Centered modal, instant results grouped by type (Books, Sections, Concepts, Annotations). Keyboard navigation (↑↓ navigate, ↵ open, ⇧↵ full results). Match highlighting in bold. Empty state shows recent searches + quick actions.</li>
+    <li><strong>⌘K Command Palette</strong>: Centered modal, instant results grouped by type (Books, Sections, Concepts, Annotations). Keyboard navigation (↑↓ navigate, ↵ open, ⇧↵ full results). Match highlighting in bold. Empty state shows recent searches + quick actions + "Surprise me" (N10).</li>
     <li><strong>Full Results Page</strong>: Left sidebar filters (Source Type with counts, Book filter, Tag filter). Results grouped by book with match count. Each result shows: type badge (color-coded), title, snippet with highlights, relevance score. Filter sidebar auto-collapses when result count &lt; 20, showing a "Show filters" toggle link instead; auto-expands when results &gt; 20.</li>
+    <!-- Creativity: S5 -->
+    <li><strong>Filter-scoped search (S5)</strong>: When opened from Library with active filters, shows "Searching within: [filter tags]" indicator below search input. A "Search all books" link removes the scope and searches the full library.</li>
+    <!-- Creativity: N1 -->
+    <li><strong>Command mode (N1, Nice-to-have V1.1+)</strong>: Typing <code>&gt;</code> prefix in the palette activates command mode. Accepts commands like "&gt; Night Reading", "&gt; set font Serif", "&gt; export Deep Work". Palette footer updates to show available commands.</li>
+    <!-- Creativity: N10 -->
+    <li><strong>"Surprise me" (N10)</strong>: In empty search state, a "Surprise me" quick action surfaces a random highlight, annotation, or concept from the user's library — encouraging serendipitous rediscovery.</li>
     <li><strong>Hybrid search</strong>: BM25 (keyword) + semantic (embedding) + RRF fusion. Indicated in footer/header so user knows it's more than keyword matching.</li>
     <li><strong>Result types</strong>: section (blue), summary (green), concept (purple), annotation (orange) — each color-coded consistently.</li>
     <li><strong>Result actions</strong>: Click opens the source directly (section reader, concept tooltip, annotation in context). "Show N more" expands within book group.</li>

@@ -167,20 +167,72 @@
   Upload → Configure (Metadata / Structure / Preset) → Process. One continuous flow. User can also exit during Configure with "Save without processing" to summarize later.
 </p>
 
-<!-- STEP 4: PRESET SELECTION (with expandable details) -->
+<!-- Creativity: M2 — Auto-populate metadata + single-tap advance -->
+<!-- STEP 2: METADATA (auto-populated from book file) -->
 <div class="mockup" style="max-width:660px; margin:0 auto;">
-  <div class="mockup-header">Step 4 — Choose Preset (with expandable details)</div>
+  <div class="mockup-header">Step 2 — Metadata (auto-populated)</div>
   <div class="mockup-body" style="font-size:12px; padding:20px;">
 
-    <!-- Collapsed preset card -->
+    <!-- Confirmation banner -->
+    <div style="display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:10px; background:rgba(52,199,89,0.08); border:1px solid rgba(52,199,89,0.2); margin-bottom:16px;">
+      <div style="width:22px;height:22px;border-radius:50%;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">&#x2713;</div>
+      <div style="flex:1;">
+        <div style="font-size:12px; font-weight:500;">Title, author, and cover extracted from book metadata.</div>
+        <div style="font-size:11px; color:var(--text-secondary);">Review below or tap Next to continue.</div>
+      </div>
+    </div>
+
+    <!-- Auto-populated fields -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Title</div>
+      <div style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); font-size:13px;">Deep Work: Rules for Focused Success in a Distracted World</div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Author</div>
+      <div style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); font-size:13px;">Cal Newport</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Language</div>
+        <div style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); font-size:13px;">English</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Tags</div>
+        <div style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); font-size:13px; color:var(--text-tertiary);">Add tags...</div>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; margin-top:16px;">
+      <div style="padding:8px 16px; border-radius:8px; background:var(--bg-tertiary); font-size:12px; cursor:pointer;">&#x2190; Back</div>
+      <!-- Prominent Next button as default path -->
+      <div style="padding:10px 28px; border-radius:8px; background:var(--accent); color:white; font-size:13px; font-weight:500; cursor:pointer; box-shadow:0 2px 8px rgba(0,113,227,0.3);">Next &#x2192;</div>
+    </div>
+  </div>
+</div>
+<!-- End Creativity: M2 -->
+
+<div style="height:28px;"></div>
+
+<!-- STEP 4: PRESET SELECTION (with expandable details) -->
+<div class="mockup" style="max-width:660px; margin:0 auto;">
+  <!-- Creativity: S2 — Processing Profile bundle -->
+  <div class="mockup-header">Step 4 — Choose Processing Profile</div>
+  <div class="mockup-body" style="font-size:12px; padding:20px;">
+
+    <!-- Collapsed preset card (with bundled verification + auto-retry) -->
     <div style="padding:14px; border-radius:10px; border:2px solid var(--accent); background:rgba(0,122,255,0.03); margin-bottom:8px;">
       <div style="display:flex; align-items:center; gap:8px; cursor:pointer;">
         <span style="font-size:13px; font-weight:500;">Practitioner Bullets</span>
         <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
         <span style="flex:1;"></span>
-        <span style="font-size:10px; color:var(--accent); cursor:pointer;">▾ Details</span>
+        <span style="font-size:10px; color:var(--accent); cursor:pointer;">&#x25BE; Details</span>
       </div>
       <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Actionable bullet points for practitioners · brief compression · key concepts focus</div>
+      <!-- Bundled defaults shown as subtle chips -->
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <span style="font-size:9px; padding:2px 8px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success);">Verification included</span>
+        <span style="font-size:9px; padding:2px 8px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success);">Auto-retry on failure</span>
+      </div>
 
       <!-- EXPANDED DETAILS -->
       <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
@@ -216,25 +268,29 @@
       </div>
     </div>
 
-    <!-- Recommended preset (Balanced) — pre-selected with badge -->
+    <!-- Recommended profile (Balanced) — pre-selected with badge -->
     <div style="padding:14px; border-radius:10px; border:2px solid var(--accent); background:var(--selected-bg); margin-bottom:8px; cursor:pointer;">
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:13px; font-weight:500;">Balanced</span>
         <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
         <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:rgba(255,159,10,0.12); color:rgb(255,159,10); font-weight:500;">&#x2605; Recommended</span>
         <span style="flex:1;"></span>
-        <span style="font-size:10px; color:var(--text-secondary);">▸ Details</span>
+        <span style="font-size:10px; color:var(--text-secondary);">&#x25B8; Details</span>
       </div>
       <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Narrative prose · standard compression (20%) · key concepts + frameworks</div>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <span style="font-size:9px; padding:2px 8px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success);">Verification included</span>
+        <span style="font-size:9px; padding:2px 8px; border-radius:4px; background:rgba(52,199,89,0.1); color:var(--success);">Auto-retry on failure</span>
+      </div>
     </div>
 
-    <!-- Other presets (collapsed) -->
+    <!-- Other profiles (collapsed) -->
     <div style="padding:14px; border-radius:10px; border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:13px; font-weight:500;">Academic Detailed</span>
         <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
         <span style="flex:1;"></span>
-        <span style="font-size:10px; color:var(--text-secondary);">▸ Details</span>
+        <span style="font-size:10px; color:var(--text-secondary);">&#x25B8; Details</span>
       </div>
       <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Comprehensive narrative · detailed compression · full coverage</div>
     </div>
@@ -244,33 +300,35 @@
         <span style="font-size:13px; font-weight:500;">Executive Brief</span>
         <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:var(--bg-tertiary); color:var(--text-secondary);">system</span>
         <span style="flex:1;"></span>
-        <span style="font-size:10px; color:var(--text-secondary);">▸ Details</span>
+        <span style="font-size:10px; color:var(--text-secondary);">&#x25B8; Details</span>
       </div>
       <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Concise bullets for executives · brief compression · key concepts</div>
     </div>
 
-    <!-- Custom preset trigger -->
+    <!-- Custom profile trigger -->
     <div style="padding:14px; border-radius:10px; border:1px dashed var(--border); cursor:pointer; margin-bottom:16px;">
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:13px; color:var(--text-secondary);">+ Create Custom Preset</span>
+        <span style="font-size:13px; color:var(--text-secondary);">+ Create Custom Profile</span>
       </div>
     </div>
 
-    <!-- Advanced options (collapsed by default) -->
+    <!-- Advanced options disclosure (individual toggles) -->
     <details style="margin-bottom:12px;">
       <summary style="font-size:11px; color:var(--text-secondary); cursor:pointer; list-style:none; display:flex; align-items:center; gap:4px; padding:6px 0;">
         <span style="font-size:10px; transition:transform 0.15s;">&#x25B8;</span>
         <span>Advanced options</span>
+        <span style="font-size:9px; color:var(--text-tertiary); margin-left:4px;">(override profile defaults)</span>
       </summary>
-      <div style="display:flex; align-items:center; gap:12px; padding:8px 0 4px 16px; font-size:11px;">
+      <div style="display:flex; flex-direction:column; gap:8px; padding:8px 0 4px 16px; font-size:11px;">
         <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary); cursor:pointer;">
-          <input type="checkbox" checked style="accent-color:var(--accent);"> Run eval
+          <input type="checkbox" checked style="accent-color:var(--accent);"> Run verification (16-assertion eval)
         </label>
         <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary); cursor:pointer;">
-          <input type="checkbox" checked style="accent-color:var(--accent);"> Auto-retry on failure
+          <input type="checkbox" checked style="accent-color:var(--accent);"> Auto-retry sections that fail critical assertions
         </label>
       </div>
     </details>
+    <!-- End Creativity: S2 -->
 
     <!-- Cost/time estimate card -->
     <div style="display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(0,113,227,0.05); border:1px solid rgba(0,113,227,0.12); margin-bottom:16px;">
@@ -656,6 +714,8 @@
   <h3 style="margin-bottom:10px;">Upload & Processing — Complete Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
     <li><strong>3-step wizard</strong>: Upload → Configure (Metadata / Structure / Preset as sub-steps) → Process</li>
+    <li><strong>Metadata auto-populate (M2)</strong>: Title, author, and cover extracted from book metadata. Confirmation banner at top with "Review below or tap Next to continue." Next button is prominent as the default path.</li>
+    <li><strong>Processing Profile (S2)</strong>: Preset cards bundle verification and auto-retry as defaults (shown as subtle chips). "Advanced options" disclosure allows overriding individual toggles. Replaces separate checkboxes with a unified profile concept.</li>
     <li><strong>Preset details</strong>: Expandable cards showing 4 facets + prompt preview + skipped assertions</li>
     <li><strong>Custom preset</strong>: 2×2 grid of facet selectors (Style, Audience, Compression, Focus), each with card-style options showing name + description. Option to save as reusable preset.</li>
     <li><strong>Merge</strong>: Checkbox selection on section list → "Merge Selected" toolbar → preview with combined title + char count → confirm</li>

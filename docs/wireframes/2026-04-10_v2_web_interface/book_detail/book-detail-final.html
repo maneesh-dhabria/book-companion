@@ -141,8 +141,9 @@
   </style>
 </head>
 <body>
+<!-- Creativity: M1 — Summary is the default view when opening a section -->
 <h2>Book Detail — Refined Design</h2>
-<p class="subtitle">Breadcrumb nav, Original/Summary toggle, collapsible context sidebar, reader settings</p>
+<p class="subtitle">Breadcrumb nav, Original/Summary toggle (Summary default), collapsible context sidebar, reader settings</p>
 
 <div class="mockup" style="max-width:960px; margin:0 auto;">
   <div class="mockup-header">Reading a section summary — sidebar open</div>
@@ -176,15 +177,16 @@
         <span style="font-size:13px; cursor:pointer; opacity:0.5;" title="Toggle sidebar">💬</span>
       </div>
 
+      <!-- Creativity: M1 — Summary-first default. Summary tab is active/selected on load. -->
       <!-- Original / Summary toggle + section meta -->
       <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:10px; flex-shrink:0;">
-        <!-- Toggle -->
+        <!-- Toggle — Summary is the default active state (M1) -->
         <div style="display:flex; background:var(--bg-tertiary); border-radius:8px; padding:2px; gap:1px;">
           <span style="font-size:11px; padding:4px 14px; border-radius:6px; color:var(--text-secondary); cursor:pointer;">Original</span>
           <span style="font-size:11px; padding:4px 14px; border-radius:6px; background:var(--bg-secondary); font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,0.1); cursor:pointer;">Summary</span>
         </div>
 
-        <span style="font-size:10px; color:var(--text-secondary);">chapter · 4,230 chars · 38% compression</span>
+        <span style="font-size:10px; color:var(--text-secondary);">chapter · 4,230 chars · 38% compression · <em>Summary shown by default</em></span>
 
         <div style="flex:1;"></div>
 
@@ -196,12 +198,27 @@
       <div style="flex:1; padding:24px; overflow-y:auto; display:flex; justify-content:center;">
         <div style="max-width:680px; width:100%; line-height:1.9; font-size:14px;">
 
-          <!-- P5: Eval collapsed to trust badge — details on separate eval page -->
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
-            <span style="font-size:11px; padding:3px 10px; border-radius:12px; background:rgba(255,159,10,0.12); color:rgb(200,140,0); font-weight:600;">Review 14/16</span>
-            <span style="font-size:10px; color:var(--accent); cursor:pointer;">View details &#x2192;</span>
+          <!-- Creativity: S3 — Re-entry card. Shown when returning to a previously-read section. -->
+          <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:16px; background:rgba(0,113,227,0.04); border:1px solid rgba(0,113,227,0.15); border-radius:10px;">
+            <span style="font-size:13px;">📌</span>
+            <div style="flex:1; font-size:11px; line-height:1.5;">
+              <span style="color:var(--text-secondary);">Last time here, you highlighted:</span>
+              <span style="font-style:italic;">"knowledge work lacks clear productivity metrics"</span>
+            </div>
+            <span style="font-size:12px; color:var(--text-secondary); cursor:pointer; padding:2px 6px;" title="Dismiss">&times;</span>
           </div>
 
+          <!-- Creativity: M3 — Plain-language eval badges. "Trusted"→"This summary is solid", "Review"→"Worth a quick review", "Issues"→"Some issues found" -->
+          <!-- Creativity: M8 — "Eval" renamed to "Verification" in all user-facing labels -->
+          <!-- P5: Verification collapsed to trust badge — details on separate verification page -->
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+            <span style="font-size:11px; padding:3px 10px; border-radius:12px; background:rgba(255,159,10,0.12); color:rgb(200,140,0); font-weight:600;" title="14 of 16 assertions passed. Hover individual assertion names for plain-language explanations.">Worth a quick review · 14/16</span>
+            <span style="font-size:10px; color:var(--accent); cursor:pointer;">View verification details &#x2192;</span>
+          </div>
+          <!-- M3: Badge label mapping: green = "This summary is solid", yellow = "Worth a quick review", red = "Some issues found". -->
+          <!-- M3: Assertion names in the detail view show plain-language tooltips (e.g., "no_hallucinated_facts" → "Nothing made up"). -->
+
+          <!-- Creativity: S1 — Clicking a concept chip can also open the AI tab with a seeded question: "Explain [concept] as discussed in [section]" -->
           <!-- Key concepts as clickable chips -->
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;">
             <span style="font-size:11px; padding:3px 10px; border-radius:14px; background:var(--bg-tertiary); cursor:pointer; border:1px solid var(--border);">Open Floor Plans</span>
@@ -215,6 +232,7 @@
               <!-- R3: Cross-view annotation indicator — this text is highlighted in Original view -->
               <span style="display:inline-block; border:1px dashed rgba(255,200,50,0.5); background:rgba(255,200,50,0.06); padding:0 3px; border-radius:3px; opacity:0.5; font-size:10px; color:var(--text-secondary); font-style:italic; margin-left:4px; vertical-align:middle; cursor:pointer;" title="This passage has a highlight in Original view">Highlighted in Original</span>
             </li>
+            <!-- Creativity: N7 — Highlights use a hand-drawn marker stroke aesthetic (skeuomorphic). In implementation, the highlight background should use an SVG texture or CSS gradient that mimics a real highlighter pen stroke with slight irregularity, not a flat rectangle. -->
             <li style="margin-bottom:8px;">The <span style="background:rgba(255,200,50,0.25); padding:1px 3px; border-radius:2px; cursor:pointer;">Metric Black Hole</span>: knowledge work lacks clear productivity metrics, so workers default to visible busyness</li>
             <li style="margin-bottom:8px;"><strong>Busyness as a Proxy for Productivity</strong>: without better measures, doing lots of stuff in a visible manner becomes the default
               <!-- R3: Cross-view annotation indicator — a note exists on this passage in Original view -->
@@ -282,7 +300,8 @@
 
 <!-- SIDEBAR COLLAPSED STATE -->
 <div class="mockup" style="max-width:960px; margin:0 auto;">
-  <div class="mockup-header">Sidebar collapsed — clean reading mode</div>
+  <!-- Creativity: N5 — Focus Mode. Press `f` to collapse all chrome (breadcrumb, toggle bar, sidebar), leaving only the reading area centered on screen. Press `f` or `Esc` to exit. -->
+  <div class="mockup-header">Sidebar collapsed — clean reading mode (press <code>f</code> for Focus Mode: hides all chrome)</div>
   <div class="mockup-body" style="min-height:240px; font-size:13px; padding:0; display:flex; flex-direction:column;">
     <!-- Breadcrumb header -->
     <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:6px; flex-shrink:0;">
@@ -461,6 +480,10 @@
         <span style="color:var(--text-secondary);">·</span>
         <span style="color:var(--text-secondary); cursor:pointer;">Related: Busyness Proxy, Attention Residue</span>
       </div>
+      <!-- Creativity: S1 — "Ask AI" action in concept tooltip opens AI tab with seeded question -->
+      <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
+        <span style="font-size:10px; color:rgb(175,82,222); cursor:pointer; display:flex; align-items:center; gap:4px;">✦ Ask AI about this concept</span>
+      </div>
     </div>
   </div>
 </div>
@@ -539,14 +562,17 @@
 <div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:960px; margin:0 auto;">
   <h3 style="margin-bottom:10px;">Book Detail — Design Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
-    <li><strong>Breadcrumb header</strong>: Library › Book Title › Chapter (dropdown). Chapter segment opens full TOC with search + eval status dots.</li>
-    <li><strong>Original/Summary toggle</strong>: Segmented control, not tabs. One or the other.</li>
-    <li><strong>Eval</strong>: Collapsed to a single trust badge pill (green/yellow/red). "View details" link navigates to a dedicated eval page instead of inline expansion (P5).</li>
+    <li><strong>Breadcrumb header</strong>: Library › Book Title › Chapter (dropdown). Chapter segment opens full TOC with search + verification status dots.</li>
+    <li><strong>Original/Summary toggle</strong>: Segmented control, not tabs. One or the other. <strong>Summary is the default view (M1)</strong> — users land on the summary when opening a section.</li>
+    <li><strong>Verification</strong> (renamed from Eval — M8): Collapsed to a single trust badge pill with <strong>plain-language labels (M3)</strong>: "This summary is solid" / "Worth a quick review" / "Some issues found". Assertion names show plain-language tooltips. "View verification details" link navigates to a dedicated page (P5).</li>
     <li><strong>Right sidebar</strong>: 2 tabs — Annotations | Ask AI. Collapsible. Badge on 💬 icon shows count when closed.</li>
-    <li><strong>Concepts</strong>: Clickable chips in summary. Click → tooltip with definition + cross-references.</li>
+    <li><strong>Concepts</strong>: Clickable chips in summary. Click → tooltip with definition + cross-references + "Ask AI about this concept" action (S1: opens AI tab with seeded question).</li>
     <li><strong>Reader settings (Aa)</strong>: Popover with font size, line spacing, content width, background theme (Light/Sepia/Dark/OLED).</li>
     <li><strong>Text selection</strong>: Floating toolbar → Highlight, Note, Ask AI, Link, Copy.</li>
-    <li><strong>Actions</strong>: Summarize + Evaluate accessible from book-level breadcrumb dropdown or book summary page.</li>
+    <li><strong>Actions</strong>: Summarize + Verify accessible from book-level breadcrumb dropdown or book summary page (M8: "Evaluate" renamed to "Verify" in all user-facing labels).</li>
+    <li><strong>Re-entry card (S3)</strong>: When returning to a previously-read section, a dismissible card appears above content: "Last time here, you highlighted: '...' " with an X to close.</li>
+    <li><strong>Focus Mode (N5)</strong>: Press <code>f</code> to collapse all chrome (breadcrumb, toggle bar, sidebar), leaving only the reading area. Press <code>f</code> or <code>Esc</code> to restore. Keyboard shortcut shown in reader settings tooltip.</li>
+    <li><strong>Skeuomorphic highlights (N7)</strong>: Text highlights use a hand-drawn marker stroke aesthetic — SVG texture or CSS gradient mimicking a real highlighter pen, not a flat rectangle.</li>
   </ul>
 </div>
 

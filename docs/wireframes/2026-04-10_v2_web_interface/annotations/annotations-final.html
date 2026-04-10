@@ -141,25 +141,36 @@
   </style>
 </head>
 <body>
-<h2>Annotations & Concepts Explorer</h2>
+<!-- Creativity: N11 — Renamed from "Annotations" to "Your Notes" (internal code still uses "annotations") -->
+<h2>Your Notes & Concepts Explorer</h2>
 <p class="subtitle">Global views from sidebar — browse across all books</p>
 
 <!-- ANNOTATIONS PAGE -->
 <div class="mockup" style="max-width:940px; margin:0 auto;">
-  <div class="mockup-header">Annotations — Global View (from sidebar)</div>
+  <!-- Creativity: N11 — Page title renamed from "Annotations" to "Your Notes" -->
+  <div class="mockup-header">Your Notes — Global View (from sidebar)</div>
   <div class="mockup-body" style="font-size:13px; padding:0; min-height:500px; display:flex; flex-direction:column;">
 
     <!-- Header -->
     <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px; flex-shrink:0;">
-      <div style="font-size:16px; font-weight:600;">Annotations</div>
+      <div style="font-size:16px; font-weight:600;">Your Notes</div>
       <div style="font-size:11px; color:var(--text-secondary);">42 notes across 5 books</div>
       <div style="flex:1;"></div>
       <div style="display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; width:260px; gap:8px;">
         <span style="font-size:12px; opacity:0.4;">🔍</span>
-        <span style="font-size:11px; color:var(--text-secondary);">Search annotations...</span>
+        <span style="font-size:11px; color:var(--text-secondary);">Search notes...</span>
       </div>
       <div style="padding:5px 12px; border-radius:8px; background:var(--accent); color:white; font-size:11px;">Export</div>
       <div style="padding:5px 12px; border-radius:8px; background:var(--success); color:white; font-size:11px; cursor:pointer;">+ Add Note</div>
+    </div>
+
+    <!-- Creativity: S7 — Browse vs Review mode toggle -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:12px; flex-shrink:0;">
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:8px; padding:2px; gap:1px;">
+        <span style="font-size:11px; padding:5px 14px; border-radius:6px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1); font-weight:500; cursor:pointer;">Browse</span>
+        <span style="font-size:11px; padding:5px 14px; border-radius:6px; color:var(--text-secondary); cursor:pointer;">Review</span>
+      </div>
+      <span style="font-size:10px; color:var(--text-secondary);">Browse: list view | Review: one-at-a-time flashcard with "Still relevant?" prompt</span>
     </div>
 
     <!-- Add Note inline form (expandable) -->
@@ -282,6 +293,78 @@
           <span style="font-size:14px;">📗</span>
           <span style="font-size:13px; font-weight:600;">Atomic Habits</span>
           <span style="font-size:11px; color:var(--text-secondary);">James Clear · 12 annotations</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Creativity: S7 — Review Mode wireframe -->
+<div class="mockup" style="max-width:940px; margin:24px auto 0;">
+  <div class="mockup-header">Your Notes — Review Mode (S7)</div>
+  <div class="mockup-body" style="font-size:13px; padding:0; min-height:400px; display:flex; flex-direction:column;">
+
+    <!-- Header (same as Browse) -->
+    <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid var(--border); gap:12px; flex-shrink:0;">
+      <div style="font-size:16px; font-weight:600;">Your Notes</div>
+      <div style="font-size:11px; color:var(--text-secondary);">Reviewing 42 notes</div>
+      <div style="flex:1;"></div>
+    </div>
+
+    <!-- Mode toggle with Review active -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:12px; flex-shrink:0;">
+      <div style="display:flex; background:var(--bg-tertiary); border-radius:8px; padding:2px; gap:1px;">
+        <span style="font-size:11px; padding:5px 14px; border-radius:6px; color:var(--text-secondary); cursor:pointer;">Browse</span>
+        <span style="font-size:11px; padding:5px 14px; border-radius:6px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1); font-weight:500; cursor:pointer;">Review</span>
+      </div>
+      <span style="font-size:10px; color:var(--text-secondary);">7 of 42</span>
+      <!-- Progress bar -->
+      <div style="flex:1; max-width:200px; height:4px; background:var(--bg-tertiary); border-radius:2px; overflow:hidden;">
+        <div style="width:17%; height:100%; background:var(--accent); border-radius:2px;"></div>
+      </div>
+    </div>
+
+    <!-- Flashcard-style single annotation -->
+    <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:32px 40px;">
+      <div style="max-width:560px; width:100%;">
+        <!-- Source context -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <span style="font-size:14px;">📘</span>
+          <span style="font-size:12px; font-weight:500;">Deep Work</span>
+          <span style="font-size:11px; color:var(--text-secondary);">Ch.3 — Deep Work Is Rare</span>
+          <span style="flex:1;"></span>
+          <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(255,200,50,0.15); color:rgb(200,160,30);">highlight</span>
+        </div>
+
+        <!-- The annotation card (larger, centered) -->
+        <div style="padding:24px; border-radius:12px; border:1px solid var(--border); background:var(--bg-secondary); margin-bottom:20px;">
+          <div style="font-size:14px; font-style:italic; color:var(--text-secondary); margin-bottom:8px; border-left:3px solid rgb(255,200,50); padding-left:12px; line-height:1.7;">
+            "Metric Black Hole: knowledge work lacks clear productivity metrics"
+          </div>
+          <div style="font-size:13px; line-height:1.7; margin-top:12px;">
+            Connects to Ch.5's discussion of lead vs lag measures. Also relevant to Kahneman's System 1/2.
+          </div>
+          <div style="display:flex; gap:6px; margin-top:12px;">
+            <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:rgba(0,122,255,0.1); color:var(--accent);">productivity</span>
+            <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:rgba(175,82,222,0.1); color:rgb(175,82,222);">metrics</span>
+          </div>
+        </div>
+
+        <!-- "Still relevant?" prompt -->
+        <div style="text-align:center; margin-bottom:20px;">
+          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">Still relevant?</div>
+          <div style="display:flex; justify-content:center; gap:10px;">
+            <div style="padding:6px 20px; border-radius:8px; background:rgba(52,199,89,0.12); color:rgb(52,199,89); font-size:12px; font-weight:500; cursor:pointer; border:1px solid rgba(52,199,89,0.2);">Yes, keep</div>
+            <div style="padding:6px 20px; border-radius:8px; background:rgba(255,159,10,0.12); color:rgb(255,159,10); font-size:12px; font-weight:500; cursor:pointer; border:1px solid rgba(255,159,10,0.2);">Edit note</div>
+            <div style="padding:6px 20px; border-radius:8px; background:rgba(255,59,48,0.1); color:rgb(255,59,48); font-size:12px; font-weight:500; cursor:pointer; border:1px solid rgba(255,59,48,0.15);">Archive</div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="padding:6px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; color:var(--text-secondary); cursor:pointer;">← Previous</div>
+          <span style="font-size:11px; color:var(--text-secondary);">7 / 42</span>
+          <div style="padding:6px 16px; border-radius:8px; background:var(--accent); color:white; font-size:12px; cursor:pointer;">Next →</div>
         </div>
       </div>
     </div>
@@ -447,9 +530,13 @@
 <div style="height:20px;"></div>
 
 <div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:940px; margin:0 auto;">
-  <h3 style="margin-bottom:10px;">Annotations & Concepts — Design Summary</h3>
+  <h3 style="margin-bottom:10px;">Your Notes & Concepts — Design Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
-    <li><strong>Annotations page</strong>: Header with count + search + export. Filter bar (Book, Type, Tags) + Group by (Book/Tag/Section/None) + Sort (Newest/Oldest/Book order). Cards show: type badge (highlight/note/freeform), source breadcrumb, quoted text, note, tags, link count. Grouped by book with collapsible accordions. Click navigates to source in reader.</li>
+    <!-- Creativity: N11 -->
+    <li><strong>Renamed to "Your Notes" (N11)</strong>: Page title changed from "Annotations" to "Your Notes" in the UI. Sidebar navigation also says "Your Notes". Internal code and API still uses "annotations" for backwards compatibility.</li>
+    <li><strong>Your Notes page</strong>: Header with count + search + export. Filter bar (Book, Type, Tags) + Group by (Book/Tag/Section/None) + Sort (Newest/Oldest/Book order). Cards show: type badge (highlight/note/freeform), source breadcrumb, quoted text, note, tags, link count. Grouped by book with collapsible accordions. Click navigates to source in reader.</li>
+    <!-- Creativity: S7 -->
+    <li><strong>Browse vs Review modes (S7)</strong>: Toggle at top of page. Browse is the default list layout. Review mode shows one annotation at a time in a centered flashcard style, with a "Still relevant?" prompt (Yes keep / Edit note / Archive) and Previous/Next navigation. Progress bar shows position through the set. Great for periodic note review and cleanup.</li>
     <li><strong>Concepts Explorer</strong>: Two-panel layout — concept list (left, grouped by book) + concept detail (right). List shows term + "edited" badge + section count. Detail shows: definition (editable), section appearances (clickable), related concepts as chips (cross-book concepts in purple), related annotations.</li>
     <li><strong>Cross-book connections</strong>: Related concepts from other books shown with distinct color + ↗ icon. Clicking navigates to that concept in the other book's context.</li>
     <li><strong>Filtering pattern</strong>: Same multi-select dropdown pattern as Library page for consistency (Book, Tags, Type filters).</li>
@@ -457,10 +544,10 @@
   </ul>
 </div>
 
-<!-- Undo toast notification (appears after deleting an annotation) -->
+<!-- Undo toast notification (appears after deleting a note) -->
 <div style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:1000;">
   <div style="background:var(--text-primary); color:var(--bg-primary); padding:12px 20px; border-radius:12px; display:flex; align-items:center; gap:14px; box-shadow:0 8px 24px rgba(0,0,0,0.25); font-size:13px; min-width:280px; overflow:hidden; position:relative;">
-    <span>Annotation deleted</span>
+    <span>Note deleted</span>
     <span style="flex:1;"></span>
     <span style="color:var(--accent); font-weight:600; cursor:pointer;">Undo</span>
     <!-- Timer indicator bar -->

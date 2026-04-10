@@ -172,7 +172,7 @@
       <div style="font-size:11px; color:var(--text-secondary); cursor:pointer; padding:4px 8px;">⋯</div>
     </div>
 
-    <!-- Single filter row -->
+    <!-- Creativity: M5 — Single filter row with live counts -->
     <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid var(--border); gap:8px; flex-wrap:wrap;">
       <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Tags ▾</div>
       <div style="font-size:11px; padding:4px 10px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; flex-shrink:0;">Status ▾</div>
@@ -185,6 +185,33 @@
         <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:var(--bg-secondary); box-shadow:0 1px 2px rgba(0,0,0,0.1);">▦</span>
         <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">☰</span>
         <span style="font-size:11px; padding:3px 8px; border-radius:4px; color:var(--text-secondary);">▤</span>
+      </div>
+    </div>
+
+    <!-- Creativity: M5 — Live filter counts in expanded dropdown -->
+    <!-- When a filter dropdown is open, each option shows how many books match that value.
+         Counts update dynamically as other filters change (cross-filter updating).
+         Example: if Status filter is set to "Summarized", the Tags dropdown counts
+         only reflect books that are also "Summarized". -->
+    <div style="position:relative; max-width:920px; margin:0 auto;">
+      <!-- Simulated open Tags dropdown with live counts -->
+      <div style="position:absolute; top:0; left:20px; z-index:10; width:220px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.15); padding:6px; font-size:11px; display:none;">
+        <!-- NOTE: This dropdown is hidden (display:none) in the wireframe.
+             Shown here as a reference for the M5 live filter counts pattern. -->
+        <div style="padding:4px 8px; font-size:10px; color:var(--text-secondary); font-weight:500;">TAGS</div>
+        <label style="display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; cursor:pointer;">
+          <input type="checkbox" checked style="accent-color:var(--accent);"> Business <span style="margin-left:auto; color:var(--text-secondary); font-size:10px;">7 books</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; cursor:pointer;">
+          <input type="checkbox" style="accent-color:var(--accent);"> Psychology <span style="margin-left:auto; color:var(--text-secondary); font-size:10px;">2 books</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; cursor:pointer;">
+          <input type="checkbox" style="accent-color:var(--accent);"> Productivity <span style="margin-left:auto; color:var(--text-secondary); font-size:10px;">3 books</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:6px; cursor:pointer;">
+          <input type="checkbox" style="accent-color:var(--accent);"> Strategy <span style="margin-left:auto; color:var(--text-secondary); font-size:10px;">1 book</span>
+        </label>
+        <div style="border-top:1px solid var(--border); margin-top:4px; padding:6px 8px; font-size:10px; color:var(--text-secondary);">Counts update across filters</div>
       </div>
     </div>
 
@@ -255,6 +282,8 @@
     <li><strong>Filter row</strong>: Uniform multi-select dropdowns (Tags, Status, Author, Eval, Format) + Sort + View switcher (Grid/List/Table)</li>
     <li><strong>Book cards</strong>: Cover, title, author, tags, processing status + eval score, section count</li>
     <li><strong>Views save</strong>: All filters, sort, display mode, table columns</li>
+    <!-- Creativity: M5 -->
+    <li><strong>Live filter counts (M5)</strong>: Each filter dropdown option shows "X books" count next to it. Counts cross-update dynamically — e.g., selecting "Summarized" in Status recalculates counts in Tags to reflect only summarized books. Provides instant feedback on filter impact before applying.</li>
   </ul>
 </div>
 
