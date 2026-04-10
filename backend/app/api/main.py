@@ -9,7 +9,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import books, eval, health, sections, summaries, views
+from app.api.routes import books, eval, health, processing, sections, summaries, views
+from app.api.sse import EventBus
 from app.config import Settings
 from app.db.session import create_session_factory
 
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = Settings()
     app.state.settings = settings
     app.state.session_factory = create_session_factory(settings)
+    app.state.event_bus = EventBus()
     yield
 
 
@@ -53,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(summaries.router)
     app.include_router(eval.router)
     app.include_router(views.router)
+    app.include_router(processing.router)
 
     # Serve static files (built Vue SPA) if directory exists
     settings = Settings()
