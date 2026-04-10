@@ -1,0 +1,7 @@
+# Light dev mode: only DB runs in Docker.
+# Backend: cd backend && uv run uvicorn app.api.main:app --reload --port 8000
+# Frontend: cd frontend && npm run dev
+services:
+  db:
+    ports:
+      - "${BOOKCOMPANION_DB_PORT:-5438}:5432"

@@ -3,7 +3,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: bookcompanion-db
     ports:
-      - "5438:5432"
+      - "${BOOKCOMPANION_DB_PORT:-5438}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
@@ -16,5 +16,23 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${BOOKCOMPANION_API_PORT:-8000}:8000"
+    environment:
+      BOOKCOMPANION_DATABASE__URL: postgresql+asyncpg://bookcompanion:bookcompanion@db:5432/bookcompanion
+      BOOKCOMPANION_NETWORK__HOST: "0.0.0.0"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backups:/app/backups
+    profiles:
+      - production
+
 volumes:
   pgdata:
+  backups:
