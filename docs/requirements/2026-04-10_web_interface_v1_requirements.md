@@ -401,21 +401,16 @@ Toggle group (3 icon buttons) to the right of sort:
 - When "Summary" is active:
   - If no summary exists: Show "No summary yet" message + "Summarize" button
   - If summary exists: Render default summary markdown
-  - **Summary version selector** below the toggle: Dropdown showing `preset_name + date` for each summary of this content. User-edited summaries show an "Edited" badge alongside the preset name. "History (N versions)" link opens comparison view.
+  - **Summary version**: The default summary (`default_summary_id`) is always shown automatically — no version picker is displayed unless multiple versions exist. When multiple versions exist, a "History (N versions)" link appears below the eval badge. Clicking it opens the comparison view. This avoids the "which version am I reading?" decision during normal reading. Users who want to switch versions do so intentionally via History.
   - **Edit preserves original**: When a user edits a summary (via inline editing), the edit is saved as a **new summary version** (with `user_edited=True`) rather than overwriting the AI-generated version. Both "AI version" and "My edit" appear in the version selector. The user-edited version becomes the new default.
-  - **Eval banner**: Compact inline banner within summary view:
-    - Green: "Eval: 16/16 passed" with checkmark
-    - Yellow: "Eval: 14/16 passed" with warning icon
-    - Red: "Eval: 8/16 passed" with alert icon
-    - Gray: "Not evaluated" with "Run eval" link
-    - Expandable: Click "View eval details" to show **inline expansion** (not a separate page):
-      - Assertions grouped by category in collapsible accordions: **Faithfulness** (4), **Completeness** (3), **Coherence** (3), **Specificity** (3), **Format** (3)
-      - Each assertion row: Name (e.g., `no_hallucinated_facts`), pass/fail icon (green check / red X), one-line reasoning text
-      - Failed assertions shown first within each category, with reasoning expanded by default
-      - Passed assertions show reasoning collapsed (click to expand)
-      - Deterministic assertions (e.g., `reasonable_length`) show "Deterministic" badge instead of "LLM-evaluated"
-      - Footer: "Eval run: [timestamp]" + "Re-evaluate" button
-      - Animation: Smooth accordion expand/collapse (200ms ease-out)
+  - **Eval trust badge**: Single compact badge within summary view (not an expandable accordion):
+    - Green badge: "Trusted" with checkmark (16/16 or 15/16 passed)
+    - Yellow badge: "Review" with warning icon (12-14/16 passed)
+    - Red badge: "Issues" with alert icon (< 12/16 passed)
+    - Gray badge: "Not evaluated" with "Run eval" link
+    - Score shown as "14/16" next to the badge label
+    - **"View details" link** navigates to a dedicated eval detail view (route: `/books/{id}/sections/{section_id}/eval`) rather than expanding inline. This keeps the reading experience clean and avoids QA-dashboard friction during study.
+    - The eval detail view shows the full grouped accordion (Faithfulness, Completeness, Coherence, Specificity, Format) with assertion names, pass/fail, reasoning, and Re-evaluate button.
 - When "Original" is active:
   - Render `content_md` from `BookSection`
   - No eval banner, no version selector
@@ -473,14 +468,12 @@ When user selects text in the reading area, a floating toolbar appears above the
   - Linked annotations: "Linked to: [Section X annotation]" (clickable)
   - Date (relative: "2 hours ago")
   - Actions: Edit, Link, "..." menu (Delete with 5-second undo toast, Copy text, Move to section)
-  - **Link dialog** (opened via Link action):
+  - **Inline quick-link** (opened via Link action): A compact popover (not a full modal) attached to the annotation card:
     - Search input: "Find annotation to link..." with instant results
-    - **Book filter dropdown**: Filter annotations by book (defaults to "All books")
-    - **Recent annotations** shown first when no search query is entered (last 10 created/edited)
-    - Search results show: annotation type badge, quoted text preview (truncated), source breadcrumb (Book > Section), date
-    - **Preview pane**: Clicking a search result shows a full preview of the target annotation before confirming the link
-    - "Link" confirmation button creates bidirectional link
-    - Result highlighting: search terms highlighted in annotation text
+    - Results show: annotation type badge, quoted text preview (truncated), source breadcrumb (Book > Section)
+    - **Recent annotations** shown first when no search query is entered (last 5)
+    - Click a result to link immediately (no preview pane, no confirmation step — keeps the interaction lightweight during reading)
+    - The **full link dialog** (with book filter, preview pane, and advanced search) is accessible from the global Annotations page where cross-book linking is a deliberate activity, not an interruption to reading flow
 - **Margin alignment**: When scrolling through content, annotations visually align with their corresponding highlighted text spans
 - **Freeform note input** at bottom: Text area for section-level notes not tied to specific text selections. "Add note" button.
 
@@ -504,12 +497,12 @@ When user selects text in the reading area, a floating toolbar appears above the
     - Send button (Cmd+Enter)
     - If text is selected in the reader: Context preview chip showing "Using selected text from [Section]" with X to remove
     - **"+ Add context" button**: Opens a section picker (TOC checkbox list) to include additional sections in the AI context. Selected sections appear as stacked context chips: "Using Chapter 3, Chapter 5, Chapter 8". Each chip has X to remove. This enables cross-chapter questions like "Compare the arguments in chapters 3 and 8."
-  - **Save as annotation**: Each AI response has a "Save as note" action that creates a freeform annotation on the relevant section
+  - **Save as annotation**: Each AI response has a "Save as note" action that creates a freeform annotation on the relevant section. Shows a confirmation toast: "Saved as annotation on [Section Name]" with an "Open" link to the Annotations sidebar.
 
 - **AI behavior**:
   - Context includes: current section content, current section summary (if exists), book title, author
   - Multi-section queries: AI can be asked about the entire book. Context window includes book summary + relevant section summaries. When additional sections are selected via "+ Add context", their content/summaries are included in the prompt.
-  - Streaming: AI responses stream token-by-token via SSE
+  - Streaming: AI responses stream token-by-token via SSE. During generation, a thin progress bar animates below the AI message bubble (indeterminate style) to provide visual feedback beyond the typing indicator dots.
 
 ---
 
@@ -540,10 +533,9 @@ When user selects text in the reading area, a floating toolbar appears above the
 
 #### 3.4.3 Font Selection
 
-- **Named font buttons**: Horizontal wrap of pill buttons, each showing the font name rendered in that font:
-  - Serif: Georgia, Merriweather, Literata, Lora
-  - Sans-serif: Inter, Open Sans
-  - Monospace: Fira Code, JetBrains Mono
+- **Named font buttons**: Horizontal wrap of pill buttons, each showing the font name rendered in that font. **Primary fonts** (shown by default):
+  - Georgia (serif), Merriweather (serif), Inter (sans-serif), Fira Code (monospace)
+- **"All fonts" expansion link**: Reveals additional options: Literata, Lora, Open Sans, JetBrains Mono. Collapsed by default to reduce choice overload.
 - Active font: Accent background + border
 - Fonts are loaded on demand (Google Fonts or self-hosted)
 
@@ -604,11 +596,24 @@ When user selects text in the reading area, a floating toolbar appears above the
 - Drag-and-drop anywhere on the Library page
 - Command palette: Type "upload" to see Upload action
 
+#### 3.5.1a Wizard Step Indicator
+
+The upload wizard uses a **3-step visual indicator** to reduce perceived complexity:
+
+| Visible Step | Label | Internal Sub-steps |
+|-------------|-------|-------------------|
+| 1 | **Upload** | File selection, parsing, Quick Upload fork |
+| 2 | **Configure** | Metadata review, Structure review, Preset selection |
+| 3 | **Process** | Summarization progress (in Book Detail) |
+
+The indicator shows 3 numbered circles connected by lines. Step 2 ("Configure") encompasses the Metadata, Structure Review, and Preset Selection screens as sub-steps — these advance within the same visual step. This reduces the perceived effort from 5 steps to 3 without removing any functionality.
+
 #### 3.5.2 Step 1: Upload
 
 - **Drag-and-drop zone**: Large dashed-border area with icon + "Drop your book here or click to browse"
 - **Accepted formats**: .epub, .mobi, .pdf
 - **Max file size**: 100MB (configurable via `storage.max_file_size_mb`)
+- **Cost hint** (shown when `settings.show_cost_estimates` is enabled): Muted text below the format note: "AI processing typically costs ~$1-2 per book." Appears before file selection to set expectations early, preventing surprise cost discovery at later steps.
 - **Progress**: Upload progress bar during file transfer to server
 - **Validation**:
   - File extension check (client-side, immediate)
@@ -714,9 +719,10 @@ When user selects text in the reading area, a floating toolbar appears above the
 
 - **"Manage Presets" link**: Navigates to Settings > Summarization Presets
 
-- **Processing options** (checkboxes below preset selection):
-  - "Run evaluation after summarization" (default: checked)
-  - "Auto-retry on eval failure" (default: checked, disabled if eval unchecked)
+- **Processing options**: The primary view shows only the "Start Summarizing" button and cost estimate. An **"Advanced options"** disclosure link expands to show:
+  - "Run evaluation after summarization" checkbox (default: checked)
+  - "Auto-retry on eval failure" checkbox (default: checked, disabled if eval unchecked)
+  - First-time users see only the preset selection and Start button. Power users expand Advanced for eval/retry control.
 
 - **Cost & time estimate** (shown when `settings.show_cost_estimates` is enabled):
   - Displayed below processing options as an informational card
@@ -791,7 +797,7 @@ After clicking "Start Summarizing," user is redirected to the Book Detail page. 
 
 Route: `/search?q={query}`
 
-- **Left sidebar** (collapsible on tablet/mobile):
+- **Left sidebar** (collapsible on tablet/mobile, **auto-collapsed when total results < 20** to reduce decision cost for quick searches):
   - **Source Type filter** with counts:
     - Sections (N)
     - Summaries (N)
@@ -912,7 +918,7 @@ Route: `/concepts`
 #### 3.8.3 Concept Detail (Right Panel)
 
 - **Term**: Large text, editable inline (click to edit). Editing sets `user_edited=True`.
-- **Definition**: Paragraph text, editable inline. Editing sets `user_edited=True`.
+- **Definition**: Paragraph text, editable inline. Editing sets `user_edited=True`. **"Copy" button** (clipboard icon) next to the definition copies the term + definition as plain text for pasting into notes, presentations, or emails.
 - **Section appearances**: List of sections where this concept appears:
   - Section title + book name (clickable, navigates to reader)
   - "First mentioned" badge on the earliest section
@@ -1055,6 +1061,7 @@ Left sidebar with sections:
   - Draggable: Swipe up from handle to expand, swipe down to collapse
   - Three snap points: Peek (30% height), Half (50%), Full (90%)
   - Dismissible by swiping down past peek
+  - **Minimum text size in bottom sheets: 14px** (applies to AI chat messages, annotation cards, and thread lists). Touch targets within bottom sheets: 44px minimum height.
 - Floating text selection toolbar: Same actions but larger touch targets (44px min)
 - Text selection: via long-press (standard mobile behavior)
 - Chapter navigation: TOC opens as full-screen bottom sheet
@@ -1062,7 +1069,7 @@ Left sidebar with sections:
 
 **Upload:**
 - Drag-and-drop zone replaced by "Choose File" button (uses native file picker)
-- **Same 5-step wizard as desktop** (Upload, Metadata, Structure Review, Preset Selection, Processing) for consistency across devices. Steps are full-screen, one at a time. Step indicator uses compact numbered dots connected by lines.
+- **3-step wizard indicator** matching desktop: Upload / Configure / Process. The step indicator shows 3 steps visually (Metadata + Structure Review are sub-steps within "Configure"; Preset Selection leads into "Process"). Steps are full-screen, one at a time. Step indicator uses compact numbered dots connected by lines.
 - Quick Upload fast path available on mobile too: "Start with Recommended Settings" after upload.
 - Structure review table: Card layout per section (one card per row, horizontally scrollable for wide tables)
 
