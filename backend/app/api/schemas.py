@@ -1,0 +1,272 @@
+"""Pydantic v2 request/response models for all API endpoints."""
+
+from __future__ import annotations
+
+from datetime import datetime  # noqa: TC003
+from typing import Any, Generic, TypeVar
+
+from pydantic import BaseModel, ConfigDict
+
+T = TypeVar("T")
+
+
+# --- Generic ---
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+    code: str
+
+
+class PaginatedResponse(BaseModel, Generic[T]):  # noqa: UP046
+    items: list[T]
+    total: int
+    page: int
+    per_page: int
+    pages: int
+
+
+# --- Authors ---
+
+
+class AuthorResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    role: str = "author"
+
+
+# --- Books ---
+
+
+class BookListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    status: str
+    file_format: str
+    file_size_bytes: int
+    authors: list[AuthorResponse] = []
+    section_count: int = 0
+    cover_url: str | None = None
+    has_summary: bool = False
+    eval_passed: int | None = None
+    eval_total: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SectionBriefResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    order_index: int
+    section_type: str
+    content_token_count: int | None = None
+    has_summary: bool = False
+
+
+class SummaryBriefResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    preset_name: str | None = None
+    model_used: str
+    summary_char_count: int
+    created_at: datetime
+
+
+class BookResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    status: str
+    file_format: str
+    file_size_bytes: int
+    file_hash: str
+    authors: list[AuthorResponse] = []
+    sections: list[SectionBriefResponse] = []
+    section_count: int = 0
+    cover_url: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class BookUpdateRequest(BaseModel):
+    title: str | None = None
+
+
+class DuplicateCheckRequest(BaseModel):
+    file_hash: str
+
+
+class DuplicateCheckResponse(BaseModel):
+    is_duplicate: bool
+    existing_book_id: int | None = None
+
+
+# --- Sections ---
+
+
+class SectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    book_id: int
+    title: str
+    order_index: int
+    section_type: str
+    content_token_count: int | None = None
+    content_md: str | None = None
+    default_summary: SummaryBriefResponse | None = None
+    summary_count: int = 0
+    annotation_count: int = 0
+    has_summary: bool = False
+
+
+class SectionMergeRequest(BaseModel):
+    section_ids: list[int]
+    title: str
+
+
+class SectionSplitRequest(BaseModel):
+    mode: str = "heading"
+    positions: list[int] | None = None
+
+
+class SectionReorderRequest(BaseModel):
+    section_ids: list[int]
+
+
+# --- Summaries ---
+
+
+class SummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content_type: str
+    content_id: int
+    book_id: int
+    preset_name: str | None = None
+    facets_used: dict[str, Any] = {}
+    model_used: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    input_char_count: int
+    summary_char_count: int
+    summary_md: str
+    eval_json: dict[str, Any] | None = None
+    quality_warnings: dict[str, Any] | None = None
+    latency_ms: int | None = None
+    created_at: datetime
+
+
+class SummaryCompareResponse(BaseModel):
+    summary_a: SummaryResponse
+    summary_b: SummaryResponse
+    concept_diff: dict[str, Any] | None = None
+
+
+# --- Processing ---
+
+
+class ProcessingStartRequest(BaseModel):
+    preset_name: str = "balanced"
+    run_eval: bool = True
+    auto_retry: bool = True
+    skip_eval: bool = False
+
+
+class ProcessingStartResponse(BaseModel):
+    job_id: int
+
+
+class ProcessingStatusResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: int
+    book_id: int
+    step: str
+    status: str
+    progress: dict[str, Any] | None = None
+    error_message: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class ProcessingCancelResponse(BaseModel):
+    job_id: int
+    status: str
+    message: str
+
+
+# --- Eval ---
+
+
+class AssertionResultResponse(BaseModel):
+    name: str
+    category: str
+    passed: bool
+    reasoning: str | None = None
+    likely_cause: str | None = None
+    suggestion: str | None = None
+
+
+class EvalResultResponse(BaseModel):
+    section_id: int | None = None
+    summary_id: int | None = None
+    passed: int
+    total: int
+    eval_run_id: str | None = None
+    assertions: list[AssertionResultResponse] = []
+
+
+class BookEvalResponse(BaseModel):
+    book_id: int
+    total_sections: int
+    evaluated_sections: int
+    overall_passed: int
+    overall_total: int
+    sections: list[EvalResultResponse] = []
+
+
+# --- Library Views ---
+
+
+class LibraryViewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    display_mode: str
+    sort_field: str
+    sort_direction: str
+    filters: dict[str, Any] | None = None
+    table_columns: dict[str, Any] | None = None
+    position: int
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class LibraryViewCreateRequest(BaseModel):
+    name: str
+    display_mode: str = "grid"
+    sort_field: str = "updated_at"
+    sort_direction: str = "desc"
+    filters: dict[str, Any] | None = None
+    table_columns: dict[str, Any] | None = None
+
+
+class LibraryViewUpdateRequest(BaseModel):
+    name: str | None = None
+    display_mode: str | None = None
+    sort_field: str | None = None
+    sort_direction: str | None = None
+    filters: dict[str, Any] | None = None
+    table_columns: dict[str, Any] | None = None
