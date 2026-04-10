@@ -270,12 +270,30 @@
             </div>
           </div>
 
+          <!-- P7: Save-as-note confirmation toast -->
+          <div style="margin:0 0 10px; padding:6px 10px; background:rgba(52,199,89,0.1); border:1px solid rgba(52,199,89,0.25); border-radius:8px; display:flex; align-items:center; gap:6px; font-size:10px;">
+            <span style="color:var(--success); font-weight:500;">&#x2713; Saved as annotation on Chapter 3</span>
+            <span style="flex:1;"></span>
+            <span style="color:var(--accent); cursor:pointer; font-size:9px; font-weight:500;">Open</span>
+          </div>
+
           <!-- AI typing -->
-          <div style="display:flex; justify-content:flex-start; margin-bottom:10px;">
+          <div style="display:flex; justify-content:flex-start; margin-bottom:4px;">
             <div style="background:var(--bg-tertiary); padding:8px 14px; border-radius:12px 12px 12px 4px; font-size:11px; color:var(--text-secondary);">
               &#x25CF; &#x25CF; &#x25CF;
             </div>
           </div>
+          <!-- P12: Indeterminate progress bar during AI response streaming -->
+          <div style="margin:0 0 10px; height:2px; border-radius:1px; background:var(--bg-tertiary); overflow:hidden;">
+            <div style="width:40%; height:100%; border-radius:1px; background:var(--accent); animation:progress-slide-mobile 1.5s ease-in-out infinite;">
+            </div>
+          </div>
+          <style>
+            @keyframes progress-slide-mobile {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(350%); }
+            }
+          </style>
         </div>
 
         <!-- Input with multi-section context chips (R16) -->
@@ -428,6 +446,8 @@
     <li><strong>Chat input at bottom</strong>: Fixed input bar with send button. Auto-focuses keyboard when sheet opens.</li>
     <li><strong>Multi-section context (R16)</strong>: "+" pill next to chat input opens a section picker as a full bottom sheet with checkboxes and page counts. Selected sections appear as dismissible chips above the input. Swipe down to dismiss the picker.</li>
     <li><strong>Thread navigation</strong>: Back arrow in thread header returns to thread list. "+ New" creates a fresh thread.</li>
+    <li><strong>Save-as-note toast (P7)</strong>: Green confirmation toast appears after saving an AI response as a note, with "Open" link to navigate to the annotation.</li>
+    <li><strong>AI response progress bar (P12)</strong>: Thin 2px animated indeterminate progress bar below the typing indicator during AI response streaming.</li>
   </ul>
 </div>
 

@@ -142,9 +142,9 @@
 </head>
 <body>
 <h2>Upload Flow — Refined</h2>
-<p class="subtitle">5-step wizard + preset details + custom preset + merge/split + minimizable progress</p>
+<p class="subtitle">3-step wizard (Upload, Configure, Process) + preset details + custom preset + merge/split + minimizable progress</p>
 
-<!-- UPDATED WIZARD STEPS -->
+<!-- 3-STEP WIZARD INDICATOR (Upload, Configure, Process) -->
 <div style="display:flex; align-items:center; justify-content:center; margin-bottom:24px; gap:0; max-width:700px; margin-left:auto; margin-right:auto;">
   <div style="display:flex; align-items:center; gap:4px;">
     <div style="width:24px; height:24px; border-radius:50%; background:rgb(52,199,89); color:white; display:flex; align-items:center; justify-content:center; font-size:10px;">✓</div>
@@ -152,28 +152,19 @@
   </div>
   <div style="width:28px; height:1px; background:rgb(52,199,89); margin:0 4px;"></div>
   <div style="display:flex; align-items:center; gap:4px;">
-    <div style="width:24px; height:24px; border-radius:50%; background:rgb(52,199,89); color:white; display:flex; align-items:center; justify-content:center; font-size:10px;">✓</div>
-    <span style="font-size:11px; color:var(--text-secondary);">Metadata</span>
-  </div>
-  <div style="width:28px; height:1px; background:rgb(52,199,89); margin:0 4px;"></div>
-  <div style="display:flex; align-items:center; gap:4px;">
-    <div style="width:24px; height:24px; border-radius:50%; background:rgb(52,199,89); color:white; display:flex; align-items:center; justify-content:center; font-size:10px;">✓</div>
-    <span style="font-size:11px; color:var(--text-secondary);">Structure</span>
-  </div>
-  <div style="width:28px; height:1px; background:var(--accent); margin:0 4px;"></div>
-  <div style="display:flex; align-items:center; gap:4px;">
-    <div style="width:24px; height:24px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600;">4</div>
-    <span style="font-size:11px; font-weight:500;">Preset</span>
+    <div style="width:24px; height:24px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600;">2</div>
+    <span style="font-size:11px; font-weight:500;">Configure</span>
   </div>
   <div style="width:28px; height:1px; background:var(--border); margin:0 4px;"></div>
   <div style="display:flex; align-items:center; gap:4px;">
-    <div style="width:24px; height:24px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:10px;">5</div>
+    <div style="width:24px; height:24px; border-radius:50%; background:var(--bg-tertiary); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:10px;">3</div>
     <span style="font-size:11px; color:var(--text-secondary);">Process</span>
   </div>
 </div>
+<div style="font-size:10px; color:var(--text-tertiary); text-align:center; margin-bottom:4px;">Configure includes: Metadata, Structure Review, Preset Selection</div>
 
 <p style="font-size:12px; color:var(--text-secondary); text-align:center; margin-bottom:28px; max-width:600px; margin-left:auto; margin-right:auto;">
-  Upload → Metadata → Structure Review → Preset Selection → Processing. One continuous flow. User can also exit at step 3 with "Save without processing" to summarize later.
+  Upload → Configure (Metadata / Structure / Preset) → Process. One continuous flow. User can also exit during Configure with "Save without processing" to summarize later.
 </p>
 
 <!-- STEP 4: PRESET SELECTION (with expandable details) -->
@@ -265,15 +256,21 @@
       </div>
     </div>
 
-    <!-- Options -->
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; font-size:11px;">
-      <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary); cursor:pointer;">
-        <input type="checkbox" checked style="accent-color:var(--accent);"> Run eval
-      </label>
-      <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary); cursor:pointer;">
-        <input type="checkbox" checked style="accent-color:var(--accent);"> Auto-retry on failure
-      </label>
-    </div>
+    <!-- Advanced options (collapsed by default) -->
+    <details style="margin-bottom:12px;">
+      <summary style="font-size:11px; color:var(--text-secondary); cursor:pointer; list-style:none; display:flex; align-items:center; gap:4px; padding:6px 0;">
+        <span style="font-size:10px; transition:transform 0.15s;">&#x25B8;</span>
+        <span>Advanced options</span>
+      </summary>
+      <div style="display:flex; align-items:center; gap:12px; padding:8px 0 4px 16px; font-size:11px;">
+        <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary); cursor:pointer;">
+          <input type="checkbox" checked style="accent-color:var(--accent);"> Run eval
+        </label>
+        <label style="display:flex; align-items:center; gap:4px; color:var(--text-secondary); cursor:pointer;">
+          <input type="checkbox" checked style="accent-color:var(--accent);"> Auto-retry on failure
+        </label>
+      </div>
+    </details>
 
     <!-- Cost/time estimate card -->
     <div style="display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(0,113,227,0.05); border:1px solid rgba(0,113,227,0.12); margin-bottom:16px;">
@@ -658,7 +655,7 @@
 <div style="padding:16px 20px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; max-width:960px; margin:0 auto;">
   <h3 style="margin-bottom:10px;">Upload & Processing — Complete Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
-    <li><strong>5-step wizard</strong>: Upload → Metadata → Structure Review → Preset Selection → Processing</li>
+    <li><strong>3-step wizard</strong>: Upload → Configure (Metadata / Structure / Preset as sub-steps) → Process</li>
     <li><strong>Preset details</strong>: Expandable cards showing 4 facets + prompt preview + skipped assertions</li>
     <li><strong>Custom preset</strong>: 2×2 grid of facet selectors (Style, Audience, Compression, Focus), each with card-style options showing name + description. Option to save as reusable preset.</li>
     <li><strong>Merge</strong>: Checkbox selection on section list → "Merge Selected" toolbar → preview with combined title + char count → confirm</li>

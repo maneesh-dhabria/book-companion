@@ -417,6 +417,13 @@
           </div>
         </div>
 
+        <!-- P7: Save-as-note confirmation toast -->
+        <div style="margin:0 10px 10px; padding:8px 12px; background:rgba(52,199,89,0.1); border:1px solid rgba(52,199,89,0.25); border-radius:8px; display:flex; align-items:center; gap:8px; font-size:11px;">
+          <span style="color:var(--success); font-weight:500;">&#x2713; Saved as annotation on Chapter 3</span>
+          <span style="flex:1;"></span>
+          <span style="color:var(--accent); cursor:pointer; font-size:10px; font-weight:500;">Open</span>
+        </div>
+
         <!-- Follow-up user message -->
         <div style="padding:8px 10px; background:var(--bg-tertiary); border-radius:10px 10px 2px 10px; font-size:11px; margin-bottom:10px; max-width:85%;">
           How does this relate to what Newport says in Chapter 5?
@@ -426,6 +433,17 @@
         <div style="padding:10px; border:1px solid var(--border); border-radius:2px 10px 10px 10px; font-size:11px; line-height:1.7;">
           <div style="font-size:9px; color:var(--text-secondary); margin-bottom:4px; padding:3px 6px; background:var(--bg-tertiary); border-radius:4px; display:inline-block;">📖 Using context from Ch.3 + Ch.5</div>
           <p style="margin-top:6px;">In Chapter 5, Newport proposes <strong>lead measures</strong> as the antidote to the Metric Black Hole...</p>
+          <!-- P12: Indeterminate progress bar during AI streaming -->
+          <div style="margin-top:8px; height:2px; border-radius:1px; background:var(--bg-tertiary); overflow:hidden;">
+            <div style="width:40%; height:100%; border-radius:1px; background:var(--accent); animation:progress-slide 1.5s ease-in-out infinite;">
+            </div>
+          </div>
+          <style>
+            @keyframes progress-slide {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(350%); }
+            }
+          </style>
         </div>
       </div>
 
@@ -558,6 +576,8 @@
     <li><strong>AI threads</strong>: Per-book, multi-thread. Thread list shows title + message count + last date + preview. Inside a thread: chat-style messages with selected text context blocks. AI can reference multiple sections. Responses can be saved as annotations or copied.</li>
     <li><strong>Multi-section context (R16)</strong>: "+ Context" pill next to chat input opens a section picker dropdown with checkboxes. Selected sections appear as dismissible chips above the input. AI uses all checked sections as context for responses.</li>
     <li><strong>"+ Save Current"</strong>: Saves current reader settings as a named preset for reuse.</li>
+    <li><strong>Save-as-note toast (P7)</strong>: After saving an AI response as a note, a green confirmation toast appears with "Saved as annotation on Chapter N" and an "Open" link to navigate to it.</li>
+    <li><strong>AI response progress bar (P12)</strong>: A thin 2px animated indeterminate progress bar appears below AI responses during streaming, using the accent color.</li>
   </ul>
 </div>
 

@@ -188,111 +188,18 @@
 
         <div style="flex:1;"></div>
 
-        <!-- Summary version picker (R18: shows Edited badge for user-modified versions) -->
-        <div style="font-size:10px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer;">
-          balanced · Apr 10 <span style="font-size:9px; padding:1px 5px; border-radius:4px; background:rgba(175,82,222,0.12); color:rgb(175,82,222); font-weight:500; margin-left:2px;">Edited</span> ▾
-        </div>
+        <!-- P11: Version picker removed — reader shows default summary. History link for power users. -->
+        <span style="font-size:10px; color:var(--accent); cursor:pointer;">History (3 versions)</span>
       </div>
 
       <!-- Reading content -->
       <div style="flex:1; padding:24px; overflow-y:auto; display:flex; justify-content:center;">
         <div style="max-width:680px; width:100%; line-height:1.9; font-size:14px;">
 
-          <!-- Eval status (compact, within summary) -->
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; padding:6px 10px; background:rgba(255,159,10,0.06); border-radius:8px 8px 0 0; font-size:11px;">
-            <span style="color:rgb(255,159,10); font-weight:500;">⚠ 14/16 passed</span>
-            <span style="color:var(--text-secondary);">· 2 issues</span>
-            <div style="flex:1;"></div>
-            <span style="color:var(--accent); cursor:pointer;">Collapse ▴</span>
-          </div>
-
-          <!-- Eval detail expansion (R24) -->
-          <div style="margin-bottom:16px; border:1px solid var(--border); border-top:none; border-radius:0 0 8px 8px; font-size:11px; overflow:hidden;">
-            <!-- Faithfulness — all passed -->
-            <div style="border-bottom:1px solid var(--border);">
-              <div style="padding:6px 10px; display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg-secondary);">
-                <span style="font-size:9px; color:var(--text-secondary);">▸</span>
-                <span style="font-weight:500;">Faithfulness</span>
-                <span style="color:rgb(52,199,89); font-size:10px;">4/4 &#x2713;</span>
-              </div>
-            </div>
-            <!-- Completeness — all passed -->
-            <div style="border-bottom:1px solid var(--border);">
-              <div style="padding:6px 10px; display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg-secondary);">
-                <span style="font-size:9px; color:var(--text-secondary);">▸</span>
-                <span style="font-weight:500;">Completeness</span>
-                <span style="color:rgb(52,199,89); font-size:10px;">3/3 &#x2713;</span>
-              </div>
-            </div>
-            <!-- Coherence — 2/3, expanded -->
-            <div style="border-bottom:1px solid var(--border);">
-              <div style="padding:6px 10px; display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg-secondary);">
-                <span style="font-size:9px; color:var(--text-secondary);">▾</span>
-                <span style="font-weight:500;">Coherence</span>
-                <span style="color:rgb(255,159,10); font-size:10px;">2/3 &#x26A0;</span>
-              </div>
-              <div style="padding:0 10px 8px;">
-                <!-- Failed: logical_flow -->
-                <div style="border-left:3px solid var(--error); padding:6px 10px; margin-bottom:6px; background:rgba(255,59,48,0.04); border-radius:0 6px 6px 0;">
-                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-                    <span style="color:var(--error); font-weight:600;">&#x2717;</span>
-                    <span style="font-weight:500;">logical_flow</span>
-                  </div>
-                  <div style="color:var(--text-secondary); line-height:1.5; font-size:10px;">Summary jumps from open office discussion to busyness proxy without transitioning through the causal chain Newport establishes. The connection between environmental distractions and metric ambiguity is lost.</div>
-                </div>
-                <!-- Passed: consistent_terminology -->
-                <div style="padding:4px 10px; display:flex; align-items:center; gap:6px;">
-                  <span style="color:rgb(52,199,89);">&#x2713;</span>
-                  <span style="color:var(--text-secondary);">consistent_terminology</span>
-                </div>
-                <!-- Passed: self_contained -->
-                <div style="padding:4px 10px; display:flex; align-items:center; gap:6px;">
-                  <span style="color:rgb(52,199,89);">&#x2713;</span>
-                  <span style="color:var(--text-secondary);">self_contained</span>
-                </div>
-              </div>
-            </div>
-            <!-- Specificity — 2/3, expanded -->
-            <div style="border-bottom:1px solid var(--border);">
-              <div style="padding:6px 10px; display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg-secondary);">
-                <span style="font-size:9px; color:var(--text-secondary);">▾</span>
-                <span style="font-weight:500;">Specificity</span>
-                <span style="color:rgb(255,159,10); font-size:10px;">2/3 &#x26A0;</span>
-              </div>
-              <div style="padding:0 10px 8px;">
-                <!-- Failed: avoids_generics -->
-                <div style="border-left:3px solid var(--error); padding:6px 10px; margin-bottom:6px; background:rgba(255,59,48,0.04); border-radius:0 6px 6px 0;">
-                  <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-                    <span style="color:var(--error); font-weight:600;">&#x2717;</span>
-                    <span style="font-weight:500;">avoids_generics</span>
-                  </div>
-                  <div style="color:var(--text-secondary); line-height:1.5; font-size:10px;">Bullet 3 uses "doing lots of stuff in a visible manner" which is too vague. Should reference Newport's specific examples: responding to emails within minutes, attending meetings as proof of engagement.</div>
-                </div>
-                <!-- Passed -->
-                <div style="padding:4px 10px; display:flex; align-items:center; gap:6px;">
-                  <span style="color:rgb(52,199,89);">&#x2713;</span>
-                  <span style="color:var(--text-secondary);">concrete_examples</span>
-                </div>
-                <div style="padding:4px 10px; display:flex; align-items:center; gap:6px;">
-                  <span style="color:rgb(52,199,89);">&#x2713;</span>
-                  <span style="color:var(--text-secondary);">quantitative_claims</span>
-                </div>
-              </div>
-            </div>
-            <!-- Format — all passed -->
-            <div>
-              <div style="padding:6px 10px; display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg-secondary);">
-                <span style="font-size:9px; color:var(--text-secondary);">▸</span>
-                <span style="font-weight:500;">Format</span>
-                <span style="color:rgb(52,199,89); font-size:10px;">3/3 &#x2713;</span>
-              </div>
-            </div>
-            <!-- Footer -->
-            <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-top:1px solid var(--border); background:var(--bg-primary);">
-              <span style="font-size:10px; color:var(--text-secondary);">Eval run: Apr 10, 2026 2:30 PM</span>
-              <div style="flex:1;"></div>
-              <span style="font-size:10px; color:var(--accent); cursor:pointer; font-weight:500; padding:3px 10px; border:1px solid var(--accent); border-radius:6px;">Re-evaluate</span>
-            </div>
+          <!-- P5: Eval collapsed to trust badge — details on separate eval page -->
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+            <span style="font-size:11px; padding:3px 10px; border-radius:12px; background:rgba(255,159,10,0.12); color:rgb(200,140,0); font-weight:600;">Review 14/16</span>
+            <span style="font-size:10px; color:var(--accent); cursor:pointer;">View details &#x2192;</span>
           </div>
 
           <!-- Key concepts as clickable chips -->
@@ -401,7 +308,8 @@
       </div>
       <span style="font-size:10px; color:var(--text-secondary);">chapter · 4,230 chars</span>
       <div style="flex:1;"></div>
-      <div style="font-size:10px; padding:3px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary);">practitioner_bullets · Apr 8 ▾</div>
+      <!-- P11: No version picker in collapsed state either -->
+      <span style="font-size:10px; color:var(--accent); cursor:pointer;">History (3 versions)</span>
     </div>
 
     <!-- Full-width centered content -->
@@ -557,88 +465,71 @@
   </div>
 </div>
 
-<!-- ANNOTATION LINK DIALOG (R7) -->
-<div class="mockup" style="max-width:640px; margin:0 auto;">
-  <div class="mockup-header">Annotation Link Dialog (R7)</div>
-  <div class="mockup-body" style="font-size:12px; padding:0; display:flex; min-height:360px;">
-    <!-- Left: search + results -->
-    <div style="flex:1; display:flex; flex-direction:column; border-right:1px solid var(--border);">
-      <!-- Search input -->
-      <div style="padding:10px 12px; border-bottom:1px solid var(--border);">
-        <div style="display:flex; align-items:center; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; padding:7px 10px; gap:6px;">
-          <span style="font-size:12px; opacity:0.4;">&#x1F50D;</span>
-          <span style="font-size:12px; color:var(--text-secondary);">Find annotation to link...</span>
+<!-- P6: ANNOTATION LINK POPOVER — compact, no preview pane, click-to-link -->
+<div class="mockup" style="max-width:320px; margin:0 auto;">
+  <div class="mockup-header">Annotation Link Popover (P6 — lightweight)</div>
+  <div class="mockup-body" style="font-size:12px; padding:0;">
+    <!-- Search input -->
+    <div style="padding:10px 12px; border-bottom:1px solid var(--border);">
+      <div style="display:flex; align-items:center; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; padding:7px 10px; gap:6px;">
+        <span style="font-size:12px; opacity:0.4;">&#x1F50D;</span>
+        <span style="font-size:12px; color:var(--text-secondary);">Search annotations...</span>
+      </div>
+    </div>
+
+    <!-- Recent annotations — click any to link immediately -->
+    <div style="padding:6px 0;">
+      <div style="padding:2px 12px 6px; font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Recent</div>
+
+      <!-- Item 1 -->
+      <div style="padding:7px 12px; cursor:pointer; display:flex; align-items:flex-start; gap:8px;" title="Click to link">
+        <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(255,204,0,0.15); color:rgb(200,160,0); font-weight:500; flex-shrink:0; margin-top:2px;">Highlight</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">"attention residue reduces performance..."</div>
+          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.2</div>
         </div>
       </div>
-      <!-- Book filter -->
-      <div style="padding:6px 12px; border-bottom:1px solid var(--border);">
-        <div style="font-size:10px; padding:4px 8px; border-radius:6px; background:var(--bg-tertiary); color:var(--text-secondary); cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-          All books <span style="font-size:8px;">&#x25BE;</span>
+
+      <!-- Item 2 -->
+      <div style="padding:7px 12px; cursor:pointer; display:flex; align-items:flex-start; gap:8px;" title="Click to link">
+        <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(0,113,227,0.1); color:var(--accent); font-weight:500; flex-shrink:0; margin-top:2px;">Note</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">Kahneman System 1 -- automatic processing</div>
+          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.2</div>
         </div>
       </div>
-      <!-- Recent Annotations list -->
-      <div style="flex:1; overflow-y:auto; padding:8px 0;">
-        <div style="padding:2px 12px 6px; font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Recent Annotations</div>
 
-        <!-- Annotation result 1 — selected/focused -->
-        <div style="padding:8px 12px; background:var(--selected-bg); border-left:3px solid var(--accent); cursor:pointer;">
-          <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-            <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(255,204,0,0.15); color:rgb(200,160,0); font-weight:500;">Highlight</span>
-            <span style="font-size:10px; font-weight:500;">attention residue</span>
-          </div>
-          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">"when you switch between tasks, part of your cognitive capacity remains..."</div>
-          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.2 Deep Work Is Rare</div>
+      <!-- Item 3 -->
+      <div style="padding:7px 12px; cursor:pointer; display:flex; align-items:flex-start; gap:8px;" title="Click to link">
+        <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(255,204,0,0.15); color:rgb(200,160,0); font-weight:500; flex-shrink:0; margin-top:2px;">Highlight</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">"deliberate practice requires focused attention..."</div>
+          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.1</div>
         </div>
+      </div>
 
-        <!-- Annotation result 2 -->
-        <div style="padding:8px 12px; cursor:pointer; border-left:3px solid transparent;">
-          <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-            <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(0,113,227,0.1); color:var(--accent); font-weight:500;">Note</span>
-            <span style="font-size:10px; font-weight:500;">Kahneman connection</span>
-          </div>
-          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">Connect this to Kahneman's System 1 -- automatic processing = habits</div>
-          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.2 Deep Work Is Rare</div>
+      <!-- Item 4 -->
+      <div style="padding:7px 12px; cursor:pointer; display:flex; align-items:flex-start; gap:8px;" title="Click to link">
+        <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(0,113,227,0.1); color:var(--accent); font-weight:500; flex-shrink:0; margin-top:2px;">Note</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">Csikszentmihalyi's flow -- deep work conditions</div>
+          <div style="font-size:9px; color:var(--text-tertiary);">Atomic Habits &#x203A; Ch.4</div>
         </div>
+      </div>
 
-        <!-- Annotation result 3 -->
-        <div style="padding:8px 12px; cursor:pointer; border-left:3px solid transparent;">
-          <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-            <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(255,204,0,0.15); color:rgb(200,160,0); font-weight:500;">Highlight</span>
-            <span style="font-size:10px; font-weight:500;">deliberate practice</span>
-          </div>
-          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">"deliberate practice requires focused attention on the specific skill..."</div>
-          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.1 Introduction</div>
-        </div>
-
-        <!-- Annotation result 4 -->
-        <div style="padding:8px 12px; cursor:pointer; border-left:3px solid transparent;">
-          <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-            <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(0,113,227,0.1); color:var(--accent); font-weight:500;">Note</span>
-            <span style="font-size:10px; font-weight:500;">flow states</span>
-          </div>
-          <div style="font-size:10px; color:var(--text-secondary); line-height:1.4; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">Csikszentmihalyi's flow -- same conditions as deep work requirements</div>
-          <div style="font-size:9px; color:var(--text-tertiary);">Atomic Habits &#x203A; Ch.4 The Man on the Moon</div>
+      <!-- Item 5 -->
+      <div style="padding:7px 12px; cursor:pointer; display:flex; align-items:flex-start; gap:8px;" title="Click to link">
+        <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(255,204,0,0.15); color:rgb(200,160,0); font-weight:500; flex-shrink:0; margin-top:2px;">Highlight</span>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:10px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">"knowledge workers who cultivate deep work..."</div>
+          <div style="font-size:9px; color:var(--text-tertiary);">Deep Work &#x203A; Ch.3</div>
         </div>
       </div>
     </div>
 
-    <!-- Right: preview pane -->
-    <div style="width:220px; display:flex; flex-direction:column;">
-      <div style="padding:10px 12px; border-bottom:1px solid var(--border); font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Preview</div>
-      <div style="flex:1; padding:12px; overflow-y:auto;">
-        <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-          <span style="font-size:9px; padding:1px 6px; border-radius:4px; background:rgba(255,204,0,0.15); color:rgb(200,160,0); font-weight:500;">Highlight</span>
-        </div>
-        <div style="font-size:11px; font-weight:500; margin-bottom:6px;">attention residue</div>
-        <div style="font-size:11px; color:var(--text-secondary); line-height:1.6; margin-bottom:10px; font-style:italic; padding:6px 8px; background:rgba(255,204,0,0.06); border-left:2px solid rgb(255,204,0); border-radius:0 4px 4px 0;">"when you switch between tasks, part of your cognitive capacity remains stuck on the previous task. This residue reduces performance."</div>
-        <div style="font-size:10px; color:var(--text-tertiary); margin-bottom:4px;">Deep Work &#x203A; Ch.2 Deep Work Is Rare</div>
-        <div style="font-size:10px; color:var(--text-tertiary);">Apr 8, 2026</div>
-        <div style="margin-top:8px; font-size:10px; color:var(--text-secondary);">Linked to 1 other annotation</div>
-      </div>
-      <!-- Link button -->
-      <div style="padding:10px 12px; border-top:1px solid var(--border);">
-        <div style="text-align:center; padding:7px 16px; background:var(--accent); color:white; border-radius:8px; font-size:12px; font-weight:500; cursor:pointer;">Link</div>
-      </div>
+    <!-- Footer note -->
+    <div style="padding:8px 12px; border-top:1px solid var(--border); font-size:10px; color:var(--text-secondary); text-align:center;">
+      Full link dialog available on Annotations page
     </div>
   </div>
 </div>
@@ -650,7 +541,7 @@
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
     <li><strong>Breadcrumb header</strong>: Library › Book Title › Chapter (dropdown). Chapter segment opens full TOC with search + eval status dots.</li>
     <li><strong>Original/Summary toggle</strong>: Segmented control, not tabs. One or the other.</li>
-    <li><strong>Eval</strong>: Compact inline banner within summary view (not a separate tab). "View eval details" opens a detail modal or expands inline.</li>
+    <li><strong>Eval</strong>: Collapsed to a single trust badge pill (green/yellow/red). "View details" link navigates to a dedicated eval page instead of inline expansion (P5).</li>
     <li><strong>Right sidebar</strong>: 2 tabs — Annotations | Ask AI. Collapsible. Badge on 💬 icon shows count when closed.</li>
     <li><strong>Concepts</strong>: Clickable chips in summary. Click → tooltip with definition + cross-references.</li>
     <li><strong>Reader settings (Aa)</strong>: Popover with font size, line spacing, content width, background theme (Light/Sepia/Dark/OLED).</li>

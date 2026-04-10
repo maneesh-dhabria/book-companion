@@ -353,6 +353,7 @@
             <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
               <span style="font-size:11px; font-weight:500; color:var(--text-secondary);">DEFINITION</span>
               <span style="font-size:10px; color:var(--accent); cursor:pointer;">Edit</span>
+              <span style="font-size:12px; color:var(--text-secondary); cursor:pointer; padding:2px 4px; border-radius:4px; line-height:1; transition:color 0.15s ease;" title="Copy term and definition">&#x1F4CB;</span>
             </div>
             <div style="font-size:13px; line-height:1.7; padding:12px; background:var(--bg-tertiary); border-radius:8px;">
               The cognitive carry-over effect that occurs when switching between tasks. When you move from Task A to Task B, a portion of your attention remains "stuck" on Task A, reducing your cognitive performance on Task B. This effect was demonstrated in research by Sophie Leroy.
@@ -416,7 +417,7 @@
   <h3 style="margin-bottom:10px;">Annotations & Concepts — Design Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
     <li><strong>Annotations page</strong>: Header with count + search + export. Filter bar (Book, Type, Tags) + Group by (Book/Tag/Section/None) + Sort (Newest/Oldest/Book order). Cards show: type badge (highlight/note/freeform), source breadcrumb, quoted text, note, tags, link count. Grouped by book with collapsible accordions. Click navigates to source in reader.</li>
-    <li><strong>Concepts Explorer</strong>: Two-panel layout — concept list (left, grouped by book) + concept detail (right). List shows term + "edited" badge + section count. Detail shows: definition (editable), section appearances (clickable), related concepts as chips (cross-book concepts in purple), related annotations.</li>
+    <li><strong>Concepts Explorer</strong>: Two-panel layout — concept list (left, grouped by book) + concept detail (right). List shows term + "edited" badge + section count. Detail shows: definition (editable, with clipboard copy button that copies "Term: Definition" to clipboard), section appearances (clickable), related concepts as chips (cross-book concepts in purple), related annotations.</li>
     <li><strong>Cross-book connections</strong>: Related concepts from other books shown with distinct color + ↗ icon. Clicking navigates to that concept in the other book's context.</li>
     <li><strong>Filtering pattern</strong>: Same multi-select dropdown pattern as Library page for consistency (Book, Tags, Type filters).</li>
     <li><strong>Both pages auto-filter when accessed from Book Detail</strong>: If you click "Concepts" from within Deep Work's reader, the explorer opens pre-filtered to Deep Work.</li>

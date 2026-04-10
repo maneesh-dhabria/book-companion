@@ -207,18 +207,24 @@
       </div>
     </div>
 
-    <!-- FONT — specific font names -->
+    <!-- FONT — 4 primary fonts + expandable extras -->
     <div style="margin-bottom:14px;">
       <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;">Font</div>
-      <div style="display:flex; gap:4px; flex-wrap:wrap;">
+      <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--accent); color:white; cursor:pointer; font-family:Georgia,serif;">Georgia</span>
         <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Merriweather</span>
-        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Literata</span>
         <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:system-ui;">Inter</span>
-        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:system-ui;">Open Sans</span>
         <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:monospace;">Fira Code</span>
-        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer; font-family:monospace;">JetBrains</span>
-        <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-tertiary); cursor:pointer;">Lora</span>
+        <span style="font-size:11px; padding:5px 10px; color:var(--accent); cursor:pointer;">All fonts &#x25B8;</span>
+      </div>
+      <!-- Expanded state (hidden by default) -->
+      <div style="display:none; margin-top:6px; padding:8px 10px; background:var(--bg-tertiary); border-radius:8px;">
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-secondary); cursor:pointer; border:1px solid var(--border);">Literata</span>
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-secondary); cursor:pointer; border:1px solid var(--border);">Lora</span>
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-secondary); cursor:pointer; border:1px solid var(--border); font-family:system-ui;">Open Sans</span>
+          <span style="font-size:11px; padding:5px 10px; border-radius:6px; background:var(--bg-secondary); cursor:pointer; border:1px solid var(--border); font-family:monospace;">JetBrains</span>
+        </div>
       </div>
     </div>
 
@@ -417,7 +423,7 @@
   <h3 style="margin-bottom:10px;">Reader Settings — Final Summary</h3>
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
     <li><strong>Presets</strong>: Visual square cards showing background color + font "Aa" rendering + font name + spacing value. Active preset has accent border + check. User presets show edit icon. "+ Save Current" to create new.</li>
-    <li><strong>Font</strong>: Pre-selected named fonts as buttons (Georgia, Merriweather, Literata, Inter, Open Sans, Fira Code, JetBrains, Lora). No abstract categories.</li>
+    <li><strong>Font</strong>: 4 primary fonts shown by default (Georgia, Merriweather, Inter, Fira Code). "All fonts &#x25B8;" link expands to reveal 4 additional fonts (Literata, Lora, Open Sans, JetBrains). Reduces initial cognitive load while keeping full selection accessible.</li>
     <li><strong>Size</strong>: Named buttons (Small / Medium / Large / XL) + manual stepper (−/+ with px value).</li>
     <li><strong>Line Spacing</strong>: Named buttons (Tight / Normal / Relaxed / Spacious) + manual stepper.</li>
     <li><strong>Content Width</strong>: Named buttons (Narrow / Medium / Wide / Full) + manual stepper (px).</li>

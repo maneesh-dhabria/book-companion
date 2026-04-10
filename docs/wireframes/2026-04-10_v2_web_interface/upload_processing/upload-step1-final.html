@@ -142,14 +142,14 @@
 </head>
 <body>
 <h2>Upload — Step 1: File Upload</h2>
-<p class="subtitle">Drag-and-drop zone with progress indicator. First step of the 5-step upload wizard.</p>
+<p class="subtitle">Drag-and-drop zone with progress indicator. First step of the 3-step upload wizard.</p>
 
 <!-- ==================== STATE A: Empty / Awaiting File ==================== -->
 <div class="mockup" style="max-width:700px; margin:0 auto;">
   <div class="mockup-header">State A — Awaiting File Upload</div>
   <div class="mockup-body">
 
-    <!-- 5-Step Progress Indicator -->
+    <!-- 3-Step Progress Indicator (Upload, Configure, Process) -->
     <div style="display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:32px;">
       <!-- Step 1: Upload (active) -->
       <div style="display:flex; align-items:center; gap:8px;">
@@ -157,27 +157,15 @@
         <span style="font-size:12px; font-weight:600; color:var(--accent);">Upload</span>
       </div>
       <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <!-- Step 2: Metadata -->
+      <!-- Step 2: Configure (covers Metadata, Structure, Preset) -->
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">2</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Metadata</span>
+        <span style="font-size:12px; color:var(--text-tertiary);">Configure</span>
       </div>
       <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <!-- Step 3: Structure -->
+      <!-- Step 3: Process -->
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">3</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Structure</span>
-      </div>
-      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <!-- Step 4: Preset -->
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">4</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Preset</span>
-      </div>
-      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <!-- Step 5: Process -->
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">5</div>
         <span style="font-size:12px; color:var(--text-tertiary);">Process</span>
       </div>
     </div>
@@ -188,6 +176,7 @@
       <div style="font-size:18px; font-weight:600; margin-bottom:6px;">Drop your book here</div>
       <div style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">or click to browse</div>
       <div style="font-size:12px; color:var(--text-tertiary);">Supports EPUB, MOBI, PDF &middot; Max 100MB</div>
+      <div style="font-size:11px; color:var(--text-tertiary); margin-top:8px;">AI processing typically costs ~$1-2 per book</div>
     </div>
 
     <!-- Cancel button -->
@@ -203,7 +192,7 @@
   <div class="mockup-header">State B — File Selected, Parsing in Progress</div>
   <div class="mockup-body">
 
-    <!-- 5-Step Progress Indicator (same, step 1 still active) -->
+    <!-- 3-Step Progress Indicator (step 1 still active) -->
     <div style="display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:32px;">
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">1</div>
@@ -212,21 +201,11 @@
       <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">2</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Metadata</span>
+        <span style="font-size:12px; color:var(--text-tertiary);">Configure</span>
       </div>
       <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">3</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Structure</span>
-      </div>
-      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">4</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Preset</span>
-      </div>
-      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">5</div>
         <span style="font-size:12px; color:var(--text-tertiary);">Process</span>
       </div>
     </div>
@@ -274,7 +253,7 @@
   <div class="mockup-header">State C — Parsing Complete (Quick Upload Fast Path)</div>
   <div class="mockup-body">
 
-    <!-- 5-Step Progress Indicator (step 1 complete) -->
+    <!-- 3-Step Progress Indicator (step 1 complete) -->
     <div style="display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:32px;">
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">&#x2713;</div>
@@ -283,21 +262,11 @@
       <div style="width:40px; height:1px; background:var(--success); margin:0 8px;"></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">2</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Metadata</span>
+        <span style="font-size:12px; color:var(--text-tertiary);">Configure</span>
       </div>
       <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
       <div style="display:flex; align-items:center; gap:8px;">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">3</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Structure</span>
-      </div>
-      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">4</div>
-        <span style="font-size:12px; color:var(--text-tertiary);">Preset</span>
-      </div>
-      <div style="width:40px; height:1px; background:var(--border); margin:0 8px;"></div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-tertiary);color:var(--text-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">5</div>
         <span style="font-size:12px; color:var(--text-tertiary);">Process</span>
       </div>
     </div>

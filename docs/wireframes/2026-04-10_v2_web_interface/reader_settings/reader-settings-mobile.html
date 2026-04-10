@@ -145,15 +145,25 @@
         </div>
         <div class="annotation">Preset cards: 2 per row, tap to apply all settings at once</div>
 
-        <!-- Font family -->
+        <!-- Font family — 4 primary + expandable -->
         <div style="font-size:11px; font-weight:500; margin-bottom:8px; margin-top:12px;">Font</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
-          <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--accent); color:white; cursor:pointer;">System</span>
-          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-family:Georgia,serif;">Serif</span>
-          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-family:monospace;">Mono</span>
-          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer;">OpenDyslexic</span>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--accent); color:white; cursor:pointer; font-family:Georgia,serif;">Georgia</span>
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer;">Merriweather</span>
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-family:system-ui;">Inter</span>
+          <span style="font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--border); cursor:pointer; font-family:monospace;">Fira Code</span>
+          <span style="font-size:11px; padding:5px 12px; color:var(--accent); cursor:pointer;">All fonts &#x25B8;</span>
         </div>
-        <div class="annotation">Font buttons wrap to multiple rows on narrow screens</div>
+        <!-- Expanded fonts (hidden by default) -->
+        <div style="display:none; padding:8px; background:var(--bg-tertiary); border-radius:8px; margin-bottom:16px;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--bg-secondary); border:1px solid var(--border); cursor:pointer;">Literata</span>
+            <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--bg-secondary); border:1px solid var(--border); cursor:pointer;">Lora</span>
+            <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--bg-secondary); border:1px solid var(--border); cursor:pointer; font-family:system-ui;">Open Sans</span>
+            <span style="font-size:11px; padding:5px 12px; border-radius:6px; background:var(--bg-secondary); border:1px solid var(--border); cursor:pointer; font-family:monospace;">JetBrains</span>
+          </div>
+        </div>
+        <div class="annotation">4 primary fonts shown; "All fonts" expands to reveal 4 more</div>
 
         <!-- Font size slider -->
         <div style="font-size:11px; font-weight:500; margin-bottom:8px; margin-top:12px;">Size</div>
@@ -221,7 +231,7 @@
   <ul style="padding-left:20px; font-size:13px; line-height:2;">
     <li><strong>Full-screen modal</strong>: Covers entire screen (not a popover). "Done" button dismisses back to reader.</li>
     <li><strong>Preset cards</strong>: 2-column grid. Each card shows name + size/spacing summary. Tap to apply all settings at once.</li>
-    <li><strong>Font buttons wrap</strong>: Font family buttons use flex-wrap so they flow to multiple rows on narrow screens.</li>
+    <li><strong>Font</strong>: 4 primary fonts shown (Georgia, Merriweather, Inter, Fira Code). "All fonts" link expands to reveal 4 more (Literata, Lora, Open Sans, JetBrains). Buttons wrap on narrow screens.</li>
     <li><strong>Named presets for size/spacing</strong>: Slider labels show current numeric value (16px, 1.6). Presets set all at once.</li>
     <li><strong>Background swatches</strong>: Row of circular swatches. Active swatch has accent ring. White, sepia, gray, dark, black options.</li>
     <li><strong>Live preview</strong>: Preview block at bottom updates in real-time as user adjusts settings.</li>
