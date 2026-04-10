@@ -17,41 +17,50 @@ Phase 3 completes the web interface with settings management, export/backup APIs
 ```
 T1 (Reading state migration + model) ──────────────────────────────────────┐
   │                                                                         │
-T2 (Export API) ─────────────[P]──> T3 (Backup API + scheduler)            │
-  │                                      │                                  │
-T4 (Settings API) ──────────[P]──> T5 (Reading state API)                  │
-  │                                      │                                  │
-  ├──────────────────────────────────────┤                                  │
-  ▼                                      ▼                                  │
-T6 (Settings page frontend) ──> T7 (Export & Backup UI)                    │
+T2 (Export API) ──────[P]──> T3a (Backup API endpoints)                    │
+  │                            │                                            │
+  │                          T3b (Scheduled backups — APScheduler)          │
+  │                            │                                            │
+T4 (Settings API) ────[P]──> T5 (Reading state API)                        │
+  │                            │                                            │
+  ├────────────────────────────┤                                            │
+  ▼                            ▼                                            │
+T6a (Settings page infra) ──> T6b (Settings remaining sections)            │
+  │                            │                                            │
+  ▼                            ▼                                            │
+T7 (Export & Backup UI)                                                    │
   │                                                                         │
 T8 (Reading position sync UI) ──────────────────────────────────────────────┤
   │                                                                         │
-T9 (Mobile responsive: bottom tab + bottom sheets)                         │
+T9a (Mobile bottom tab bar) ──> T9b (Bottom sheet component)               │
   │                                                                         │
-T10 (Mobile responsive: touch interactions + breakpoint refinements)       │
+T10 (Mobile responsive: touch interactions + breakpoint refinements) ──[P] │
   │                                                                         │
 T11 (Skeleton loaders, empty states, error handling polish)                │
   │                                                                         │
-T12 (Accessibility audit + fixes)                                          │
+T12 (Accessibility audit + fixes) ─────────────────────────────────[P]     │
   │                                                                         │
-T13 (Performance optimization)                                             │
+T13 (Performance optimization) ────────────────────────────────────[P]     │
   │                                                                         │
 T14 (Docker production hardening)                                          │
   │                                                                         │
-T15 (E2E test suite — Playwright) <────────────────────────────────────────┘
-  │
+T15a (E2E infra + core tests) ──> T15b (E2E remaining tests)              │
+  │                                                                    <───┘
 T16 (Final verification)
 
 [P] = parallelizable
 T1 is prerequisite for T5, T8
-T2, T3, T4, T5 are backend tasks — T2+T3 parallelizable, T4+T5 parallelizable
-T6 depends on T4; T7 depends on T2+T3; T8 depends on T5
-T9-T13 are sequential polish passes
+T2, T3a, T4, T5 are backend tasks — T2+T3a parallelizable, T4+T5 parallelizable
+T3a → T3b (T3b extends T3a's endpoints with scheduler integration)
+T6a → T6b (T6b extends T6a's store and view with remaining sections)
+T6a depends on T4; T7 depends on T2 + T3a/T3b (export/backup APIs must exist); T8 depends on T5
+T9a → T9b (bottom sheet builds on bottom tab bar infrastructure)
+T10 can run in parallel with T11 (no shared files) [P]
+T12 and T13 can run in parallel (different concerns) [P]
 T14 is independent of T9-T13
-T15 depends on all feature tasks (T1-T14)
-T16 depends on T15
-Total: 16 tasks
+T15a/T15b depend on ALL tasks T1-T14 (full feature coverage needed for E2E)
+T16 depends on T15b
+Total: 20 tasks
 ```
 
 ---
@@ -265,6 +274,13 @@ Total: 16 tasks
 
 - [ ] Verify: `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
 
+**Commit:** `git commit -m "feat(api): add reading_state table, model, and repository (T1)"`
+
+**Inline verification:**
+- `cd backend && uv run python -m pytest tests/unit/test_reading_state_model.py -v` -- all pass
+- `cd backend && uv run alembic upgrade head` -- migration applies cleanly
+- `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
+
 ---
 
 ### T2: Export API Endpoints
@@ -388,29 +404,30 @@ Total: 16 tasks
 
 - [ ] Verify: `cd backend && uv run ruff check backend/app/api/routes/export.py && uv run python -m pytest tests/ --timeout=60 -q`
 
+**Commit:** `git commit -m "feat(api): add export API endpoints wrapping ExportService (T2)"`
+
+**Inline verification:**
+- `cd backend && uv run ruff check backend/app/api/routes/export.py` -- no lint errors
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_export_api.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
+
 ---
 
-### T3: Backup API + Scheduled Backups
+### T3a: Backup API Endpoints
 
-**Goal:** Wrap the existing `BackupService` with REST endpoints for create, list, download, restore, and delete. Add APScheduler for automatic backups.
-**Spec refs:** §9.16 (Backup API), D14 (APScheduler), FR-77 (scheduled backups)
+**Goal:** Wrap the existing `BackupService` with REST endpoints for create, list, download, restore, and delete.
+**Spec refs:** §9.16 (Backup API), FR-77 (Backup & Export settings section)
 
 **Files:**
 - Create: `backend/app/api/routes/backup.py`
-- Create: `backend/app/api/scheduler.py`
 - Modify: `backend/app/api/schemas.py` (add backup schemas)
-- Modify: `backend/app/api/main.py` (register router, add scheduler to lifespan)
-- Modify: `backend/pyproject.toml` (add `apscheduler`)
+- Modify: `backend/app/api/main.py` (register router)
+- Modify: `backend/app/api/deps.py` (add `get_backup_service`)
 - Test: `backend/tests/integration/test_api/test_backup_api.py`
-- Test: `backend/tests/unit/test_scheduler.py`
 
 **Steps:**
 
-- [ ] Step 1: Add APScheduler dependency
-  Add `apscheduler>=3.10.0` to `backend/pyproject.toml` `[project.dependencies]`.
-  Run: `cd backend && uv sync --dev`
-
-- [ ] Step 2: Write failing integration tests for backup endpoints
+- [ ] Step 1: Write failing integration tests for backup endpoints
   ```python
   # backend/tests/integration/test_api/test_backup_api.py
   @pytest.mark.asyncio
@@ -456,7 +473,7 @@ Total: 16 tasks
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_backup_api.py -v`
   Expected: FAIL
 
-- [ ] Step 3: Add backup schemas to `backend/app/api/schemas.py`
+- [ ] Step 2: Add backup schemas to `backend/app/api/schemas.py`
   ```python
   class BackupResponse(BaseModel):
       backup_id: str
@@ -470,13 +487,9 @@ Total: 16 tasks
       size_bytes: int
       size_mb: float
       created_at: str | None
-
-  class BackupScheduleRequest(BaseModel):
-      enabled: bool
-      interval_hours: int = 24  # 24 = daily, 168 = weekly
   ```
 
-- [ ] Step 4: Implement `backend/app/api/routes/backup.py`
+- [ ] Step 3: Implement `backend/app/api/routes/backup.py`
   Endpoints:
   - `POST /api/v1/backup/create` -- calls `backup_service.create_backup()`, returns `{backup_id, filename, size_bytes, created_at}`
   - `GET /api/v1/backup/list` -- calls `backup_service.list_backups()`, maps to `BackupListItem[]`
@@ -488,7 +501,44 @@ Total: 16 tasks
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_backup_api.py -v`
   Expected: PASS
 
-- [ ] Step 5: Write failing test for scheduler
+- [ ] Verify: `cd backend && uv run ruff check . && uv run python -m pytest tests/ --timeout=60 -q`
+
+**Commit:** `git commit -m "feat(api): add backup API endpoints wrapping BackupService (T3a)"`
+
+**Inline verification:**
+- `cd backend && uv run ruff check backend/app/api/routes/backup.py` -- no lint errors
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_backup_api.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
+
+---
+
+### T3b: Scheduled Backups with APScheduler
+
+**Goal:** Add APScheduler AsyncIOScheduler integration in FastAPI lifespan for automatic backups, with settings-driven interval and reschedule on config change.
+**Spec refs:** D14 (APScheduler), FR-77 (scheduled backups)
+
+**Files:**
+- Create: `backend/app/api/scheduler.py`
+- Modify: `backend/app/api/schemas.py` (add `BackupScheduleRequest`)
+- Modify: `backend/app/api/main.py` (add scheduler to lifespan)
+- Modify: `backend/app/api/routes/backup.py` (add schedule endpoint)
+- Modify: `backend/pyproject.toml` (add `apscheduler`)
+- Test: `backend/tests/unit/test_scheduler.py`
+
+**Steps:**
+
+- [ ] Step 1: Add APScheduler dependency
+  Add `apscheduler>=3.10.0` to `backend/pyproject.toml` `[project.dependencies]`.
+  Run: `cd backend && uv sync --dev`
+
+- [ ] Step 2: Add schedule schema to `backend/app/api/schemas.py`
+  ```python
+  class BackupScheduleRequest(BaseModel):
+      enabled: bool
+      interval_hours: int = 24  # 24 = daily, 168 = weekly
+  ```
+
+- [ ] Step 3: Write failing test for scheduler
   ```python
   # backend/tests/unit/test_scheduler.py
   from app.api.scheduler import create_backup_scheduler
@@ -504,7 +554,7 @@ Total: 16 tasks
   Run: `cd backend && uv run python -m pytest tests/unit/test_scheduler.py -v`
   Expected: FAIL
 
-- [ ] Step 6: Implement `backend/app/api/scheduler.py`
+- [ ] Step 4: Implement `backend/app/api/scheduler.py`
   ```python
   from apscheduler.schedulers.asyncio import AsyncIOScheduler
   from app.services.backup_service import BackupService
@@ -521,11 +571,18 @@ Total: 16 tasks
           )
       return scheduler
   ```
-  Integrate into FastAPI lifespan in `main.py`: read `backup_schedule_hours` from settings, start scheduler on startup, shutdown on app shutdown.
-  Run: `cd backend && uv run python -m pytest tests/unit/test_scheduler.py tests/integration/test_api/test_backup_api.py -v`
+  Integrate into FastAPI lifespan in `main.py`: read `backup_schedule_hours` from settings, start scheduler on startup, shutdown on app shutdown. Add reschedule on settings change (when `PATCH /api/v1/settings` updates `backup_schedule_hours`).
+  Run: `cd backend && uv run python -m pytest tests/unit/test_scheduler.py -v`
   Expected: PASS
 
 - [ ] Verify: `cd backend && uv run ruff check . && uv run python -m pytest tests/ --timeout=60 -q`
+
+**Commit:** `git commit -m "feat(api): add APScheduler for scheduled backups (T3b)"`
+
+**Inline verification:**
+- `cd backend && uv run ruff check backend/app/api/scheduler.py` -- no lint errors
+- `cd backend && uv run python -m pytest tests/unit/test_scheduler.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
 
 ---
 
@@ -656,6 +713,14 @@ Total: 16 tasks
 
 - [ ] Verify: `cd backend && uv run ruff check . && uv run python -m pytest tests/ --timeout=60 -q`
 
+**Commit:** `git commit -m "feat(api): add settings API with read/write/db-stats/migration-status (T4)"`
+
+**Inline verification:**
+- `cd backend && uv run ruff check backend/app/api/routes/settings.py backend/app/services/settings_service.py` -- no lint errors
+- `cd backend && uv run python -m pytest tests/unit/test_settings_service.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_settings_api.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
+
 ---
 
 ### T5: Reading State API
@@ -750,12 +815,19 @@ Total: 16 tasks
 
 - [ ] Verify: `cd backend && uv run ruff check . && uv run python -m pytest tests/ --timeout=60 -q`
 
+**Commit:** `git commit -m "feat(api): add reading state API for cross-device position sync (T5)"`
+
+**Inline verification:**
+- `cd backend && uv run ruff check backend/app/api/routes/reading_state.py` -- no lint errors
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_reading_state_api.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
+
 ---
 
-### T6: Settings Page (Frontend)
+### T6a: Settings Page Infrastructure
 
-**Goal:** Build the Settings page with sidebar navigation and all 5 sections: General, Database, Summarization Presets, Reading Preferences, Backup & Export.
-**Spec refs:** FR-72-77, §3.9.1-3.9.6, §11.2 (routes `/settings`, `/settings/:section`)
+**Goal:** Build the Settings page infrastructure with sidebar navigation, and implement the General and Database sections (LAN toggle + QR code, DB stats + migration status).
+**Spec refs:** FR-72-74, §3.9.1-3.9.3, §11.2 (routes `/settings`, `/settings/:section`)
 
 **Files:**
 - Create: `frontend/src/api/settings.ts`
@@ -764,9 +836,6 @@ Total: 16 tasks
 - Create: `frontend/src/components/settings/SettingsSidebar.vue`
 - Create: `frontend/src/components/settings/GeneralSettings.vue`
 - Create: `frontend/src/components/settings/DatabaseSettings.vue`
-- Create: `frontend/src/components/settings/PresetSettings.vue`
-- Create: `frontend/src/components/settings/ReadingSettings.vue`
-- Create: `frontend/src/components/settings/BackupSettings.vue`
 - Create: `frontend/src/components/settings/QRCode.vue`
 
 **Steps:**
@@ -799,23 +868,54 @@ Total: 16 tasks
   - Migration status with "Run migrations" button (disabled if up-to-date)
   - Table row counts fetched from `/api/v1/settings/database-stats`
 
-- [ ] Step 7: Implement `PresetSettings.vue`
+- [ ] Verify: `cd frontend && npm run type-check && npm run build`
+  Open `http://localhost:5173/settings` -- General and Database sections render, LAN toggle works, DB stats load
+
+**Commit:** `git commit -m "feat(frontend): add settings page with sidebar, General + Database sections (T6a)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
+
+---
+
+### T6b: Settings Page Remaining Sections
+
+**Goal:** Complete the Settings page with Summarization Presets list/detail, Reading Preferences defaults + custom CSS, and Backup & Export section placeholder wired to T7.
+**Spec refs:** FR-75-77, §3.9.4-3.9.6
+
+**Files:**
+- Create: `frontend/src/components/settings/PresetSettings.vue`
+- Create: `frontend/src/components/settings/ReadingSettings.vue`
+- Create: `frontend/src/components/settings/BackupSettings.vue`
+- Modify: `frontend/src/stores/settings.ts` (extend with preset/reading state)
+- Modify: `frontend/src/views/SettingsView.vue` (register remaining sections)
+
+**Steps:**
+
+- [ ] Step 1: Implement `PresetSettings.vue`
   - List/detail layout: left panel lists system + user presets, right panel shows detail
   - System presets: read-only with "Duplicate" button
   - User presets: full CRUD (create, edit, delete)
   - Detail view: name, 2x2 facet grid, eval assertions by category, prompt preview (collapsed)
   - Uses existing preset API from Phase 2
 
-- [ ] Step 8: Implement `ReadingSettings.vue`
+- [ ] Step 2: Implement `ReadingSettings.vue`
   - Default reading preset dropdown
   - Font loading preference toggle
   - Custom CSS textarea
 
-- [ ] Step 9: Implement `BackupSettings.vue` (stub -- full implementation in T7)
+- [ ] Step 3: Implement `BackupSettings.vue` (stub -- full implementation in T7)
   Placeholder content referencing T7. Shows "Backup & Export" heading.
 
 - [ ] Verify: `cd frontend && npm run type-check && npm run build`
-  Open `http://localhost:5173/settings` -- all 5 sections render, LAN toggle works, DB stats load
+  Open `http://localhost:5173/settings` -- all 5 sections render, preset CRUD works, reading preferences save
+
+**Commit:** `git commit -m "feat(frontend): add Presets, Reading, Backup settings sections (T6b)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
 
 ---
 
@@ -851,6 +951,12 @@ Total: 16 tasks
 
 - [ ] Verify: `cd frontend && npm run type-check && npm run build`
   Manual: Create backup, verify it appears in list, download it, delete it. Export library as JSON, verify download.
+
+**Commit:** `git commit -m "feat(frontend): add Export & Backup UI in settings (T7)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
 
 ---
 
@@ -893,16 +999,21 @@ Total: 16 tasks
 
 - [ ] Verify: Open app in Chrome desktop, navigate to a section. Open in Safari (different user-agent). "Continue where you left off" banner should appear.
 
+**Commit:** `git commit -m "feat(frontend): add reading position sync UI with continue banner (T8)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
+
 ---
 
-### T9: Mobile Responsive — Bottom Tab Bar + Bottom Sheets
+### T9a: Mobile Bottom Tab Bar
 
-**Goal:** Implement mobile navigation (bottom tab bar replacing sidebar) and bottom sheet component for sidebar content on mobile.
-**Spec refs:** FR-02, FR-33, FR-78, FR-79, §3.10.2-3.10.3
+**Goal:** Implement mobile navigation with a bottom tab bar component that replaces the icon rail sidebar on viewports <768px, with 5 tabs, active state, and proper touch targets.
+**Spec refs:** FR-02, FR-33, FR-78, §3.10.2
 
 **Files:**
 - Create: `frontend/src/components/app/BottomTabBar.vue`
-- Create: `frontend/src/components/common/BottomSheet.vue`
 - Modify: `frontend/src/components/app/AppShell.vue` (conditional desktop/mobile layout)
 - Modify: `frontend/src/composables/useBreakpoint.ts` (add `isMobile`, `isTablet`, `isDesktop`)
 
@@ -928,8 +1039,37 @@ Total: 16 tasks
   - Active tab: accent color
   - Fixed to bottom, 56px height, above safe area (`env(safe-area-inset-bottom)`)
   - Uses Vue Router for navigation
+  - Minimum touch targets: 44px height
 
-- [ ] Step 3: Implement `BottomSheet.vue`
+- [ ] Step 3: Modify `AppShell.vue` for responsive layout
+  - Desktop (>=1024px): Icon rail sidebar (existing) + content
+  - Tablet (768-1023px): Icon rail + full-width content (sidebar overlay)
+  - Mobile (<768px): No icon rail, content full-width, `BottomTabBar` fixed at bottom
+  - Use `useBreakpoint()` to conditionally render
+
+- [ ] Verify: `cd frontend && npm run build`
+  Open at 375px viewport: bottom tab bar visible, icon rail hidden
+
+**Commit:** `git commit -m "feat(frontend): add mobile bottom tab bar replacing sidebar on small viewports (T9a)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
+
+---
+
+### T9b: Bottom Sheet Component
+
+**Goal:** Implement a reusable bottom sheet component with 3 snap points, drag gestures, backdrop, and Radix Dialog base for accessibility. Integrate into reader mobile layout.
+**Spec refs:** FR-79, §3.10.3
+
+**Files:**
+- Create: `frontend/src/components/common/BottomSheet.vue`
+- Modify: `frontend/src/views/BookDetailView.vue` (mobile reader bottom action bar)
+
+**Steps:**
+
+- [ ] Step 1: Implement `BottomSheet.vue`
   - Radix Dialog base for accessibility (focus trap, escape, ARIA)
   - Drag handle at top (8px wide, centered)
   - Three snap points: Peek (30%), Half (50%), Full (90%)
@@ -942,20 +1082,20 @@ Total: 16 tasks
   - Minimum text size: 14px within sheet content
   - Minimum touch targets: 44px height
 
-- [ ] Step 4: Modify `AppShell.vue` for responsive layout
-  - Desktop (>=1024px): Icon rail sidebar (existing) + content
-  - Tablet (768-1023px): Icon rail + full-width content (sidebar overlay)
-  - Mobile (<768px): No icon rail, content full-width, `BottomTabBar` fixed at bottom
-  - Use `useBreakpoint()` to conditionally render
-
-- [ ] Step 5: Adapt reader for mobile
+- [ ] Step 2: Adapt reader for mobile
   - `BookDetailView.vue`: On mobile, replace persistent context sidebar with bottom action bar
   - Bottom action bar: `Aa Settings` | `AI Chat` | `Annotations` | `More` (each opens a `BottomSheet`)
   - TOC dropdown: opens as full-screen bottom sheet on mobile
   - Original/Summary toggle: full-width segmented control below header
 
 - [ ] Verify: `cd frontend && npm run build`
-  Open at 375px viewport: bottom tab bar visible, icon rail hidden, bottom sheets open from reader action bar
+  Open at 375px viewport: bottom sheets open from reader action bar, drag to snap works
+
+**Commit:** `git commit -m "feat(frontend): add bottom sheet component with drag gestures for mobile (T9b)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
 
 ---
 
@@ -1026,6 +1166,12 @@ Total: 16 tasks
 
 - [ ] Verify: Test at 375px viewport width across all pages. Verify touch interactions on actual mobile device or Chrome DevTools mobile emulation.
 
+**Commit:** `git commit -m "feat(frontend): add touch interactions and mobile breakpoint refinements (T10)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
+
 ---
 
 ### T11: Skeleton Loaders, Empty States, Error Handling Polish
@@ -1090,6 +1236,12 @@ Total: 16 tasks
 - [ ] Verify: `cd frontend && npm run build`
   Manual: Disconnect backend, verify error states render. Empty library: verify empty state. Fast navigation: verify skeletons flash briefly.
 
+**Commit:** `git commit -m "feat(frontend): add skeleton loaders, empty states, and error boundaries (T11)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
+
 ---
 
 ### T12: Accessibility Audit + Fixes
@@ -1138,6 +1290,12 @@ Total: 16 tasks
 
 - [ ] Verify: Run axe-core in browser on each page. Zero critical/serious violations.
   `cd frontend && npm install -D @axe-core/playwright` (for E2E accessibility checks in T15)
+
+**Commit:** `git commit -m "fix(frontend): accessibility audit — keyboard nav, ARIA, contrast, reduced motion (T12)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors
 
 ---
 
@@ -1193,6 +1351,12 @@ Total: 16 tasks
 
 - [ ] Verify: `cd frontend && npm run build` -- chunk sizes reasonable
   Lighthouse scores: Performance >= 90 on desktop, >= 80 on mobile (simulated)
+
+**Commit:** `git commit -m "perf(frontend): route splitting, lazy loading, bundle optimization (T13)"`
+
+**Inline verification:**
+- `cd frontend && npm run type-check` -- no errors
+- `cd frontend && npm run build` -- builds without errors, initial JS < 200KB gzipped
 
 ---
 
@@ -1354,11 +1518,19 @@ Total: 16 tasks
 
 - [ ] Verify: `docker compose up -d && sleep 10 && curl -sf http://localhost:8000/api/v1/health && docker compose down`
 
+**Commit:** `git commit -m "ops: Docker production hardening — health checks, log rotation, non-root user (T14)"`
+
+**Inline verification:**
+- `docker compose build --no-cache` -- builds without errors
+- `docker compose up -d && docker compose ps` -- both services healthy
+- `curl -sf http://localhost:8000/api/v1/health` -- returns `{"status": "ok"}`
+- `docker compose down` -- clean shutdown
+
 ---
 
-### T15: E2E Test Suite (Playwright)
+### T15a: E2E Test Infrastructure + Core Tests
 
-**Goal:** Create a comprehensive Playwright E2E test suite covering all major user flows across desktop and mobile viewports.
+**Goal:** Set up Playwright configuration with 3 projects (desktop-chrome, mobile-chrome, mobile-safari), shared fixture helpers, and core E2E tests for library, upload, and reader flows.
 **Spec refs:** §14.4 (E2E Tests), §6 (Test Scenarios in requirements)
 
 **Files:**
@@ -1367,11 +1539,6 @@ Total: 16 tasks
 - Create: `frontend/e2e/library.spec.ts`
 - Create: `frontend/e2e/upload.spec.ts`
 - Create: `frontend/e2e/reader.spec.ts`
-- Create: `frontend/e2e/settings.spec.ts`
-- Create: `frontend/e2e/export-backup.spec.ts`
-- Create: `frontend/e2e/search.spec.ts`
-- Create: `frontend/e2e/mobile.spec.ts`
-- Create: `frontend/e2e/reading-position.spec.ts`
 
 **Steps:**
 
@@ -1445,36 +1612,67 @@ Total: 16 tasks
   - RDR-04: Reader settings change
   - RDR-08: Mobile bottom action bar (mobile project)
 
-- [ ] Step 6: Settings E2E tests (`frontend/e2e/settings.spec.ts`)
+- [ ] Verify: `cd frontend && npx playwright test --project=desktop-chrome library upload reader` -- all pass
+
+**Commit:** `git commit -m "test(e2e): add Playwright infrastructure + library/upload/reader E2E tests (T15a)"`
+
+**Inline verification:**
+- `cd frontend && npx playwright test --project=desktop-chrome` -- core tests pass
+- `cd frontend && npm run type-check` -- no errors
+
+---
+
+### T15b: E2E Remaining Tests
+
+**Goal:** Complete E2E coverage with settings (including presets and reading preferences), export-backup, search, mobile, and reading-position tests.
+**Spec refs:** §14.4 (E2E Tests), §6 (Test Scenarios in requirements)
+
+**Files:**
+- Create: `frontend/e2e/settings.spec.ts`
+- Create: `frontend/e2e/export-backup.spec.ts`
+- Create: `frontend/e2e/search.spec.ts`
+- Create: `frontend/e2e/mobile.spec.ts`
+- Create: `frontend/e2e/reading-position.spec.ts`
+
+**Steps:**
+
+- [ ] Step 1: Settings E2E tests (`frontend/e2e/settings.spec.ts`)
   - Navigate to each settings section
   - Toggle LAN access, verify QR code appears
   - View database stats
   - View migration status
+  - **Presets section:** Navigate to Presets section, create a user preset (fill name + facets), verify it appears in the preset list, delete it, verify it is removed from the list
+  - **Reading Preferences section:** Change default preset, reload the page, verify the selection persists, add custom CSS in the textarea, save, verify CSS persists on reload
 
-- [ ] Step 7: Export & Backup E2E tests (`frontend/e2e/export-backup.spec.ts`)
+- [ ] Step 2: Export & Backup E2E tests (`frontend/e2e/export-backup.spec.ts`)
   - Create backup, verify it appears in list
   - Download backup
   - Export library as JSON
 
-- [ ] Step 8: Search E2E tests (`frontend/e2e/search.spec.ts`)
+- [ ] Step 3: Search E2E tests (`frontend/e2e/search.spec.ts`)
   - Open command palette with Cmd+K
   - Type query, verify grouped results
   - Navigate to result
 
-- [ ] Step 9: Mobile-specific E2E tests (`frontend/e2e/mobile.spec.ts`)
+- [ ] Step 4: Mobile-specific E2E tests (`frontend/e2e/mobile.spec.ts`)
   Run with `--project=mobile-chrome`:
   - Bottom tab bar visible, icon rail hidden
   - Bottom sheet opens from reader action bar
   - Filter opens as full-screen modal
   - Touch targets >= 44px (measure with `boundingBox`)
 
-- [ ] Step 10: Reading position sync E2E (`frontend/e2e/reading-position.spec.ts`)
+- [ ] Step 5: Reading position sync E2E (`frontend/e2e/reading-position.spec.ts`)
   - Save position with one user-agent
   - Load page with different user-agent
   - Verify "Continue where you left off" banner
 
-- [ ] Verify: `cd frontend && npx playwright test --project=desktop-chrome` -- all pass
-  Run: `cd frontend && npx playwright test --project=mobile-chrome` -- all pass
+- [ ] Verify: `cd frontend && npx playwright test` -- all pass across all projects
+
+**Commit:** `git commit -m "test(e2e): add settings/export/search/mobile/reading-position E2E tests (T15b)"`
+
+**Inline verification:**
+- `cd frontend && npx playwright test --project=desktop-chrome` -- all pass
+- `cd frontend && npx playwright test --project=mobile-chrome` -- all pass
 
 ---
 
@@ -1597,3 +1795,4 @@ Total: 16 tasks
 | Loop | Findings | Changes Made |
 |------|----------|-------------|
 | 1 | Initial plan draft | Full plan written with 16 tasks covering all Phase 3 scope items |
+| 2 | Review loop: format inconsistency (inline verify vs dedicated section), T10 missing verification, 5 tasks too large, T15 E2E gaps, implicit dependencies | Standardized all tasks with Inline verification sections, added T10 verification, split T3/T6/T9/T15 into sub-tasks (now 20 tasks), expanded T15 settings E2E tests, documented implicit dependencies in execution order |
