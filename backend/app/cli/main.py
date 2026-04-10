@@ -75,6 +75,7 @@ from app.cli.commands import (
     books,
     config_cmd,
     eval_cmd,
+    health_cmd,
     init_cmd,
     search_cmd,
     status_cmd,
@@ -92,6 +93,7 @@ app.command("search")(search_cmd.search)
 app.command("eval")(eval_cmd.eval_cmd)
 app.add_typer(eval_cmd.eval_app, name="eval-compare", help="Eval comparison commands. (Phase 2)")
 app.command("status")(status_cmd.status)
+app.command("health")(health_cmd.health)
 app.add_typer(config_cmd.config_app, name="config")
 
 
