@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import books, eval, health, processing, sections, summaries, views
+from app.api.routes import annotations, books, eval, health, processing, sections, summaries, views
 from app.api.sse import EventBus
 from app.config import Settings
 from app.db.session import create_session_factory
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
 
     # API routes
     app.include_router(health.router)
+    app.include_router(annotations.router)
     app.include_router(books.router)
     app.include_router(sections.router)
     app.include_router(summaries.router)

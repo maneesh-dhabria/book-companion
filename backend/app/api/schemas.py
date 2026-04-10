@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import enum
 from datetime import datetime  # noqa: TC003
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -270,3 +271,50 @@ class LibraryViewUpdateRequest(BaseModel):
     sort_direction: str | None = None
     filters: dict[str, Any] | None = None
     table_columns: dict[str, Any] | None = None
+
+
+# --- Annotations ---
+
+
+class AnnotationTypeEnum(str, enum.Enum):
+    HIGHLIGHT = "highlight"
+    NOTE = "note"
+    FREEFORM = "freeform"
+
+
+class AnnotationCreateRequest(BaseModel):
+    content_type: str
+    content_id: int
+    type: AnnotationTypeEnum = AnnotationTypeEnum.HIGHLIGHT
+    selected_text: str | None = None
+    text_start: int | None = None
+    text_end: int | None = None
+    note: str | None = None
+
+
+class AnnotationUpdateRequest(BaseModel):
+    note: str | None = None
+    type: AnnotationTypeEnum | None = None
+
+
+class AnnotationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content_type: str
+    content_id: int
+    text_start: int | None = None
+    text_end: int | None = None
+    selected_text: str | None = None
+    note: str | None = None
+    type: str
+    linked_annotation_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AnnotationLinkRequest(BaseModel):
+    target_annotation_id: int
+
+
+AnnotationExportFormat = Literal["markdown", "json", "csv"]

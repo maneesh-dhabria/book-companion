@@ -87,3 +87,32 @@ def get_section_edit_service(
     from app.services.section_edit_service import SectionEditService
 
     return SectionEditService(db)
+
+
+def get_annotation_repo(
+    db: AsyncSession = Depends(get_db),
+):
+    """Construct AnnotationRepository with shared session."""
+    from app.db.repositories.annotation_repo import AnnotationRepository
+
+    return AnnotationRepository(db)
+
+
+def get_concept_repo(
+    db: AsyncSession = Depends(get_db),
+):
+    """Construct ConceptRepository with shared session."""
+    from app.db.repositories.concept_repo import ConceptRepository
+
+    return ConceptRepository(db)
+
+
+def get_search_service(
+    db: AsyncSession = Depends(get_db),
+):
+    """Construct SearchService — degrades to BM25-only if Ollama unavailable."""
+    from app.services.embedding_service import EmbeddingService
+    from app.services.search_service import SearchService
+
+    embedding_service = EmbeddingService(session=db)
+    return SearchService(session=db, embedding_service=embedding_service)
