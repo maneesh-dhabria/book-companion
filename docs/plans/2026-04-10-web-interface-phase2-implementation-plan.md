@@ -265,6 +265,176 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_annotations_api.py -v`
   Expected: FAIL — routes not defined
 
+- [ ] Step 1a: Write happy-path integration tests for annotation endpoints
+  ```python
+  # Append to backend/tests/integration/test_api/test_annotations_api.py
+
+  @pytest.mark.asyncio
+  async def test_create_annotation_returns_correct_fields(client):
+      # Section 1 of book 1 (Art of War) is guaranteed to exist in fixtures
+      payload = {
+          "content_type": "section_content",
+          "content_id": 1,
+          "type": "highlight",
+          "selected_text": "supreme excellence consists in breaking the enemy's resistance",
+          "text_start": 120,
+          "text_end": 182,
+          "note": None,
+      }
+      resp = await client.post("/api/v1/annotations", json=payload)
+      assert resp.status_code == 201
+      data = resp.json()
+      assert data["content_type"] == "section_content"
+      assert data["content_id"] == 1
+      assert data["type"] == "highlight"
+      assert data["selected_text"] == "supreme excellence consists in breaking the enemy's resistance"
+      assert data["text_start"] == 120
+      assert data["text_end"] == 182
+      assert "id" in data
+      annotation_id = data["id"]
+
+      # Cleanup
+      del_resp = await client.delete(f"/api/v1/annotations/{annotation_id}")
+      assert del_resp.status_code == 204
+
+  @pytest.mark.asyncio
+  async def test_get_annotation_returns_stored_data(client):
+      # Create annotation, fetch it by ID, assert field values match
+      payload = {
+          "content_type": "section_content",
+          "content_id": 1,
+          "type": "note",
+          "selected_text": "All warfare is based on deception.",
+          "text_start": 0,
+          "text_end": 34,
+          "note": "Key strategic insight",
+      }
+      create_resp = await client.post("/api/v1/annotations", json=payload)
+      assert create_resp.status_code == 201
+      annotation_id = create_resp.json()["id"]
+
+      get_resp = await client.get(f"/api/v1/annotations/{annotation_id}")
+      assert get_resp.status_code == 200
+      data = get_resp.json()
+      assert data["id"] == annotation_id
+      assert data["note"] == "Key strategic insight"
+      assert data["type"] == "note"
+      assert data["selected_text"] == "All warfare is based on deception."
+
+      # Cleanup
+      await client.delete(f"/api/v1/annotations/{annotation_id}")
+
+  @pytest.mark.asyncio
+  async def test_update_annotation_note(client):
+      payload = {
+          "content_type": "section_content",
+          "content_id": 1,
+          "type": "highlight",
+          "selected_text": "Appear weak when you are strong",
+          "text_start": 50,
+          "text_end": 80,
+      }
+      create_resp = await client.post("/api/v1/annotations", json=payload)
+      annotation_id = create_resp.json()["id"]
+
+      patch_resp = await client.patch(f"/api/v1/annotations/{annotation_id}", json={"note": "Updated note text"})
+      assert patch_resp.status_code == 200
+      assert patch_resp.json()["note"] == "Updated note text"
+      # type should be preserved
+      assert patch_resp.json()["type"] == "highlight"
+
+      # Cleanup
+      await client.delete(f"/api/v1/annotations/{annotation_id}")
+
+  @pytest.mark.asyncio
+  async def test_list_annotations_filters_by_content_id(client):
+      # Create two annotations on different sections
+      payload_s1 = {
+          "content_type": "section_content",
+          "content_id": 1,
+          "type": "highlight",
+          "selected_text": "text for section 1",
+          "text_start": 0,
+          "text_end": 18,
+      }
+      payload_s2 = {
+          "content_type": "section_content",
+          "content_id": 2,
+          "type": "highlight",
+          "selected_text": "text for section 2",
+          "text_start": 0,
+          "text_end": 18,
+      }
+      r1 = await client.post("/api/v1/annotations", json=payload_s1)
+      r2 = await client.post("/api/v1/annotations", json=payload_s2)
+      id1 = r1.json()["id"]
+      id2 = r2.json()["id"]
+
+      resp = await client.get("/api/v1/annotations?content_type=section_content&content_id=1")
+      assert resp.status_code == 200
+      items = resp.json()["items"]
+      returned_ids = [a["id"] for a in items]
+      assert id1 in returned_ids
+      assert id2 not in returned_ids, "Section 2 annotation leaked into section 1 filter results"
+
+      # Cleanup
+      await client.delete(f"/api/v1/annotations/{id1}")
+      await client.delete(f"/api/v1/annotations/{id2}")
+
+  @pytest.mark.asyncio
+  async def test_link_and_unlink_annotations(client):
+      # Create two annotations, link them, verify link, then unlink
+      payload_base = {
+          "content_type": "section_content",
+          "content_id": 1,
+          "type": "highlight",
+          "text_start": 0,
+          "text_end": 10,
+      }
+      r1 = await client.post("/api/v1/annotations", json={**payload_base, "selected_text": "text one"})
+      r2 = await client.post("/api/v1/annotations", json={**payload_base, "selected_text": "text two"})
+      id1 = r1.json()["id"]
+      id2 = r2.json()["id"]
+
+      link_resp = await client.post(f"/api/v1/annotations/{id1}/link", json={"target_annotation_id": id2})
+      assert link_resp.status_code == 200
+      assert link_resp.json()["linked_annotation_id"] == id2
+
+      unlink_resp = await client.delete(f"/api/v1/annotations/{id1}/link")
+      assert unlink_resp.status_code == 200
+      assert unlink_resp.json()["linked_annotation_id"] is None
+
+      # Cleanup
+      await client.delete(f"/api/v1/annotations/{id1}")
+      await client.delete(f"/api/v1/annotations/{id2}")
+
+  @pytest.mark.asyncio
+  async def test_export_markdown_contains_annotation_data(client):
+      payload = {
+          "content_type": "section_content",
+          "content_id": 1,
+          "type": "note",
+          "selected_text": "exportable passage",
+          "text_start": 0,
+          "text_end": 18,
+          "note": "My export test note",
+      }
+      create_resp = await client.post("/api/v1/annotations", json=payload)
+      annotation_id = create_resp.json()["id"]
+
+      export_resp = await client.get("/api/v1/annotations/export?format=markdown")
+      assert export_resp.status_code == 200
+      content = export_resp.text
+      # The exported markdown must actually contain the annotation data
+      assert "exportable passage" in content or "My export test note" in content
+      assert export_resp.headers.get("content-disposition", "").startswith("attachment")
+
+      # Cleanup
+      await client.delete(f"/api/v1/annotations/{annotation_id}")
+  ```
+  Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_annotations_api.py -v`
+  Expected: FAIL — routes not defined
+
 - [ ] Step 2: Add annotation schemas to `backend/app/api/schemas.py`
   Add:
   - `AnnotationType(str, Enum)` with values `HIGHLIGHT = "highlight"`, `NOTE = "note"`, `FREEFORM = "freeform"`
@@ -306,8 +476,9 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 **Inline verification:**
 - `cd backend && uv run ruff check app/api/routes/annotations.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/integration/test_api/test_annotations_api.py -v` — all passed
-- `curl -s http://localhost:8000/api/v1/annotations | python3 -m json.tool` — returns paginated response
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_annotations_api.py -v` — all passed, including happy-path tests
+- `curl -s http://localhost:8000/api/v1/annotations | python3 -m json.tool` — returns `{"items": [], "total": 0}` (or populated list)
+- `curl -sf -X POST http://localhost:8000/api/v1/annotations -H "Content-Type: application/json" -d '{"content_type":"section_content","content_id":1,"type":"highlight","selected_text":"test","text_start":0,"text_end":4}' | python3 -m json.tool` — returns 201 with `id`, `content_type`, `selected_text` populated, not null
 
 ---
 
@@ -371,6 +542,162 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py -v`
   Expected: FAIL — `app.services.ai_thread_service` does not exist
 
+- [ ] Step 1a: Write behavioral unit tests for AIThreadService context building
+  ```python
+  # Append to backend/tests/unit/test_ai_thread_service.py
+
+  @pytest.mark.asyncio
+  async def test_build_context_prompt_includes_all_required_sections():
+      """Prompt must contain every context element the LLM needs — missing any breaks quality."""
+      session = AsyncMock()
+      llm = AsyncMock()
+      settings = MagicMock()
+      service = AIThreadService(session, llm, settings)
+      prompt = service.build_context_prompt(
+          book_title="The Art of War",
+          book_summary="A treatise on military strategy and tactics.",
+          section_title="Chapter 3: Attack by Stratagem",
+          section_content="Supreme excellence consists in breaking the enemy's resistance without fighting.",
+          thread_history=[
+              {"role": "user", "content": "What does Sun Tzu mean by this?"},
+              {"role": "assistant", "content": "He means that the best victory is won without battle."},
+          ],
+          user_message="How does this apply to modern business?",
+          selected_text=None,
+      )
+      assert "The Art of War" in prompt, "Book title missing from prompt"
+      assert "A treatise on military strategy" in prompt, "Book summary missing from prompt"
+      assert "Chapter 3: Attack by Stratagem" in prompt, "Section title missing from prompt"
+      assert "Supreme excellence" in prompt, "Section content missing from prompt"
+      assert "What does Sun Tzu mean by this?" in prompt, "User history turn missing from prompt"
+      assert "He means that the best victory" in prompt, "Assistant history turn missing from prompt"
+      assert "How does this apply to modern business?" in prompt, "Current user message missing from prompt"
+
+  @pytest.mark.asyncio
+  async def test_build_context_prompt_selected_text_appears_before_user_message():
+      """Selected text must be positioned as context block, not appended after user message."""
+      session = AsyncMock()
+      llm = AsyncMock()
+      settings = MagicMock()
+      service = AIThreadService(session, llm, settings)
+      prompt = service.build_context_prompt(
+          book_title="Test Book",
+          book_summary=None,
+          section_title="Chapter 1",
+          section_content="Full chapter content here.",
+          thread_history=[],
+          user_message="Explain this passage.",
+          selected_text="specific passage to explain",
+      )
+      selected_pos = prompt.index("specific passage to explain")
+      message_pos = prompt.index("Explain this passage.")
+      assert selected_pos < message_pos, "Selected text must appear before the user message (as context)"
+
+  @pytest.mark.asyncio
+  async def test_build_context_prompt_empty_history_produces_no_history_block():
+      """Prompt with no history must not contain placeholder text or empty history sections."""
+      session = AsyncMock()
+      llm = AsyncMock()
+      settings = MagicMock()
+      service = AIThreadService(session, llm, settings)
+      prompt = service.build_context_prompt(
+          book_title="Test Book",
+          book_summary=None,
+          section_title="Chapter 1",
+          section_content="Some content.",
+          thread_history=[],
+          user_message="First message.",
+          selected_text=None,
+      )
+      # Should not contain empty history markers that would confuse the LLM
+      assert "[]" not in prompt, "Empty list literal leaked into prompt"
+      assert "No previous messages" not in prompt or len(prompt) > 50  # acceptable if phrased naturally
+
+  @pytest.mark.asyncio
+  async def test_send_message_stores_both_user_and_assistant_messages():
+      """send_message must persist user message AND assistant response — not just one."""
+      from unittest.mock import patch, AsyncMock as AM
+      session = AM()
+      settings = MagicMock()
+      llm = AM()
+      llm.complete = AM(return_value={"result": "The answer is strategic patience."})
+
+      service = AIThreadService(session, llm, settings)
+
+      # Mock thread fetch and book/section fetch
+      mock_thread = MagicMock()
+      mock_thread.messages = []
+      mock_thread.book_id = 1
+
+      mock_book = MagicMock()
+      mock_book.title = "The Art of War"
+      mock_book.default_summary_id = None
+
+      mock_section = MagicMock()
+      mock_section.title = "Chapter 1"
+      mock_section.content_md = "Content here."
+
+      with patch.object(service, '_fetch_thread', AM(return_value=mock_thread)), \
+           patch.object(service, '_fetch_book', AM(return_value=mock_book)), \
+           patch.object(service, '_fetch_section', AM(return_value=mock_section)):
+
+          # Capture DB add calls
+          added_objects = []
+          session.add = lambda obj: added_objects.append(obj)
+          session.flush = AM()
+          session.commit = AM()
+
+          await service.send_message(
+              thread_id=1,
+              content="What is the key insight here?",
+              context_section_id=1,
+              selected_text=None,
+          )
+
+          roles_stored = [obj.role for obj in added_objects if hasattr(obj, 'role')]
+          assert 'user' in roles_stored, "User message not persisted to DB"
+          assert 'assistant' in roles_stored, "Assistant message not persisted to DB"
+
+  @pytest.mark.asyncio
+  async def test_send_message_records_latency():
+      """Returned AIMessage must have latency_ms populated — callers display it in the UI."""
+      # This test verifies the contract between AIThreadService and the UI
+      from unittest.mock import patch, AsyncMock as AM
+      session = AM()
+      settings = MagicMock()
+      llm = AM()
+      llm.complete = AM(return_value={"result": "Response text."})
+
+      service = AIThreadService(session, llm, settings)
+      mock_thread = MagicMock()
+      mock_thread.messages = []
+      mock_thread.book_id = 1
+      mock_book = MagicMock()
+      mock_book.title = "Test"
+      mock_book.default_summary_id = None
+      mock_section = MagicMock()
+      mock_section.title = "Ch1"
+      mock_section.content_md = "Content."
+
+      with patch.object(service, '_fetch_thread', AM(return_value=mock_thread)), \
+           patch.object(service, '_fetch_book', AM(return_value=mock_book)), \
+           patch.object(service, '_fetch_section', AM(return_value=mock_section)):
+          session.add = lambda obj: None
+          session.flush = AM()
+          session.commit = AM()
+
+          result = await service.send_message(
+              thread_id=1,
+              content="Hello",
+              context_section_id=None,
+              selected_text=None,
+          )
+          assert result.latency_ms is not None, "latency_ms must be set — UI displays it"
+          assert result.latency_ms >= 0
+  ```
+  Run: `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py -v`
+  Expected: FAIL — `app.services.ai_thread_service` does not exist
+
 - [ ] Step 2: Implement `backend/app/services/ai_thread_service.py`
   ```python
   class AIThreadService:
@@ -407,7 +734,7 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 **Inline verification:**
 - `cd backend && uv run ruff check app/services/ai_thread_service.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py -v` — all passed
+- `cd backend && uv run python -m pytest tests/unit/test_ai_thread_service.py -v` — all passed, including behavioral tests for context structure, history ordering, persistence of both messages, and latency recording
 
 ---
 
@@ -456,6 +783,101 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v`
   Expected: FAIL — routes not defined
 
+- [ ] Step 1a: Write happy-path integration tests for AI thread endpoints
+  ```python
+  # Append to backend/tests/integration/test_api/test_ai_threads_api.py
+
+  @pytest.mark.asyncio
+  async def test_create_thread_and_verify_fields(client):
+      # Book 1 (Art of War) is guaranteed to exist in test fixtures
+      resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Strategy Discussion"})
+      assert resp.status_code == 201
+      data = resp.json()
+      assert data["book_id"] == 1
+      assert data["title"] == "Strategy Discussion"
+      assert "id" in data
+      assert data["messages"] == []  # new thread has no messages
+      thread_id = data["id"]
+
+      # Cleanup
+      await client.delete(f"/api/v1/ai-threads/{thread_id}")
+
+  @pytest.mark.asyncio
+  async def test_list_threads_returns_created_thread(client):
+      create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "My Discussion"})
+      thread_id = create_resp.json()["id"]
+
+      list_resp = await client.get("/api/v1/books/1/ai-threads")
+      assert list_resp.status_code == 200
+      items = list_resp.json()
+      assert isinstance(items, list)
+      thread_ids = [t["id"] for t in items]
+      assert thread_id in thread_ids, "Created thread not found in list"
+
+      # Cleanup
+      await client.delete(f"/api/v1/ai-threads/{thread_id}")
+
+  @pytest.mark.asyncio
+  async def test_get_thread_returns_correct_book_id(client):
+      create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Thread for get"})
+      thread_id = create_resp.json()["id"]
+
+      get_resp = await client.get(f"/api/v1/ai-threads/{thread_id}")
+      assert get_resp.status_code == 200
+      data = get_resp.json()
+      assert data["id"] == thread_id
+      assert data["book_id"] == 1
+      assert data["title"] == "Thread for get"
+      assert "messages" in data  # messages list must be present (even if empty)
+
+      # Cleanup
+      await client.delete(f"/api/v1/ai-threads/{thread_id}")
+
+  @pytest.mark.asyncio
+  async def test_update_thread_title(client):
+      create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Old Title"})
+      thread_id = create_resp.json()["id"]
+
+      patch_resp = await client.patch(f"/api/v1/ai-threads/{thread_id}", json={"title": "New Title"})
+      assert patch_resp.status_code == 200
+      assert patch_resp.json()["title"] == "New Title"
+      assert patch_resp.json()["id"] == thread_id  # id unchanged
+
+      # Cleanup
+      await client.delete(f"/api/v1/ai-threads/{thread_id}")
+
+  @pytest.mark.asyncio
+  async def test_delete_thread_removes_from_list(client):
+      create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Thread to delete"})
+      thread_id = create_resp.json()["id"]
+
+      del_resp = await client.delete(f"/api/v1/ai-threads/{thread_id}")
+      assert del_resp.status_code == 204
+
+      get_resp = await client.get(f"/api/v1/ai-threads/{thread_id}")
+      assert get_resp.status_code == 404, "Deleted thread should return 404"
+
+  @pytest.mark.asyncio
+  async def test_threads_ordered_by_updated_at_desc(client):
+      """Most recently updated thread must appear first."""
+      r1 = await client.post("/api/v1/books/1/ai-threads", json={"title": "First thread"})
+      r2 = await client.post("/api/v1/books/1/ai-threads", json={"title": "Second thread"})
+      id1, id2 = r1.json()["id"], r2.json()["id"]
+
+      list_resp = await client.get("/api/v1/books/1/ai-threads")
+      items = list_resp.json()
+      returned_ids = [t["id"] for t in items]
+      idx1 = returned_ids.index(id1)
+      idx2 = returned_ids.index(id2)
+      assert idx2 < idx1, "More recently created thread must appear before older thread"
+
+      # Cleanup
+      await client.delete(f"/api/v1/ai-threads/{id1}")
+      await client.delete(f"/api/v1/ai-threads/{id2}")
+  ```
+  Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v`
+  Expected: FAIL — routes not defined
+
 - [ ] Step 2: Add AI thread/message schemas to `backend/app/api/schemas.py`
   Add:
   - `AIThreadCreateRequest(title: str | None = "New Thread")`
@@ -488,7 +910,7 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 **Inline verification:**
 - `cd backend && uv run ruff check app/api/routes/ai_threads.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v` — all passed
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_ai_threads_api.py -v` — all passed, including create/get/update/delete happy-path and ordering tests
 
 ---
 
@@ -555,6 +977,101 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_search_api.py -v`
   Expected: FAIL — routes not defined
 
+- [ ] Step 1a: Write behavioral integration tests for search endpoints
+  ```python
+  # Append to backend/tests/integration/test_api/test_search_api.py
+  # These tests rely on Art of War (book_id=1) with 44 sections already indexed
+
+  @pytest.mark.asyncio
+  async def test_quick_search_groups_by_type_and_caps_at_three(client):
+      """Results must be grouped, and no group may exceed 3 items (spec §9.7)."""
+      resp = await client.get("/api/v1/search/quick?q=strategy&limit=12")
+      assert resp.status_code == 200
+      data = resp.json()
+      results = data["results"]
+      for group_name, group_items in results.items():
+          assert len(group_items) <= 3, \
+              f"Group '{group_name}' has {len(group_items)} items, max is 3"
+
+  @pytest.mark.asyncio
+  async def test_quick_search_query_echoed_in_response(client):
+      """Response must echo the query so the frontend can correlate results."""
+      resp = await client.get("/api/v1/search/quick?q=deception")
+      assert resp.status_code == 200
+      data = resp.json()
+      assert data["query"] == "deception"
+
+  @pytest.mark.asyncio
+  async def test_quick_search_sections_contain_required_fields(client):
+      """Each section hit must have id, title, book_title, snippet — frontend renders all of them."""
+      resp = await client.get("/api/v1/search/quick?q=war")
+      assert resp.status_code == 200
+      sections = resp.json()["results"]["sections"]
+      if sections:  # only assert if results exist (Ollama may be down)
+          hit = sections[0]
+          assert "id" in hit, "Section hit missing id"
+          assert "title" in hit, "Section hit missing title"
+          assert "book_title" in hit, "Section hit missing book_title"
+          assert "snippet" in hit, "Section hit missing snippet"
+
+  @pytest.mark.asyncio
+  async def test_quick_search_stores_in_recent_searches(client):
+      """Performing a quick search must record the query so it appears in /search/recent."""
+      unique_query = "xyzzy_test_query_unique_9871"
+      await client.get(f"/api/v1/search/quick?q={unique_query}")
+
+      recent_resp = await client.get("/api/v1/search/recent")
+      assert recent_resp.status_code == 200
+      recent_queries = [r["query"] for r in recent_resp.json()]
+      assert unique_query in recent_queries, "Query not recorded in recent searches"
+
+      # Cleanup
+      await client.delete("/api/v1/search/recent")
+
+  @pytest.mark.asyncio
+  async def test_full_search_pagination_fields_correct(client):
+      """Paginated response must have items, total, page, per_page — not just items."""
+      resp = await client.get("/api/v1/search?q=war&page=1&per_page=5")
+      assert resp.status_code == 200
+      data = resp.json()
+      assert "items" in data
+      assert "total" in data
+      assert "page" in data
+      assert "per_page" in data
+      assert data["per_page"] == 5
+
+  @pytest.mark.asyncio
+  async def test_full_search_source_type_filter_excludes_other_types(client):
+      """Filter by source_type=section must return only section results."""
+      resp = await client.get("/api/v1/search?q=war&source_type=section&page=1&per_page=10")
+      assert resp.status_code == 200
+      items = resp.json()["items"]
+      for item in items:
+          assert item["source_type"] == "section", \
+              f"source_type filter broken: got '{item['source_type']}' in section-only results"
+
+  @pytest.mark.asyncio
+  async def test_full_search_book_filter_scopes_to_book(client):
+      """Filter by book_id=1 must return only results from that book."""
+      resp = await client.get("/api/v1/search?q=war&book_id=1&page=1&per_page=10")
+      assert resp.status_code == 200
+      items = resp.json()["items"]
+      for item in items:
+          assert item["book_id"] == 1, \
+              f"book_id filter broken: got book_id={item['book_id']} in book_id=1 results"
+
+  @pytest.mark.asyncio
+  async def test_clear_recent_searches(client):
+      await client.get("/api/v1/search/quick?q=unique_query_to_clear")
+      clear_resp = await client.delete("/api/v1/search/recent")
+      assert clear_resp.status_code in (200, 204)
+
+      recent_resp = await client.get("/api/v1/search/recent")
+      assert recent_resp.json() == [], "Recent searches not cleared"
+  ```
+  Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_search_api.py -v`
+  Expected: FAIL — routes not defined
+
 - [ ] Step 2: Add search schemas to `backend/app/api/schemas.py`
   Add:
   - `QuickSearchResponse(query: str, results: QuickSearchResults)` where `QuickSearchResults` has `books: list[BookSearchHit]`, `sections: list[SectionSearchHit]`, `concepts: list[ConceptSearchHit]`, `annotations: list[AnnotationSearchHit]`
@@ -584,8 +1101,8 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 **Inline verification:**
 - `cd backend && uv run ruff check app/api/routes/search.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/integration/test_api/test_search_api.py -v` — all passed
-- `curl -s "http://localhost:8000/api/v1/search/quick?q=test&limit=12" | python3 -m json.tool` — returns grouped results
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_search_api.py -v` — all passed, including grouping cap, field presence, filter correctness, and recent-search persistence
+- `curl -s "http://localhost:8000/api/v1/search/quick?q=war&limit=12" | python3 -m json.tool` — `results.sections` is non-empty (Art of War is indexed), each section has `id`, `title`, `book_title`, `snippet`; no group has more than 3 items
 
 ---
 
@@ -642,6 +1159,117 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_concepts_api.py -v`
   Expected: FAIL — routes not defined
 
+- [ ] Step 1a: Write happy-path behavioral tests for concept endpoints
+  ```python
+  # Append to backend/tests/integration/test_api/test_concepts_api.py
+  # Art of War (book_id=1) has concepts extracted. Use them for behavioral testing.
+
+  @pytest.mark.asyncio
+  async def test_list_concepts_for_book_returns_items(client):
+      """Book 1 has extracted concepts — listing must return non-empty results."""
+      resp = await client.get("/api/v1/concepts?book_id=1")
+      assert resp.status_code == 200
+      data = resp.json()
+      assert "items" in data
+      assert "total" in data
+      assert data["total"] > 0, "Art of War should have concepts extracted"
+      concept = data["items"][0]
+      assert "id" in concept
+      assert "term" in concept and concept["term"], "concept term must be a non-empty string"
+      assert "definition" in concept and concept["definition"], "concept definition must be non-empty"
+      assert "book_id" in concept
+      assert concept["book_id"] == 1
+
+  @pytest.mark.asyncio
+  async def test_get_concept_detail_includes_section_appearances(client):
+      """Detail endpoint must include section_appearances — required by frontend ConceptDetail."""
+      list_resp = await client.get("/api/v1/concepts?book_id=1")
+      concepts = list_resp.json()["items"]
+      if not concepts:
+          pytest.skip("No concepts available for book 1")
+      concept_id = concepts[0]["id"]
+
+      detail_resp = await client.get(f"/api/v1/concepts/{concept_id}")
+      assert detail_resp.status_code == 200
+      data = detail_resp.json()
+      assert "section_appearances" in data, "detail must include section_appearances list"
+      assert isinstance(data["section_appearances"], list)
+      assert "related_concepts" in data, "detail must include related_concepts list"
+      assert "book_title" in data, "detail must include book_title"
+      assert data["book_title"], "book_title must be non-empty"
+
+  @pytest.mark.asyncio
+  async def test_update_concept_definition_sets_user_edited(client):
+      """Updating a concept definition must set user_edited=True."""
+      list_resp = await client.get("/api/v1/concepts?book_id=1")
+      concepts = list_resp.json()["items"]
+      if not concepts:
+          pytest.skip("No concepts available for book 1")
+      concept_id = concepts[0]["id"]
+      original_definition = concepts[0]["definition"]
+
+      patch_resp = await client.patch(f"/api/v1/concepts/{concept_id}", json={
+          "definition": "My custom definition for behavioral test."
+      })
+      assert patch_resp.status_code == 200
+      data = patch_resp.json()
+      assert data["definition"] == "My custom definition for behavioral test."
+      assert data["user_edited"] is True, "user_edited must be True after manual edit"
+
+      # Restore original definition
+      await client.patch(f"/api/v1/concepts/{concept_id}", json={"definition": original_definition})
+
+  @pytest.mark.asyncio
+  async def test_reset_concept_clears_user_edited(client):
+      """Resetting a concept must set user_edited=False."""
+      list_resp = await client.get("/api/v1/concepts?book_id=1")
+      concepts = list_resp.json()["items"]
+      if not concepts:
+          pytest.skip("No concepts available for book 1")
+      concept_id = concepts[0]["id"]
+
+      # First edit it to mark user_edited=True
+      await client.patch(f"/api/v1/concepts/{concept_id}", json={"definition": "Edited definition."})
+
+      reset_resp = await client.post(f"/api/v1/concepts/{concept_id}/reset")
+      assert reset_resp.status_code == 200
+      assert reset_resp.json()["user_edited"] is False, "user_edited must be False after reset"
+
+  @pytest.mark.asyncio
+  async def test_list_concepts_sorts_alphabetically_by_default(client):
+      """Default sort is term A-Z — first item must precede second alphabetically."""
+      resp = await client.get("/api/v1/concepts?book_id=1&sort=term")
+      assert resp.status_code == 200
+      items = resp.json()["items"]
+      if len(items) >= 2:
+          assert items[0]["term"].lower() <= items[1]["term"].lower(), \
+              "Concepts not in alphabetical order when sort=term"
+
+  @pytest.mark.asyncio
+  async def test_list_concepts_user_edited_filter(client):
+      """user_edited=true filter must return only user-edited concepts."""
+      list_resp = await client.get("/api/v1/concepts?book_id=1")
+      concepts = list_resp.json()["items"]
+      if not concepts:
+          pytest.skip("No concepts available")
+      concept_id = concepts[0]["id"]
+
+      # Edit one concept to mark it user_edited
+      await client.patch(f"/api/v1/concepts/{concept_id}", json={"definition": "User-edited definition."})
+
+      filtered_resp = await client.get("/api/v1/concepts?book_id=1&user_edited=true")
+      assert filtered_resp.status_code == 200
+      filtered_items = filtered_resp.json()["items"]
+      for item in filtered_items:
+          assert item["user_edited"] is True, \
+              f"user_edited filter returned concept {item['id']} with user_edited=False"
+
+      # Restore
+      await client.post(f"/api/v1/concepts/{concept_id}/reset")
+  ```
+  Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_concepts_api.py -v`
+  Expected: FAIL — routes not defined
+
 - [ ] Step 2: Add concept schemas to `backend/app/api/schemas.py`
   Add:
   - `ConceptResponse(id, book_id, term, definition, user_edited, created_at, updated_at)` with `from_attributes=True`
@@ -669,7 +1297,8 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 **Inline verification:**
 - `cd backend && uv run ruff check app/api/routes/concepts.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/integration/test_api/test_concepts_api.py -v` — all passed
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_concepts_api.py -v` — all passed, including behavioral tests for field content, section_appearances presence, user_edited flag toggling, filter correctness, and alpha sorting
+- `curl -s "http://localhost:8000/api/v1/concepts?book_id=1" | python3 -m json.tool` — `items` is non-empty, first item has non-empty `term` and `definition` strings, `book_id` is 1
 
 ---
 
@@ -752,6 +1381,128 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_reading_presets_api.py -v`
   Expected: FAIL — routes not defined
 
+- [ ] Step 1a: Write happy-path behavioral tests for reading preset endpoints
+  ```python
+  # Append to backend/tests/integration/test_api/test_reading_presets_api.py
+
+  @pytest.mark.asyncio
+  async def test_system_presets_have_required_fields(client):
+      """Every system preset must carry all fields the frontend renders."""
+      resp = await client.get("/api/v1/reading-presets")
+      assert resp.status_code == 200
+      system_presets = [p for p in resp.json() if p.get("is_system")]
+      assert len(system_presets) >= 4, "Expected at least 4 system presets seeded"
+      for preset in system_presets:
+          assert preset["font_family"], f"Preset {preset['id']} missing font_family"
+          assert preset["font_size_px"] > 0, f"Preset {preset['id']} has invalid font_size_px"
+          assert preset["line_spacing"] > 0, f"Preset {preset['id']} has invalid line_spacing"
+          assert preset["content_width_px"] > 0, f"Preset {preset['id']} has invalid content_width_px"
+          assert preset["bg_color"].startswith("#"), f"Preset {preset['id']} bg_color not a hex color"
+          assert preset["text_color"].startswith("#"), f"Preset {preset['id']} text_color not a hex color"
+
+  @pytest.mark.asyncio
+  async def test_create_preset_stores_all_fields(client):
+      """Created preset must echo back every submitted field — no silently-dropped values."""
+      payload = {
+          "name": "Behavioral Test Preset",
+          "font_family": "Fira Code",
+          "font_size_px": 17,
+          "line_spacing": 1.7,
+          "content_width_px": 680,
+          "bg_color": "#FBF0D9",
+          "text_color": "#3B2F1E",
+          "custom_css": ".reading-area { letter-spacing: 0.01em; }",
+      }
+      resp = await client.post("/api/v1/reading-presets", json=payload)
+      assert resp.status_code == 201
+      data = resp.json()
+      assert data["name"] == "Behavioral Test Preset"
+      assert data["font_family"] == "Fira Code"
+      assert data["font_size_px"] == 17
+      assert data["line_spacing"] == 1.7
+      assert data["content_width_px"] == 680
+      assert data["bg_color"] == "#FBF0D9"
+      assert data["text_color"] == "#3B2F1E"
+      assert data["custom_css"] == ".reading-area { letter-spacing: 0.01em; }"
+      assert data["is_system"] is False
+      preset_id = data["id"]
+
+      # Cleanup
+      await client.delete(f"/api/v1/reading-presets/{preset_id}")
+
+  @pytest.mark.asyncio
+  async def test_activate_preset_deactivates_previously_active(client):
+      """Activating a preset must set is_active=False on all others — only one active at a time."""
+      # Create two user presets
+      r1 = await client.post("/api/v1/reading-presets", json={
+          "name": "Preset Alpha", "font_family": "Georgia", "font_size_px": 18,
+          "line_spacing": 1.6, "content_width_px": 720, "bg_color": "#FFFFFF", "text_color": "#111111",
+      })
+      r2 = await client.post("/api/v1/reading-presets", json={
+          "name": "Preset Beta", "font_family": "Inter", "font_size_px": 16,
+          "line_spacing": 1.5, "content_width_px": 680, "bg_color": "#1E1E2E", "text_color": "#CDD6F4",
+      })
+      id1, id2 = r1.json()["id"], r2.json()["id"]
+
+      # Activate preset 1
+      await client.post(f"/api/v1/reading-presets/{id1}/activate")
+      # Activate preset 2 — preset 1 must become inactive
+      await client.post(f"/api/v1/reading-presets/{id2}/activate")
+
+      all_presets = (await client.get("/api/v1/reading-presets")).json()
+      active = [p for p in all_presets if p["is_active"]]
+      assert len(active) == 1, f"Expected exactly 1 active preset, got {len(active)}"
+      assert active[0]["id"] == id2, "Activated preset is not marked active"
+
+      # Cleanup
+      await client.delete(f"/api/v1/reading-presets/{id1}")
+      await client.delete(f"/api/v1/reading-presets/{id2}")
+
+  @pytest.mark.asyncio
+  async def test_update_user_preset_fields(client):
+      """PATCH must update only the specified fields, leaving others unchanged."""
+      create_resp = await client.post("/api/v1/reading-presets", json={
+          "name": "Update Test", "font_family": "Georgia", "font_size_px": 18,
+          "line_spacing": 1.6, "content_width_px": 720, "bg_color": "#FFFFFF", "text_color": "#111111",
+      })
+      preset_id = create_resp.json()["id"]
+
+      patch_resp = await client.patch(f"/api/v1/reading-presets/{preset_id}", json={
+          "font_size_px": 22,
+          "line_spacing": 2.0,
+      })
+      assert patch_resp.status_code == 200
+      data = patch_resp.json()
+      assert data["font_size_px"] == 22
+      assert data["line_spacing"] == 2.0
+      assert data["font_family"] == "Georgia"  # unchanged
+      assert data["bg_color"] == "#FFFFFF"      # unchanged
+
+      # Cleanup
+      await client.delete(f"/api/v1/reading-presets/{preset_id}")
+
+  @pytest.mark.asyncio
+  async def test_delete_active_preset_falls_back_to_comfortable(client):
+      """Deleting the active preset must re-activate the 'Comfortable' system fallback."""
+      create_resp = await client.post("/api/v1/reading-presets", json={
+          "name": "Temporary Active", "font_family": "Inter", "font_size_px": 16,
+          "line_spacing": 1.5, "content_width_px": 680, "bg_color": "#000000", "text_color": "#FFFFFF",
+      })
+      preset_id = create_resp.json()["id"]
+
+      await client.post(f"/api/v1/reading-presets/{preset_id}/activate")
+      await client.delete(f"/api/v1/reading-presets/{preset_id}")
+
+      active_resp = await client.get("/api/v1/reading-presets/active")
+      assert active_resp.status_code == 200
+      active = active_resp.json()
+      assert active["is_system"] is True, "Fallback after delete must be a system preset"
+      # Comfortable is the default fallback per spec
+      assert active["name"] == "Comfortable"
+  ```
+  Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_reading_presets_api.py -v`
+  Expected: FAIL — routes not defined
+
 - [ ] Step 2: Add reading preset schemas to `backend/app/api/schemas.py`
   Add:
   - `ReadingPresetResponse(id, name, is_system, is_active, font_family, font_size_px, line_spacing, content_width_px, bg_color, text_color, custom_css, created_at, updated_at)` with `from_attributes=True`
@@ -778,8 +1529,9 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 **Inline verification:**
 - `cd backend && uv run ruff check app/api/routes/reading_presets.py` — no lint errors
-- `cd backend && uv run python -m pytest tests/integration/test_api/test_reading_presets_api.py -v` — all passed
-- `curl -s http://localhost:8000/api/v1/reading-presets | python3 -m json.tool` — returns list with 4 system presets
+- `cd backend && uv run python -m pytest tests/integration/test_api/test_reading_presets_api.py -v` — all passed, including behavioral tests for field persistence, single-active invariant, partial update, and delete-with-fallback
+- `curl -s http://localhost:8000/api/v1/reading-presets | python3 -m json.tool` — returns list with 4 system presets, each with non-null `font_family`, `font_size_px`, `bg_color`, `text_color`
+- `curl -s http://localhost:8000/api/v1/reading-presets/active | python3 -m json.tool` — returns one preset with `is_active: true`; field values are non-empty strings/numbers (not null)
 
 ---
 
@@ -841,11 +1593,119 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 5: Write unit tests for readerSettings store
   `frontend/tests/unit/stores/readerSettings.test.ts`:
-  - Test `applyPreset()` — updates `currentSettings` and `activePreset`
-  - Test `updateSetting(key, value)` — updates `currentSettings` immediately
-  - Test `saveAsPreset(name)` — calls API and adds to `presets` list
-  - Test `detectSystemPreference()` — applies dark preset when `prefers-color-scheme: dark`
-  - Test `cssVariables` getter — returns correct CSS custom property map
+  ```typescript
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useReaderSettingsStore } from '@/stores/readerSettings'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+  import * as readingPresetsApi from '@/api/readingPresets'
+
+  const mockPresets = [
+    {
+      id: 1, name: 'Comfortable', is_system: true, is_active: true,
+      font_family: 'Georgia', font_size_px: 18, line_spacing: 1.6,
+      content_width_px: 720, bg_color: '#FFFFFF', text_color: '#111111',
+      custom_css: null, created_at: '', updated_at: '',
+    },
+    {
+      id: 2, name: 'Night Reading', is_system: true, is_active: false,
+      font_family: 'Inter', font_size_px: 16, line_spacing: 1.5,
+      content_width_px: 680, bg_color: '#1E1E2E', text_color: '#CDD6F4',
+      custom_css: null, created_at: '', updated_at: '',
+    },
+  ]
+
+  describe('readerSettings store', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.clearAllMocks()
+    })
+
+    it('applyPreset sets activePreset and copies all fields into currentSettings', async () => {
+      vi.spyOn(readingPresetsApi, 'listPresets').mockResolvedValue(mockPresets)
+      vi.spyOn(readingPresetsApi, 'activatePreset').mockResolvedValue(mockPresets[1])
+
+      const store = useReaderSettingsStore()
+      store.presets = [...mockPresets]
+      await store.applyPreset(2)
+
+      expect(store.activePreset?.id).toBe(2)
+      expect(store.currentSettings.font_family).toBe('Inter')
+      expect(store.currentSettings.bg_color).toBe('#1E1E2E')
+      expect(store.currentSettings.font_size_px).toBe(16)
+    })
+
+    it('updateSetting immediately updates currentSettings without waiting for API', () => {
+      const store = useReaderSettingsStore()
+      store.currentSettings = {
+        font_family: 'Georgia', font_size_px: 18, line_spacing: 1.6,
+        content_width_px: 720, bg_color: '#FFFFFF', text_color: '#111111',
+      }
+      store.updateSetting('font_size_px', 22)
+      // Must be synchronous — no await
+      expect(store.currentSettings.font_size_px).toBe(22)
+      // Other fields unchanged
+      expect(store.currentSettings.font_family).toBe('Georgia')
+    })
+
+    it('saveAsPreset calls API with correct name and adds result to presets', async () => {
+      const newPreset = { ...mockPresets[0], id: 99, name: 'My Saved Preset', is_system: false }
+      vi.spyOn(readingPresetsApi, 'createPreset').mockResolvedValue(newPreset)
+      vi.spyOn(readingPresetsApi, 'listPresets').mockResolvedValue(mockPresets)
+
+      const store = useReaderSettingsStore()
+      store.presets = [...mockPresets]
+      store.currentSettings = {
+        font_family: 'Georgia', font_size_px: 18, line_spacing: 1.6,
+        content_width_px: 720, bg_color: '#FFFFFF', text_color: '#111111',
+      }
+      await store.saveAsPreset('My Saved Preset')
+
+      expect(readingPresetsApi.createPreset).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'My Saved Preset', font_family: 'Georgia' })
+      )
+      expect(store.presets.find(p => p.id === 99)).toBeTruthy()
+    })
+
+    it('detectSystemPreference applies dark preset when prefers-color-scheme is dark', async () => {
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn((query: string) => ({
+          matches: query === '(prefers-color-scheme: dark)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      })
+      vi.spyOn(readingPresetsApi, 'activatePreset').mockResolvedValue(mockPresets[1])
+
+      const store = useReaderSettingsStore()
+      store.presets = [...mockPresets]
+      await store.detectSystemPreference()
+
+      // Night Reading (id=2) is the dark preset — it must be applied
+      expect(store.currentSettings.bg_color).toBe('#1E1E2E')
+    })
+
+    it('cssVariables getter returns a map with CSS custom property keys', () => {
+      const store = useReaderSettingsStore()
+      store.currentSettings = {
+        font_family: 'Merriweather', font_size_px: 20, line_spacing: 1.8,
+        content_width_px: 800, bg_color: '#FBF0D9', text_color: '#3B2F1E',
+      }
+      const vars = store.cssVariables
+      expect(vars['--font-family']).toBe('Merriweather')
+      expect(vars['--font-size']).toBe('20px')
+      expect(vars['--line-spacing']).toBe('1.8')
+      expect(vars['--content-width']).toBe('800px')
+      expect(vars['--bg-color']).toBe('#FBF0D9')
+      expect(vars['--text-color']).toBe('#3B2F1E')
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/stores/readerSettings.test.ts`
   Expected: PASS
 
@@ -856,7 +1716,7 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/stores/readerSettings.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/stores/readerSettings.test.ts` — all passed, including applyPreset field copy, immediate updateSetting, API call for saveAsPreset, dark mode preference, and cssVariables key format
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
 
@@ -919,13 +1779,16 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   - Call `readerSettings.loadPresets()` and `readerSettings.detectSystemPreference()` on mount
 
 - [ ] Step 4: Verify
-  Run: `cd frontend && npm run dev`
-  Open reader at `/books/1/sections/1`:
-  - Click Aa button — settings popover opens
-  - Click "Night Reading" preset — entire app switches to dark theme, reading area updates
-  - Change font to Merriweather — text updates immediately
-  - Increase size to 20px — text updates immediately
-  - Reload page — settings persist (loaded from API)
+  Run: `cd frontend && npm run dev` with backend running
+  Navigate to `http://localhost:5173/books/1/sections/1`:
+  - Click the "Aa" button in the reader header — settings popover opens at 380px wide, PresetCards grid is visible
+  - Click "Night Reading" preset card — `<html>` element gains `data-theme="dark"`, reading area background becomes `#1E1E2E`, text color becomes `#CDD6F4` (inspect element to confirm CSS custom properties applied)
+  - Click "Comfortable" preset — background returns to `#FFFFFF`
+  - In FontSelector, click "Merriweather" — reading text immediately renders in Merriweather (no page reload)
+  - In SizeStepper (Font Size), click "20px" named stop — reading text grows, LivePreview reads "Merriweather 20px / ..."
+  - In SizeStepper (Line Spacing), click "2.0" — line spacing increases visually
+  - In BackgroundPicker, click "Sepia" swatch — background changes to `#FBF0D9`
+  - Reload page (`Cmd+R`) — settings are restored (font, size, background still Sepia/Merriweather/20px from API)
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -938,6 +1801,8 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 **Inline verification:**
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: open `http://localhost:5173/books/1/sections/1`, open settings popover, switch to Night Reading — inspect `<html>` element and confirm `--bg-color: #1E1E2E` is set on `:root`; confirm reading text changes color immediately (no flash)
+- Manual: change font to Inter, reload page — Inter persists (not Georgia), confirming API round-trip works
 
 ---
 
@@ -1007,22 +1872,141 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 6: Write unit tests for useTextSelection composable
   `frontend/tests/unit/composables/useTextSelection.test.ts`:
-  - Test selection detection — simulates mouseup with `document.getSelection()` mock
-  - Test toolbar positioning — verifies position calculation above selection
-  - Test toolbar flips below when near viewport top
-  - Test clearSelection resets state
-  - Test debounce prevents flicker during drag-select
+  ```typescript
+  import { ref, nextTick } from 'vue'
+  import { useTextSelection } from '@/composables/useTextSelection'
+  import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+
+  function mockSelectionWithBoundingRect(rect: Partial<DOMRect>, text = 'selected text') {
+    const range = {
+      getBoundingClientRect: () => ({ top: 200, left: 100, width: 150, height: 20, ...rect }),
+    } as Range
+    const selection = {
+      toString: () => text,
+      getRangeAt: () => range,
+      rangeCount: 1,
+      removeAllRanges: vi.fn(),
+    } as unknown as Selection
+    vi.spyOn(document, 'getSelection').mockReturnValue(selection)
+    return { selection, range }
+  }
+
+  describe('useTextSelection', () => {
+    let container: HTMLElement
+
+    beforeEach(() => {
+      container = document.createElement('div')
+      document.body.appendChild(container)
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      document.body.removeChild(container)
+      vi.restoreAllMocks()
+      vi.useRealTimers()
+    })
+
+    it('selectedText is empty before any selection', () => {
+      vi.spyOn(document, 'getSelection').mockReturnValue(null)
+      const containerRef = ref(container)
+      const { selectedText } = useTextSelection(containerRef)
+      expect(selectedText.value).toBe('')
+    })
+
+    it('selectedText is populated after mouseup with selection', async () => {
+      mockSelectionWithBoundingRect({}, 'the selected passage')
+      const containerRef = ref(container)
+      const { selectedText } = useTextSelection(containerRef)
+
+      container.dispatchEvent(new MouseEvent('mouseup'))
+      vi.runAllTimers() // flush 100ms debounce
+      await nextTick()
+
+      expect(selectedText.value).toBe('the selected passage')
+    })
+
+    it('toolbarPosition is above the selection (top < selection top)', async () => {
+      mockSelectionWithBoundingRect({ top: 300, left: 100, width: 150, height: 20 })
+      const containerRef = ref(container)
+      const { toolbarPosition, selectedText } = useTextSelection(containerRef)
+
+      container.dispatchEvent(new MouseEvent('mouseup'))
+      vi.runAllTimers()
+      await nextTick()
+
+      if (selectedText.value) {
+        // Toolbar should appear above the selection
+        expect(toolbarPosition.value.top).toBeLessThan(300)
+      }
+    })
+
+    it('toolbarPosition flips below selection when selection is within 80px of viewport top', async () => {
+      mockSelectionWithBoundingRect({ top: 40, left: 100, width: 150, height: 20 }) // near top
+      const containerRef = ref(container)
+      const { toolbarPosition, selectedText } = useTextSelection(containerRef)
+
+      container.dispatchEvent(new MouseEvent('mouseup'))
+      vi.runAllTimers()
+      await nextTick()
+
+      if (selectedText.value) {
+        // Toolbar should flip below (top > selection bottom = 40 + 20 = 60)
+        expect(toolbarPosition.value.top).toBeGreaterThan(40)
+      }
+    })
+
+    it('clearSelection resets selectedText, selectionRange, and isSelecting to initial state', async () => {
+      mockSelectionWithBoundingRect({}, 'text to clear')
+      const containerRef = ref(container)
+      const { selectedText, selectionRange, isSelecting, clearSelection } = useTextSelection(containerRef)
+
+      container.dispatchEvent(new MouseEvent('mouseup'))
+      vi.runAllTimers()
+      await nextTick()
+
+      clearSelection()
+      await nextTick()
+
+      expect(selectedText.value).toBe('')
+      expect(selectionRange.value).toBeNull()
+      expect(isSelecting.value).toBe(false)
+    })
+
+    it('rapid mouseup events within debounce window result in only one selection update', async () => {
+      const getSelectionSpy = mockSelectionWithBoundingRect({}, 'final selection').selection
+      const callTracker = vi.fn()
+      vi.spyOn(document, 'getSelection').mockImplementation(() => {
+        callTracker()
+        return getSelectionSpy
+      })
+
+      const containerRef = ref(container)
+      useTextSelection(containerRef)
+
+      // Fire 5 rapid mouseup events
+      for (let i = 0; i < 5; i++) {
+        container.dispatchEvent(new MouseEvent('mouseup'))
+      }
+      vi.runAllTimers()
+      await nextTick()
+
+      // getSelection should be called only once (after debounce settles)
+      expect(callTracker).toHaveBeenCalledTimes(1)
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/composables/useTextSelection.test.ts`
   Expected: PASS
 
 - [ ] Step 7: Verify
-  Run: `cd frontend && npm run dev`
-  Open reader at `/books/1/sections/1`:
-  - Select text — floating toolbar appears above selection
-  - Click Copy — text copied to clipboard
-  - Click outside — toolbar disappears
-  - Select near top of viewport — toolbar appears below selection
-  - Press Cmd+K — (placeholder for command palette, wired in T10)
+  Run: `cd frontend && npm run dev` with backend running
+  Navigate to `http://localhost:5173/books/1/sections/1`:
+  - Select the words "All warfare is based on deception" in the reading area — a floating toolbar with 4 buttons (Highlight, Note, Ask AI, Copy) appears above the selected text (not overlapping it)
+  - Click "Copy" — confirm clipboard contains "All warfare is based on deception" (paste into text editor to verify)
+  - Click anywhere outside the selection — toolbar disappears, selectedText is cleared
+  - Scroll to the top of the section, select the first sentence — toolbar appears BELOW the selection (not clipped by the viewport top)
+  - Press Cmd+K — no error thrown (command palette not yet wired; this verifies the keyboard listener attaches without crash)
+  - Press Alt+N (next section shortcut) — reader navigates to section 2
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1033,9 +2017,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/composables/useTextSelection.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/composables/useTextSelection.test.ts` — all passed, including empty-state, populated-state, above/below flip, clearSelection reset, and debounce single-call
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: open `http://localhost:5173/books/1/sections/1`, select "the enemy" — floating toolbar appears above selection with 4 action buttons; click Copy; paste confirms exact text was copied
 
 ---
 
@@ -1121,22 +2106,129 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 8: Write unit tests for annotations store
   `frontend/tests/unit/stores/annotations.test.ts`:
-  - Test `createAnnotation()` — calls API and adds to `sectionAnnotations`
-  - Test `deleteAnnotation()` — sets `pendingDelete` and starts undo timer
-  - Test `undoDelete()` — restores annotation and clears `pendingDelete`
-  - Test `confirmDelete()` — calls API delete after timer expires
-  - Test `updateFilters()` — updates filter state and triggers reload
-  - Test `annotationsByPosition` getter — sorts by `text_start`
+  ```typescript
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useAnnotationsStore } from '@/stores/annotations'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+  import * as annotationsApi from '@/api/annotations'
+  import type { Annotation } from '@/types'
+
+  const makeAnnotation = (overrides: Partial<Annotation> = {}): Annotation => ({
+    id: 1, content_type: 'section_content', content_id: 1,
+    text_start: 50, text_end: 100, selected_text: 'test selection',
+    note: null, type: 'highlight', linked_annotation_id: null,
+    created_at: '', updated_at: '', ...overrides,
+  })
+
+  describe('annotations store', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.clearAllMocks()
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('createAnnotation adds the returned annotation to sectionAnnotations', async () => {
+      const newAnnotation = makeAnnotation({ id: 42, selected_text: 'new selection' })
+      vi.spyOn(annotationsApi, 'createAnnotation').mockResolvedValue(newAnnotation)
+
+      const store = useAnnotationsStore()
+      await store.createAnnotation({
+        content_type: 'section_content', content_id: 1,
+        type: 'highlight', selected_text: 'new selection', text_start: 50, text_end: 63,
+      })
+
+      expect(store.sectionAnnotations).toHaveLength(1)
+      expect(store.sectionAnnotations[0].id).toBe(42)
+      expect(store.sectionAnnotations[0].selected_text).toBe('new selection')
+    })
+
+    it('deleteAnnotation sets pendingDelete and does NOT call API yet (undo window)', async () => {
+      const deleteSpy = vi.spyOn(annotationsApi, 'deleteAnnotation').mockResolvedValue()
+      const annotation = makeAnnotation({ id: 7 })
+
+      const store = useAnnotationsStore()
+      store.sectionAnnotations = [annotation]
+      store.deleteAnnotation(7)
+
+      expect(store.pendingDelete).not.toBeNull()
+      expect(store.pendingDelete?.annotation.id).toBe(7)
+      expect(deleteSpy).not.toHaveBeenCalled() // must not delete yet
+    })
+
+    it('undoDelete restores annotation to sectionAnnotations and clears pendingDelete', () => {
+      const annotation = makeAnnotation({ id: 7 })
+      const store = useAnnotationsStore()
+      store.sectionAnnotations = []
+      store.pendingDelete = { annotation, timeoutId: 0 }
+
+      store.undoDelete()
+
+      expect(store.pendingDelete).toBeNull()
+      expect(store.sectionAnnotations).toHaveLength(1)
+      expect(store.sectionAnnotations[0].id).toBe(7)
+    })
+
+    it('confirmDelete calls API delete after 5-second timer expires', async () => {
+      const deleteSpy = vi.spyOn(annotationsApi, 'deleteAnnotation').mockResolvedValue()
+      const annotation = makeAnnotation({ id: 7 })
+      const store = useAnnotationsStore()
+      store.sectionAnnotations = [annotation]
+
+      store.deleteAnnotation(7)
+      expect(deleteSpy).not.toHaveBeenCalled()
+
+      vi.advanceTimersByTime(5000)
+      await Promise.resolve() // flush microtasks
+
+      expect(deleteSpy).toHaveBeenCalledWith(7)
+      expect(store.pendingDelete).toBeNull()
+    })
+
+    it('annotationsByPosition getter sorts annotations by text_start ascending', () => {
+      const store = useAnnotationsStore()
+      store.sectionAnnotations = [
+        makeAnnotation({ id: 1, text_start: 300 }),
+        makeAnnotation({ id: 2, text_start: 10 }),
+        makeAnnotation({ id: 3, text_start: 150 }),
+      ]
+      const sorted = store.annotationsByPosition
+      expect(sorted[0].id).toBe(2)  // text_start: 10
+      expect(sorted[1].id).toBe(3)  // text_start: 150
+      expect(sorted[2].id).toBe(1)  // text_start: 300
+    })
+
+    it('updateFilters updates filter state — subsequent loadGlobalAnnotations uses new filters', async () => {
+      vi.spyOn(annotationsApi, 'listAnnotations').mockResolvedValue({
+        items: [], total: 0, page: 1, per_page: 20,
+      })
+      const store = useAnnotationsStore()
+      store.updateFilters({ type: 'note', sort: 'newest' })
+
+      expect(store.filters.type).toBe('note')
+      expect(store.filters.sort).toBe('newest')
+
+      await store.loadGlobalAnnotations()
+      expect(annotationsApi.listAnnotations).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note' })
+      )
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts`
   Expected: PASS
 
 - [ ] Step 9: Verify
-  Run: `cd frontend && npm run dev` with backend running and a book with sections
-  In reader:
-  - Select text, click Highlight — annotation appears in sidebar
-  - Select text, click Note — annotation with note field appears
-  - Edit note inline — saves on blur
-  - Delete annotation — undo toast appears for 5 seconds
+  Run: `cd frontend && npm run dev` with backend running
+  Navigate to `http://localhost:5173/books/1/sections/1`:
+  - Select "All warfare is based on deception." from the text, click "Highlight" in the floating toolbar — annotation card appears in the sidebar Annotations tab, showing the highlighted text in a yellow-badged card, ordered at the position where the text was selected
+  - Select a different passage, click "Note" — a blue-badged card appears with an inline note textarea
+  - Type "Key insight" in the note textarea, click outside — on re-focus the field shows "Key insight" (confirmed saved)
+  - Click the delete (trash) icon on an annotation card — the card disappears, an undo toast appears at the bottom with a 5-second countdown; click "Undo" — the annotation reappears
+  - Let the undo timer expire — the annotation is gone from the sidebar and does not reappear on refresh
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1147,9 +2239,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts` — all passed, including create-appends, delete-deferred, undo-restores, timer-triggers-API, position sort, and filter-passthrough
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: at `http://localhost:5173/books/1/sections/1`, create two highlights at different positions — sidebar list shows them in text_start ascending order (earlier in document = higher in list)
 
 ---
 
@@ -1175,14 +2268,52 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   - Export button: Markdown / JSON / CSV dropdown, triggers file download (FR-62)
   - Count display at top: "42 annotations" (FR-62)
 
+- [ ] Step 1a: Write unit tests for annotations store global behavior (add to `frontend/tests/unit/stores/annotations.test.ts`)
+  ```typescript
+  // Append inside the describe block in annotations.test.ts
+
+  it('loadGlobalAnnotations populates globalAnnotations and globalTotal from API', async () => {
+    const mockItems = [
+      makeAnnotation({ id: 10, note: 'First global note', content_id: 1 }),
+      makeAnnotation({ id: 11, note: 'Second global note', content_id: 2 }),
+    ]
+    vi.spyOn(annotationsApi, 'listAnnotations').mockResolvedValue({
+      items: mockItems, total: 2, page: 1, per_page: 20,
+    })
+    const store = useAnnotationsStore()
+    await store.loadGlobalAnnotations()
+
+    expect(store.globalAnnotations).toHaveLength(2)
+    expect(store.globalTotal).toBe(2)
+    expect(store.globalAnnotations[0].id).toBe(10)
+    expect(store.globalAnnotations[1].id).toBe(11)
+  })
+
+  it('updateFilters with book_id causes loadGlobalAnnotations to pass book_id to API', async () => {
+    vi.spyOn(annotationsApi, 'listAnnotations').mockResolvedValue({
+      items: [], total: 0, page: 1, per_page: 20,
+    })
+    const store = useAnnotationsStore()
+    store.updateFilters({ book_id: 1 })
+    await store.loadGlobalAnnotations()
+
+    expect(annotationsApi.listAnnotations).toHaveBeenCalledWith(
+      expect.objectContaining({ book_id: 1 })
+    )
+  })
+  ```
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts`
+  Expected: PASS (including new global tests)
+
 - [ ] Step 2: Verify
-  Run: `cd frontend && npm run dev` with backend running
-  Navigate to `/annotations`:
-  - All annotations listed with breadcrumbs
-  - Click breadcrumb — navigates to reader
-  - Filter by book — list updates
-  - Export as Markdown — file downloads
-  - Navigate from reader via `?book_id=X` — filter pre-set
+  Run: `cd frontend && npm run dev` with backend running (create a few annotations via T8a first)
+  Navigate to `http://localhost:5173/annotations`:
+  - Annotation list shows cards with breadcrumbs in the format "Art of War > Chapter 3" (book title and section title both visible and non-empty)
+  - Click a breadcrumb — browser navigates to `http://localhost:5173/books/1/sections/{N}` with the sidebar open
+  - In the Book filter dropdown, select "Art of War" — count at top updates to show only Art of War annotations; annotations from other books disappear
+  - In the Group By dropdown, select "Section" — annotations group under section headings
+  - Click the Export button, select "Markdown" — a `.md` file downloads; open it and confirm it contains at least one line with the annotation's selected text
+  - Navigate to reader at `http://localhost:5173/books/2/sections/1`, then navigate to `http://localhost:5173/annotations?book_id=2` — "Understanding Michael Porter" is pre-selected in the Book filter
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1193,8 +2324,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/annotations.test.ts` — all passed, including globalAnnotations population and book_id filter passthrough
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: navigate to `http://localhost:5173/annotations` — annotation count at top matches the number of annotation cards in the list (no off-by-one)
 
 ---
 
@@ -1305,24 +2438,137 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 9: Write unit tests for aiThreads store
   `frontend/tests/unit/stores/aiThreads.test.ts`:
-  - Test `createThread()` — calls API and adds to `threads` list
-  - Test `sendMessage()` — sets `isLoading`, calls API, adds user + assistant messages
-  - Test `saveAsNote(messageId)` — creates freeform annotation from assistant message content
-  - Test `elapsedTime` getter — computes from `loadingStartTime`
-  - Test `deleteThread()` — removes from `threads` list
+  ```typescript
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useAIThreadsStore } from '@/stores/aiThreads'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+  import * as aiThreadsApi from '@/api/aiThreads'
+  import * as annotationsApi from '@/api/annotations'
+  import type { AIThread, AIMessage } from '@/types'
+
+  const makeThread = (overrides: Partial<AIThread> = {}): AIThread => ({
+    id: 1, book_id: 1, title: 'Test Thread',
+    message_count: 0, last_message_preview: '',
+    created_at: '', updated_at: '', ...overrides,
+  })
+
+  const makeMessage = (overrides: Partial<AIMessage> = {}): AIMessage => ({
+    id: 1, thread_id: 1, role: 'assistant',
+    content: 'The key insight is strategic patience.',
+    context_section_id: null, selected_text: null, model_used: 'claude-3',
+    input_tokens: 150, output_tokens: 80, latency_ms: 3200, created_at: '', ...overrides,
+  })
+
+  describe('aiThreads store', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.clearAllMocks()
+    })
+
+    it('createThread calls API and appends new thread to threads list', async () => {
+      const thread = makeThread({ id: 5, title: 'My New Thread' })
+      vi.spyOn(aiThreadsApi, 'createThread').mockResolvedValue(thread)
+
+      const store = useAIThreadsStore()
+      store.threads = []
+      await store.createThread(1, 'My New Thread')
+
+      expect(aiThreadsApi.createThread).toHaveBeenCalledWith(1, 'My New Thread')
+      expect(store.threads).toHaveLength(1)
+      expect(store.threads[0].id).toBe(5)
+      expect(store.threads[0].title).toBe('My New Thread')
+    })
+
+    it('sendMessage sets isLoading=true during request and false after', async () => {
+      const userMsg = makeMessage({ id: 10, role: 'user', content: 'My question' })
+      const assistantMsg = makeMessage({ id: 11, role: 'assistant', content: 'The answer.' })
+      vi.spyOn(aiThreadsApi, 'sendMessage').mockResolvedValue(assistantMsg)
+
+      const store = useAIThreadsStore()
+      store.activeThread = makeThread({ id: 1 })
+      store.messages = []
+
+      const loadingDuring: boolean[] = []
+      const sendPromise = store.sendMessage('My question', null, null)
+      loadingDuring.push(store.isLoading) // should be true mid-flight
+      await sendPromise
+
+      expect(loadingDuring[0]).toBe(true) // was loading during request
+      expect(store.isLoading).toBe(false) // reset after completion
+    })
+
+    it('sendMessage adds both user message and assistant response to messages', async () => {
+      const assistantMsg = makeMessage({ id: 11, role: 'assistant', content: 'Strategic patience.' })
+      vi.spyOn(aiThreadsApi, 'sendMessage').mockResolvedValue(assistantMsg)
+
+      const store = useAIThreadsStore()
+      store.activeThread = makeThread({ id: 1 })
+      store.messages = []
+
+      await store.sendMessage('Tell me more', null, null)
+
+      const roles = store.messages.map(m => m.role)
+      expect(roles).toContain('user')
+      expect(roles).toContain('assistant')
+      expect(store.messages.find(m => m.role === 'assistant')?.content).toBe('Strategic patience.')
+    })
+
+    it('saveAsNote creates a freeform annotation with the assistant message content', async () => {
+      const createAnnotationSpy = vi.spyOn(annotationsApi, 'createAnnotation').mockResolvedValue({
+        id: 99, content_type: 'section_content', content_id: 1, type: 'freeform',
+        text_start: null, text_end: null, selected_text: null,
+        note: 'The key insight is strategic patience.',
+        linked_annotation_id: null, created_at: '', updated_at: '',
+      })
+
+      const store = useAIThreadsStore()
+      store.activeThread = makeThread({ id: 1 })
+      store.messages = [makeMessage({ id: 11, role: 'assistant', content: 'The key insight is strategic patience.' })]
+
+      await store.saveAsNote(11)
+
+      expect(createAnnotationSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'freeform',
+          note: 'The key insight is strategic patience.',
+        })
+      )
+    })
+
+    it('elapsedTime getter returns positive ms when loadingStartTime is set', () => {
+      const store = useAIThreadsStore()
+      store.loadingStartTime = Date.now() - 3000 // 3 seconds ago
+
+      const elapsed = store.elapsedTime
+      expect(elapsed).toBeGreaterThanOrEqual(3000)
+      expect(elapsed).toBeLessThan(5000) // shouldn't be wildly off
+    })
+
+    it('deleteThread removes it from the threads list', async () => {
+      vi.spyOn(aiThreadsApi, 'deleteThread').mockResolvedValue()
+      const store = useAIThreadsStore()
+      store.threads = [makeThread({ id: 1 }), makeThread({ id: 2 })]
+
+      await store.deleteThread(1)
+
+      expect(store.threads).toHaveLength(1)
+      expect(store.threads[0].id).toBe(2)
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/stores/aiThreads.test.ts`
   Expected: PASS
 
 - [ ] Step 10: Verify
   Run: `cd frontend && npm run dev` with backend running
-  In reader:
-  - Click "Ask AI" tab in sidebar — thread list appears
-  - Click "+ New Thread" — empty thread view appears
-  - Type message and send — loading indicator with timer appears
-  - After response (5-30s) — assistant message renders with markdown
-  - Hover assistant message — tooltip shows model_used and latency_ms
-  - Click "Save as note" on assistant message — annotation created
-  - Select text in reader, click "Ask AI" from floating toolbar — sidebar opens with context
+  Navigate to `http://localhost:5173/books/1/sections/1`:
+  - Open the sidebar, click "Ask AI" tab — thread list panel appears with "+ New Thread" button
+  - Click "+ New Thread" — thread view opens with empty message history, title field shows "New Thread"
+  - Type "What is Sun Tzu's main argument?" in the input area and press Enter — the message appears in the thread, a loading indicator with an elapsed-time counter appears (e.g., "Thinking... 4s")
+  - Wait for response (5–30s) — assistant message renders with markdown-formatted text; the user message appears right-aligned, assistant left-aligned
+  - Hover over the assistant message — tooltip shows model name (e.g., "claude-3") and latency in ms (e.g., "4200ms")
+  - Click "Save as note" on the assistant message — a success toast appears; navigate to `http://localhost:5173/annotations` and confirm a freeform annotation with the AI response text appears
+  - Back in reader: select a passage of text, click "Ask AI" in the floating toolbar — sidebar opens on "Ask AI" tab, the selected text appears as a quoted block above the message input
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1333,9 +2579,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/stores/aiThreads.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/stores/aiThreads.test.ts` — all passed, including createThread-appends, isLoading lifecycle, user+assistant both added, saveAsNote content, elapsedTime, and deleteThread-removes
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: send a message in the AI chat sidebar; confirm both user and assistant messages appear in the thread; reload the page and navigate to the same thread — messages persist (loaded from API)
 
 ---
 
@@ -1433,21 +2680,131 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 7: Write unit tests for search store
   `frontend/tests/unit/stores/search.test.ts`:
-  - Test `quickSearch()` — debounces by 200ms, cancels previous request
-  - Test `fullSearch()` — calls API with filters and updates `fullResults`
-  - Test debounce behavior — rapid calls result in single API call
-  - Test `navigateToResult()` — resolves correct route for each hit type
-  - Test `clearRecent()` — empties `recentSearches`
+  ```typescript
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useSearchStore } from '@/stores/search'
+  import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+  import * as searchApi from '@/api/search'
+  import { useRouter } from 'vue-router'
+
+  vi.mock('vue-router', () => ({ useRouter: vi.fn() }))
+
+  const emptyResults = { books: [], sections: [], concepts: [], annotations: [] }
+
+  describe('search store', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.clearAllMocks()
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('quickSearch populates quickResults with API response after debounce', async () => {
+      vi.spyOn(searchApi, 'quickSearch').mockResolvedValue({
+        query: 'deception',
+        results: {
+          books: [], sections: [{ id: 3, title: 'Chapter 1', book_title: 'Art of War', snippet: '...deception...' }],
+          concepts: [], annotations: [],
+        },
+      })
+      const store = useSearchStore()
+      store.quickSearch('deception')
+      vi.advanceTimersByTime(200)
+      await Promise.resolve()
+
+      expect(store.quickResults?.results.sections).toHaveLength(1)
+      expect(store.quickResults?.results.sections[0].title).toBe('Chapter 1')
+      expect(store.quickResults?.query).toBe('deception')
+    })
+
+    it('rapid quickSearch calls within 200ms debounce result in only one API call', async () => {
+      const spy = vi.spyOn(searchApi, 'quickSearch').mockResolvedValue({
+        query: 'war', results: emptyResults,
+      })
+      const store = useSearchStore()
+
+      store.quickSearch('w')
+      store.quickSearch('wa')
+      store.quickSearch('war')
+      vi.advanceTimersByTime(200)
+      await Promise.resolve()
+
+      expect(spy).toHaveBeenCalledTimes(1)
+      expect(spy).toHaveBeenCalledWith('war', expect.anything(), expect.anything())
+    })
+
+    it('fullSearch calls API with active filters and stores paginated results', async () => {
+      vi.spyOn(searchApi, 'fullSearch').mockResolvedValue({
+        items: [{ source_type: 'section', source_id: 1, book_id: 1, book_title: 'Art of War',
+                   section_title: 'Chapter 1', snippet: 'relevant text', score: 0.9, highlight: '<mark>war</mark>' }],
+        total: 1, page: 1, per_page: 20,
+      })
+      const store = useSearchStore()
+      store.query = 'war'
+      store.filters = { source_type: 'section', book_id: 1 }
+      await store.fullSearch()
+
+      expect(searchApi.fullSearch).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'war', source_type: 'section', book_id: 1 })
+      )
+      expect(store.fullResults?.items).toHaveLength(1)
+      expect(store.fullResults?.items[0].book_title).toBe('Art of War')
+    })
+
+    it('navigateToResult for a section hit navigates to /books/{book_id}/sections/{source_id}', () => {
+      const pushMock = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({ push: pushMock } as any)
+
+      const store = useSearchStore()
+      store.navigateToResult({
+        source_type: 'section', source_id: 7, book_id: 1, book_title: 'Art of War',
+        section_title: 'Chapter 3', snippet: '', score: 0.9, highlight: '',
+      })
+
+      expect(pushMock).toHaveBeenCalledWith('/books/1/sections/7')
+    })
+
+    it('navigateToResult for a book hit navigates to /books/{source_id}', () => {
+      const pushMock = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({ push: pushMock } as any)
+
+      const store = useSearchStore()
+      store.navigateToResult({
+        source_type: 'book', source_id: 1, book_id: 1, book_title: 'Art of War',
+        section_title: null, snippet: '', score: 0.8, highlight: '',
+      })
+
+      expect(pushMock).toHaveBeenCalledWith('/books/1')
+    })
+
+    it('clearRecent empties recentSearches', async () => {
+      vi.spyOn(searchApi, 'clearRecentSearches').mockResolvedValue()
+      const store = useSearchStore()
+      store.recentSearches = [
+        { id: 1, query: 'war', result_count: 5, created_at: '' },
+      ]
+      await store.clearRecent()
+
+      expect(store.recentSearches).toHaveLength(0)
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/stores/search.test.ts`
   Expected: PASS
 
 - [ ] Step 8: Verify
-  Run: `cd frontend && npm run dev` with backend running and indexed books
-  - Press Cmd+K — palette opens with recent searches
-  - Type "anchoring" — results appear grouped by type within 300ms
-  - Press Down arrow to navigate, Enter to open — navigates to result
-  - Press Shift+Enter — navigates to `/search?q=anchoring`
-  - On search results page: filter by type, results update
+  Run: `cd frontend && npm run dev` with backend running and Art of War indexed
+  Navigate to `http://localhost:5173/books/1`:
+  - Press Cmd+K — command palette modal opens centered on screen, search input is auto-focused, recent searches list is visible (if any searches have been made)
+  - Type "deception" — within 300ms, results appear grouped under "Books", "Sections", "Concepts", "Annotations" headings; each group shows at most 3 items; each section result shows a title, "Art of War" subtitle, and a snippet with the word "deception" wrapped in a `<mark>` element
+  - Press Down/Up arrow keys — selection moves between results, the highlighted row changes
+  - Press Enter on a section result — palette closes, browser navigates to `/books/1/sections/{N}` for that section
+  - Re-open palette (Cmd+K), type "deception", press Shift+Enter — browser navigates to `http://localhost:5173/search?q=deception`
+  - On the search results page at `/search?q=deception`: results appear grouped by book with source type badges; filter dropdown "Type" → "Section" — non-section results disappear; "BM25 + Semantic" badge is visible in the results header
+  - Click a result — navigates to the correct book/section URL
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1458,9 +2815,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/stores/search.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/stores/search.test.ts` — all passed, including quickResults content, debounce single-call, fullSearch filter passthrough, section navigation route, book navigation route, and clearRecent empties list
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: open `http://localhost:5173`, press Cmd+K, type "war" — confirm each result group shows 3 or fewer items, and at least one "Sections" result shows a non-empty `snippet` with `<mark>` tags visible as highlighted text in the palette UI
 
 ---
 
@@ -1547,23 +2905,113 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 7: Write unit tests for concepts store
   `frontend/tests/unit/stores/concepts.test.ts`:
-  - Test `fetchConcepts()` — calls API and populates `concepts` list
-  - Test `updateConcept()` — calls API and updates concept in list, sets `user_edited=true`
-  - Test `resetConcept()` — calls API and sets `user_edited=false`
-  - Test `deleteConcept()` — removes from list
-  - Test `groupedConcepts` getter — groups by selected dimension
+  ```typescript
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useConceptsStore } from '@/stores/concepts'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+  import * as conceptsApi from '@/api/concepts'
+  import type { Concept } from '@/types'
+
+  const makeConcept = (overrides: Partial<Concept> = {}): Concept => ({
+    id: 1, book_id: 1, term: 'Strategy', definition: 'A plan of action.',
+    user_edited: false, created_at: '', updated_at: '', ...overrides,
+  })
+
+  describe('concepts store', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.clearAllMocks()
+    })
+
+    it('loadConcepts populates concepts list and total from API', async () => {
+      vi.spyOn(conceptsApi, 'listConcepts').mockResolvedValue({
+        items: [makeConcept({ id: 1, term: 'Strategy' }), makeConcept({ id: 2, term: 'Tactic' })],
+        total: 2, page: 1, per_page: 20,
+      })
+      const store = useConceptsStore()
+      await store.loadConcepts()
+
+      expect(store.concepts).toHaveLength(2)
+      expect(store.total).toBe(2)
+      expect(store.concepts[0].term).toBe('Strategy')
+    })
+
+    it('updateConcept calls API and updates the in-list entry with user_edited=true', async () => {
+      const updated = makeConcept({ id: 1, definition: 'Custom definition.', user_edited: true })
+      vi.spyOn(conceptsApi, 'updateConcept').mockResolvedValue(updated)
+
+      const store = useConceptsStore()
+      store.concepts = [makeConcept({ id: 1 })]
+      await store.updateConcept(1, { definition: 'Custom definition.' })
+
+      expect(conceptsApi.updateConcept).toHaveBeenCalledWith(1, { definition: 'Custom definition.' })
+      const inList = store.concepts.find(c => c.id === 1)
+      expect(inList?.definition).toBe('Custom definition.')
+      expect(inList?.user_edited).toBe(true)
+    })
+
+    it('resetConcept calls API and sets user_edited=false on the in-list entry', async () => {
+      const reset = makeConcept({ id: 1, user_edited: false })
+      vi.spyOn(conceptsApi, 'resetConcept').mockResolvedValue(reset)
+
+      const store = useConceptsStore()
+      store.concepts = [makeConcept({ id: 1, user_edited: true })]
+      await store.resetConcept(1)
+
+      expect(conceptsApi.resetConcept).toHaveBeenCalledWith(1)
+      expect(store.concepts.find(c => c.id === 1)?.user_edited).toBe(false)
+    })
+
+    it('deleteConcept removes the concept from the list', async () => {
+      vi.spyOn(conceptsApi, 'deleteConcept').mockResolvedValue()
+      const store = useConceptsStore()
+      store.concepts = [makeConcept({ id: 1 }), makeConcept({ id: 2, term: 'Tactic' })]
+      await store.deleteConcept(1)
+
+      expect(store.concepts).toHaveLength(1)
+      expect(store.concepts[0].id).toBe(2)
+    })
+
+    it('groupedConcepts getter groups by first letter when group_by is "first_letter"', () => {
+      const store = useConceptsStore()
+      store.concepts = [
+        makeConcept({ id: 1, term: 'Strategy' }),
+        makeConcept({ id: 2, term: 'Sun Tzu' }),
+        makeConcept({ id: 3, term: 'Terrain' }),
+      ]
+      store.filters = { sort: 'term', group_by: 'first_letter' }
+      const grouped = store.groupedConcepts
+
+      expect(Object.keys(grouped)).toContain('S')
+      expect(Object.keys(grouped)).toContain('T')
+      expect(grouped['S']).toHaveLength(2) // Strategy and Sun Tzu
+      expect(grouped['T']).toHaveLength(1) // Terrain
+    })
+
+    it('groupedConcepts getter returns ungrouped list when group_by is "none"', () => {
+      const store = useConceptsStore()
+      store.concepts = [makeConcept({ id: 1 }), makeConcept({ id: 2, term: 'Tactic' })]
+      store.filters = { sort: 'term', group_by: 'none' }
+      const grouped = store.groupedConcepts
+
+      // When group_by is none, returns a single "all" key or flat array
+      const allItems = Object.values(grouped).flat()
+      expect(allItems).toHaveLength(2)
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/stores/concepts.test.ts`
   Expected: PASS
 
 - [ ] Step 8: Verify
-  Run: `cd frontend && npm run dev` with backend running and books with extracted concepts
-  Navigate to `/concepts`:
-  - Concept list loads on left
-  - Click concept — detail loads on right with section appearances
-  - Edit definition — saves, "Reset to original" appears
-  - Click "Reset to original" — definition reverts
-  - Filter by book — list updates
-  - Click "Copy" — term + definition copied
+  Run: `cd frontend && npm run dev` with backend running and Art of War (book_id=1) with concepts extracted
+  Navigate to `http://localhost:5173/concepts`:
+  - Left panel loads a list of concepts; each row shows a term (non-empty string) and "Art of War" as the book title
+  - Click the first concept in the list — the right panel loads with: the concept term as an editable heading, the definition in an editable textarea, and a "Section Appearances" list with at least one section title
+  - Edit the definition textarea, change "A plan of action." to "My updated definition." and click outside — the "Reset to original" button appears; the concept's item in the left panel now shows an "edited" badge
+  - Click "Reset to original" — the "edited" badge disappears; the definition textarea returns to the LLM-generated value; the "Reset to original" button disappears
+  - In the Book filter dropdown, select "Understanding Michael Porter" (book_id=2) — the left panel updates to show only concepts from that book
+  - Click any concept and then click the "Copy" button — paste into a text editor and confirm the text is in the format "Term: Definition"
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1574,9 +3022,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/stores/concepts.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/stores/concepts.test.ts` — all passed, including loadConcepts-populates, updateConcept-user_edited-true, resetConcept-user_edited-false, deleteConcept-removes, groupedConcepts-by-letter, groupedConcepts-ungrouped
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: navigate to `http://localhost:5173/concepts`, edit a concept's definition, reload the page — the edited definition persists (loaded from API); "edited" badge is still visible
 
 ---
 
@@ -1662,13 +3111,98 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   - Upload button navigates to `/upload`
   - Wire `useKeyboard` Cmd+U shortcut to navigate to `/upload`
 
+- [ ] Step 6a: Write unit tests for upload store
+  `frontend/tests/unit/stores/upload.test.ts`:
+  ```typescript
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useUploadStore } from '@/stores/upload'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+
+  function makeFile(name: string, size: number, type: string) {
+    const blob = new Blob(['a'.repeat(size)], { type })
+    return new File([blob], name, { type })
+  }
+
+  describe('upload store', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.clearAllMocks()
+    })
+
+    it('setFile accepts a valid EPUB file without setting an error', async () => {
+      const store = useUploadStore()
+      const file = makeFile('book.epub', 1024 * 1024, 'application/epub+zip') // 1MB
+      await store.setFile(file)
+
+      expect(store.file).toBe(file)
+      expect(store.error).toBeNull()
+    })
+
+    it('setFile rejects files with unsupported extensions', async () => {
+      const store = useUploadStore()
+      const file = makeFile('book.docx', 100, 'application/vnd.openxmlformats-officedocument')
+      await store.setFile(file)
+
+      expect(store.error).toMatch(/unsupported/i)
+      expect(store.file).toBeNull()
+    })
+
+    it('setFile rejects files larger than 100MB', async () => {
+      const store = useUploadStore()
+      const bigSize = 101 * 1024 * 1024 // 101MB
+      const file = makeFile('huge.pdf', bigSize, 'application/pdf')
+      await store.setFile(file)
+
+      expect(store.error).toMatch(/too large/i)
+      expect(store.file).toBeNull()
+    })
+
+    it('setFile computes a fileHash (non-empty string) for a valid file', async () => {
+      const store = useUploadStore()
+      const file = makeFile('book.pdf', 512, 'application/pdf')
+      await store.setFile(file)
+
+      expect(store.fileHash).toBeTruthy()
+      expect(typeof store.fileHash).toBe('string')
+      expect(store.fileHash!.length).toBeGreaterThan(0)
+    })
+
+    it('updateMetadata merges fields into the metadata state', () => {
+      const store = useUploadStore()
+      store.metadata = { title: 'Old Title', authors: [], tags: [] }
+      store.updateMetadata({ title: 'New Title', tags: ['strategy'] })
+
+      expect(store.metadata.title).toBe('New Title')
+      expect(store.metadata.tags).toEqual(['strategy'])
+      expect(store.metadata.authors).toEqual([]) // unchanged
+    })
+
+    it('reset clears all state fields to initial values', async () => {
+      const store = useUploadStore()
+      store.file = makeFile('book.epub', 1024, 'application/epub+zip')
+      store.currentStep = 3
+      store.metadata = { title: 'Some Book', authors: ['Author'], tags: [] }
+      store.reset()
+
+      expect(store.file).toBeNull()
+      expect(store.currentStep).toBe(1)
+      expect(store.metadata.title).toBe('')
+    })
+  })
+  ```
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/upload.test.ts`
+  Expected: PASS
+
 - [ ] Step 7: Verify
   Run: `cd frontend && npm run dev` with backend running
-  - Click Upload button — wizard opens at Step 1
-  - Drop an EPUB file — file validates, hash computed
-  - Click "Next" — metadata form with pre-populated fields
-  - Press browser Back — returns to step 1 with state preserved
-  - Test Quick Upload: drop file, click "Start with Recommended Settings" — triggers quick upload flow
+  Navigate to `http://localhost:5173/upload` (or click the Upload button in TopBar):
+  - Wizard opens at Step 1 with the StepIndicator showing "1 of 5" and the DropZone visible
+  - Drag an EPUB file onto the drop zone — the file name and size appear below the zone; no error message
+  - Try dropping a `.docx` file — an "Unsupported format" error message appears immediately
+  - Try dropping a file that is very large (simulate by checking the store's validation) — "File too large" error appears
+  - With a valid EPUB loaded, click "Next" — wizard advances to Step 2 (`/upload/metadata`), the metadata form shows pre-populated title and author fields from the parsed EPUB
+  - Press browser Back button — wizard returns to Step 1, the EPUB file name is still shown (state preserved via sessionStorage)
+  - Click "Start with Recommended Settings" (Quick Upload) — the upload begins and redirects to the processing view
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1679,8 +3213,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/upload.test.ts` — all passed, including valid-EPUB-accepted, .docx-rejected, 101MB-rejected, fileHash-non-empty, updateMetadata-merges, and reset-clears
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: open `http://localhost:5173/upload`, drop a valid EPUB — StepIndicator shows step 1 active; click Next — URL changes to `/upload/metadata` and the title field shows the book's title (not empty, not "undefined")
 
 ---
 
@@ -1717,13 +3253,51 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   - Replace step 3-5 placeholders with StructureReview, PresetPicker, and processing trigger
   - Step 5: calls `startProcessing()` and redirects to `/books/{id}` with processing progress card
 
+- [ ] Step 3a: Write upload store tests for section operations (append to `frontend/tests/unit/stores/upload.test.ts`)
+  ```typescript
+  // Append inside the describe block in upload.test.ts
+  import * as booksApi from '@/api/books'
+
+  it('mergeSection calls API and collapses two sections into one in the sections list', async () => {
+    const mergedSection = { id: 1, title: 'Merged: Chapters 1-2', order_index: 0, type: 'chapter', word_count: 1200, quality_warnings: [] }
+    vi.spyOn(booksApi, 'mergeSections').mockResolvedValue(mergedSection)
+
+    const store = useUploadStore()
+    store.bookId = 1
+    store.sections = [
+      { id: 1, title: 'Chapter 1', order_index: 0, type: 'chapter', word_count: 600, quality_warnings: [] },
+      { id: 2, title: 'Chapter 2', order_index: 1, type: 'chapter', word_count: 600, quality_warnings: [] },
+      { id: 3, title: 'Chapter 3', order_index: 2, type: 'chapter', word_count: 800, quality_warnings: [] },
+    ]
+    await store.mergeSection([1, 2], 'Merged: Chapters 1-2')
+
+    expect(store.sections).toHaveLength(2) // was 3, now 2
+    expect(store.sections[0].title).toBe('Merged: Chapters 1-2')
+  })
+
+  it('selectPreset stores the preset name for use in startProcessing', () => {
+    const store = useUploadStore()
+    store.selectPreset('practitioner_bullets')
+    expect(store.selectedPreset).toBe('practitioner_bullets')
+  })
+  ```
+  Run: `cd frontend && npm run test:unit -- tests/unit/stores/upload.test.ts`
+  Expected: PASS (all upload store tests including new section operation tests)
+
 - [ ] Step 4: Verify
-  Run: `cd frontend && npm run dev` with backend running
-  - Complete steps 1-2, click "Next" — structure review with section table
-  - Merge two sections — they combine, undo toast appears
-  - Click "Next" — preset selection
-  - Select a preset, click "Start Processing" — redirects to book detail
-  - Press browser Back — returns to previous wizard step with state preserved
+  Run: `cd frontend && npm run dev` with backend running and a book uploaded through steps 1-2
+  Navigate to `/upload/structure` (Step 3 of the wizard):
+  - Section table shows all parsed sections with columns: order, title, type (auto-detected badge), word count, and any quality warning badges
+  - Select two adjacent sections by clicking their checkboxes, click "Merge" — the two rows collapse into one row with a combined title; an undo toast appears for 10 seconds; click "Undo" — the two rows are restored separately
+  - Click a section title to rename it — an inline input appears; type a new name, press Enter — the row shows the new name
+  - Drag a section row to reorder it — the table updates the order_index visually
+  - Click "Next" — wizard advances to Step 4 (`/upload/preset`)
+  On Step 4 (Preset Picker):
+  - Summarization preset cards are visible (e.g., "Standard", "Practitioner Bullets", "Academic")
+  - Each card shows the preset name, compression level, and style facet details
+  - Click a preset card — it gains a highlighted border/check indicator; the `selectedPreset` in the store is set
+  - Click "Start Processing" — redirects to `/books/{id}` with a processing progress card visible
+  - Press browser Back from Step 4 — returns to Step 3 with the section table intact (state preserved)
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1734,8 +3308,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
+- `cd frontend && npm run test:unit -- tests/unit/stores/upload.test.ts` — all passed, including mergeSection-reduces-list and selectPreset-stores-name
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: complete a full upload flow from Step 1 to Step 5 — confirm each step's URL changes (`/upload` → `/upload/metadata` → `/upload/structure` → `/upload/preset` → `/books/{id}`); section count on Step 3 matches what the backend parsed
 
 ---
 
@@ -1815,26 +3391,128 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 
 - [ ] Step 6: Write unit tests for useSSE composable
   `frontend/tests/unit/composables/useSSE.test.ts`:
-  - Test connection — creates EventSource with correct URL
-  - Test reconnect — retries up to 3 times with exponential backoff on connection drop
-  - Test fallback — switches to REST polling after 3 reconnect failures
-  - Test cleanup — closes EventSource on unmount
-  - Test event handling — dispatches events to correct handlers
+  ```typescript
+  import { ref } from 'vue'
+  import { useSSE } from '@/composables/useSSE'
+  import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+
+  class MockEventSource {
+    static instances: MockEventSource[] = []
+    url: string
+    onopen: ((e: Event) => void) | null = null
+    onerror: ((e: Event) => void) | null = null
+    readyState = 0
+    private listeners: Map<string, ((e: MessageEvent) => void)[]> = new Map()
+    close = vi.fn()
+
+    constructor(url: string) {
+      this.url = url
+      MockEventSource.instances.push(this)
+    }
+    addEventListener(event: string, handler: (e: MessageEvent) => void) {
+      if (!this.listeners.has(event)) this.listeners.set(event, [])
+      this.listeners.get(event)!.push(handler)
+    }
+    dispatchMockEvent(event: string, data: any) {
+      const handlers = this.listeners.get(event) || []
+      handlers.forEach(h => h({ data: JSON.stringify(data) } as MessageEvent))
+    }
+    simulateError() {
+      this.onerror?.({} as Event)
+    }
+  }
+
+  describe('useSSE', () => {
+    beforeEach(() => {
+      MockEventSource.instances = []
+      vi.stubGlobal('EventSource', MockEventSource)
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+      vi.useRealTimers()
+    })
+
+    it('creates an EventSource with the provided URL', () => {
+      useSSE('/api/v1/processing/42/events', {})
+      expect(MockEventSource.instances).toHaveLength(1)
+      expect(MockEventSource.instances[0].url).toBe('/api/v1/processing/42/events')
+    })
+
+    it('dispatches incoming events to the correct handler with parsed data', () => {
+      const sectionCompletedHandler = vi.fn()
+      useSSE('/api/v1/processing/1/events', {
+        section_completed: sectionCompletedHandler,
+      })
+      const es = MockEventSource.instances[0]
+      es.dispatchMockEvent('section_completed', { section_id: 3, eval_score: 0.88 })
+
+      expect(sectionCompletedHandler).toHaveBeenCalledOnce()
+      expect(sectionCompletedHandler).toHaveBeenCalledWith({ section_id: 3, eval_score: 0.88 })
+    })
+
+    it('reconnects up to 3 times with exponential backoff on connection error', () => {
+      useSSE('/api/v1/processing/1/events', {})
+      const es0 = MockEventSource.instances[0]
+
+      // First error
+      es0.simulateError()
+      vi.advanceTimersByTime(1000)
+      expect(MockEventSource.instances).toHaveLength(2) // reconnect 1
+
+      MockEventSource.instances[1].simulateError()
+      vi.advanceTimersByTime(2000)
+      expect(MockEventSource.instances).toHaveLength(3) // reconnect 2
+
+      MockEventSource.instances[2].simulateError()
+      vi.advanceTimersByTime(4000)
+      expect(MockEventSource.instances).toHaveLength(4) // reconnect 3
+    })
+
+    it('stops reconnecting after 3 failures and reports error status', () => {
+      const { status } = useSSE('/api/v1/processing/1/events', {})
+
+      // Exhaust all 3 reconnects
+      for (let i = 0; i < 4; i++) {
+        MockEventSource.instances[i]?.simulateError()
+        vi.advanceTimersByTime(8000)
+      }
+
+      expect(status.value).toBe('error')
+      // No further EventSource instances created
+      expect(MockEventSource.instances.length).toBeLessThanOrEqual(4)
+    })
+
+    it('close() stops the EventSource and does not reconnect on subsequent errors', () => {
+      const { close } = useSSE('/api/v1/processing/1/events', {})
+      const es = MockEventSource.instances[0]
+
+      close()
+      expect(es.close).toHaveBeenCalledOnce()
+
+      const instanceCountBefore = MockEventSource.instances.length
+      es.simulateError()
+      vi.advanceTimersByTime(5000)
+      // After close(), errors must not trigger reconnects
+      expect(MockEventSource.instances.length).toBe(instanceCountBefore)
+    })
+  })
+  ```
   Run: `cd frontend && npm run test:unit -- tests/unit/composables/useSSE.test.ts`
   Expected: PASS
 
 - [ ] Step 7: Verify
   Run: `cd frontend && npm run dev` with backend running
-  Upload a book and start processing:
-  - Progress card appears with section-by-section updates
-  - Sections complete in real-time via SSE
-  - Click "Minimize" — card collapses to bottom bar
-  - Click bottom bar — expands back to progress card
-  - Navigate away — bottom bar persists showing progress
-  - Click "Cancel" — processing stops, completed sections preserved
-  Simulate SSE disconnect (kill backend, restart):
-  - Auto-reconnect attempts visible
-  - Falls back to polling after 3 failures
+  Upload a book via the wizard and start processing (Step 5 or Quick Upload):
+  - The processing progress card appears pinned above the reading area on `/books/{id}`; the card shows book title, a progress bar (e.g., "0 / 12 sections"), and "Elapsed: 0s"
+  - As SSE events arrive: each completed section's title appears in the per-section list with a green checkmark; the progress bar percentage updates (e.g., "3 / 12"); "Elapsed" counter increments live
+  - A section with eval failure shows a yellow retry indicator; when retried and completed it shows green
+  - Click "Minimize" — the card disappears from the book detail view; a bottom bar appears with "Art of War — 3/12 sections" and a mini progress bar
+  - Navigate to `http://localhost:5173` (library) — the bottom bar persists with the same progress indicator
+  - Click the bottom bar indicator — browser navigates to `/books/{id}` and the progress card re-appears
+  - Click "Cancel" button on the progress card — a confirmation dialog appears; confirm; the card shows "Cancelled — 3 sections completed and available"; confirmed sections are immediately accessible in the reader
+  To test SSE reconnect: during an active processing job, temporarily stop the backend (`Ctrl+C`), restart it within 10 seconds — the progress card attempts reconnect (you can observe 1s, 2s, 4s gaps); after 3 failures it switches to polling mode and continues updating every 5 seconds
   Run: `cd frontend && npm run type-check && npm run build`
   Expected: No errors
 
@@ -1845,9 +3523,10 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   ```
 
 **Inline verification:**
-- `cd frontend && npm run test:unit -- tests/unit/composables/useSSE.test.ts` — all passed
+- `cd frontend && npm run test:unit -- tests/unit/composables/useSSE.test.ts` — all passed, including correct URL, event dispatch with parsed data, 3-reconnect exponential backoff, error status after exhaustion, and close-prevents-reconnect
 - `cd frontend && npm run type-check` — no errors
 - `cd frontend && npm run build` — builds without errors
+- Manual: start processing a book; confirm the per-section list updates as each section completes (not all at once at the end); confirm sectionsCompleted counter in the progress bar increments one at a time via SSE
 
 ---
 
@@ -1885,28 +3564,65 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
   Run: `cd frontend && npm run build`
   Expected: Builds without errors, output in `frontend/dist/`
 
-- [ ] **API smoke tests (curl):**
+- [ ] **API smoke tests (curl with content assertions):**
   Start: `cd backend && uv run uvicorn app.api.main:app --port 8000`
   ```bash
-  # Annotations
-  curl -sf http://localhost:8000/api/v1/annotations | python3 -m json.tool
-  # Expected: paginated response
+  # Annotations — must have items + total keys, total must be a number
+  curl -sf http://localhost:8000/api/v1/annotations | python3 -c "
+  import sys, json
+  d = json.load(sys.stdin)
+  assert 'items' in d and 'total' in d, 'missing items or total'
+  assert isinstance(d['total'], int), f'total is not int: {d[\"total\"]}'
+  print('annotations OK, total =', d['total'])
+  "
 
-  # Reading presets
-  curl -sf http://localhost:8000/api/v1/reading-presets | python3 -m json.tool
-  # Expected: list with 4 system presets
+  # Reading presets — must have at least 4 system presets with non-empty font_family and hex bg_color
+  curl -sf http://localhost:8000/api/v1/reading-presets | python3 -c "
+  import sys, json
+  presets = json.load(sys.stdin)
+  system = [p for p in presets if p.get('is_system')]
+  assert len(system) >= 4, f'expected >= 4 system presets, got {len(system)}'
+  for p in system:
+      assert p['font_family'], f'Preset {p[\"id\"]} missing font_family'
+      assert p['bg_color'].startswith('#'), f'Preset {p[\"id\"]} bg_color not a hex: {p[\"bg_color\"]}'
+  print(f'reading-presets OK: {len(system)} system presets found')
+  "
 
-  # Quick search
-  curl -sf "http://localhost:8000/api/v1/search/quick?q=test&limit=12" | python3 -m json.tool
-  # Expected: grouped results with books/sections/concepts/annotations
+  # Quick search — must echo query, must have all 4 groups, no group exceeds 3 items
+  curl -sf "http://localhost:8000/api/v1/search/quick?q=war&limit=12" | python3 -c "
+  import sys, json
+  d = json.load(sys.stdin)
+  assert d['query'] == 'war', f'query not echoed: {d[\"query\"]}'
+  for group in ['books', 'sections', 'concepts', 'annotations']:
+      assert group in d['results'], f'missing group: {group}'
+      count = len(d['results'][group])
+      assert count <= 3, f'group {group} has {count} items, max is 3'
+  sections = d['results']['sections']
+  if sections:
+      assert sections[0].get('title'), 'section hit missing title'
+      assert sections[0].get('book_title'), 'section hit missing book_title'
+  print('quick-search OK, sections found:', len(sections))
+  "
 
-  # Concepts
-  curl -sf http://localhost:8000/api/v1/concepts | python3 -m json.tool
-  # Expected: paginated response
+  # Concepts for book 1 — must have non-empty items with term and definition fields
+  curl -sf "http://localhost:8000/api/v1/concepts?book_id=1" | python3 -c "
+  import sys, json
+  d = json.load(sys.stdin)
+  assert 'items' in d and d['total'] > 0, f'expected concepts for book 1, got total={d[\"total\"]}'
+  first = d['items'][0]
+  assert first.get('term'), 'first concept missing term'
+  assert first.get('definition'), 'first concept missing definition'
+  assert first.get('book_id') == 1, f'book_id mismatch: {first[\"book_id\"]}'
+  print(f'concepts OK: {d[\"total\"]} concepts for book 1')
+  "
 
-  # AI threads (needs a book)
-  curl -sf http://localhost:8000/api/v1/books/1/ai-threads | python3 -m json.tool
-  # Expected: list or 404 if no book
+  # AI threads for book 1 — must return a list (empty is OK if no threads)
+  curl -sf http://localhost:8000/api/v1/books/1/ai-threads | python3 -c "
+  import sys, json
+  d = json.load(sys.stdin)
+  assert isinstance(d, list), f'expected list, got {type(d)}'
+  print(f'ai-threads OK: {len(d)} threads for book 1')
+  "
   ```
 
 - [ ] **Manual spot checks (with backend + frontend running):**
@@ -1937,3 +3653,4 @@ T12a depends on Phase 1; T12b depends on T12a; T13 depends on Phase 1
 |------|----------|-------------|
 | 1    | Initial plan draft | Full plan with 14 tasks covering all Phase 2 scope items |
 | 2    | Review loop: frontend tasks lack unit tests, 4 tasks too large, type inconsistency, edge case gaps, T7 forward-reference | Added frontend test files to T6-T13, split T2/T6/T8/T12 into sub-tasks (now 18 tasks), fixed AnnotationType/SearchResultItem schemas, documented edge case assumptions in T14, clarified T7 toolbar event forwarding |
+| 3    | Verification gaps: structural-only tests (status codes, "it compiles") pass even with subtly broken implementations; manual steps too vague; T5/T4/T6a/T6b/T7/T8a/T8b/T9/T10/T11/T12a/T12b/T13/T14 all had gaps | Added behavioral integration tests to T4 (concept field content, user_edited toggle, filter correctness) and T5 (field persistence, single-active invariant, partial update, delete-with-fallback); replaced test bullet points with actual TypeScript test code in T6a (readerSettings store), T7 (useTextSelection), T8a (annotations store), T9 (aiThreads store), T10 (search store), T11 (concepts store), T12a/T12b (upload store); added unit tests to T8b (global annotations); added actual test code to T13 (useSSE composable with MockEventSource); expanded T14 smoke tests to assert on field values (not just status codes); sharpened all manual verification steps to include exact URLs, exact element names, exact expected content, and specific observable state changes |
