@@ -52,9 +52,9 @@ Book Companion is CLI-only. A web interface adds visual reading, annotation, AI 
 
 | # | Decision | Options Considered | Rationale |
 |---|----------|-------------------|-----------|
-| D1 | `bookcompanion serve` CLI command starts Uvicorn | (a) CLI command, (b) Separate `uvicorn` entry point | Consistent with CLI-first architecture. All user interactions go through the `bookcompanion` command. |
-| D2 | Full docker-compose: postgres + backend container | (a) Full compose (3 services), (b) Separate frontend container with Nginx, (c) Postgres-only Docker | Single `docker compose up` for everything. Backend serves built frontend static files. Simpler for a personal tool. |
-| D3 | AI chat uses coding agent CLI subprocess (Claude Code / Codex) | (a) Claude Code CLI subprocess, (b) Direct Anthropic SDK, (c) LLMProvider abstraction | User preference: no direct cloud LLM APIs. Reuses existing `ClaudeCodeCLIProvider` pattern. Environment variables select the provider. |
+| D1 | Docker-compose-first: no `bookcompanion serve` command. Add `bookcompanion health` instead. | (a) `bookcompanion serve` CLI command, (b) Docker compose only + health check command | Docker compose is the deployment method. A `serve` command duplicates what `docker compose up` does. Instead, `bookcompanion health` checks container status and prints the access URL. For local dev, run `uvicorn` directly. |
+| D2 | Full docker-compose: postgres + backend container | (a) Full compose (2 services: db + backend), (b) Separate frontend container with Nginx, (c) Postgres-only Docker | Single `docker compose up` for everything. Backend serves built frontend static files. Simpler for a personal tool. |
+| D3 | AI chat uses coding agent CLI subprocess (Claude Code / Codex), selected via global env var | (a) Claude Code CLI subprocess, (b) Direct Anthropic SDK, (c) LLMProvider abstraction | No direct cloud LLM APIs. Reuses existing `ClaudeCodeCLIProvider` pattern. `BOOKCOMPANION_LLM__CLI_COMMAND` env var selects the agent (`claude` or `codex`). Global setting, not per-book. |
 | D4 | AI chat returns complete response (no streaming) in V1 | (a) Complete response with loading indicator, (b) Parse CLI stdout for partial streaming | CLI subprocess doesn't support token-by-token streaming. Loading indicator is acceptable UX for V1. |
 | D5 | Processing jobs run as asyncio background tasks | (a) asyncio.create_task() within FastAPI, (b) Separate subprocess per job | Simpler, shares event loop and DB session factory. SSE integration is straightforward. ProcessingJob table tracks state for crash recovery. |
 | D6 | SSE over WebSockets for all streaming | (a) SSE, (b) WebSockets | SSE is simpler (unidirectional, auto-reconnect, works through proxies). All streaming is server→client. |
@@ -63,6 +63,9 @@ Book Companion is CLI-only. A web interface adds visual reading, annotation, AI 
 | D9 | Vue 3 + Vite + Tailwind CSS + shadcn-vue | (a) Vue 3 stack, (b) React/Next.js, (c) Svelte | Requirements specify Vue 3. shadcn-vue provides accessible, unstyled components. |
 | D10 | Pinia for state management | (a) Pinia, (b) Vuex, (c) Composables only | Pinia is the official Vue 3 state management. Stores for books, reader settings, processing, annotations, AI threads. |
 | D11 | No authentication in V1, optional bearer token for LAN | (a) No auth, (b) Basic auth, (c) Token auth | Personal tool. Optional token via `Settings.network.access_token` for LAN exposure. |
+| D12 | No token budget for AI chat context | (a) No budget, (b) Configurable token limit | The coding agent CLI manages its own context limits. The service sends book summary + relevant section summaries + thread history without artificial truncation. |
+| D13 | QR code via lightweight JS library (client-side) | (a) JS library (qrcode.vue or qr-code-styling), (b) Server-generated image | Client-side generation avoids a server roundtrip. Library must be lightweight (<5KB gzipped). |
+| D14 | Scheduled backups via APScheduler within FastAPI process | (a) APScheduler in-process, (b) External cron/systemd timer | In-process is simpler for a personal tool — no system-level configuration needed. APScheduler's `AsyncIOScheduler` integrates with the existing event loop. Backup interval configurable via Settings. If the server is down, backups simply don't run (acceptable for personal use). |
 
 ---
 
@@ -123,10 +126,15 @@ All 12 user journeys are fully specified in the requirements document (§4.1–4
 
 Development mode:
   Vite dev server (port 5173) → proxy /api/* → FastAPI (port 8000)
+  Backend: uvicorn app.api.main:app --reload (run directly, no CLI command)
+  Frontend: npm run dev (Vite, separate terminal)
 
-Production mode:
-  FastAPI serves built SPA from backend/static/
+Production mode (docker compose up):
+  Backend container serves built SPA from backend/static/
   Uvicorn on port 8000
+
+CLI integration:
+  bookcompanion health  →  checks Docker containers, prints access URL
 ```
 
 ### 6.2 Sequence Diagrams
@@ -248,6 +256,7 @@ Requirements are organized by feature area. Detailed screen-by-screen behavior i
 | FR-04 | Top bar: page title (left), search input (center-right), Upload button (right) |
 | FR-05 | `Cmd+K` / `Ctrl+K` opens command palette; `Cmd+U` / `Ctrl+U` opens upload; `Escape` closes modals |
 | FR-06 | Active nav item shows accent-colored background + icon fill |
+| FR-06a | `bookcompanion health` CLI command: checks Docker container status (db, backend), reports health, prints web interface access URL (`http://localhost:8000` or LAN URL if enabled) |
 
 ### 7.2 Library Page
 
@@ -1164,7 +1173,7 @@ COPY --from=frontend-build /app/frontend/dist ./backend/static/
 
 # Run migrations and start server
 WORKDIR /app/backend
-CMD ["sh", "-c", "uv run alembic upgrade head && uv run bookcompanion serve --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn app.api.main:app --host 0.0.0.0 --port 8000"]
 ```
 
 ---
@@ -1281,6 +1290,7 @@ curl -X POST http://localhost:8000/api/v1/annotations \
 ### 14.6 Verification Checklist
 
 - [ ] `docker compose up` starts all services; UI accessible at `http://localhost:8000`
+- [ ] `bookcompanion health` reports container status and prints access URL
 - [ ] Upload EPUB → parse → metadata/structure review → preset selection → processing completes
 - [ ] SSE streams processing events; progress card updates in real-time
 - [ ] Completed sections are browsable while processing continues
@@ -1315,14 +1325,16 @@ curl -X POST http://localhost:8000/api/v1/annotations \
 
 **Phase 1: Backend API + Core Pages**
 1. FastAPI app factory, dependency injection, CORS, static file serving
-2. Database migration (new tables + seed data)
-3. Book API endpoints (CRUD, upload, duplicate detection)
-4. Section API endpoints (CRUD, merge, split, reorder)
-5. Processing API (summarize, SSE stream, status, cancel)
-6. Frontend scaffolding (Vite, Vue Router, Pinia, Tailwind, shadcn-vue)
-7. App shell (icon rail, top bar, routing)
-8. Library page (views, filters, sort, display modes)
-9. Book detail / reader (content rendering, navigation, original/summary toggle)
+2. Docker compose (backend container + multi-stage build Dockerfile)
+3. Database migration (new tables + seed data)
+4. `bookcompanion health` CLI command (container status + access URL)
+5. Book API endpoints (CRUD, upload, duplicate detection)
+6. Section API endpoints (CRUD, merge, split, reorder)
+7. Processing API (summarize, SSE stream, status, cancel)
+8. Frontend scaffolding (Vite, Vue Router, Pinia, Tailwind, shadcn-vue)
+9. App shell (icon rail, top bar, routing)
+10. Library page (views, filters, sort, display modes)
+11. Book detail / reader (content rendering, navigation, original/summary toggle)
 
 **Phase 2: Rich Features**
 10. Reader settings (popover, presets, persistence)
@@ -1369,13 +1381,9 @@ curl -X POST http://localhost:8000/api/v1/annotations \
 
 ## 17. Open Questions
 
-| # | Question | Owner | Needed By |
-|---|----------|-------|-----------|
-| 1 | Should the `bookcompanion serve` command also run Vite dev server in dev mode, or require a separate terminal? | Maneesh | Before plan |
-| 2 | For AI chat context window management: what's the max context size to send (book summary + N section summaries + thread history)? Should there be a token budget? | Maneesh | Before plan |
-| 3 | Should LAN access QR code use a JS library (qrcode.js) or server-generated image? | Maneesh | Before plan |
-| 4 | Should the coding agent CLI command be configurable per-book or global only? Currently global via `llm.cli_command`. | Maneesh | Before plan |
-| 5 | For scheduled backups: should the scheduler run within the FastAPI process (APScheduler) or as a separate cron/systemd timer? | Maneesh | During Phase 3 |
+All questions from the initial draft have been resolved (see Decision Log D1, D12–D14).
+
+No open questions remain.
 
 ---
 
@@ -1385,3 +1393,4 @@ curl -X POST http://localhost:8000/api/v1/annotations \
 |------|----------|-------------|
 | 1 | Initial draft | Full spec written from requirements + research |
 | 2 | Missing: reading re-entry card (§3.3.6), annotation cross-view visibility (§3.3.5), consistency indicator detail (§3.3.7) | Added FR-27a (re-entry), FR-29a (cross-view annotations), clarified FR-29 consistency metric |
+| 3 | User feedback: no `serve` command, use docker compose + `health` command instead. Resolved all 5 open questions. Added D12-D14 decisions. | Replaced D1 with health command, updated Dockerfile CMD, added FR-06a, added APScheduler decision (D14), updated rollout Phase 1, resolved open questions, updated verification checklist |
