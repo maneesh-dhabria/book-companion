@@ -57,6 +57,18 @@ class LoggingConfig(BaseModel):
     rotation: str = "daily"
 
 
+class NetworkConfig(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 8000
+    allow_lan: bool = False
+    access_token: str | None = None
+
+
+class WebConfig(BaseModel):
+    show_cost_estimates: bool = False
+    static_dir: str = "static"
+
+
 def _load_yaml_config() -> dict[str, Any]:
     """Load config from YAML file if it exists. Priority: env var > XDG > fallback."""
     candidates = [
@@ -88,6 +100,8 @@ class Settings(BaseSettings):
     images: ImageConfig = ImageConfig()
     storage: StorageConfig = StorageConfig()
     logging: LoggingConfig = LoggingConfig()
+    network: NetworkConfig = NetworkConfig()
+    web: WebConfig = WebConfig()
 
     def model_post_init(self, __context: Any) -> None:
         """Merge YAML config file values (lower priority than env vars)."""
