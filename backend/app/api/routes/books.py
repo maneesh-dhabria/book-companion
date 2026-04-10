@@ -88,39 +88,50 @@ def _book_to_response(book: Book) -> dict:
     }
 
 
+ALLOWED_SORT_FIELDS = {"title", "created_at", "updated_at", "file_size_bytes", "status"}
+
+
 @router.get("")
 async def list_books(
     page: int = 1,
     per_page: int = 20,
     status: str | None = None,
-    format: str | None = None,
+    file_format: str | None = None,
     sort_field: str = "updated_at",
     sort_direction: str = "desc",
     db: AsyncSession = Depends(get_db),
 ):
     """List books with pagination, filtering, and sorting."""
-    query = select(Book).options(selectinload(Book.authors), selectinload(Book.sections))
-
+    # Build filter conditions
+    conditions = []
     if status:
-        query = query.where(Book.status == status)
-    if format:
-        query = query.where(Book.file_format == format)
+        conditions.append(Book.status == status)
+    if file_format:
+        conditions.append(Book.file_format == file_format)
 
-    # Sorting
-    sort_col = getattr(Book, sort_field, Book.updated_at)
-    if sort_direction == "asc":
-        query = query.order_by(sort_col.asc())
-    else:
-        query = query.order_by(sort_col.desc())
-
-    # Count total
-    count_query = select(func.count()).select_from(query.subquery())
+    # Count total (without eager loading)
+    count_query = select(func.count(Book.id))
+    for cond in conditions:
+        count_query = count_query.where(cond)
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Paginate
-    offset = (page - 1) * per_page
-    query = query.offset(offset).limit(per_page)
+    # Sorting — whitelist allowed fields
+    if sort_field not in ALLOWED_SORT_FIELDS:
+        sort_field = "updated_at"
+    sort_col = getattr(Book, sort_field)
+    order = sort_col.asc() if sort_direction == "asc" else sort_col.desc()
+
+    # Main query with eager loading
+    query = (
+        select(Book)
+        .options(selectinload(Book.authors), selectinload(Book.sections))
+        .order_by(order)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    for cond in conditions:
+        query = query.where(cond)
 
     result = await db.execute(query)
     books = result.scalars().unique().all()
