@@ -58,6 +58,8 @@ Total: 18 tasks
 | PD8 | Processing background tasks use an in-memory event bus (asyncio.Queue per job) for SSE fan-out | (a) asyncio.Queue per job, (b) Redis pub/sub, (c) Polling DB | Queue is simplest for single-process. No Redis dependency. Multiple SSE clients can subscribe to the same job queue. |
 | PD9 | Library page includes all 3 display modes: Grid, List, Table | (a) All 3 modes in Phase 1, (b) Grid + List only, (c) Grid only | FR-13/FR-14 explicitly spec all 3 modes. Table mode includes configurable columns, drag-to-reorder, column visibility toggle, sticky Title column, and checkbox multi-select. Using shadcn-vue's data-table component as foundation. |
 | PD10 | Reader uses `markdown-it` + `highlight.js` for markdown rendering | (a) markdown-it, (b) marked, (c) v-html with DOMPurify | markdown-it is extensible (plugins for task lists, footnotes), has good Vue integration, and sanitization can be layered on top. |
+| PD11 | All exposed ports configurable via `.env` file at repo root | (a) Hardcoded ports in compose, (b) `.env` file with variable substitution, (c) Separate compose overrides | `.env` avoids conflicts with other Docker projects. Compose natively reads it. Same vars used by backend config via `BOOKCOMPANION_*` prefix. Default `.env.example` committed; actual `.env` in `.gitignore`. |
+| PD12 | Two-mode dev workflow: "light dev" (DB in Docker only, backend+frontend native) vs "full Docker" (production-like) | (a) Always Docker, (b) Always native, (c) Hybrid light/full | Daily development uses native uvicorn + Vite for hot-reload speed. Docker only wraps the DB (already the case). Full Docker build is for integration testing and production. Avoids slow rebuild cycles during development. |
 
 ---
 
@@ -91,11 +93,19 @@ Total: 18 tasks
 
 ## Prerequisites
 
-- Docker running with existing `db` service available (`docker compose up -d`)
+- Docker running with existing `db` service available (`docker compose up -d db`)
+- `.env` file created from `.env.example` with ports that don't conflict with other projects
 - Python 3.12+ with `uv` installed
 - Node.js 20+ with `npm`
 - Existing test DB: `bookcompanion_test` with `vector` extension
 - At least one test book in fixtures: `python3 tests/fixtures/download_fixtures.py`
+
+### Development Modes
+
+| Mode | When to use | What runs in Docker | What runs natively |
+|------|------------|--------------------|--------------------|
+| **Light dev** (daily) | Feature work, hot-reload | DB only (`docker compose up -d db`) | `uvicorn --reload` + `npm run dev` |
+| **Full Docker** (integration) | Pre-merge testing, production-like | DB + backend (`docker compose --profile production up --build`) | Nothing |
 
 ---
 
@@ -121,7 +131,10 @@ Total: 18 tasks
 | Create | `backend/app/cli/commands/health_cmd.py` | `bookcompanion health` CLI command |
 | Modify | `backend/app/cli/main.py` | Register health command |
 | Modify | `backend/pyproject.toml` | Add fastapi, uvicorn, sse-starlette, python-multipart deps |
-| Modify | `docker-compose.yml` | Add backend service |
+| Create | `.env.example` | Default port configuration (DB, API, Vite) |
+| Modify | `.gitignore` | Add `.env` |
+| Modify | `docker-compose.yml` | Variable ports, add backend service with production profile |
+| Create | `docker-compose.dev.yml` | DB-only override for light dev mode |
 | Create | `Dockerfile` | Multi-stage build (frontend + backend) |
 | Create | `backend/alembic/versions/*_add_web_interface_tables.py` | Migration for 6 new tables + seed data |
 | Create | `frontend/` | Vue 3 + Vite + TypeScript + Pinia + Vue Router + Tailwind + shadcn-vue |
@@ -1051,47 +1064,94 @@ Total: 18 tasks
 
 ---
 
-### T9: Docker Compose + Dockerfile
+### T9: Docker Compose + Dockerfile + Dev Workflow
 
-**Goal:** Add backend service to docker-compose.yml and create multi-stage Dockerfile that builds frontend and serves it via FastAPI.
-**Spec refs:** §13.3 (Docker Compose), §13.4 (Dockerfile), §6.1 (Architecture), D2 (full compose), D7 (backend serves SPA)
+**Goal:** Add configurable ports via `.env`, backend service to docker-compose.yml, multi-stage Dockerfile, and document the two-mode dev workflow (light dev vs full Docker).
+**Spec refs:** §13.3 (Docker Compose), §13.4 (Dockerfile), §6.1 (Architecture), D2 (full compose), D7 (backend serves SPA), PD11 (configurable ports), PD12 (two-mode dev)
 
 **Files:**
-- Modify: `docker-compose.yml` (add backend service, backups volume)
+- Create: `.env.example` (default port configuration)
+- Modify: `.gitignore` (add `.env`)
+- Modify: `docker-compose.yml` (variable ports, add backend service, backups volume)
+- Create: `docker-compose.dev.yml` (DB-only override for light dev)
 - Create: `Dockerfile` (multi-stage: node build + python runtime)
 
 **Steps:**
 
-- [ ] Step 1: Update `docker-compose.yml`
+- [ ] Step 1: Create `.env.example` with configurable ports
+  ```env
+  # Book Companion — Port Configuration
+  # Copy to .env and customize to avoid conflicts with other Docker projects.
+
+  # PostgreSQL
+  BOOKCOMPANION_DB_PORT=5438
+
+  # Backend API (production Docker only — dev uses uvicorn directly)
+  BOOKCOMPANION_API_PORT=8000
+
+  # Frontend dev server (Vite — not used in Docker)
+  BOOKCOMPANION_VITE_PORT=5173
+
+  # Database connection (used by backend container)
+  BOOKCOMPANION_DATABASE__URL=postgresql+asyncpg://bookcompanion:bookcompanion@db:5432/bookcompanion
+  ```
+  Add `.env` to `.gitignore`. Copy `.env.example` to `.env` for local use.
+
+- [ ] Step 2: Update `docker-compose.yml` with variable ports
+  Use `${BOOKCOMPANION_DB_PORT:-5438}` and `${BOOKCOMPANION_API_PORT:-8000}` for port mappings.
   Add `backend` service per spec §13.3:
   - Build context `.`, Dockerfile `Dockerfile`
-  - Ports: `8000:8000`
-  - Environment: `BOOKCOMPANION_DATABASE__URL`, `BOOKCOMPANION_NETWORK__HOST=0.0.0.0`, `BOOKCOMPANION_NETWORK__PORT=8000`
+  - Ports: `${BOOKCOMPANION_API_PORT:-8000}:8000`
+  - Environment: `BOOKCOMPANION_DATABASE__URL`, `BOOKCOMPANION_NETWORK__HOST=0.0.0.0`
   - `depends_on: db: condition: service_healthy`
   - Volume: `backups:/app/backups`
+  - Profile: `production` (so `docker compose up` only starts DB by default)
+  Update `db` service port: `${BOOKCOMPANION_DB_PORT:-5438}:5432`
   Add `backups` volume.
 
-- [ ] Step 2: Create `Dockerfile`
+- [ ] Step 3: Create `docker-compose.dev.yml` (light dev convenience)
+  A minimal override that explicitly starts only the DB:
+  ```yaml
+  # Light dev mode: only DB runs in Docker.
+  # Backend: cd backend && uv run uvicorn app.api.main:app --reload --port 8000
+  # Frontend: cd frontend && npm run dev
+  services:
+    db:
+      ports:
+        - "${BOOKCOMPANION_DB_PORT:-5438}:5432"
+  ```
+  This makes the two-mode workflow explicit:
+  - **Light dev** (daily): `docker compose up -d db` then `uvicorn --reload` + `npm run dev`
+  - **Full Docker** (integration test): `docker compose --profile production up --build`
+
+- [ ] Step 4: Create `Dockerfile`
   Multi-stage per spec §13.4:
   - Stage 1 (`frontend-build`): `node:20-alpine`, copy `frontend/`, `npm ci`, `npm run build`
   - Stage 2 (`runtime`): `python:3.12-slim`, install system deps (calibre), copy `backend/`, install via uv, copy built frontend to `backend/static/`
   - CMD: run alembic migrations then uvicorn
 
-- [ ] Step 3: Verify build (after T10 creates frontend)
-  Note: This step can only be fully verified after T10 creates the frontend project.
-  For now, verify the Dockerfile syntax is valid:
-  Run: `docker build --target runtime --no-cache -f Dockerfile . 2>&1 | head -20`
-  Expected: Build starts (may fail at frontend stage since frontend doesn't exist yet — that's expected)
+- [ ] Step 5: Verify port configuration
+  Run: `cp .env.example .env`
+  Edit `.env` to use a non-conflicting port (e.g., `BOOKCOMPANION_DB_PORT=5439`)
+  Run: `docker compose config | grep -A2 ports`
+  Expected: Shows port `5439:5432` for db service
 
-- [ ] Step 4: Commit
+- [ ] Step 6: Verify full Docker build (after T10 creates frontend)
+  Note: Full build can only run after T10. For now, verify syntax:
+  Run: `docker compose config` — validates compose file
+  Run: `docker compose --profile production config` — validates production profile
+
+- [ ] Step 7: Commit
   ```bash
-  git add docker-compose.yml Dockerfile
-  git commit -m "feat: Docker compose with backend service and multi-stage Dockerfile"
+  git add docker-compose.yml docker-compose.dev.yml Dockerfile .env.example .gitignore
+  git commit -m "feat: Docker compose with configurable ports, two-mode dev workflow"
   ```
 
 **Inline verification:**
 - `docker compose config` — validates compose file syntax
-- Dockerfile syntax is valid YAML/Dockerfile format
+- `.env.example` exists with documented defaults
+- `docker compose up -d db` starts only the database (light dev mode)
+- `docker compose --profile production config` includes backend service
 
 ---
 
@@ -1102,7 +1162,7 @@ Total: 18 tasks
 
 **Files:**
 - Create: `frontend/` (entire directory via scaffolding tools)
-- Configure: `frontend/vite.config.ts` (proxy /api/* to localhost:8000)
+- Configure: `frontend/vite.config.ts` (proxy /api/* to localhost:${API_PORT})
 - Configure: `frontend/tailwind.config.ts` (semantic color tokens per spec §11.0)
 - Create: `frontend/src/assets/theme.css` (CSS custom properties for design tokens)
 
@@ -1662,22 +1722,34 @@ Total: 18 tasks
   Run: `cd backend && uv run bookcompanion health`
   Expected: Diagnostic table with DB connectivity, migration status, access URL
 
-- [ ] **Frontend serves from backend (production mode):**
+- [ ] **Light dev mode (hot-reload):**
+  Run: `docker compose up -d db` (DB only)
+  Run: `cd backend && uv run uvicorn app.api.main:app --reload --port 8000 &`
+  Run: `cd frontend && npm run dev &`
+  Open: `http://localhost:5173` in browser
+  Expected: Vue SPA loads via Vite, API calls proxied to FastAPI, hot-reload works on file save
+
+- [ ] **Full Docker mode (production-like):**
   Run: `cp -r frontend/dist backend/static`
   Run: `cd backend && uv run uvicorn app.api.main:app --port 8000`
   Open: `http://localhost:8000` in browser
-  Expected: Vue SPA loads, library page renders
+  Expected: Vue SPA loads directly from FastAPI static files, all routes work (SPA fallback)
+
+- [ ] **Port configuration:**
+  Edit `.env` to change `BOOKCOMPANION_DB_PORT` to a non-default value
+  Run: `docker compose down && docker compose up -d db`
+  Expected: DB starts on the new port, backend connects successfully
 
 - [ ] **Manual spot checks:**
   - Library page: books display in grid, filter by status works, sort works, display mode toggle works
+  - Library table mode: columns render, show/hide toggle, sticky title column, checkbox selection
   - Book reader: sections render as formatted markdown, TOC dropdown navigates between sections, Original/Summary toggle switches content, Prev/Next arrows work
   - Empty library: welcome empty state with clear messaging
   - Mobile viewport (375px): bottom tab bar appears, icon rail hides, content is full-width
 
 **Cleanup:**
 - [ ] Remove any temporary debug logging added during development
-- [ ] Remove `backend/static/` from `.gitignore` if needed (it's a build artifact, should be ignored)
-- [ ] Verify `.gitignore` includes `frontend/dist/`, `frontend/node_modules/`, `backend/static/`
+- [ ] Verify `.gitignore` includes `.env`, `frontend/dist/`, `frontend/node_modules/`, `backend/static/`
 
 ---
 
@@ -1687,3 +1759,4 @@ Total: 18 tasks
 |------|----------|-------------|
 | 1    | Initial plan draft | Full plan written with 15 tasks |
 | 2    | Missing eval API (§9.6), missing library views API (FR-07/08), missing eval route in frontend router, table display mode excluded despite FR-13/14 spec requirement, T13 too large | Added T6a (eval API), T6b (library views API), eval + views to T3 schemas and T11 API clients, added EvalDetailView/BookSummaryView/UploadView routes, included table mode (PD9 updated), split T13 into T13a (grid/list/filters) and T13b (table/views/bulk). Now 18 tasks. |
+| 3    | User feedback: port conflicts with other Docker projects, need clear separation of hot-reload dev vs Docker deployment | Added PD11 (configurable ports via .env), PD12 (two-mode dev workflow). Updated T9 with .env.example, docker-compose.dev.yml, profile-based backend service. Updated Prerequisites with dev mode table. Updated T15 with both dev modes + port config verification. Added .env to file map. |
