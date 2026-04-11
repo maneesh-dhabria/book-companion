@@ -55,6 +55,7 @@ defineEmits<{
       >
         →
       </button>
+      <slot name="actions" />
     </div>
   </div>
 </template>

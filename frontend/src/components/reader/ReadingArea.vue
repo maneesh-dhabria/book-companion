@@ -39,12 +39,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <style scoped>
 .reading-area {
-  max-width: 720px;
+  max-width: var(--reader-content-width, 720px);
   margin: 0 auto;
   padding: 32px 24px 64px;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 16px;
-  line-height: 1.6;
+  font-family: var(--reader-font-family, Georgia, 'Times New Roman', serif);
+  font-size: var(--reader-font-size, 16px);
+  line-height: var(--reader-line-spacing, 1.6);
   color: var(--color-text-primary);
 }
 
