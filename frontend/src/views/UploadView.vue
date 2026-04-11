@@ -1,5 +1,13 @@
+<script setup lang="ts">
+import UploadWizard from '@/components/upload/UploadWizard.vue'
+</script>
+
 <template>
-  <div class="p-6">
-    <h1 class="text-2xl font-bold">UploadView</h1>
+  <div class="upload-page">
+    <UploadWizard />
   </div>
 </template>
+
+<style scoped>
+.upload-page { height: 100%; display: flex; align-items: flex-start; justify-content: center; padding-top: 2rem; }
+</style>

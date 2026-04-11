@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { useKeyboard } from '@/composables/useKeyboard'
+import { useUiStore } from '@/stores/ui'
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 const route = useRoute()
+const uiStore = useUiStore()
 
 const pageTitle = computed(() => {
   const name = route.name as string
@@ -20,6 +23,11 @@ const pageTitle = computed(() => {
   }
   return titles[name] || 'Book Companion'
 })
+
+useKeyboard([
+  { key: 'k', meta: true, handler: () => uiStore.openPalette() },
+  { key: 'Escape', handler: () => uiStore.closePalette() },
+])
 </script>
 
 <template>
@@ -28,9 +36,10 @@ const pageTitle = computed(() => {
     <div class="top-bar-actions">
       <input
         type="text"
-        placeholder="Search..."
+        placeholder="Search... (⌘K)"
         class="top-bar-search"
         readonly
+        @click="uiStore.openPalette()"
       />
       <router-link to="/upload" class="top-bar-upload">
         Upload
