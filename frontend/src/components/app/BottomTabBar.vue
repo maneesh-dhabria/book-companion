@@ -13,7 +13,7 @@ const tabs = [
 </script>
 
 <template>
-  <nav class="bottom-tab-bar" data-testid="bottom-tab-bar">
+  <nav class="bottom-tab-bar" data-testid="bottom-tab-bar" role="navigation" aria-label="Main navigation">
     <router-link
       v-for="tab in tabs"
       :key="tab.path"
