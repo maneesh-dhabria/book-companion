@@ -49,6 +49,7 @@ def get_summarizer_service(
         default_model=settings.llm.model,
         default_timeout=settings.llm.timeout_seconds,
         max_budget_usd=settings.llm.max_budget_usd,
+        config_dir=settings.llm.config_dir,
     )
     captioner = ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
     return SummarizerService(db=db, llm=llm, config=settings, captioner=captioner)
@@ -67,6 +68,7 @@ def get_eval_service(
         default_model=settings.llm.model,
         default_timeout=settings.llm.timeout_seconds,
         max_budget_usd=settings.llm.max_budget_usd,
+        config_dir=settings.llm.config_dir,
     )
     return EvalService(db=db, llm=llm, config=settings)
 

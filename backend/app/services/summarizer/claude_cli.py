@@ -16,11 +16,21 @@ class ClaudeCodeCLIProvider(LLMProvider):
         default_model: str = "sonnet",
         default_timeout: int = 300,
         max_budget_usd: float | None = None,
+        config_dir: str | None = None,
     ):
         self.cli_command = cli_command
         self.default_model = default_model
         self.default_timeout = default_timeout
         self.max_budget_usd = max_budget_usd
+        self.config_dir = config_dir
+
+    def _build_env(self) -> dict[str, str]:
+        """Build environment for the subprocess, including CLAUDE_CONFIG_DIR if set."""
+        import os
+        env = os.environ.copy()
+        if self.config_dir:
+            env["CLAUDE_CONFIG_DIR"] = self.config_dir
+        return env
 
     async def generate(
         self,
@@ -48,9 +58,10 @@ class ClaudeCodeCLIProvider(LLMProvider):
         start = time.monotonic()
         proc = await asyncio.create_subprocess_exec(
             *cmd,
-            stdin=asyncio.subprocess.PIPE,  # Pass prompt via stdin
+            stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=self._build_env(),
         )
         try:
             stdout, stderr = await asyncio.wait_for(
