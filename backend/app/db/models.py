@@ -590,6 +590,12 @@ class ReadingState(Base):
     reading_preset_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("reading_presets.id", ondelete="SET NULL"), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    book: Mapped["Book"] = relationship("Book", foreign_keys=[book_id])
+    section: Mapped["BookSection"] = relationship("BookSection", foreign_keys=[section_id])
