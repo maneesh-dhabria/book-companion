@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r bookcompanion && useradd -r -g bookcompanion bookcompanion
+# Create non-root user with home directory for uv cache
+RUN groupadd -r bookcompanion && useradd -r -g bookcompanion -m bookcompanion
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
