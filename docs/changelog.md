@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-04-11 — Web Interface: Full-stack Vue.js UI for reading, summarization, and library management
+
+**Library & Navigation**
+- Browse your book library in grid, list, or table view with cover images, author names, status badges, and section counts
+- Filter by status (parsed, summarizing, completed) and format (EPUB, PDF, MOBI); sort by recent, title, or date added
+- Save custom filtered views with the View Tabs system (e.g. "Strategy Books", "To Summarize")
+- Command palette (Cmd+K) provides instant search across books, sections, and concepts with grouped results
+- Icon rail navigation on desktop; bottom tab bar on mobile with 5 tabs (Library, Concepts, Search, Notes, Settings)
+
+**Book Reader**
+- Read original book content with markdown rendering, section-by-section navigation via arrows or table-of-contents dropdown
+- Toggle between Original and Summary views when summaries are available
+- Reader settings popover: font family, font size, line spacing, content width, and theme (Light, Sepia, Dark, OLED, Dracula)
+- Reading presets (Comfortable, Compact, Night Reading, Study Mode) for quick configuration
+- Cross-device reading position sync — open on your phone and see a "Continue where you left off" banner showing the last section you read on desktop
+
+**Annotations & AI Chat**
+- Highlight text in the reader to create annotations with a floating toolbar — supports highlight, note, bookmark, and question types
+- Context sidebar (toggle with ☰) shows annotations for the current section and an AI Chat panel
+- AI Chat: create conversation threads about the book, ask questions, and get AI-powered answers using your configured Claude instance
+- Annotations page: browse all annotations across all books, filter by type
+
+**Upload & Processing**
+- 5-step upload wizard: drag-and-drop file selection, metadata confirmation, structure review (section table with types), preset picker (Balanced, Brief, Detailed, Practitioner), and processing kickoff
+- Background summarization with processing progress tracking via server-sent events (SSE)
+- Supports EPUB, PDF, and MOBI uploads
+
+**Concepts & Search**
+- Concepts explorer: browse key concepts extracted from summarized books with definitions, source sections, and edit/reset controls
+- Full search results page with keyword highlighting and relevance scoring
+- Recent search history
+
+**Settings**
+- 5-section settings page with sidebar navigation (horizontal tabs on mobile):
+  - **General**: "Read on your phone" LAN toggle with QR code, cost estimates toggle, read-only LLM config display
+  - **Database**: connection info with masked password, migration status with "Run Migrations" button, table row counts
+  - **Presets**: browse system summarization presets with detail view
+  - **Reading**: default preset selector, reading preset chips, custom CSS textarea
+  - **Backup & Export**: create/download/delete database backups, export library as JSON or Markdown
+- Scheduled backups via APScheduler (configurable interval via settings API)
+- Settings persist to YAML config file with atomic write (temp file + rename)
+
+**Mobile**
+- Responsive layout: icon rail sidebar on desktop (>=1024px), bottom tab bar on mobile (<768px)
+- Bottom sheet component with 3 snap points (30%/50%/90%), drag gestures on handle, backdrop click and Escape to dismiss
+- Touch interaction composable with 500ms long-press detection
+
+**Accessibility & Polish**
+- Keyboard focus indicators (`:focus-visible` outlines), `prefers-reduced-motion` disables all animations
+- ARIA roles and labels on navigation components
+- Skeleton loaders for all data-loading states (grid, list, table, reader, settings, sidebar variants)
+- Empty states with illustrations and CTAs for library, search, annotations, and concepts
+- Error boundary component catches render errors with "Connection lost" / "Try again" UI
+
+**Docker & Deployment**
+- Multi-stage Dockerfile: Node.js frontend build + Python runtime with pg_dump, non-root user, and HEALTHCHECK
+- Docker Compose with health checks, restart policies, log rotation (10MB/3 files), 1GB memory limit
+- Data stored in local bind mounts (`./data/postgres`, `./data/backups`, `./data/config`) — visible on host, survives container recreation
+- Production override file (`docker-compose.prod.yml`) for WARNING-level logging
+
+**LLM Configuration**
+- Claude CLI provider now supports `config_dir` setting — set `CLAUDE_CONFIG_DIR` via config instead of requiring shell functions or wrapper scripts. Just set `cli_command: claude` and `config_dir: ~/.claude-personal`
+
+**References:**
+- [Requirements](docs/requirements/2026-04-10_web_interface_v1_requirements.md)
+- [Spec](docs/specs/2026-04-10_web_interface_v1_spec.md)
+- [Phase 1 plan](docs/plans/2026-04-10-web-interface-phase1-implementation-plan.md)
+- [Phase 2 plan](docs/plans/2026-04-10-web-interface-phase2-implementation-plan.md)
+- [Phase 3 plan](docs/plans/2026-04-10-web-interface-phase3-implementation-plan.md)
+
 ## 2026-04-10 — V1.3: Eval system overhaul — fewer false positives, auto-retry, diagnostics
 
 - Three eval checks (length, key concepts, image references) now run instantly without LLM calls — faster, cheaper, and 100% reproducible
