@@ -74,6 +74,10 @@ backups/
 # Config files (user-specific)
 config.yaml
 
+# Build output
+frontend/dist/
+backend/static/
+
 # uv
 uv.lock
 .worktrees/

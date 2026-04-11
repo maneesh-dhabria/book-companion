@@ -3,6 +3,7 @@
 import enum
 from datetime import datetime
 
+import sqlalchemy
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
@@ -483,3 +484,118 @@ class ExternalReference(Base):
     book: Mapped["Book"] = relationship(back_populates="external_references")
 
     __table_args__ = (Index("ix_external_references_book_id", "book_id"),)
+
+
+# --- Web Interface Models ---
+
+
+class LibraryView(Base):
+    __tablename__ = "library_views"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    display_mode: Mapped[str] = mapped_column(String(20), default="grid", server_default="grid")
+    sort_field: Mapped[str] = mapped_column(
+        String(50), default="updated_at", server_default="updated_at"
+    )
+    sort_direction: Mapped[str] = mapped_column(String(4), default="desc", server_default="desc")
+    filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    table_columns: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ReadingPreset(Base):
+    __tablename__ = "reading_presets"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    font_family: Mapped[str] = mapped_column(
+        String(100), default="Georgia", server_default="Georgia"
+    )
+    font_size_px: Mapped[int] = mapped_column(Integer, default=16, server_default="16")
+    line_spacing: Mapped[float] = mapped_column(
+        sqlalchemy.Float, default=1.6, server_default="1.6"
+    )
+    content_width_px: Mapped[int] = mapped_column(Integer, default=720, server_default="720")
+    theme: Mapped[str] = mapped_column(String(50), default="light", server_default="light")
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AIThread(Base):
+    __tablename__ = "ai_threads"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    book_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    book: Mapped["Book"] = relationship()
+    messages: Mapped[list["AIMessage"]] = relationship(
+        back_populates="thread", cascade="all, delete-orphan", order_by="AIMessage.created_at"
+    )
+
+
+class AIMessage(Base):
+    __tablename__ = "ai_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    thread_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("ai_threads.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    thread: Mapped["AIThread"] = relationship(back_populates="messages")
+
+
+class RecentSearch(Base):
+    __tablename__ = "recent_searches"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    query: Mapped[str] = mapped_column(String(1000), nullable=False)
+    result_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReadingState(Base):
+    __tablename__ = "reading_state"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_agent: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
+    book_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("books.id", ondelete="SET NULL"), nullable=True
+    )
+    section_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("book_sections.id", ondelete="SET NULL"), nullable=True
+    )
+    scroll_position: Mapped[float | None] = mapped_column(
+        sqlalchemy.Float, nullable=True
+    )
+    content_mode: Mapped[str] = mapped_column(
+        String(20), default="summary", server_default="summary"
+    )
+    reading_preset_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("reading_presets.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    book: Mapped["Book"] = relationship("Book", foreign_keys=[book_id])
+    section: Mapped["BookSection"] = relationship("BookSection", foreign_keys=[section_id])

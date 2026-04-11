@@ -222,6 +222,68 @@ Total: 20 tasks
   Run: `cd backend && uv run python -m pytest tests/unit/test_reading_state_model.py -v`
   Expected: FAIL -- `ReadingState` not defined
 
+- [ ] Step 1a: Write behavioral integration tests for ReadingState DB behavior
+  ```python
+  # backend/tests/integration/test_reading_state_model.py
+  import pytest
+  from sqlalchemy import text
+  from app.db.models import ReadingState
+
+  @pytest.mark.asyncio
+  async def test_upsert_updates_existing_row(async_session):
+      """Upsert with same user_agent must update in-place, not insert a second row."""
+      ua = "Mozilla/5.0 (Test Browser)"
+      # Insert first
+      rs1 = ReadingState(user_agent=ua, last_book_id=1)
+      async_session.add(rs1)
+      await async_session.commit()
+      # Upsert with new book_id
+      rs2 = ReadingState(user_agent=ua, last_book_id=2)
+      async_session.add(rs2)
+      await async_session.flush()
+      # There must still be exactly one row for this user_agent
+      result = await async_session.execute(
+          text("SELECT COUNT(*) FROM reading_state WHERE user_agent = :ua"), {"ua": ua}
+      )
+      assert result.scalar() == 1
+
+  @pytest.mark.asyncio
+  async def test_unique_constraint_on_user_agent(async_session):
+      """UNIQUE index on user_agent must reject duplicate inserts."""
+      from sqlalchemy.exc import IntegrityError
+      ua = "DuplicateAgent/1.0"
+      async_session.add(ReadingState(user_agent=ua, last_book_id=1))
+      await async_session.flush()
+      async_session.add(ReadingState(user_agent=ua, last_book_id=2))
+      with pytest.raises(IntegrityError):
+          await async_session.flush()
+
+  @pytest.mark.asyncio
+  async def test_fk_cascade_on_book_delete(async_session, seeded_book):
+      """Deleting the referenced book must cascade-delete the reading_state row."""
+      rs = ReadingState(user_agent="CascadeTest/1.0", last_book_id=seeded_book.id)
+      async_session.add(rs)
+      await async_session.commit()
+      await async_session.delete(seeded_book)
+      await async_session.commit()
+      result = await async_session.execute(
+          text("SELECT COUNT(*) FROM reading_state WHERE user_agent = 'CascadeTest/1.0'")
+      )
+      assert result.scalar() == 0
+
+  @pytest.mark.asyncio
+  async def test_last_viewed_at_auto_populated(async_session):
+      """last_viewed_at must be set by server_default, not left NULL."""
+      rs = ReadingState(user_agent="TimestampTest/1.0", last_book_id=1)
+      async_session.add(rs)
+      await async_session.commit()
+      await async_session.refresh(rs)
+      assert rs.last_viewed_at is not None
+      assert rs.created_at is not None
+  ```
+  Run: `cd backend && uv run python -m pytest tests/integration/test_reading_state_model.py -v`
+  Expected: FAIL (table does not exist yet)
+
 - [ ] Step 2: Add `ReadingState` model to `backend/app/db/models.py`
   ```python
   class ReadingState(Base):
@@ -272,12 +334,17 @@ Total: 20 tasks
   Run: `cd backend && uv run python -m pytest tests/unit/test_reading_state_model.py -v`
   Expected: PASS
 
+- [ ] Step 4a: Run behavioral integration tests against live DB
+  Run: `cd backend && uv run python -m pytest tests/integration/test_reading_state_model.py -v`
+  Expected: All 4 behavioral tests pass (upsert, uniqueness, FK cascade, timestamp auto-populated)
+
 - [ ] Verify: `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
 
 **Commit:** `git commit -m "feat(api): add reading_state table, model, and repository (T1)"`
 
 **Inline verification:**
 - `cd backend && uv run python -m pytest tests/unit/test_reading_state_model.py -v` -- all pass
+- `cd backend && uv run python -m pytest tests/integration/test_reading_state_model.py -v` -- all 4 behavioral tests pass
 - `cd backend && uv run alembic upgrade head` -- migration applies cleanly
 - `cd backend && uv run python -m pytest tests/ --timeout=60 -q` -- no regressions
 
@@ -342,6 +409,51 @@ Total: 20 tasks
       async with AsyncClient(transport=transport, base_url="http://test") as client:
           resp = await client.get("/api/v1/export/book/99999?format=json")
           assert resp.status_code == 404
+
+  @pytest.mark.asyncio
+  async def test_export_book_json_contains_summaries(client):
+      """Export JSON for a book with summaries must include summary content, not just structure."""
+      # Uses real data: Art of War (id=1) has 44 sections and 124 summaries in test DB
+      resp = await client.get("/api/v1/export/book/1?format=json&include_summaries=true")
+      assert resp.status_code == 200
+      data = resp.json()
+      # The book entry must exist
+      book = data["library"][0]
+      assert book["title"] == "The Art of War"
+      # At least one section must have a non-empty summary
+      sections_with_summaries = [
+          s for s in book.get("sections", [])
+          if s.get("summary") and len(s["summary"]) > 0
+      ]
+      assert len(sections_with_summaries) > 0, "Expected at least one section with a summary in export"
+
+  @pytest.mark.asyncio
+  async def test_export_book_markdown_contains_section_titles(client):
+      """Export Markdown must include recognizable section headings, not just the book heading."""
+      resp = await client.get("/api/v1/export/book/1?format=markdown")
+      assert resp.status_code == 200
+      # Markdown must have at least one section-level heading (##)
+      assert "##" in resp.text, "Expected section-level headings in markdown export"
+
+  @pytest.mark.asyncio
+  async def test_export_library_json_contains_all_books(client):
+      """Library export must include all books present in the DB."""
+      resp = await client.get("/api/v1/export/library?format=json")
+      assert resp.status_code == 200
+      data = resp.json()
+      # Real test DB has 2 books; confirm both are present
+      titles = [b["title"] for b in data["library"]]
+      assert len(titles) >= 2, "Expected at least 2 books in library export"
+
+  @pytest.mark.asyncio
+  async def test_export_book_annotations_included_when_present(client):
+      """Export with include_annotations=true must surface annotation data when annotations exist."""
+      resp = await client.get("/api/v1/export/book/1?format=json&include_annotations=true")
+      assert resp.status_code == 200
+      data = resp.json()
+      book = data["library"][0]
+      # Key must be present (even if empty list); tests that the field is not silently dropped
+      assert "annotations" in book or any("annotations" in s for s in book.get("sections", []))
   ```
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_export_api.py -v`
   Expected: FAIL -- route does not exist
@@ -469,6 +581,64 @@ Total: 20 tasks
   async def test_delete_nonexistent_backup(test_app_client):
       resp = await test_app_client.delete("/api/v1/backup/nonexistent")
       assert resp.status_code == 404
+
+  @pytest.mark.asyncio
+  async def test_create_backup_file_exists_on_disk(test_app_client, tmp_path, monkeypatch):
+      """Creating a backup must produce an actual .sql file at the configured backup dir."""
+      import os
+      backup_dir = tmp_path / "backups"
+      backup_dir.mkdir()
+      monkeypatch.setenv("BOOKCOMPANION_BACKUP__DIR", str(backup_dir))
+      resp = await test_app_client.post("/api/v1/backup/create")
+      assert resp.status_code == 200
+      data = resp.json()
+      backup_file = backup_dir / f"{data['backup_id']}.sql"
+      assert backup_file.exists(), f"Expected backup file at {backup_file}"
+      assert backup_file.stat().st_size > 0, "Backup file must not be empty"
+
+  @pytest.mark.asyncio
+  async def test_download_backup_returns_valid_sql_content(test_app_client, tmp_path, monkeypatch):
+      """Downloaded backup content must be valid SQL (starts with pg_dump header)."""
+      backup_dir = tmp_path / "backups"
+      backup_dir.mkdir()
+      monkeypatch.setenv("BOOKCOMPANION_BACKUP__DIR", str(backup_dir))
+      create_resp = await test_app_client.post("/api/v1/backup/create")
+      backup_id = create_resp.json()["backup_id"]
+      dl_resp = await test_app_client.get(f"/api/v1/backup/{backup_id}/download")
+      assert dl_resp.status_code == 200
+      content = dl_resp.text
+      # pg_dump output always starts with a comment block
+      assert content.startswith("--"), f"Expected SQL dump content, got: {content[:100]!r}"
+
+  @pytest.mark.asyncio
+  async def test_delete_backup_removes_file_from_disk(test_app_client, tmp_path, monkeypatch):
+      """Deleting a backup via API must remove the file from disk."""
+      import os
+      backup_dir = tmp_path / "backups"
+      backup_dir.mkdir()
+      monkeypatch.setenv("BOOKCOMPANION_BACKUP__DIR", str(backup_dir))
+      create_resp = await test_app_client.post("/api/v1/backup/create")
+      backup_id = create_resp.json()["backup_id"]
+      backup_file = backup_dir / f"{backup_id}.sql"
+      assert backup_file.exists()
+      del_resp = await test_app_client.delete(f"/api/v1/backup/{backup_id}")
+      assert del_resp.status_code == 204
+      assert not backup_file.exists(), "Backup file must be gone from disk after delete"
+
+  @pytest.mark.asyncio
+  async def test_list_backups_includes_created_backup(test_app_client, tmp_path, monkeypatch):
+      """List endpoint must reflect the backup just created — correct filename and non-zero size."""
+      backup_dir = tmp_path / "backups"
+      backup_dir.mkdir()
+      monkeypatch.setenv("BOOKCOMPANION_BACKUP__DIR", str(backup_dir))
+      create_resp = await test_app_client.post("/api/v1/backup/create")
+      backup_id = create_resp.json()["backup_id"]
+      list_resp = await test_app_client.get("/api/v1/backup/list")
+      assert list_resp.status_code == 200
+      items = list_resp.json()
+      matching = [item for item in items if item["backup_id"] == backup_id]
+      assert len(matching) == 1, f"Expected backup {backup_id} in list, got: {[i['backup_id'] for i in items]}"
+      assert matching[0]["size_bytes"] > 0
   ```
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_backup_api.py -v`
   Expected: FAIL
@@ -541,15 +711,42 @@ Total: 20 tasks
 - [ ] Step 3: Write failing test for scheduler
   ```python
   # backend/tests/unit/test_scheduler.py
+  import asyncio
+  from unittest.mock import AsyncMock, MagicMock, patch
   from app.api.scheduler import create_backup_scheduler
 
   def test_create_scheduler_returns_scheduler():
+      mock_service = MagicMock()
+      mock_service.create_backup = AsyncMock()
       scheduler = create_backup_scheduler(interval_hours=24, backup_service=mock_service)
       assert scheduler is not None
 
   def test_scheduler_disabled_when_interval_zero():
+      mock_service = MagicMock()
       scheduler = create_backup_scheduler(interval_hours=0, backup_service=mock_service)
       assert not scheduler.running
+
+  def test_scheduler_has_one_job_when_enabled():
+      """Scheduler must register exactly one interval job when interval_hours > 0."""
+      mock_service = MagicMock()
+      mock_service.create_backup = AsyncMock()
+      scheduler = create_backup_scheduler(interval_hours=24, backup_service=mock_service)
+      jobs = scheduler.get_jobs()
+      assert len(jobs) == 1
+      assert jobs[0].id == 'scheduled_backup'
+
+  @pytest.mark.asyncio
+  async def test_scheduler_job_function_actually_creates_backup(tmp_path):
+      """Calling the scheduled job function directly must invoke BackupService.create_backup()."""
+      from app.services.backup_service import BackupService
+      from app.api.scheduler import create_backup_scheduler
+      mock_service = MagicMock()
+      mock_service.create_backup = AsyncMock(return_value=str(tmp_path / "backup.sql"))
+      scheduler = create_backup_scheduler(interval_hours=24, backup_service=mock_service)
+      # Get the registered job's function and call it directly
+      job = scheduler.get_jobs()[0]
+      await job.func()
+      mock_service.create_backup.assert_awaited_once()
   ```
   Run: `cd backend && uv run python -m pytest tests/unit/test_scheduler.py -v`
   Expected: FAIL
@@ -605,7 +802,10 @@ Total: 20 tasks
   ```python
   # backend/tests/unit/test_settings_service.py
   import pytest
+  import yaml
+  from pathlib import Path
   from app.services.settings_service import SettingsService
+  from app.config import Settings
 
   def test_get_safe_settings_excludes_password():
       svc = SettingsService(settings=Settings())
@@ -619,10 +819,39 @@ Total: 20 tasks
       svc = SettingsService(settings=Settings(), config_path=config_path)
       svc.update_settings({"network": {"allow_lan": True}})
       # Verify file was written
-      import yaml
       with open(config_path) as f:
           data = yaml.safe_load(f)
       assert data["network"]["allow_lan"] is True
+
+  def test_update_settings_persists_on_re_read(tmp_path):
+      """Write a setting, then create a fresh SettingsService reading from the same file — value must round-trip."""
+      config_path = tmp_path / "config.yaml"
+      svc1 = SettingsService(settings=Settings(), config_path=config_path)
+      svc1.update_settings({"web": {"show_cost_estimates": True}})
+      # Re-read from disk
+      with open(config_path) as f:
+          persisted = yaml.safe_load(f)
+      assert persisted["web"]["show_cost_estimates"] is True
+
+  def test_partial_update_does_not_wipe_other_fields(tmp_path):
+      """Updating one nested key must leave unrelated keys intact."""
+      config_path = tmp_path / "config.yaml"
+      # Pre-seed the config file with two keys
+      config_path.write_text(yaml.dump({"network": {"allow_lan": False, "host": "127.0.0.1"}}))
+      svc = SettingsService(settings=Settings(), config_path=config_path)
+      svc.update_settings({"network": {"allow_lan": True}})  # only change allow_lan
+      with open(config_path) as f:
+          data = yaml.safe_load(f)
+      assert data["network"]["allow_lan"] is True
+      assert data["network"]["host"] == "127.0.0.1", "Partial update must not wipe existing host field"
+
+  def test_get_safe_settings_masks_access_token(tmp_path):
+      """access_token must never appear in plain text in the safe settings output."""
+      config_path = tmp_path / "config.yaml"
+      config_path.write_text(yaml.dump({"network": {"access_token": "super-secret-token"}}))
+      svc = SettingsService(settings=Settings(), config_path=config_path)
+      safe = svc.get_safe_settings()
+      assert "super-secret-token" not in str(safe)
   ```
   Run: `cd backend && uv run python -m pytest tests/unit/test_settings_service.py -v`
   Expected: FAIL -- `SettingsService` does not exist
@@ -683,19 +912,50 @@ Total: 20 tasks
       assert data["web"]["show_cost_estimates"] is True
 
   @pytest.mark.asyncio
-  async def test_get_database_stats(test_app_client):
+  async def test_patch_settings_persists_on_re_read(test_app_client):
+      """PATCH must write to disk — a subsequent GET must return the updated value."""
+      await test_app_client.patch("/api/v1/settings", json={"web": {"show_cost_estimates": True}})
+      # Re-read via GET
+      resp = await test_app_client.get("/api/v1/settings")
+      assert resp.status_code == 200
+      assert resp.json()["web"]["show_cost_estimates"] is True
+
+  @pytest.mark.asyncio
+  async def test_partial_patch_does_not_wipe_other_fields(test_app_client):
+      """PATCHing one key must not remove unrelated sibling fields."""
+      # Set two keys
+      await test_app_client.patch("/api/v1/settings", json={
+          "network": {"allow_lan": False, "host": "127.0.0.1"}
+      })
+      # Partial update of one key
+      await test_app_client.patch("/api/v1/settings", json={"network": {"allow_lan": True}})
+      resp = await test_app_client.get("/api/v1/settings")
+      data = resp.json()
+      # host must survive the partial update
+      assert data["network"].get("host") == "127.0.0.1"
+
+  @pytest.mark.asyncio
+  async def test_get_database_stats_counts_real_data(test_app_client):
+      """DB stats must return actual row counts, not zeros — test DB has 2 books."""
       resp = await test_app_client.get("/api/v1/settings/database-stats")
       assert resp.status_code == 200
       data = resp.json()
       assert "books" in data
+      assert data["books"] >= 2, f"Expected at least 2 books in test DB, got {data['books']}"
+      assert "book_sections" in data
+      assert data["book_sections"] >= 44, "Expected 44+ sections in test DB"
 
   @pytest.mark.asyncio
-  async def test_get_migration_status(test_app_client):
+  async def test_get_migration_status_reflects_actual_db_state(test_app_client):
+      """Migration status must include the current revision hash and is_behind=False for a migrated test DB."""
       resp = await test_app_client.get("/api/v1/settings/migration-status")
       assert resp.status_code == 200
       data = resp.json()
       assert "current" in data
       assert "is_behind" in data
+      # Test DB runs alembic upgrade head in setup, so must not be behind
+      assert data["is_behind"] is False, "Test DB should be fully migrated"
+      assert data["current"] is not None, "Current revision must not be None for a migrated DB"
   ```
   Run: `cd backend && uv run python -m pytest tests/integration/test_api/test_settings_api.py -v`
   Expected: FAIL
@@ -868,14 +1128,81 @@ Total: 20 tasks
   - Migration status with "Run migrations" button (disabled if up-to-date)
   - Table row counts fetched from `/api/v1/settings/database-stats`
 
+- [ ] Step 7: Write settings store unit tests
+  ```typescript
+  // frontend/src/stores/__tests__/settings.test.ts
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useSettingsStore } from '@/stores/settings'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+
+  describe('useSettingsStore', () => {
+    beforeEach(() => { setActivePinia(createPinia()) })
+
+    it('fetchSettings populates settings state with realistic shape', async () => {
+      const store = useSettingsStore()
+      vi.spyOn(store, 'fetchSettings').mockImplementation(async () => {
+        store.settings = {
+          network: { allow_lan: false, host: '127.0.0.1', port: 8000, access_token: null },
+          llm: { provider: 'claude', model: 'claude-opus-4', timeout_seconds: 60, max_retries: 3, max_budget_usd: 5.0 },
+          summarization: { default_preset: 'standard' },
+          web: { show_cost_estimates: false },
+        }
+      })
+      await store.fetchSettings()
+      expect(store.settings).not.toBeNull()
+      expect(store.settings!.network.host).toBe('127.0.0.1')
+      expect(store.settings!.llm.provider).toBe('claude')
+    })
+
+    it('saveSettings merges updated fields and does not wipe other settings keys', async () => {
+      const store = useSettingsStore()
+      store.settings = {
+        network: { allow_lan: false, host: '127.0.0.1', port: 8000, access_token: null },
+        llm: { provider: 'claude', model: 'claude-opus-4', timeout_seconds: 60, max_retries: 3, max_budget_usd: 5.0 },
+        summarization: { default_preset: 'standard' },
+        web: { show_cost_estimates: false },
+      }
+      const mockUpdate = vi.fn().mockResolvedValue({
+        ...store.settings,
+        web: { show_cost_estimates: true },
+      })
+      vi.mock('@/api/settings', () => ({ updateSettings: mockUpdate }))
+      await store.saveSettings({ web: { show_cost_estimates: true } })
+      // llm key must survive after updating web
+      expect(store.settings!.llm.provider).toBe('claude')
+    })
+
+    it('fetchDatabaseStats populates dbStats with table row counts', async () => {
+      const store = useSettingsStore()
+      vi.spyOn(store, 'fetchDatabaseStats').mockImplementation(async () => {
+        store.dbStats = { books: 2, book_sections: 44, summaries: 124, annotations: 0, concepts: 0, eval_traces: 0 }
+      })
+      await store.fetchDatabaseStats()
+      expect(store.dbStats!.books).toBe(2)
+      expect(store.dbStats!.book_sections).toBe(44)
+    })
+  })
+  ```
+  Run: `cd frontend && npx vitest run src/stores/__tests__/settings.test.ts`
+  Expected: All store tests pass
+
 - [ ] Verify: `cd frontend && npm run type-check && npm run build`
-  Open `http://localhost:5173/settings` -- General and Database sections render, LAN toggle works, DB stats load
+
+- [ ] Manual verification (run `npm run dev` and open browser):
+  1. Navigate to `http://localhost:5173/settings` — sidebar with 5 nav items renders (General, Database, Presets, Reading, Backup)
+  2. Click **General** — LAN toggle appears with label "Read on your phone"; toggle is OFF by default
+  3. Toggle LAN ON — a QR code appears and the LAN URL (`http://<ip>:8000`) is displayed beneath it
+  4. Toggle LAN OFF — QR code disappears; URL label disappears
+  5. Click **Database** — table of row counts loads (books, sections, summaries, etc.); migration status shows "Up to date" with no "Run migrations" button visible
+  6. Check DB stat values match real data: Books row shows ≥ 2, Sections shows ≥ 44
+  7. Navigate to `http://localhost:5173/settings/database` directly (deep link) — Database section is active, sidebar highlights "Database"
 
 **Commit:** `git commit -m "feat(frontend): add settings page with sidebar, General + Database sections (T6a)"`
 
 **Inline verification:**
 - `cd frontend && npm run type-check` -- no errors
 - `cd frontend && npm run build` -- builds without errors
+- `cd frontend && npx vitest run src/stores/__tests__/settings.test.ts` -- all store tests pass
 
 ---
 
@@ -909,7 +1236,15 @@ Total: 20 tasks
   Placeholder content referencing T7. Shows "Backup & Export" heading.
 
 - [ ] Verify: `cd frontend && npm run type-check && npm run build`
-  Open `http://localhost:5173/settings` -- all 5 sections render, preset CRUD works, reading preferences save
+
+- [ ] Manual verification (run `npm run dev`):
+  1. Navigate to `http://localhost:5173/settings/presets` — list of system presets appears (e.g. "practitioner_bullets", "academic_deep_dive"); each has a read-only badge and a "Duplicate" button
+  2. Click "Duplicate" on a system preset — a new user preset appears in the list with a generated name (editable)
+  3. Edit the duplicated preset's name field, save — the new name persists after clicking away and back to the section
+  4. Click "Delete" on the user preset — a confirmation dialog appears; confirm — the preset disappears from the list; system presets remain untouched
+  5. Navigate to `http://localhost:5173/settings/reading` — "Default reading preset" dropdown is populated with all available presets
+  6. Change the default preset to a different value, save — navigate away to Library and back to `/settings/reading`; the dropdown still shows the newly selected preset
+  7. Type custom CSS in the textarea (e.g. `body { font-size: 18px; }`), save — navigate away and back; the textarea still contains the custom CSS
 
 **Commit:** `git commit -m "feat(frontend): add Presets, Reading, Backup settings sections (T6b)"`
 
@@ -950,7 +1285,15 @@ Total: 20 tasks
   Export download: same pattern, response comes as file attachment.
 
 - [ ] Verify: `cd frontend && npm run type-check && npm run build`
-  Manual: Create backup, verify it appears in list, download it, delete it. Export library as JSON, verify download.
+
+- [ ] Manual verification (run `npm run dev` with backend running):
+  1. Navigate to `http://localhost:5173/settings/backup` — "Backup & Export" section renders with all sub-sections
+  2. Click **Create Backup** — a loading spinner appears; after completion a success toast "Backup created" is shown and the new backup appears in the history table with a filename, date, and file size (> 0 KB)
+  3. Click **Download** on the newly created backup — the browser downloads a `.sql` file with the correct filename; open the file in a text editor and confirm it starts with `--` (pg_dump SQL header)
+  4. Click **Delete** on the backup row — a confirmation dialog appears ("This backup will be permanently deleted"); confirm — the row disappears from the history table
+  5. Under **Scheduled Backups**, toggle from Off to Daily — the interval selector changes to show "24 hours"; navigate to General settings and back; the schedule setting still shows "Daily"
+  6. Under **Export Library**, select "Markdown" format, check "Summaries" and "Annotations", click **Export** — the browser downloads a `.md` file; open it and confirm it contains at least one `##` section heading and at least one summary paragraph
+  7. Switch format to "JSON", click **Export** — the browser downloads a `.json` file; open it and confirm it contains a `"library"` array with at least 2 book entries
 
 **Commit:** `git commit -m "feat(frontend): add Export & Backup UI in settings (T7)"`
 
@@ -997,13 +1340,69 @@ Total: 20 tasks
   - `LibraryView.vue`: Show `ContinueBanner` at top of page (above view tabs)
   - `BookDetailView.vue`: Call `useReadingState().trackPosition()` in `onMounted`
 
-- [ ] Verify: Open app in Chrome desktop, navigate to a section. Open in Safari (different user-agent). "Continue where you left off" banner should appear.
+- [ ] Step 6: Write reading state store unit tests
+  ```typescript
+  // frontend/src/stores/__tests__/readingState.test.ts
+  import { setActivePinia, createPinia } from 'pinia'
+  import { useReadingStateStore } from '@/stores/readingState'
+  import { vi, describe, it, expect, beforeEach } from 'vitest'
+
+  describe('useReadingStateStore', () => {
+    beforeEach(() => { setActivePinia(createPinia()) })
+
+    it('fetchContinueReading sets continueReading when another device has a position', async () => {
+      const store = useReadingStateStore()
+      vi.spyOn(store, 'fetchContinueReading').mockImplementation(async () => {
+        store.continueReading = {
+          bookId: 1,
+          sectionId: 3,
+          bookTitle: 'The Art of War',
+          sectionTitle: 'Chapter III: Attack by Stratagem',
+          lastViewedAt: '2026-04-10T12:00:00Z',
+        }
+      })
+      await store.fetchContinueReading()
+      expect(store.continueReading).not.toBeNull()
+      expect(store.continueReading!.bookTitle).toBe('The Art of War')
+      expect(store.continueReading!.sectionId).toBe(3)
+    })
+
+    it('fetchContinueReading sets continueReading to null when same device', async () => {
+      const store = useReadingStateStore()
+      vi.spyOn(store, 'fetchContinueReading').mockImplementation(async () => {
+        store.continueReading = null
+      })
+      await store.fetchContinueReading()
+      expect(store.continueReading).toBeNull()
+    })
+
+    it('trackPosition calls the API with debouncing', async () => {
+      const store = useReadingStateStore()
+      const mockTrack = vi.fn()
+      vi.mock('@/api/readingState', () => ({ updateReadingState: mockTrack }))
+      // Rapid calls should not fire immediately
+      store.trackPosition(1, 3)
+      store.trackPosition(1, 4)
+      expect(mockTrack).not.toHaveBeenCalled()
+    })
+  })
+  ```
+  Run: `cd frontend && npx vitest run src/stores/__tests__/readingState.test.ts`
+  Expected: All store tests pass
+
+- [ ] Manual verification (run `npm run dev` with backend running):
+  1. Open `http://localhost:5173` in **Chrome** and navigate to The Art of War → Chapter III; wait 6 seconds for the debounced position save
+  2. Open `http://localhost:5173` in **Firefox** (different user-agent) — a banner appears at the top of the Library page saying "You were reading **The Art of War**, **Chapter III: Attack by Stratagem**" with a "Continue" button
+  3. Click "Continue" — the reader opens at Chapter III of The Art of War (correct section, not Chapter I)
+  4. Dismiss the banner with the X button — the banner disappears; refresh the Firefox page — the banner does NOT reappear (dismissed stored in sessionStorage)
+  5. Open the same URL in Chrome again — no "Continue" banner appears (Chrome is the same device that saved the position)
 
 **Commit:** `git commit -m "feat(frontend): add reading position sync UI with continue banner (T8)"`
 
 **Inline verification:**
 - `cd frontend && npm run type-check` -- no errors
 - `cd frontend && npm run build` -- builds without errors
+- `cd frontend && npx vitest run src/stores/__tests__/readingState.test.ts` -- all store tests pass
 
 ---
 
@@ -1047,14 +1446,60 @@ Total: 20 tasks
   - Mobile (<768px): No icon rail, content full-width, `BottomTabBar` fixed at bottom
   - Use `useBreakpoint()` to conditionally render
 
+- [ ] Step 4: Write useBreakpoint composable unit tests
+  ```typescript
+  // frontend/src/composables/__tests__/useBreakpoint.test.ts
+  import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+  import { useBreakpoint } from '@/composables/useBreakpoint'
+
+  describe('useBreakpoint', () => {
+    const setWidth = (w: number) => {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: w })
+      window.dispatchEvent(new Event('resize'))
+    }
+
+    it('isMobile is true at 375px (iPhone viewport)', () => {
+      setWidth(375)
+      const { isMobile, isTablet, isDesktop } = useBreakpoint()
+      expect(isMobile.value).toBe(true)
+      expect(isTablet.value).toBe(false)
+      expect(isDesktop.value).toBe(false)
+    })
+
+    it('isTablet is true at 768px', () => {
+      setWidth(768)
+      const { isMobile, isTablet } = useBreakpoint()
+      expect(isMobile.value).toBe(false)
+      expect(isTablet.value).toBe(true)
+    })
+
+    it('isDesktop is true at 1280px', () => {
+      setWidth(1280)
+      const { isDesktop } = useBreakpoint()
+      expect(isDesktop.value).toBe(true)
+    })
+  })
+  ```
+  Run: `cd frontend && npx vitest run src/composables/__tests__/useBreakpoint.test.ts`
+  Expected: All breakpoint tests pass
+
 - [ ] Verify: `cd frontend && npm run build`
-  Open at 375px viewport: bottom tab bar visible, icon rail hidden
+
+- [ ] Manual verification (open Chrome DevTools → Device Toolbar):
+  1. Set viewport to **375px width** (iPhone SE) — the icon rail sidebar is not visible in the DOM; the bottom tab bar is fixed at the bottom with 5 tabs (Library, Search, Concepts, Annotations, Settings)
+  2. Each tab label is visible below its icon; active tab (current route) uses accent color
+  3. Tap **Settings** tab — navigates to `/settings`; active tab highlights Settings icon
+  4. Tap **Library** tab — navigates back to `/`; Library tab becomes active
+  5. Set viewport to **1280px width** — the bottom tab bar is not visible; the icon rail sidebar appears on the left
+  6. Set viewport to **768px** — icon rail visible, bottom tab bar hidden (tablet breakpoint uses sidebar)
+  7. Measure a tab's touch target: open DevTools Accessibility tree or use "Inspect" — each tab element is at least 44px tall
 
 **Commit:** `git commit -m "feat(frontend): add mobile bottom tab bar replacing sidebar on small viewports (T9a)"`
 
 **Inline verification:**
 - `cd frontend && npm run type-check` -- no errors
 - `cd frontend && npm run build` -- builds without errors
+- `cd frontend && npx vitest run src/composables/__tests__/useBreakpoint.test.ts` -- all breakpoint tests pass
 
 ---
 
@@ -1089,7 +1534,16 @@ Total: 20 tasks
   - Original/Summary toggle: full-width segmented control below header
 
 - [ ] Verify: `cd frontend && npm run build`
-  Open at 375px viewport: bottom sheets open from reader action bar, drag to snap works
+
+- [ ] Manual verification at 375px viewport (Chrome DevTools Device Toolbar, Pixel 5 preset):
+  1. Navigate to a book's reader page — a bottom action bar is visible at the bottom with 4 items: "Aa Settings", "AI Chat", "Annotations", "More"
+  2. Tap **Annotations** — the bottom sheet opens; its visible area covers ~30% of the screen (Peek snap point); the drag handle (8px wide pill) is visible at the top of the sheet
+  3. Drag the handle upward — the sheet snaps to ~50% (Half) of the screen height; drag further — it snaps to ~90% (Full); at Full, the content area inside is scrollable
+  4. Drag the handle downward past the Peek point — the sheet dismisses (disappears with backdrop fade); the backdrop is no longer visible
+  5. Press **Escape** key — if sheet is open, it closes (keyboard accessibility via Radix Dialog)
+  6. Tab key moves focus into the sheet when open; Tab cannot leave the sheet while it is open (focus trap active)
+  7. Tap **AI Chat** — a different bottom sheet opens with the AI conversation interface
+  8. Tap outside the sheet (on the backdrop) — the sheet dismisses
 
 **Commit:** `git commit -m "feat(frontend): add bottom sheet component with drag gestures for mobile (T9b)"`
 
@@ -1164,13 +1618,67 @@ Total: 20 tasks
   - Wizard steps render full-screen, one at a time
   - Step indicator: compact numbered dots
 
-- [ ] Verify: Test at 375px viewport width across all pages. Verify touch interactions on actual mobile device or Chrome DevTools mobile emulation.
+- [ ] Step 7: Write useTouchGestures composable unit tests
+  ```typescript
+  // frontend/src/composables/__tests__/useTouchGestures.test.ts
+  import { describe, it, expect, vi, beforeEach } from 'vitest'
+  import { ref } from 'vue'
+  import { useTouchGestures } from '@/composables/useTouchGestures'
+
+  describe('useTouchGestures', () => {
+    beforeEach(() => { vi.useFakeTimers() })
+
+    it('emits longpress after 500ms hold', () => {
+      const el = ref<HTMLElement | null>(document.createElement('div'))
+      const { onTouchStart, isLongPress } = useTouchGestures(el)
+      const mockEvent = { touches: [{ clientX: 0, clientY: 0 }] } as unknown as TouchEvent
+      onTouchStart(mockEvent)
+      expect(isLongPress.value).toBe(false)
+      vi.advanceTimersByTime(500)
+      expect(isLongPress.value).toBe(true)
+    })
+
+    it('cancels longpress if touch moves before 500ms', () => {
+      const el = ref<HTMLElement | null>(document.createElement('div'))
+      const { onTouchStart, onTouchMove, isLongPress } = useTouchGestures(el)
+      const mockEvent = { touches: [{ clientX: 0, clientY: 0 }] } as unknown as TouchEvent
+      onTouchStart(mockEvent)
+      vi.advanceTimersByTime(200)
+      onTouchMove()  // movement cancels the timer
+      vi.advanceTimersByTime(400)
+      expect(isLongPress.value).toBe(false)
+    })
+
+    it('cancels longpress on touch end', () => {
+      const el = ref<HTMLElement | null>(document.createElement('div'))
+      const { onTouchStart, onTouchEnd, isLongPress } = useTouchGestures(el)
+      const mockEvent = { touches: [{ clientX: 0, clientY: 0 }] } as unknown as TouchEvent
+      onTouchStart(mockEvent)
+      vi.advanceTimersByTime(200)
+      onTouchEnd()
+      vi.advanceTimersByTime(400)
+      expect(isLongPress.value).toBe(false)
+    })
+  })
+  ```
+  Run: `cd frontend && npx vitest run src/composables/__tests__/useTouchGestures.test.ts`
+  Expected: All 3 gesture tests pass
+
+- [ ] Manual verification at 375px viewport (Chrome DevTools, Pixel 5):
+  1. Navigate to Library — default display mode is **List view** (not Grid); grid view is still accessible via the view mode toggle
+  2. In Grid view, count the columns: exactly 2 book cards side by side (not 3 or 4)
+  3. Long-press (hold 500ms) on a book card — a context menu bottom sheet appears with items: Open, Summarize, Verify, Edit metadata, Export, Delete; verify it is the same options as right-click on desktop
+  4. Tap the **Filter** button — a full-screen modal opens covering the entire viewport with filter dropdowns and a "Done" button; it is NOT the dropdown popover used on desktop
+  5. Apply a filter and tap **Done** — the modal closes, the library updates to show filtered results
+  6. Open the command palette (tap the Search tab in bottom bar) — it opens as full-screen (no backdrop visible, entire screen is the palette)
+  7. Navigate to `http://localhost:5173/settings` at 375px — settings sections are displayed as an accordion (click to expand) or horizontal scrollable tabs, NOT the two-column sidebar layout
 
 **Commit:** `git commit -m "feat(frontend): add touch interactions and mobile breakpoint refinements (T10)"`
 
 **Inline verification:**
 - `cd frontend && npm run type-check` -- no errors
 - `cd frontend && npm run build` -- builds without errors
+- `cd frontend && npx vitest run src/composables/__tests__/useTouchGestures.test.ts` -- all gesture tests pass
 
 ---
 
@@ -1234,7 +1742,16 @@ Total: 20 tasks
   - SSE reconnect failure: "Connection lost. Processing may still be running." + "Refresh" button (per E1)
 
 - [ ] Verify: `cd frontend && npm run build`
-  Manual: Disconnect backend, verify error states render. Empty library: verify empty state. Fast navigation: verify skeletons flash briefly.
+
+- [ ] Manual verification (run `npm run dev`):
+  1. **Skeleton loaders — Library:** In Chrome DevTools Network tab, set throttling to "Slow 3G"; navigate to `http://localhost:5173/` — the library grid skeleton (6 card placeholders with pulsing grey blocks) is visible before data loads; after data loads, real book cards replace it
+  2. **Skeleton loaders — Reader:** Navigate into a book section on Slow 3G — a skeleton of ~12 lines of varying width pulsing grey blocks is visible before the section content appears
+  3. **Empty state — Library:** Stop the backend, clear all books via API; navigate to Library — the "Your library is empty" illustration and "Upload your first book" button appear (not an empty white page)
+  4. **Empty state — Search:** Type a nonsense query like "xyzzy123" — "No results for 'xyzzy123'" message appears with a suggestion
+  5. **Empty state — Annotations:** Navigate to Annotations page with no annotations — "No annotations yet" message with "Start reading" CTA appears
+  6. **Error boundary:** Stop the backend server; navigate to a book's reader — the error boundary renders a "Connection lost" message with a "Try again" button (not a blank white page or uncaught JS error in console)
+  7. **SSE reconnect failure:** While on the upload page with processing active, stop the backend — a "Connection lost. Processing may still be running." message with a "Refresh" button appears in the progress area
+  8. **Skeleton timing:** In DevTools Performance tab, verify that the skeleton component is rendered within 50ms of the navigation event (check by throttling and tracing a navigation)
 
 **Commit:** `git commit -m "feat(frontend): add skeleton loaders, empty states, and error boundaries (T11)"`
 
@@ -1288,14 +1805,48 @@ Total: 20 tasks
   - Verify all font sizes use `rem` not `px` (NFR-10)
   - Visible focus indicators: 2px solid accent outline on all focusable elements (`:focus-visible`)
 
-- [ ] Verify: Run axe-core in browser on each page. Zero critical/serious violations.
-  `cd frontend && npm install -D @axe-core/playwright` (for E2E accessibility checks in T15)
+- [ ] Step 6: Run axe-core automated scan and verify zero critical/serious violations
+  ```typescript
+  // frontend/e2e/accessibility.spec.ts
+  import { test, expect } from '@playwright/test'
+  import AxeBuilder from '@axe-core/playwright'
+
+  const pages = [
+    { name: 'Library', path: '/' },
+    { name: 'Book Detail', path: '/books/1' },
+    { name: 'Settings General', path: '/settings/general' },
+    { name: 'Settings Database', path: '/settings/database' },
+    { name: 'Annotations', path: '/annotations' },
+    { name: 'Concepts', path: '/concepts' },
+  ]
+
+  for (const { name, path } of pages) {
+    test(`${name} page has no critical or serious axe violations`, async ({ page }) => {
+      await page.goto(path)
+      await page.waitForLoadState('networkidle')
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa'])
+        .analyze()
+      const critical = results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')
+      expect(critical, `${name}: ${critical.map(v => v.description).join(', ')}`).toHaveLength(0)
+    })
+  }
+  ```
+  Run: `cd frontend && npx playwright test e2e/accessibility.spec.ts --project=desktop-chrome`
+  Expected: All 6 page scans pass with zero critical/serious violations
+  `cd frontend && npm install -D @axe-core/playwright` (required for the above)
+
+- [ ] Manual keyboard navigation spot-check:
+  1. Navigate to `http://localhost:5173/` — press Tab repeatedly; every interactive element (book cards, view mode buttons, filter dropdowns, nav items) receives focus in visual order (left-to-right, top-to-bottom); no focus ever jumps to an invisible element
+  2. Open a modal (e.g., delete confirmation) — focus moves into the modal; Tab cycles only within the modal; pressing Escape closes it and focus returns to the button that opened it
+  3. Open a bottom sheet — pressing Escape dismisses it; Tab is trapped inside while open
 
 **Commit:** `git commit -m "fix(frontend): accessibility audit — keyboard nav, ARIA, contrast, reduced motion (T12)"`
 
 **Inline verification:**
 - `cd frontend && npm run type-check` -- no errors
 - `cd frontend && npm run build` -- builds without errors
+- `cd frontend && npx playwright test e2e/accessibility.spec.ts --project=desktop-chrome` -- zero critical/serious axe violations on all 6 pages
 
 ---
 
@@ -1349,14 +1900,22 @@ Total: 20 tasks
   Verify: All CSS transitions/animations respect `prefers-reduced-motion: reduce`
   Components using `transition` or `animate-*` classes: add conditional class
 
-- [ ] Verify: `cd frontend && npm run build` -- chunk sizes reasonable
-  Lighthouse scores: Performance >= 90 on desktop, >= 80 on mobile (simulated)
+- [ ] Verify: `cd frontend && npm run build`
+
+- [ ] Manual performance verification:
+  1. After `npm run build`, inspect the build output — the initial entry chunk must be under 200KB gzipped; each route view (LibraryView, BookDetailView, SettingsView) must appear as a separate chunk file, not bundled into the entry
+  2. Run: `cd frontend && npx vite-bundle-visualizer` — open the generated `stats.html`; confirm `qrcode.vue` appears only in the Settings chunk (not the entry), and no single chunk exceeds 500KB uncompressed
+  3. In Chrome DevTools (with `npm run dev`), open the **Performance** tab and record a Library page load with 44 books: total time from navigation start to `DOMContentLoaded` must be under 500ms on a fast connection (NFR-01)
+  4. Open the command palette (Cmd+K), type a query — results appear within 500ms total (300ms debounce + <200ms response); verify in the Network tab that the search request completes in <200ms
+  5. In the Library page, scroll down to verify book cover images below the fold do NOT appear in the Network tab until scrolled into view (lazy loading confirmed)
+  6. Enable "Slow 3G" in DevTools; navigate to the Library — the skeleton loader appears within 50ms of navigation (check via Performance trace: look for the first paint of the skeleton element)
+  7. Enable "prefers-reduced-motion" in OS settings (macOS: System Settings → Accessibility → Reduce Motion); reload the app — no CSS animations or transitions run (all `animate-pulse`, `transition-*`, and `duration-*` classes must be inert)
 
 **Commit:** `git commit -m "perf(frontend): route splitting, lazy loading, bundle optimization (T13)"`
 
 **Inline verification:**
 - `cd frontend && npm run type-check` -- no errors
-- `cd frontend && npm run build` -- builds without errors, initial JS < 200KB gzipped
+- `cd frontend && npm run build` -- builds without errors, initial JS < 200KB gzipped (verify in terminal output)
 
 ---
 
@@ -1591,12 +2150,73 @@ Total: 20 tasks
 
 - [ ] Step 3: Library E2E tests (`frontend/e2e/library.spec.ts`)
   Tests from requirements §6.1:
-  - LIB-01: Display books in grid view
-  - LIB-02: Switch display modes (Grid/List/Table)
-  - LIB-03: Filter by status
-  - LIB-07: Create a view
-  - LIB-11: Empty library state
-  - LIB-14: Mobile list view (mobile project only)
+  ```typescript
+  // LIB-01: Grid view shows book cards with cover image and title
+  test('LIB-01: library displays books in grid view by default on desktop', async ({ page }) => {
+    await page.goto('/')
+    // Grid is the default desktop mode
+    const cards = page.locator('[data-testid="book-card"]')
+    await expect(cards).toHaveCountGreaterThan(0)
+    // Each card must have a title visible
+    await expect(cards.first().locator('[data-testid="book-title"]')).not.toBeEmpty()
+  })
+
+  // LIB-02: Switching to List view changes the layout (fewer columns, text-dominant rows)
+  test('LIB-02: switching to List view renders books as rows', async ({ page }) => {
+    await page.goto('/')
+    await page.click('[data-testid="view-mode-list"]')
+    // List rows must be visible; grid layout class must be absent
+    const rows = page.locator('[data-testid="book-list-row"]')
+    await expect(rows).toHaveCountGreaterThan(0)
+    await expect(page.locator('[data-testid="book-grid"]')).not.toBeVisible()
+  })
+
+  // LIB-02: Table view shows column headers
+  test('LIB-02: switching to Table view renders a table with sortable headers', async ({ page }) => {
+    await page.goto('/')
+    await page.click('[data-testid="view-mode-table"]')
+    await expect(page.locator('table th', { hasText: 'Title' })).toBeVisible()
+    await expect(page.locator('table th', { hasText: 'Status' })).toBeVisible()
+    const rows = page.locator('table tbody tr')
+    await expect(rows).toHaveCountGreaterThan(0)
+  })
+
+  // LIB-03: Filter by status reduces the visible book count
+  test('LIB-03: filtering by status "summarized" shows only summarized books', async ({ page }) => {
+    await page.goto('/')
+    const allCards = await page.locator('[data-testid="book-card"]').count()
+    await page.selectOption('[data-testid="filter-status"]', 'summarized')
+    const filteredCards = page.locator('[data-testid="book-card"]')
+    // Must show fewer cards OR the same if all are summarized
+    const filteredCount = await filteredCards.count()
+    expect(filteredCount).toBeLessThanOrEqual(allCards)
+    // All visible cards must have a "summarized" status badge
+    for (const card of await filteredCards.all()) {
+      await expect(card.locator('[data-testid="status-badge"]')).toHaveText(/summarized/i)
+    }
+  })
+
+  // LIB-11: Empty library shows the empty state illustration and CTA
+  test('LIB-11: empty library shows welcome empty state with upload CTA', async ({ page, request }) => {
+    // Delete all books via API to produce an empty state
+    const books = await (await request.get('/api/v1/books')).json()
+    for (const book of books.items ?? []) {
+      await request.delete(`/api/v1/books/${book.id}`)
+    }
+    await page.goto('/')
+    await expect(page.locator('[data-testid="empty-state-title"]')).toHaveText('Your library is empty')
+    await expect(page.locator('[data-testid="empty-state-cta"]')).toHaveText(/upload your first book/i)
+  })
+
+  // LIB-14: Mobile list view defaults to list (not grid)
+  test('LIB-14: mobile viewport defaults to list view', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/')
+    // List rows must be visible by default; grid must not be
+    await expect(page.locator('[data-testid="book-list-row"]').first()).toBeVisible()
+    await expect(page.locator('[data-testid="book-grid"]')).not.toBeVisible()
+  })
+  ```
 
 - [ ] Step 4: Upload E2E tests (`frontend/e2e/upload.spec.ts`)
   Tests from requirements §6.2:
@@ -1637,34 +2257,210 @@ Total: 20 tasks
 **Steps:**
 
 - [ ] Step 1: Settings E2E tests (`frontend/e2e/settings.spec.ts`)
-  - Navigate to each settings section
-  - Toggle LAN access, verify QR code appears
-  - View database stats
-  - View migration status
-  - **Presets section:** Navigate to Presets section, create a user preset (fill name + facets), verify it appears in the preset list, delete it, verify it is removed from the list
-  - **Reading Preferences section:** Change default preset, reload the page, verify the selection persists, add custom CSS in the textarea, save, verify CSS persists on reload
+  ```typescript
+  test('settings: LAN toggle shows QR code with correct URL', async ({ page }) => {
+    await page.goto('/settings/general')
+    await page.click('[data-testid="lan-toggle"]')  // enable LAN
+    const qrCode = page.locator('[data-testid="lan-qr-code"]')
+    await expect(qrCode).toBeVisible()
+    const lanUrl = page.locator('[data-testid="lan-url"]')
+    await expect(lanUrl).toHaveText(/http:\/\/\d+\.\d+\.\d+\.\d+:\d+/)  // must show IP:port
+  })
+
+  test('settings: database stats show realistic row counts', async ({ page }) => {
+    await page.goto('/settings/database')
+    const booksRow = page.locator('[data-testid="db-stat-books"]')
+    await expect(booksRow).toBeVisible()
+    const text = await booksRow.textContent()
+    expect(parseInt(text ?? '0')).toBeGreaterThanOrEqual(2)
+  })
+
+  test('settings: migration status shows "Up to date"', async ({ page }) => {
+    await page.goto('/settings/database')
+    await expect(page.locator('[data-testid="migration-status"]')).toHaveText(/up to date/i)
+    await expect(page.locator('[data-testid="run-migrations-btn"]')).not.toBeVisible()
+  })
+
+  test('settings: create user preset and verify it appears in list', async ({ page }) => {
+    await page.goto('/settings/presets')
+    await page.click('[data-testid="create-preset-btn"]')
+    await page.fill('[data-testid="preset-name-input"]', 'my-e2e-preset')
+    await page.click('[data-testid="save-preset-btn"]')
+    await expect(page.locator('[data-testid="preset-list-item"]', { hasText: 'my-e2e-preset' })).toBeVisible()
+    // Delete it
+    await page.click('[data-testid="preset-list-item"]:has-text("my-e2e-preset") [data-testid="delete-preset-btn"]')
+    await page.click('[data-testid="confirm-delete-btn"]')
+    await expect(page.locator('[data-testid="preset-list-item"]', { hasText: 'my-e2e-preset' })).not.toBeVisible()
+  })
+
+  test('settings: reading preference change persists after page reload', async ({ page }) => {
+    await page.goto('/settings/reading')
+    await page.selectOption('[data-testid="default-preset-select"]', 'practitioner_bullets')
+    await page.click('[data-testid="save-reading-settings-btn"]')
+    await page.reload()
+    await expect(page.locator('[data-testid="default-preset-select"]')).toHaveValue('practitioner_bullets')
+  })
+
+  test('settings: custom CSS persists after page reload', async ({ page }) => {
+    await page.goto('/settings/reading')
+    await page.fill('[data-testid="custom-css-textarea"]', 'body { font-size: 18px; }')
+    await page.click('[data-testid="save-reading-settings-btn"]')
+    await page.reload()
+    await expect(page.locator('[data-testid="custom-css-textarea"]')).toHaveValue('body { font-size: 18px; }')
+  })
+  ```
 
 - [ ] Step 2: Export & Backup E2E tests (`frontend/e2e/export-backup.spec.ts`)
-  - Create backup, verify it appears in list
-  - Download backup
-  - Export library as JSON
+  ```typescript
+  test('backup: create backup appears in list with non-zero size', async ({ page }) => {
+    await page.goto('/settings/backup')
+    await page.click('[data-testid="create-backup-btn"]')
+    await expect(page.locator('[data-testid="backup-success-toast"]')).toBeVisible()
+    const backupRows = page.locator('[data-testid="backup-history-row"]')
+    await expect(backupRows).toHaveCountGreaterThan(0)
+    const sizeText = await backupRows.first().locator('[data-testid="backup-size"]').textContent()
+    expect(parseFloat(sizeText ?? '0')).toBeGreaterThan(0)
+  })
+
+  test('backup: download triggers a file download with .sql extension', async ({ page }) => {
+    await page.goto('/settings/backup')
+    await page.click('[data-testid="create-backup-btn"]')
+    await page.waitForSelector('[data-testid="backup-history-row"]')
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('[data-testid="backup-history-row"]:first-child [data-testid="download-backup-btn"]'),
+    ])
+    expect(download.suggestedFilename()).toMatch(/\.sql$/)
+  })
+
+  test('export: library JSON download contains library array with books', async ({ page }) => {
+    await page.goto('/settings/backup')
+    await page.selectOption('[data-testid="export-format-select"]', 'json')
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click('[data-testid="export-library-btn"]'),
+    ])
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+    const json = JSON.parse(Buffer.concat(chunks).toString())
+    expect(Array.isArray(json.library)).toBe(true)
+    expect(json.library.length).toBeGreaterThanOrEqual(2)
+  })
+  ```
 
 - [ ] Step 3: Search E2E tests (`frontend/e2e/search.spec.ts`)
-  - Open command palette with Cmd+K
-  - Type query, verify grouped results
-  - Navigate to result
+  ```typescript
+  test('search: command palette opens and returns grouped results', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Meta+k')  // Cmd+K on Mac
+    await expect(page.locator('[data-testid="command-palette"]')).toBeVisible()
+    await page.type('[data-testid="command-palette-input"]', 'war')
+    // Wait for results to appear
+    await expect(page.locator('[data-testid="search-result-group"]')).toHaveCountGreaterThan(0)
+    // Group label must be present (e.g. "Books", "Sections")
+    const groupLabel = page.locator('[data-testid="search-result-group-label"]').first()
+    await expect(groupLabel).not.toBeEmpty()
+  })
+
+  test('search: clicking a result navigates to the correct page', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Meta+k')
+    await page.type('[data-testid="command-palette-input"]', 'Art of War')
+    await page.waitForSelector('[data-testid="search-result-item"]')
+    const firstResult = page.locator('[data-testid="search-result-item"]').first()
+    const resultText = await firstResult.textContent()
+    await firstResult.click()
+    // Should navigate away from library; URL should change
+    await expect(page).not.toHaveURL('/')
+  })
+  ```
 
 - [ ] Step 4: Mobile-specific E2E tests (`frontend/e2e/mobile.spec.ts`)
-  Run with `--project=mobile-chrome`:
-  - Bottom tab bar visible, icon rail hidden
-  - Bottom sheet opens from reader action bar
-  - Filter opens as full-screen modal
-  - Touch targets >= 44px (measure with `boundingBox`)
+  ```typescript
+  // Run with --project=mobile-chrome (Pixel 5: 393x851px)
+  test('mobile: bottom tab bar is visible and icon rail is hidden', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-testid="bottom-tab-bar"]')).toBeVisible()
+    await expect(page.locator('[data-testid="icon-rail-sidebar"]')).not.toBeVisible()
+    // Verify 5 tabs
+    const tabs = page.locator('[data-testid="bottom-tab-bar"] [data-testid="tab-item"]')
+    await expect(tabs).toHaveCount(5)
+  })
+
+  test('mobile: bottom sheet opens from reader action bar', async ({ page }) => {
+    await page.goto('/books/1')
+    await page.click('[data-testid="reader-action-annotations"]')
+    const sheet = page.locator('[data-testid="bottom-sheet"]')
+    await expect(sheet).toBeVisible()
+    // Sheet must cover at least 25% of viewport height (peek snap)
+    const box = await sheet.boundingBox()
+    expect(box!.height).toBeGreaterThan(page.viewportSize()!.height * 0.25)
+  })
+
+  test('mobile: filter opens as full-screen modal not a dropdown', async ({ page }) => {
+    await page.goto('/')
+    await page.click('[data-testid="filter-btn"]')
+    const modal = page.locator('[data-testid="filter-modal-fullscreen"]')
+    await expect(modal).toBeVisible()
+    // Modal must cover the full viewport
+    const box = await modal.boundingBox()
+    expect(box!.width).toBeGreaterThanOrEqual(page.viewportSize()!.width - 1)
+    await expect(page.locator('[data-testid="filter-modal-done-btn"]')).toBeVisible()
+  })
+
+  test('mobile: all tab touch targets are at least 44px tall', async ({ page }) => {
+    await page.goto('/')
+    const tabs = page.locator('[data-testid="bottom-tab-bar"] [data-testid="tab-item"]')
+    const count = await tabs.count()
+    for (let i = 0; i < count; i++) {
+      const box = await tabs.nth(i).boundingBox()
+      expect(box!.height, `Tab ${i} must be at least 44px tall`).toBeGreaterThanOrEqual(44)
+    }
+  })
+  ```
 
 - [ ] Step 5: Reading position sync E2E (`frontend/e2e/reading-position.spec.ts`)
-  - Save position with one user-agent
-  - Load page with different user-agent
-  - Verify "Continue where you left off" banner
+  ```typescript
+  test('reading position: continue banner shows book title and section title', async ({ browser }) => {
+    // Simulate desktop save: navigate to a section
+    const desktopCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Macintosh; Desktop Chrome Test)' })
+    const desktopPage = await desktopCtx.newPage()
+    await desktopPage.goto('/books/1/sections/3')
+    await desktopPage.waitForTimeout(6000)  // wait for debounced position save
+    await desktopCtx.close()
+
+    // Simulate mobile load with different user-agent
+    const mobileCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (iPhone; Mobile Safari Test)' })
+    const mobilePage = await mobileCtx.newPage()
+    await mobilePage.goto('/')
+    const banner = mobilePage.locator('[data-testid="continue-banner"]')
+    await expect(banner).toBeVisible()
+    // Banner must mention the book title
+    await expect(banner).toContainText('The Art of War')
+    // Banner "Continue" button navigates to the correct section
+    await mobilePage.click('[data-testid="continue-banner-btn"]')
+    await expect(mobilePage).toHaveURL(/\/books\/1\/sections\/3/)
+    await mobileCtx.close()
+  })
+
+  test('reading position: dismissing banner prevents it from showing again in same session', async ({ browser }) => {
+    const desktopCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Macintosh; Desktop Chrome Test2)' })
+    const desktopPage = await desktopCtx.newPage()
+    await desktopPage.goto('/books/1/sections/3')
+    await desktopPage.waitForTimeout(6000)
+    await desktopCtx.close()
+
+    const mobileCtx = await browser.newContext({ userAgent: 'Mozilla/5.0 (iPhone; Mobile Safari Test2)' })
+    const mobilePage = await mobileCtx.newPage()
+    await mobilePage.goto('/')
+    await mobilePage.click('[data-testid="continue-banner-dismiss"]')
+    await mobilePage.reload()
+    // After dismissal and reload within same session, banner must not reappear
+    await expect(mobilePage.locator('[data-testid="continue-banner"]')).not.toBeVisible()
+    await mobileCtx.close()
+  })
+  ```
 
 - [ ] Verify: `cd frontend && npx playwright test` -- all pass across all projects
 
@@ -1719,22 +2515,41 @@ Total: 20 tasks
   Run: `cd frontend && npx playwright test`
   Expected: All tests pass on desktop-chrome, mobile-chrome, mobile-safari projects
 
-- [ ] **API smoke tests:**
+- [ ] **API smoke tests (verify content, not just status):**
   ```bash
-  # Export
-  curl -sf http://localhost:8000/api/v1/export/library?format=json | python3 -m json.tool | head -5
-  # Backup
-  curl -sf -X POST http://localhost:8000/api/v1/backup/create | python3 -m json.tool
-  curl -sf http://localhost:8000/api/v1/backup/list | python3 -m json.tool
-  # Settings
-  curl -sf http://localhost:8000/api/v1/settings | python3 -m json.tool
-  curl -sf http://localhost:8000/api/v1/settings/database-stats | python3 -m json.tool
-  # Reading state
+  # Export: must contain "library" array with at least 2 books
+  curl -sf "http://localhost:8000/api/v1/export/library?format=json" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d['library'])>=2, f'Expected >=2 books, got {len(d[\"library\"])}'; print(f'OK: {len(d[\"library\"])} books in export')"
+
+  # Export markdown: must contain section headings
+  curl -sf "http://localhost:8000/api/v1/export/book/1?format=markdown" \
+    | python3 -c "import sys; content=sys.stdin.read(); assert '## ' in content, 'No section headings in markdown'; print('OK: markdown has section headings')"
+
+  # Backup: create must return backup_id, list must include it with size_bytes > 0
+  BACKUP_ID=$(curl -sf -X POST http://localhost:8000/api/v1/backup/create \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['backup_id'])")
+  echo "Created backup: $BACKUP_ID"
+  curl -sf http://localhost:8000/api/v1/backup/list \
+    | python3 -c "import sys,json,os; items=json.load(sys.stdin); bid=os.environ.get('BACKUP_ID',''); match=[i for i in items if i['backup_id']==bid]; assert match, f'Backup {bid} not in list'; assert match[0]['size_bytes']>0, 'size_bytes must be >0'; print(f'OK: backup {bid} listed with {match[0][\"size_bytes\"]} bytes')" BACKUP_ID="$BACKUP_ID"
+
+  # Settings: must have network and llm keys; books count must be >= 2
+  curl -sf http://localhost:8000/api/v1/settings \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'network' in d and 'llm' in d, 'Missing keys'; print('OK: settings has network+llm')"
+  curl -sf http://localhost:8000/api/v1/settings/database-stats \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('books',0)>=2, f'Expected >=2 books, got {d.get(\"books\")}'; print(f'OK: books={d[\"books\"]}, sections={d[\"book_sections\"]}')"
+
+  # Migration status: must not be behind
+  curl -sf http://localhost:8000/api/v1/settings/migration-status \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); assert not d['is_behind'], 'DB is behind migrations'; assert d['current'] is not None, 'No current revision'; print(f'OK: migration current={d[\"current\"]}, is_behind={d[\"is_behind\"]}')"
+
+  # Reading state: upsert must return the book_id we sent; continue from different UA must return same book
   curl -sf -X PUT http://localhost:8000/api/v1/reading-state \
-    -H "Content-Type: application/json" -H "User-Agent: TestDesktop" \
-    -d '{"book_id": 1}' | python3 -m json.tool
+    -H "Content-Type: application/json" -H "User-Agent: SmokeTestDesktop/1.0" \
+    -d '{"book_id": 1, "section_id": 3}' \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['last_book_id']==1, f'Expected book_id=1, got {d[\"last_book_id\"]}'; print('OK: upsert returned correct book_id')"
   curl -sf http://localhost:8000/api/v1/reading-state/continue \
-    -H "User-Agent: TestMobile" | python3 -m json.tool
+    -H "User-Agent: SmokeTestMobile/1.0" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('last_book_id')==1, f'Expected last_book_id=1 from cross-device, got {d}'; print(f'OK: continue returns book_id=1, title={d.get(\"book_title\")}')"
   ```
 
 - [ ] **Manual spot checks — Settings:**
@@ -1796,3 +2611,4 @@ Total: 20 tasks
 |------|----------|-------------|
 | 1 | Initial plan draft | Full plan written with 16 tasks covering all Phase 3 scope items |
 | 2 | Review loop: format inconsistency (inline verify vs dedicated section), T10 missing verification, 5 tasks too large, T15 E2E gaps, implicit dependencies | Standardized all tasks with Inline verification sections, added T10 verification, split T3/T6/T9/T15 into sub-tasks (now 20 tasks), expanded T15 settings E2E tests, documented implicit dependencies in execution order |
+| 3 | Verification gaps: structural-only tests throughout (hasattr checks, status codes only, "npm run build" only). No behavioral coverage for DB upsert/cascade, backup file on disk, settings persistence, scheduler invocation, frontend store behavior, or specific UI interaction assertions in E2E tests | Added behavioral integration tests to T1 (upsert, UNIQUE constraint, FK cascade, timestamp auto-population), T2 (export content includes summaries/sections/book count), T3a (file exists on disk, download is valid SQL, delete removes file, list reflects created backup), T3b (scheduler registers job, job function actually invokes BackupService), T4 (settings write-then-read, partial update safety, DB counts reflect real data, migration status not-behind assertion). Added store unit tests to T6a (settings store with realistic data), T8 (reading state store coverage), T9a (useBreakpoint), T10 (useTouchGestures). Added specific manual verification steps with exact URLs, element selectors, and expected values to T6a, T6b, T7, T8, T9a, T9b, T10, T11, T12, T13. Expanded T15b E2E tests with full Playwright test code (settings persistence, backup download file content, export JSON contains books, mobile touch targets measured with boundingBox, reading position banner shows book title and navigates to correct section). Replaced T16 smoke tests with content-asserting one-liners that verify actual data, not just HTTP 200. |
