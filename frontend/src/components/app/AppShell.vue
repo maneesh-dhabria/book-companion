@@ -10,7 +10,7 @@ const { isMobile } = useBreakpoint()
 
 <template>
   <div class="app-shell" :class="{ mobile: isMobile }">
-    <IconRail v-if="!isMobile" />
+    <IconRail v-if="!isMobile" data-testid="icon-rail-sidebar" />
     <div class="app-main" :class="{ 'with-rail': !isMobile }">
       <TopBar />
       <main class="app-content">

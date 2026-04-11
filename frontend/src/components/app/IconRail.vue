@@ -12,7 +12,7 @@ const navItems = [
 </script>
 
 <template>
-  <nav class="icon-rail">
+  <nav class="icon-rail" role="navigation" aria-label="Main navigation">
     <div class="icon-rail-logo">
       <span class="text-lg font-bold">BC</span>
     </div>

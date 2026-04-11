@@ -12,27 +12,46 @@ services:
       POSTGRES_PASSWORD: bookcompanion
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bookcompanion"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: bookcompanion-backend
     ports:
       - "${BOOKCOMPANION_API_PORT:-8000}:8000"
     environment:
       BOOKCOMPANION_DATABASE__URL: postgresql+asyncpg://bookcompanion:bookcompanion@db:5432/bookcompanion
       BOOKCOMPANION_NETWORK__HOST: "0.0.0.0"
+      BOOKCOMPANION_NETWORK__PORT: "8000"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - backups:/app/backups
-    profiles:
-      - production
+      - config:/app/config
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
 volumes:
   pgdata:
   backups:
+  config:

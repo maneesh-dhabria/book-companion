@@ -8,6 +8,7 @@ import BookList from '@/components/library/BookList.vue'
 import BookTable from '@/components/library/BookTable.vue'
 import ViewTabs from '@/components/library/ViewTabs.vue'
 import BulkToolbar from '@/components/library/BulkToolbar.vue'
+import ContinueBanner from '@/components/reader/ContinueBanner.vue'
 
 const store = useBooksStore()
 
@@ -19,6 +20,7 @@ onMounted(() => {
 
 <template>
   <div class="library-page">
+    <ContinueBanner />
     <ViewTabs />
     <FilterRow />
 

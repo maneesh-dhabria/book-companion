@@ -27,5 +27,19 @@ export function useBreakpoint() {
     tabletQuery?.removeEventListener('change', update)
   })
 
-  return { isMobile, isTablet, isDesktop }
+  const width = ref(typeof window !== 'undefined' ? window.innerWidth : 1280)
+
+  function updateWidth() {
+    width.value = window.innerWidth
+  }
+
+  onMounted(() => {
+    window.addEventListener('resize', updateWidth)
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', updateWidth)
+  })
+
+  return { isMobile, isTablet, isDesktop, width }
 }

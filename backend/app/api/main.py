@@ -12,16 +12,22 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import (
     ai_threads,
     annotations,
+    backup,
     books,
     concepts,
     eval,
+    export,
     health,
     processing,
     reading_presets,
+    reading_state,
     search,
     sections,
     summaries,
     views,
+)
+from app.api.routes import (
+    settings as settings_routes,
 )
 from app.api.sse import EventBus
 from app.config import Settings
@@ -35,7 +41,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.settings = settings
     app.state.session_factory = create_session_factory(settings)
     app.state.event_bus = EventBus()
+
+    # Start backup scheduler if configured
+    scheduler = None
+    backup_hours = getattr(getattr(settings, "backup", None), "schedule_hours", 0)
+    if backup_hours and backup_hours > 0:
+        from app.api.scheduler import create_backup_scheduler
+        from app.services.backup_service import BackupService
+
+        backup_service = BackupService(settings=settings)
+        scheduler = create_backup_scheduler(backup_hours, backup_service)
+        scheduler.start()
+        app.state.backup_scheduler = scheduler
+
     yield
+
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
 
 
 def create_app() -> FastAPI:
@@ -74,6 +96,10 @@ def create_app() -> FastAPI:
     app.include_router(eval.router)
     app.include_router(views.router)
     app.include_router(processing.router)
+    app.include_router(export.router)
+    app.include_router(backup.router)
+    app.include_router(settings_routes.router)
+    app.include_router(reading_state.router)
 
     # Serve static files (built Vue SPA) if directory exists
     settings = Settings()

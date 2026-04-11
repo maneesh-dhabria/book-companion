@@ -1,0 +1,7 @@
+# Production overrides — use with:
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+services:
+  backend:
+    environment:
+      BOOKCOMPANION_LOGGING__LEVEL: "WARNING"
+      BOOKCOMPANION_LOGGING__JSON_FORMAT: "true"

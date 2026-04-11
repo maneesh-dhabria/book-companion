@@ -9,16 +9,23 @@ import AIChatTab from '@/components/sidebar/AIChatTab.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useTextSelection } from '@/composables/useTextSelection'
+import { useReadingState } from '@/composables/useReadingState'
 import { useReaderStore } from '@/stores/reader'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 import { useAnnotationsStore } from '@/stores/annotations'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const reader = useReaderStore()
 const settings = useReaderSettingsStore()
 const annotations = useAnnotationsStore()
+
+// Track reading position for cross-device sync
+useReadingState(
+  () => reader.book?.id,
+  () => reader.currentSection?.id,
+)
 
 const readingAreaRef = ref<HTMLElement | null>(null)
 const sidebarOpen = ref(false)
