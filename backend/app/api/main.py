@@ -12,16 +12,22 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import (
     ai_threads,
     annotations,
+    backup,
     books,
     concepts,
     eval,
+    export,
     health,
     processing,
     reading_presets,
+    reading_state,
     search,
     sections,
     summaries,
     views,
+)
+from app.api.routes import (
+    settings as settings_routes,
 )
 from app.api.sse import EventBus
 from app.config import Settings
@@ -74,6 +80,10 @@ def create_app() -> FastAPI:
     app.include_router(eval.router)
     app.include_router(views.router)
     app.include_router(processing.router)
+    app.include_router(export.router)
+    app.include_router(backup.router)
+    app.include_router(settings_routes.router)
+    app.include_router(reading_state.router)
 
     # Serve static files (built Vue SPA) if directory exists
     settings = Settings()

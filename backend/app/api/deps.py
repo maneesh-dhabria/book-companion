@@ -116,3 +116,30 @@ def get_search_service(
 
     embedding_service = EmbeddingService()
     return SearchService(session=db, embedding_service=embedding_service)
+
+
+def get_export_service(
+    db: AsyncSession = Depends(get_db),
+):
+    """Construct ExportService with shared session."""
+    from app.services.export_service import ExportService
+
+    return ExportService(session=db)
+
+
+def get_backup_service(
+    settings: Settings = Depends(get_settings),
+):
+    """Construct BackupService with settings."""
+    from app.services.backup_service import BackupService
+
+    return BackupService(settings=settings)
+
+
+def get_reading_state_repo(
+    db: AsyncSession = Depends(get_db),
+):
+    """Construct ReadingStateRepository with shared session."""
+    from app.db.repositories.reading_state_repo import ReadingStateRepository
+
+    return ReadingStateRepository(session=db)

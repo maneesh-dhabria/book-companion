@@ -495,3 +495,49 @@ class AIThreadListItem(BaseModel):
     last_message_preview: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+# ── Export / Backup / Settings / Reading State ────────────────────────
+
+
+class ExportQueryParams(BaseModel):
+    format: str = "json"
+    include_summaries: bool = True
+    include_annotations: bool = True
+    include_concepts: bool = True
+    include_eval: bool = False
+
+
+class BackupResponse(BaseModel):
+    backup_id: str
+    filename: str
+    size_bytes: int
+    created_at: str | None = None
+
+
+class BackupListItem(BaseModel):
+    backup_id: str
+    filename: str
+    size_bytes: int
+    size_mb: float
+    created_at: str | None = None
+
+
+class BackupScheduleRequest(BaseModel):
+    enabled: bool
+    interval_hours: int = 24
+
+
+class ReadingStateUpsert(BaseModel):
+    book_id: int
+    section_id: int | None = None
+    scroll_position: float | None = None
+    content_mode: str = "summary"
+
+
+class ReadingStateResponse(BaseModel):
+    last_book_id: int | None = None
+    last_section_id: int | None = None
+    last_viewed_at: str | None = None
+    book_title: str | None = None
+    section_title: str | None = None
