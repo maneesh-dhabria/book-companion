@@ -13,12 +13,13 @@ const tabs = [
 </script>
 
 <template>
-  <nav class="bottom-tab-bar">
+  <nav class="bottom-tab-bar" data-testid="bottom-tab-bar">
     <router-link
       v-for="tab in tabs"
       :key="tab.path"
       :to="tab.path"
       class="bottom-tab"
+      data-testid="tab-item"
       :class="{ active: route.path === tab.path || (tab.path !== '/' && route.path.startsWith(tab.path)) }"
     >
       <span class="bottom-tab-icon">{{ tab.icon }}</span>
