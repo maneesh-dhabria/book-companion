@@ -41,7 +41,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.settings = settings
     app.state.session_factory = create_session_factory(settings)
     app.state.event_bus = EventBus()
+
+    # Start backup scheduler if configured
+    scheduler = None
+    backup_hours = getattr(getattr(settings, "backup", None), "schedule_hours", 0)
+    if backup_hours and backup_hours > 0:
+        from app.api.scheduler import create_backup_scheduler
+        from app.services.backup_service import BackupService
+
+        backup_service = BackupService(settings=settings)
+        scheduler = create_backup_scheduler(backup_hours, backup_service)
+        scheduler.start()
+        app.state.backup_scheduler = scheduler
+
     yield
+
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
 
 
 def create_app() -> FastAPI:
