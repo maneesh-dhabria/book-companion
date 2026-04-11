@@ -81,3 +81,6 @@ backend/static/
 # uv
 uv.lock
 .worktrees/
+
+# Docker bind-mount data (postgres, backups, config)
+data/
