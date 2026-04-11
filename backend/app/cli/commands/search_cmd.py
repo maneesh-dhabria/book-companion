@@ -49,27 +49,22 @@ async def search(
             print_error(f"Search failed: {e}")
             raise typer.Exit(1)
 
-        if not results:
+        if not results or results.total_count == 0:
             print_empty_state(f'No results found for "{query}". Try a broader search term.')
             return
 
         if should_json():
             import json
 
-            console.print(
-                json.dumps(
-                    [r if isinstance(r, dict) else vars(r) for r in results], indent=2, default=str
-                )
-            )
+            all_items = [
+                vars(r) for book_results in results.books.values() for r in book_results
+            ]
+            console.print(json.dumps(all_items, indent=2, default=str))
             return
 
-        # Group results by book
-        by_book: dict[str, list] = {}
-        for r in results:
-            book_title = getattr(r, "book_title", None) or str(getattr(r, "book_id", "?"))
-            by_book.setdefault(book_title, []).append(r)
-
-        for book_title, book_results in by_book.items():
+        # Results are already grouped by book_id
+        for _book_id, book_results in results.books.items():
+            book_title = book_results[0].book_title if book_results else "Unknown"
             table = Table(title=f"Results from: {book_title}")
             table.add_column("Source", style="cyan")
             table.add_column("Snippet")
