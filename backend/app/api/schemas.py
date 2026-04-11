@@ -276,7 +276,7 @@ class LibraryViewUpdateRequest(BaseModel):
 # --- Annotations ---
 
 
-class AnnotationTypeEnum(str, enum.Enum):
+class AnnotationTypeEnum(enum.StrEnum):
     HIGHLIGHT = "highlight"
     NOTE = "note"
     FREEFORM = "freeform"
@@ -318,3 +318,180 @@ class AnnotationLinkRequest(BaseModel):
 
 
 AnnotationExportFormat = Literal["markdown", "json", "csv"]
+
+
+# --- Search ---
+
+
+class SearchHitBase(BaseModel):
+    id: int
+    book_id: int
+    book_title: str
+    snippet: str
+    score: float
+
+
+class BookSearchHit(SearchHitBase):
+    title: str
+
+
+class SectionSearchHit(SearchHitBase):
+    title: str
+    section_title: str | None = None
+
+
+class ConceptSearchHit(SearchHitBase):
+    term: str
+
+
+class AnnotationSearchHit(SearchHitBase):
+    note_snippet: str | None = None
+    selected_text: str | None = None
+
+
+class QuickSearchResults(BaseModel):
+    books: list[BookSearchHit] = []
+    sections: list[SectionSearchHit] = []
+    concepts: list[ConceptSearchHit] = []
+    annotations: list[AnnotationSearchHit] = []
+
+
+class QuickSearchResponse(BaseModel):
+    query: str
+    results: QuickSearchResults
+
+
+class SearchResultItem(BaseModel):
+    source_type: str
+    source_id: int
+    book_id: int
+    book_title: str
+    section_title: str | None = None
+    snippet: str
+    score: float
+    highlight: str
+
+
+class FullSearchResponse(BaseModel):
+    items: list[SearchResultItem]
+    total: int
+    page: int
+    per_page: int
+
+
+class RecentSearchResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    query: str
+    result_count: int | None = None
+    created_at: datetime
+
+
+# --- Concepts ---
+
+
+class ConceptResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    book_id: int
+    term: str
+    definition: str
+    user_edited: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConceptDetailResponse(ConceptResponse):
+    section_appearances: list[SectionBriefResponse] = []
+    related_concepts: list[ConceptResponse] = []
+    book_title: str = ""
+
+
+class ConceptUpdateRequest(BaseModel):
+    term: str | None = None
+    definition: str | None = None
+
+
+# --- Reading Presets ---
+
+
+class ReadingPresetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    is_system: bool
+    is_active: bool
+    font_family: str
+    font_size_px: int
+    line_spacing: float
+    content_width_px: int
+    theme: str
+    created_at: datetime
+
+
+class ReadingPresetCreateRequest(BaseModel):
+    name: str
+    font_family: str = "Georgia"
+    font_size_px: int = 16
+    line_spacing: float = 1.6
+    content_width_px: int = 720
+    theme: str = "light"
+
+
+class ReadingPresetUpdateRequest(BaseModel):
+    name: str | None = None
+    font_family: str | None = None
+    font_size_px: int | None = None
+    line_spacing: float | None = None
+    content_width_px: int | None = None
+    theme: str | None = None
+
+
+# --- AI Threads ---
+
+
+class AIThreadCreateRequest(BaseModel):
+    title: str = "New Thread"
+
+
+class AIThreadUpdateRequest(BaseModel):
+    title: str
+
+
+class AIMessageCreateRequest(BaseModel):
+    content: str
+    context_section_id: int | None = None
+    selected_text: str | None = None
+
+
+class AIMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    thread_id: int
+    role: str
+    content: str
+    created_at: datetime
+
+
+class AIThreadResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    book_id: int
+    title: str
+    messages: list[AIMessageResponse] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+class AIThreadListItem(BaseModel):
+    id: int
+    book_id: int
+    title: str
+    message_count: int = 0
+    last_message_preview: str | None = None
+    created_at: datetime
+    updated_at: datetime

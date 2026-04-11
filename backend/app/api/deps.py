@@ -114,5 +114,5 @@ def get_search_service(
     from app.services.embedding_service import EmbeddingService
     from app.services.search_service import SearchService
 
-    embedding_service = EmbeddingService(session=db)
+    embedding_service = EmbeddingService()
     return SearchService(session=db, embedding_service=embedding_service)
