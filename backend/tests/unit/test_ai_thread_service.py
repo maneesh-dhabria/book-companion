@@ -172,9 +172,7 @@ class TestSendMessage:
         svc._fetch_thread = AsyncMock(return_value=thread)
         svc._fetch_book = AsyncMock(return_value=book)
 
-        llm.generate = AsyncMock(
-            return_value=LLMResponse(content="Response", model="test-model")
-        )
+        llm.generate = AsyncMock(return_value=LLMResponse(content="Response", model="test-model"))
 
         result = await svc.send_message(thread_id=10, content="Question")
 
@@ -237,9 +235,7 @@ class TestSendMessage:
         )
 
         with patch.object(svc, "build_context_prompt", wraps=svc.build_context_prompt) as spy:
-            await svc.send_message(
-                thread_id=10, content="Tell me about this", context_section_id=3
-            )
+            await svc.send_message(thread_id=10, content="Tell me about this", context_section_id=3)
             spy.assert_called_once()
             call_kwargs = spy.call_args
             assert call_kwargs.kwargs["section_title"] == "Chapter 3"

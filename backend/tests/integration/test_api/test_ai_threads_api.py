@@ -25,9 +25,7 @@ async def test_delete_thread_not_found(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_create_thread_and_verify_fields(client: AsyncClient):
     """Book 1 must exist in test fixtures."""
-    resp = await client.post(
-        "/api/v1/books/1/ai-threads", json={"title": "Strategy Discussion"}
-    )
+    resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Strategy Discussion"})
     if resp.status_code == 404:
         pytest.skip("Book 1 not available in test DB")
     assert resp.status_code == 201
@@ -44,9 +42,7 @@ async def test_create_thread_and_verify_fields(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_threads_returns_created_thread(client: AsyncClient):
-    create_resp = await client.post(
-        "/api/v1/books/1/ai-threads", json={"title": "My Discussion"}
-    )
+    create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "My Discussion"})
     if create_resp.status_code == 404:
         pytest.skip("Book 1 not available in test DB")
     thread_id = create_resp.json()["id"]
@@ -64,9 +60,7 @@ async def test_list_threads_returns_created_thread(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_thread_returns_correct_book_id(client: AsyncClient):
-    create_resp = await client.post(
-        "/api/v1/books/1/ai-threads", json={"title": "Thread for get"}
-    )
+    create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Thread for get"})
     if create_resp.status_code == 404:
         pytest.skip("Book 1 not available in test DB")
     thread_id = create_resp.json()["id"]
@@ -85,16 +79,12 @@ async def test_get_thread_returns_correct_book_id(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_thread_title(client: AsyncClient):
-    create_resp = await client.post(
-        "/api/v1/books/1/ai-threads", json={"title": "Old Title"}
-    )
+    create_resp = await client.post("/api/v1/books/1/ai-threads", json={"title": "Old Title"})
     if create_resp.status_code == 404:
         pytest.skip("Book 1 not available in test DB")
     thread_id = create_resp.json()["id"]
 
-    patch_resp = await client.patch(
-        f"/api/v1/ai-threads/{thread_id}", json={"title": "New Title"}
-    )
+    patch_resp = await client.patch(f"/api/v1/ai-threads/{thread_id}", json={"title": "New Title"})
     assert patch_resp.status_code == 200
     assert patch_resp.json()["title"] == "New Title"
     assert patch_resp.json()["id"] == thread_id

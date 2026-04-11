@@ -39,9 +39,7 @@ async def test_quick_search_groups_by_type_and_caps_at_three(client: AsyncClient
     data = resp.json()
     results = data["results"]
     for group_name, group_items in results.items():
-        assert len(group_items) <= 3, (
-            f"Group '{group_name}' has {len(group_items)} items, max is 3"
-        )
+        assert len(group_items) <= 3, f"Group '{group_name}' has {len(group_items)} items, max is 3"
 
 
 @pytest.mark.asyncio

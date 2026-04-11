@@ -185,8 +185,12 @@ async def test_link_and_unlink_annotations(client: AsyncClient):
         "text_start": 0,
         "text_end": 10,
     }
-    r1 = await client.post("/api/v1/annotations", json={**payload_base, "selected_text": "text one"})
-    r2 = await client.post("/api/v1/annotations", json={**payload_base, "selected_text": "text two"})
+    r1 = await client.post(
+        "/api/v1/annotations", json={**payload_base, "selected_text": "text one"}
+    )
+    r2 = await client.post(
+        "/api/v1/annotations", json={**payload_base, "selected_text": "text two"}
+    )
     if r1.status_code == 404 or r2.status_code == 404:
         pytest.skip("Section 1 not available in test DB")
     id1 = r1.json()["id"]
