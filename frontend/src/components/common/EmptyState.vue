@@ -11,9 +11,9 @@ defineProps<{
 <template>
   <div class="empty-state">
     <div v-if="icon" class="empty-state-icon">{{ icon }}</div>
-    <h3 class="empty-state-title">{{ title }}</h3>
+    <h3 class="empty-state-title" data-testid="empty-state-title">{{ title }}</h3>
     <p v-if="description" class="empty-state-description">{{ description }}</p>
-    <router-link v-if="actionLabel && actionTo" :to="actionTo" class="empty-state-action">
+    <router-link v-if="actionLabel && actionTo" :to="actionTo" class="empty-state-action" data-testid="empty-state-cta">
       {{ actionLabel }}
     </router-link>
   </div>
