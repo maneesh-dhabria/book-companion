@@ -381,6 +381,17 @@ async def add(
 
         print_success(f"\nBook saved (ID: {book.id}). {section_count} sections parsed and stored.")
 
+        # Index sections for search
+        search_service = svc.get("search")
+        if search_service and book.sections:
+            console.print("Indexing for search...")
+            try:
+                await search_service.index_book_sections(book.id, book.sections)
+                await svc["session"].commit()
+                console.print(f"  Indexed {len(book.sections)} sections for search.")
+            except Exception as e:
+                console.print(f"  [yellow]Search indexing skipped: {e}[/yellow]")
+
         if quick and svc.get("summarizer"):
             console.print("Generating quick summary...")
             try:

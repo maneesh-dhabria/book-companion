@@ -3,7 +3,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -206,6 +206,43 @@ class SearchService:
         for r in results:
             books[r.book_id].append(r)
         return GroupedSearchResults(query=query, books=dict(books), total_count=len(results))
+
+    # --- Section Content Indexing ---
+
+    async def index_section(self, section, book_id: int) -> None:
+        """Index a section's content in the search index for discovery."""
+        text = getattr(section, "content_md", None) or ""
+        if not text.strip():
+            return
+
+        chunks = self.embedding_service._split_into_chunks(text)
+        for idx, chunk in enumerate(chunks):
+            try:
+                embedding = await self.embedding_service.embed_text(chunk)
+            except Exception:
+                embedding = None  # BM25-only if Ollama unavailable
+            entry = SearchIndex(
+                source_type=SourceType.SECTION_CONTENT,
+                source_id=section.id,
+                book_id=book_id,
+                chunk_text=chunk,
+                chunk_index=idx,
+                embedding=embedding,
+                tsvector=func.to_tsvector("english", chunk),
+            )
+            self.session.add(entry)
+        await self.session.flush()
+
+    async def index_book_sections(self, book_id: int, sections: list) -> None:
+        """Index all sections of a book. Called after add/re-import."""
+        # Delete existing entries for this book first
+        await self.session.execute(
+            delete(SearchIndex).where(SearchIndex.book_id == book_id)
+        )
+        await self.session.flush()
+
+        for section in sections:
+            await self.index_section(section, book_id)
 
     # --- Image Caption Indexing ---
 

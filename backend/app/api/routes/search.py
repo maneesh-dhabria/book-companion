@@ -73,27 +73,37 @@ async def quick_search(
                     "snippet": r.chunk_text[:200] if r.chunk_text else "",
                     "score": r.score,
                 }
-                if r.source_type == "section":
+                st = r.source_type
+                if hasattr(st, "value"):
+                    st = st.value
+                if st in ("section_content", "section_title", "section_summary"):
                     sections_hits.append({
                         **hit,
                         "title": r.section_title or "",
                         "section_title": r.section_title,
                     })
-                elif r.source_type == "concept":
+                elif st == "concept":
                     concepts_hits.append({
                         **hit,
                         "term": r.section_title or r.chunk_text[:50],
                     })
-                elif r.source_type == "annotation":
+                elif st == "annotation":
                     annotations_hits.append({
                         **hit,
                         "note_snippet": r.chunk_text[:100] if r.chunk_text else None,
                         "selected_text": None,
                     })
-                else:
+                elif st in ("book_title", "book_summary"):
                     books_hits.append({
                         **hit,
                         "title": r.book_title,
+                    })
+                else:
+                    # Default: treat as section
+                    sections_hits.append({
+                        **hit,
+                        "title": r.section_title or "",
+                        "section_title": r.section_title,
                     })
 
     # Cap at 3 per type

@@ -187,6 +187,20 @@ async def upload_book(
             .options(selectinload(Book.authors), selectinload(Book.sections))
         )
         book = result.scalar_one()
+
+        # Index sections for search
+        try:
+            from app.services.embedding_service import EmbeddingService
+            from app.services.search_service import SearchService
+
+            embedding_service = EmbeddingService()
+            search_service = SearchService(session=db, embedding_service=embedding_service)
+            if book.sections:
+                await search_service.index_book_sections(book.id, list(book.sections))
+                await db.commit()
+        except Exception:
+            pass  # Search indexing failure should not block upload
+
         return BookResponse(**_book_to_response(book))
     finally:
         tmp_path.unlink(missing_ok=True)
