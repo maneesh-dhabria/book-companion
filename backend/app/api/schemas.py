@@ -177,7 +177,7 @@ class SummaryCompareResponse(BaseModel):
 
 
 class ProcessingStartRequest(BaseModel):
-    preset_name: str = "balanced"
+    preset_name: str = "practitioner_bullets"
     run_eval: bool = True
     auto_retry: bool = True
     skip_eval: bool = False

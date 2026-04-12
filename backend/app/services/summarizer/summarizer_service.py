@@ -53,7 +53,19 @@ class SummarizerService:
         on_section_retry: Callable | None = None,
     ) -> dict:
         """Orchestrate full book summarization using map-reduce with faceted prompts."""
+        # Resolve facets from preset_name if caller didn't provide a complete set.
+        # Validates all required facet dimensions (style, audience, compression,
+        # content_focus) and raises PresetError if any are missing or invalid.
+        from app.services.preset_service import FACET_DIMENSIONS, PresetService
+
         facets = facets or {}
+        missing_dims = [d for d in FACET_DIMENSIONS if d not in facets]
+        if missing_dims:
+            preset_to_use = preset_name or self.config.summarization.default_preset
+            preset_svc = PresetService()
+            _, facets = preset_svc.resolve_facets(
+                preset_to_use, {d: None for d in FACET_DIMENSIONS}, preset_to_use
+            )
 
         sections = await self._section_repo.get_by_book_id(book_id)
         total = len(sections)

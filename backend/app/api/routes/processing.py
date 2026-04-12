@@ -38,6 +38,15 @@ async def start_processing(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    # Validate preset_name exists before queuing the job
+    if body.preset_name:
+        from app.services.preset_service import PresetError, PresetService
+
+        try:
+            PresetService().load(body.preset_name)
+        except PresetError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     # Create processing job
     job = ProcessingJob(
         book_id=book_id,
@@ -68,65 +77,139 @@ async def start_processing(
             await bg_session.commit()
 
             try:
-                from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
+                from app.services.summarizer import create_llm_provider, detect_llm_provider
+                from app.services.summarizer.evaluator import EvalService
                 from app.services.summarizer.image_captioner import ImageCaptioner
                 from app.services.summarizer.summarizer_service import SummarizerService
 
-                llm = ClaudeCodeCLIProvider(
+                provider = settings.llm.provider
+                if provider == "auto":
+                    provider = detect_llm_provider()
+
+                llm = create_llm_provider(
+                    provider,
                     cli_command=settings.llm.cli_command,
                     default_model=settings.llm.model,
                     default_timeout=settings.llm.timeout_seconds,
                     max_budget_usd=settings.llm.max_budget_usd,
+                    config_dir=settings.llm.config_dir,
                 )
+                if llm is None:
+                    raise RuntimeError(
+                        "No LLM provider available. Install Claude CLI or Codex CLI."
+                    )
                 captioner = (
                     ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
                 )
                 summarizer = SummarizerService(
                     db=bg_session, llm=llm, config=settings, captioner=captioner
                 )
+                eval_svc = EvalService(db=bg_session, llm=llm, config=settings)
 
-                async def on_section_start(section_id, section_title, index, total):
+                def on_section_complete(index, total, section_title, elapsed=None, comp=None):
                     if event_bus:
-                        await event_bus.publish(
-                            str(job_id),
-                            "section_started",
-                            {
-                                "section_id": section_id,
-                                "title": section_title,
-                                "index": index,
-                                "total": total,
-                            },
+                        asyncio.create_task(
+                            event_bus.publish(
+                                str(job_id),
+                                "section_completed",
+                                {
+                                    "title": section_title,
+                                    "index": index,
+                                    "total": total,
+                                    "elapsed_seconds": elapsed,
+                                },
+                            )
                         )
 
-                async def on_section_complete(section_id, section_title, index, total):
+                def on_section_skip(index, total, section_title, reason):
                     if event_bus:
-                        await event_bus.publish(
-                            str(job_id),
-                            "section_completed",
-                            {
-                                "section_id": section_id,
-                                "title": section_title,
-                                "index": index,
-                                "total": total,
-                            },
+                        asyncio.create_task(
+                            event_bus.publish(
+                                str(job_id),
+                                "section_skipped",
+                                {
+                                    "title": section_title,
+                                    "index": index,
+                                    "total": total,
+                                    "reason": reason,
+                                },
+                            )
                         )
 
-                await summarizer.summarize_book(
+                def on_section_fail(index, total, section_title, error):
+                    if event_bus:
+                        asyncio.create_task(
+                            event_bus.publish(
+                                str(job_id),
+                                "section_failed",
+                                {
+                                    "title": section_title,
+                                    "index": index,
+                                    "total": total,
+                                    "error": str(error),
+                                },
+                            )
+                        )
+
+                def on_section_retry(index, total, section_title):
+                    if event_bus:
+                        asyncio.create_task(
+                            event_bus.publish(
+                                str(job_id),
+                                "section_retrying",
+                                {
+                                    "title": section_title,
+                                    "index": index,
+                                    "total": total,
+                                },
+                            )
+                        )
+
+                # run_eval=True + auto_retry=True means eval runs and failures trigger retry
+                skip_eval = body.skip_eval or not body.run_eval
+                no_retry = not body.auto_retry
+
+                result = await summarizer.summarize_book(
                     book_id,
                     preset_name=body.preset_name,
-                    run_eval=body.run_eval,
-                    auto_retry=body.auto_retry,
-                    skip_eval=body.skip_eval,
-                    on_section_start=on_section_start,
+                    skip_eval=skip_eval,
+                    no_retry=no_retry,
+                    eval_service=None if skip_eval else eval_svc,
                     on_section_complete=on_section_complete,
+                    on_section_skip=on_section_skip,
+                    on_section_fail=on_section_fail,
+                    on_section_retry=on_section_retry,
                 )
 
-                bg_job.status = ProcessingJobStatus.COMPLETED
+                failed_count = len(result.get("failed", []))
+                completed_count = result.get("completed", 0)
+
+                # If all sections failed and none succeeded, mark job as failed
+                if failed_count > 0 and completed_count == 0:
+                    bg_job.status = ProcessingJobStatus.FAILED
+                    bg_job.error_message = (
+                        f"All {failed_count} sections failed to summarize. "
+                        f"Check logs for details."
+                    )
+                else:
+                    bg_job.status = ProcessingJobStatus.COMPLETED
+                    if failed_count > 0:
+                        bg_job.error_message = (
+                            f"{completed_count} sections succeeded, "
+                            f"{failed_count} failed."
+                        )
                 await bg_session.commit()
 
                 if event_bus:
                     await event_bus.publish(
-                        str(job_id), "processing_completed", {"book_id": book_id}
+                        str(job_id),
+                        "processing_completed",
+                        {
+                            "book_id": book_id,
+                            "completed": completed_count,
+                            "failed": failed_count,
+                            "skipped": result.get("skipped", 0),
+                        },
                     )
                     await event_bus.close(str(job_id))
 

@@ -2,8 +2,9 @@
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, undefer
 
-from app.db.models import BookSection
+from app.db.models import BookSection, Image
 
 
 class SectionRepository:
@@ -23,6 +24,7 @@ class SectionRepository:
     async def get_by_book_id(self, book_id: int) -> list[BookSection]:
         result = await self.session.execute(
             select(BookSection)
+            .options(selectinload(BookSection.images).undefer(Image.data))
             .where(BookSection.book_id == book_id)
             .order_by(BookSection.order_index)
         )
