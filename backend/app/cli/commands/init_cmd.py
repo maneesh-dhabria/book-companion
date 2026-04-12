@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+from importlib.resources import files
 from pathlib import Path
 
 from rich.console import Console
@@ -9,6 +10,20 @@ from rich.console import Console
 from app.cli.deps import async_command, get_settings
 
 console = Console()
+
+
+def _run_migrations() -> None:
+    """Run alembic migrations programmatically.
+
+    Avoids subprocess/PATH fragility. env.py reads Settings() directly and
+    honors BOOKCOMPANION_DATABASE__URL, so no Config URL override is needed.
+    """
+    from alembic.command import upgrade
+    from alembic.config import Config
+
+    ini_path = files("app.migrations") / "alembic.ini"
+    cfg = Config(str(ini_path))
+    upgrade(cfg, "head")
 
 
 @async_command
@@ -40,18 +55,13 @@ async def init():
             "Summarization will be unavailable."
         )
 
-    # 4. Run database migrations
+    # 4. Run database migrations (in-process; no subprocess/PATH dependency)
     console.print("\nInitializing database...")
-    result = subprocess.run(
-        ["uv", "run", "alembic", "upgrade", "head"],
-        capture_output=True,
-        text=True,
-        cwd="backend" if not shutil.which("alembic") else None,
-    )
-    if result.returncode == 0:
+    try:
+        _run_migrations()
         console.print("  [green]✓[/green] Database initialized")
-    else:
-        console.print(f"  [yellow]⚠[/yellow] Migration warning: {result.stderr[:200]}")
+    except Exception as e:
+        console.print(f"  [yellow]⚠[/yellow] Migration warning: {e}")
 
     # 5. Download embedding model (warm-up)
     console.print("\nDownloading embedding model (first time only, ~23MB)...")
