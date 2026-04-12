@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from functools import wraps
+from pathlib import Path
 
 from app.config import Settings
 from app.db.session import create_session_factory
@@ -130,11 +131,16 @@ async def get_services():
             pass
 
         try:
-            from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
+            from app.services.summarizer import create_llm_provider, detect_llm_provider
             from app.services.summarizer.image_captioner import ImageCaptioner
             from app.services.summarizer.summarizer_service import SummarizerService
 
-            llm = ClaudeCodeCLIProvider(
+            provider = settings.llm.provider
+            if provider == "auto":
+                provider = detect_llm_provider()
+
+            llm = create_llm_provider(
+                provider,
                 cli_command=settings.llm.cli_command,
                 default_model=settings.llm.model,
                 default_timeout=settings.llm.timeout_seconds,
@@ -142,21 +148,24 @@ async def get_services():
                 config_dir=settings.llm.config_dir,
             )
             services["llm"] = llm
-            captioner = (
-                ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
-            )
-            services["summarizer"] = SummarizerService(
-                db=session, llm=llm, config=settings, captioner=captioner
-            )
+            if llm:
+                captioner = (
+                    ImageCaptioner(llm_provider=llm)
+                    if settings.images.captioning_enabled
+                    else None
+                )
+                services["summarizer"] = SummarizerService(
+                    db=session, llm=llm, config=settings, captioner=captioner
+                )
         except ImportError:
             pass
 
         try:
             from app.services.embedding_service import EmbeddingService
 
+            data_dir = settings.data.directory
             embedding = EmbeddingService(
-                ollama_url=settings.embedding.ollama_url,
-                model=settings.embedding.model,
+                cache_dir=str(Path(data_dir) / "models"),
                 chunk_size=settings.embedding.chunk_size,
                 chunk_overlap=settings.embedding.chunk_overlap,
             )

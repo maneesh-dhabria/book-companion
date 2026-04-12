@@ -35,22 +35,35 @@ def get_book_service(
     return BookService(db=db, config=settings)
 
 
-def get_summarizer_service(
-    db: AsyncSession = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-):
-    """Construct SummarizerService with shared session and LLM provider."""
-    from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
-    from app.services.summarizer.image_captioner import ImageCaptioner
-    from app.services.summarizer.summarizer_service import SummarizerService
+def _get_llm_provider(settings: Settings):
+    """Create the LLM provider based on settings, with auto-detection."""
+    from app.services.summarizer import create_llm_provider, detect_llm_provider
 
-    llm = ClaudeCodeCLIProvider(
+    provider = settings.llm.provider
+    if provider == "auto":
+        provider = detect_llm_provider()
+
+    return create_llm_provider(
+        provider,
         cli_command=settings.llm.cli_command,
         default_model=settings.llm.model,
         default_timeout=settings.llm.timeout_seconds,
         max_budget_usd=settings.llm.max_budget_usd,
         config_dir=settings.llm.config_dir,
     )
+
+
+def get_summarizer_service(
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    """Construct SummarizerService with shared session and LLM provider."""
+    from app.services.summarizer.image_captioner import ImageCaptioner
+    from app.services.summarizer.summarizer_service import SummarizerService
+
+    llm = _get_llm_provider(settings)
+    if llm is None:
+        return None
     captioner = ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
     return SummarizerService(db=db, llm=llm, config=settings, captioner=captioner)
 
@@ -60,16 +73,11 @@ def get_eval_service(
     settings: Settings = Depends(get_settings),
 ):
     """Construct EvalService with shared session."""
-    from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
     from app.services.summarizer.evaluator import EvalService
 
-    llm = ClaudeCodeCLIProvider(
-        cli_command=settings.llm.cli_command,
-        default_model=settings.llm.model,
-        default_timeout=settings.llm.timeout_seconds,
-        max_budget_usd=settings.llm.max_budget_usd,
-        config_dir=settings.llm.config_dir,
-    )
+    llm = _get_llm_provider(settings)
+    if llm is None:
+        return None
     return EvalService(db=db, llm=llm, config=settings)
 
 
