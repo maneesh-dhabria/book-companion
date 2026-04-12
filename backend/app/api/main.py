@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 import os
+import socket
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -60,6 +61,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         scheduler.shutdown(wait=False)
 
 
+def build_cors_origins(port: int) -> list[str]:
+    """Build CORS origin list including localhost and LAN IPs."""
+    origins = [
+        f"http://localhost:{port}",
+        f"http://127.0.0.1:{port}",
+        f"http://localhost:5173",  # Vite dev server
+        f"http://127.0.0.1:5173",
+    ]
+
+    # Detect LAN IPs
+    try:
+        hostname = socket.gethostname()
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            ip = info[4][0]
+            if not ip.startswith("127."):
+                origins.append(f"http://{ip}:{port}")
+    except Exception:
+        pass  # Graceful degradation if detection fails
+
+    # Extra origins from env var
+    extra = os.environ.get("BOOKCOMPANION_CORS_EXTRA_ORIGINS", "")
+    if extra:
+        origins.extend(o.strip() for o in extra.split(",") if o.strip())
+
+    return list(set(origins))
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
@@ -69,15 +97,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS for Vite dev server and self
+    # CORS — dynamic origins including LAN IPs
+    from app.config import Settings
+
+    _settings = Settings()
+    cors_origins = build_cors_origins(_settings.network.port)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://localhost:8000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:8000",
-        ],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
