@@ -56,8 +56,8 @@ uv run ruff format --check .           # Format check
 uv run ruff format .                   # Auto-format
 
 # Database
-uv run alembic upgrade head                       # Run migrations (SQLite file)
-uv run alembic revision --autogenerate -m "desc"  # Generate migration after model changes
+uv run alembic -c app/migrations/alembic.ini upgrade head          # Run migrations (SQLite file)
+uv run alembic -c app/migrations/alembic.ini revision --autogenerate -m "desc"  # Generate migration
 
 # Fixtures
 python3 tests/fixtures/download_fixtures.py       # Download Gutenberg test books
@@ -205,7 +205,7 @@ Factory: app/services/summarizer/__init__.py
 5. **Job completion semantics**: `summarize_book()` returns `{completed, skipped, failed, retried}`. The processing route marks the job `FAILED` only if `completed == 0 and failed > 0`. Partial failures still mark `COMPLETED` but include counts in `error_message`.
 6. **LLM provider may be None**: Never assume `get_summarizer_service()` / `get_eval_service()` return a service. When Claude/Codex CLI is not on `$PATH`, they return `None`. UI must show the "no LLM provider" banner and skip summarization actions.
 7. **Lazy loading after commit crashes**: Accessing `book.sections` or `book.authors` after `session.commit()` raises `MissingGreenlet`. Fix: use `selectinload()` in repo queries, or re-fetch via `get_by_id()` after commit.
-8. **Alembic async engine**: `alembic/env.py` runs `asyncio.run(run_migrations_online())`, uses `render_as_batch=True` for SQLite ALTER TABLE compatibility.
+8. **Alembic async engine**: `app/migrations/env.py` runs `asyncio.run(run_migrations_online())`, uses `render_as_batch=True` for SQLite ALTER TABLE compatibility. `env.py` reads `Settings().database.url` directly — it does NOT honor `Config.set_main_option("sqlalchemy.url", ...)`, so tests that need to redirect migrations use `BOOKCOMPANION_DATABASE__URL` env var. `init_cmd._run_migrations()` dispatches to a worker thread because `init` already runs inside an `asyncio.run` via `@async_command`; nested `asyncio.run` is forbidden.
 9. **FTS5 triggers auto-sync**: `search_fts` virtual table has AI/AD/AU triggers on `search_index`. Inserts/updates/deletes on `search_index` propagate to FTS5 automatically — do NOT manually insert into `search_fts`.
 10. **Semantic search loads all embeddings into Python**: `SearchIndex.embedding` BLOBs are fetched for the query scope and compared via numpy cosine similarity. Fine for personal library scale (<100 books); would need chunked comparison for 100k+ documents.
 11. **Claude CLI `structured_output` field**: With `--json-schema`, the CLI returns parsed JSON in `structured_output`, not `result` (which is empty). `ClaudeCodeCLIProvider._parse_response()` checks `structured_output` first.

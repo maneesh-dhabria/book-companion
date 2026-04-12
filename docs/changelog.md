@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-04-12 — Packaging Hardening (sdist + programmatic migrations)
+
+- `uv build` now produces both sdist and wheel in a single invocation. Users installing from sdist (e.g., platforms without a prebuilt wheel) no longer need Node.js — the SPA is built at sdist-creation time and shipped inside the tarball.
+- `bookcompanion init` runs migrations programmatically via `alembic.command.upgrade()` — no `uv`, no `alembic` on `$PATH`, no `cd backend` assumption. Migrations, Alembic config, and the CLI all ship inside the installed package under `app/migrations/`.
+- Migrations run in a worker thread so `init` (already inside an `asyncio.run` via `@async_command`) doesn't hit "nested `asyncio.run()`" when env.py spins up its own loop.
+- `backend/scripts/verify_packaging.sh` + a `@pytest.mark.slow` test now validate the full build → install → run flow locally (twine, wheel-contents lint, fresh-venv install from both wheel and sdist, isolated `uv tool install`, optional Docker clean-room). Run via `bash scripts/verify_packaging.sh` before any release.
+
 ## 2026-04-12 — Bundled Web UI in the Wheel
 
 - `pip install bookcompanion` now ships with the Vue web UI included — `bookcompanion serve` immediately serves the UI at `http://localhost:8000/` with no extra build step
