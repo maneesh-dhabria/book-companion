@@ -9,9 +9,9 @@ dependencies = [
     "rich>=13.0.0",
     # Database
     "sqlalchemy[asyncio]>=2.0.0",
-    "asyncpg>=0.30.0",
+    "aiosqlite>=0.20.0",
     "alembic>=1.14.0",
-    "pgvector>=0.4.0",
+    "sqlite-vec>=0.1.0",
     # Config
     "pydantic-settings>=2.0.0",
     "pyyaml>=6.0",
@@ -19,8 +19,11 @@ dependencies = [
     "ebooklib>=0.18",
     "markdownify>=0.14.0",
     "pymupdf4llm>=0.0.17",
-    # Embeddings & HTTP
+    # Embeddings
+    "fastembed>=0.4.0",
     "httpx>=0.28.0",
+    # Platform
+    "platformdirs>=4.0.0",
     # Clipboard (for --copy flag)
     "pyperclip>=1.9.0",
     # Prompts
@@ -42,7 +45,6 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
-    "psycopg2-binary>=2.9.0",
 ]
 
 [project.scripts]

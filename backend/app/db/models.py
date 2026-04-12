@@ -4,7 +4,6 @@ import enum
 from datetime import datetime
 
 import sqlalchemy
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     BigInteger,
@@ -19,8 +18,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
 
@@ -257,21 +256,11 @@ class SearchIndex(Base):
     )
     chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, default=0)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
-    tsvector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     __table_args__ = (
         Index("ix_search_index_source", "source_type", "source_id"),
         Index("ix_search_index_book_id", "book_id"),
-        Index(
-            "ix_search_index_embedding",
-            "embedding",
-            postgresql_using="hnsw",
-            postgresql_with={"m": 16, "ef_construction": 64},
-            postgresql_ops={"embedding": "vector_cosine_ops"},
-        ),
-        Index("ix_search_index_tsvector", "tsvector", postgresql_using="gin"),
     )
 
 
@@ -331,7 +320,7 @@ class EvalTrace(Base):
     __table_args__ = (
         Index("ix_eval_traces_section", "section_id"),
         Index("ix_eval_traces_assertion", "assertion_name", "passed"),
-        Index("ix_eval_traces_is_stale", "is_stale", postgresql_where="is_stale = FALSE"),
+        Index("ix_eval_traces_is_stale", "is_stale", sqlite_where=text("is_stale = 0")),
     )
 
 
@@ -348,7 +337,7 @@ class Summary(Base):
         BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     preset_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    facets_used: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    facets_used: Mapped[dict] = mapped_column(JSON, nullable=False)
     prompt_text_sent: Mapped[str] = mapped_column(Text, nullable=False)
     model_used: Mapped[str] = mapped_column(String(100), nullable=False)
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -499,8 +488,8 @@ class LibraryView(Base):
         String(50), default="updated_at", server_default="updated_at"
     )
     sort_direction: Mapped[str] = mapped_column(String(4), default="desc", server_default="desc")
-    filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    table_columns: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    filters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    table_columns: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

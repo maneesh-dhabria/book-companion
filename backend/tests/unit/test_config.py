@@ -39,21 +39,29 @@ def clean_env():
 def test_default_settings():
     """Settings load with sensible defaults."""
     settings = Settings()
-    assert (
-        settings.database.url
-        == "postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion"
-    )
+    # Data directory uses platformdirs
+    assert "bookcompanion" in settings.data.directory
+    # Database URL is SQLite in data dir
+    assert "sqlite+aiosqlite" in settings.database.url
+    assert "library.db" in settings.database.url
+    # LLM config
     assert settings.llm.cli_command == "claude"
     assert settings.llm.model == "sonnet"
     assert settings.llm.timeout_seconds == 300
-    assert settings.embedding.ollama_url == "http://localhost:11434"
-    assert settings.embedding.model == "nomic-embed-text"
+    # Embedding config — no more ollama fields
+    assert not hasattr(settings.embedding, "ollama_url")
+    assert not hasattr(settings.embedding, "model")
     assert settings.embedding.chunk_size == 512
     assert settings.embedding.chunk_overlap == 50
+    # Search
     assert settings.search.rrf_k == 60
     assert settings.search.default_limit == 20
     assert settings.storage.max_file_size_mb == 200
     assert settings.summarization.default_preset == "practitioner_bullets"
+    # Backup config
+    assert settings.backup.frequency == "daily"
+    assert settings.backup.max_backups == 5
+    assert "backups" in settings.backup.directory
 
 
 def test_env_var_override():
@@ -67,12 +75,20 @@ def test_config_file_loading(tmp_path):
     """Settings load from YAML config file."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        "database:\n  url: postgresql+asyncpg://custom:custom@localhost:5432/custom\n"
+        "database:\n  url: sqlite+aiosqlite:///custom.db\n"
         "llm:\n  model: opus\n"
     )
     os.environ["BOOKCOMPANION_CONFIG"] = str(config_file)
     settings = Settings()
     assert settings.llm.model == "opus"
+
+
+def test_data_dir_env_override():
+    """BOOKCOMPANION_DATA__DIRECTORY overrides default."""
+    os.environ["BOOKCOMPANION_DATA__DIRECTORY"] = "/tmp/bc-test"
+    settings = Settings()
+    assert settings.data.directory == "/tmp/bc-test"
+    assert "/tmp/bc-test/library.db" in settings.database.url
 
 
 def test_summarization_default_preset():
