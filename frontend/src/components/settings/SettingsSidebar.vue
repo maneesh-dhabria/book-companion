@@ -13,6 +13,7 @@ const sections = [
   { id: 'presets', label: 'Presets', icon: '📋' },
   { id: 'reading', label: 'Reading', icon: '📖' },
   { id: 'backup', label: 'Backup & Export', icon: '💾' },
+  { id: 'llm', label: 'LLM Provider', icon: '🤖' },
 ]
 </script>
 

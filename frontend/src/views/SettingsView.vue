@@ -7,6 +7,7 @@ import DatabaseSettings from '@/components/settings/DatabaseSettings.vue'
 import PresetSettings from '@/components/settings/PresetSettings.vue'
 import ReadingSettings from '@/components/settings/ReadingSettings.vue'
 import BackupSettings from '@/components/settings/BackupSettings.vue'
+import LlmSettings from '@/components/settings/LlmSettings.vue'
 import { useSettingsStore } from '@/stores/settings'
 
 const route = useRoute()
@@ -40,6 +41,7 @@ onMounted(() => {
         <PresetSettings v-else-if="activeSection === 'presets'" />
         <ReadingSettings v-else-if="activeSection === 'reading'" />
         <BackupSettings v-else-if="activeSection === 'backup'" />
+        <LlmSettings v-else-if="activeSection === 'llm'" />
       </div>
     </div>
   </div>

@@ -9,6 +9,8 @@ export interface AppSettings {
   }
   llm: {
     provider: string
+    cli_command: string
+    config_dir: string | null
     model: string
     timeout_seconds: number
     max_retries: number
