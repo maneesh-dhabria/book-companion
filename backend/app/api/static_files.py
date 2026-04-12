@@ -8,7 +8,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from fastapi import HTTPException
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 if TYPE_CHECKING:
     from starlette.responses import Response
@@ -32,8 +34,21 @@ class CachingStaticFiles(StaticFiles):
     """Emit no-cache on index.html and long-lived immutable on assets/."""
 
     async def get_response(self, path: str, scope: Scope) -> Response:
-        response = await super().get_response(path, scope)
-        if response.status_code == 200:
+        try:
+            response = await super().get_response(path, scope)
+            status = response.status_code
+        except (HTTPException, StarletteHTTPException) as exc:
+            if exc.status_code != 404 or path.startswith("assets/"):
+                raise
+            response = await super().get_response("index.html", scope)
+            status = response.status_code
+
+        # SPA fallback on 404 returned as a response (rare path).
+        if status == 404 and not path.startswith("assets/"):
+            response = await super().get_response("index.html", scope)
+            status = response.status_code
+
+        if status == 200:
             if path.startswith("assets/"):
                 response.headers["cache-control"] = _IMMUTABLE
             else:
