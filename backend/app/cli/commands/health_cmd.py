@@ -1,9 +1,10 @@
-"""Health check CLI command — checks Docker, DB, migrations, disk."""
+"""Health check CLI command — checks DB, migrations, LLM, disk."""
 
 from __future__ import annotations
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -18,36 +19,30 @@ console = Console()
 async def health(
     verbose: bool = typer.Option(False, "--verbose", help="Show detailed information"),
 ):
-    """Check system health: Docker containers, DB, migrations, disk space."""
+    """Check system health: database, migrations, LLM provider, disk space."""
     settings = get_settings()
     table = Table(title="Book Companion Health Check")
     table.add_column("Component", style="bold")
     table.add_column("Status")
     table.add_column("Details")
 
-    # Docker containers
-    try:
-        result = subprocess.run(
-            ["docker", "compose", "ps", "--format", "{{.Name}}\t{{.Status}}"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            for line in result.stdout.strip().split("\n"):
-                parts = line.split("\t")
-                name = parts[0] if parts else "unknown"
-                status = parts[1] if len(parts) > 1 else "unknown"
-                is_up = "Up" in status or "running" in status.lower()
-                table.add_row(
-                    f"Docker: {name}",
-                    "[green]UP[/green]" if is_up else "[red]DOWN[/red]",
-                    status,
-                )
-        else:
-            table.add_row("Docker", "[yellow]?[/yellow]", "Could not check containers")
-    except Exception as e:
-        table.add_row("Docker", "[red]ERROR[/red]", str(e)[:60])
+    # Data directory
+    data_dir = Path(settings.data.directory)
+    table.add_row(
+        "Data Directory",
+        "[green]OK[/green]" if data_dir.exists() else "[red]Missing[/red]",
+        str(data_dir),
+    )
+
+    # LLM provider
+    from app.services.summarizer import detect_llm_provider
+
+    provider = detect_llm_provider()
+    table.add_row(
+        "LLM Provider",
+        "[green]OK[/green]" if provider else "[yellow]None[/yellow]",
+        provider or "No claude/codex CLI found",
+    )
 
     # DB connectivity
     try:

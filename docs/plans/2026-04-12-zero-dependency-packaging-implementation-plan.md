@@ -1195,3 +1195,4 @@ T1 (Config + Data Dirs)
 |------|----------|-------------|
 | 1    | FR-50 APScheduler wiring missing; sqlite-vec embedding format unclear; T13 conftest underspecified | Added APScheduler update step to T8; added JSON serialization note for sqlite-vec in T7; fleshed out conftest.py rewrite in T13 with code example |
 | 2    | Cosmetic only — task sizing acceptable, dependency ordering correct, type consistency confirmed | No changes needed |
+| 3 (execution) | **sqlite-vec blocked**: macOS system Python compiled without `enable_load_extension`. pysqlite3-binary has no macOS arm64 wheels. | **Pivoted to in-Python cosine similarity**: embeddings stored as BLOB (struct.pack float32) in SearchIndex.embedding column. Semantic search loads embeddings and computes cosine sim via numpy. Removed sqlite-vec and pysqlite3-binary deps, added numpy. FTS5 for BM25 unchanged. This eliminates T2 extension loading and simplifies T7 search queries. |

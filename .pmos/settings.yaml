@@ -1,0 +1,5 @@
+# Which workstream context to load for this repo
+workstream: book-companion
+
+# Where pipeline docs are stored (default: .pmos)
+docs_path: .pmos

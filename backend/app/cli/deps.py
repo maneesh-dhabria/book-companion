@@ -77,7 +77,7 @@ async def check_db_health(settings: Settings) -> bool:
         Console().print(
             f"[red]Database connection failed:[/red] {e}\n"
             f"Connection URL: {settings.database.url}\n"
-            f"Check: docker compose ps"
+            f"Check: bookcompanion init"
         )
         return False
     finally:

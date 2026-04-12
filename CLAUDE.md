@@ -2,28 +2,39 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Book Companion is a personal CLI tool for non-fiction book summarization and knowledge extraction. It parses EPUB/MOBI/PDF books, generates LLM-powered section and book summaries via Claude Code CLI subprocess, evaluates quality with a 16-assertion battery, and provides hybrid search (BM25 + semantic + RRF fusion) across a PostgreSQL + pgvector library. Layered monolith: Typer CLI → async service layer → SQLAlchemy 2.0 repositories → PostgreSQL 16.
+Book Companion is a personal tool for non-fiction book summarization and knowledge extraction. It parses EPUB/MOBI/PDF books, generates LLM-powered section and book summaries via Claude Code CLI subprocess, evaluates quality with a 16-assertion battery, and provides hybrid search (BM25 + semantic + RRF fusion) across a PostgreSQL + pgvector library. Two interfaces: a Typer CLI and a Vue 3 web UI backed by FastAPI. Layered monolith: CLI/API → async service layer → SQLAlchemy 2.0 repositories → PostgreSQL 16.
 
 ## Tech Stack
 
+**Backend** (in `backend/`):
 - Python 3.12+, uv (package manager), hatchling (build)
-- Typer + Rich (CLI), pydantic-settings (config), structlog (logging)
+- Typer + Rich (CLI), FastAPI + uvicorn (web API), pydantic-settings (config), structlog (logging)
 - SQLAlchemy 2.0 async (`asyncpg`), Alembic (migrations), pgvector
 - PostgreSQL 16 + pgvector in Docker (port 5438)
 - Ollama (`nomic-embed-text`, port 11434) for local embeddings
 - Claude Code CLI as subprocess for LLM calls (stdin prompt, JSON output)
 - ebooklib + markdownify (EPUB), pymupdf4llm (PDF), Calibre ebook-convert (MOBI)
 - Jinja2 prompt templates, pytest + pytest-asyncio
+- SSE via `sse-starlette` for real-time updates, APScheduler for automated backups
+
+**Frontend** (in `frontend/`):
+- Vue 3 + TypeScript + Vite 5
+- Tailwind CSS v4 (`@tailwindcss/vite` plugin)
+- Pinia (state), Vue Router 4, markdown-it + DOMPurify (rendering)
+- Vitest (unit tests), Playwright (e2e tests)
+
+**Environment**: Copy `.env.example` to `.env` before running Docker. Configures ports for DB (5438), API (8000), and Vite dev server (5173).
 
 ## Commands
 
-All commands run from `backend/`:
+### Backend (run from `backend/`)
 
 ```bash
 # Dev
 uv sync --dev                          # Install all dependencies
 uv run bookcompanion --help            # CLI help
 uv run bookcompanion init              # First-time setup (Docker, migrations, Ollama)
+uv run uvicorn app.api.main:app --reload --port 8000  # Start API dev server
 
 # Test
 uv run python -m pytest tests/                    # Full suite (78 tests)
@@ -70,16 +81,38 @@ uv run bookcompanion eval <book_id> <section_id> --force     # Re-run eval on se
 uv run bookcompanion eval <book_id> --summary-id <id>        # Evaluate a specific summary
 ```
 
+### Frontend (run from `frontend/`)
+
+```bash
+npm install                            # Install dependencies
+npm run dev                            # Vite dev server (port 5173, proxies /api → localhost:8000)
+npm run build                          # Production build (type-check + vite build → dist/)
+npm run test:unit                      # Vitest unit tests
+npm run test:e2e                       # Playwright e2e tests
+npm run lint                           # ESLint --fix
+npm run format                         # Prettier
+npm run type-check                     # vue-tsc type checking
+```
+
+### Docker (production, from repo root)
+
+```bash
+docker compose up -d                   # Start DB + backend (builds frontend in multi-stage Dockerfile)
+docker compose down -v                 # Destroy volumes and recreate
+```
+
+The Dockerfile is a two-stage build: Node 20 builds the Vue SPA, then Python 3.12-slim serves it as static files via FastAPI alongside the API. Container runs `alembic upgrade head` on startup, then launches uvicorn on port 8000. Bind mounts: `./data/backups` and `./data/config`.
+
 ## Architecture
 
 ```
-CLI Command (Typer)
-  │  @async_command wraps asyncio.run()
-  ▼
-deps.get_services()  →  yields dict of services sharing one AsyncSession
-  │
-  ▼
-Service Layer (async)
+Vue 3 SPA (frontend/)              CLI Command (Typer)
+  │  Axios → /api/*                  │  @async_command wraps asyncio.run()
+  ▼                                  ▼
+FastAPI (app/api/)              deps.get_services()
+  │  SSE for real-time updates       │  yields dict of services sharing one AsyncSession
+  ▼                                  ▼
+                    Service Layer (async, shared)
   ├── BookService         — parse, store, lifecycle orchestration
   ├── SummarizerService   — map-reduce: section summaries → book summary
   ├── EvalService         — 16 assertions in parallel, EvalTrace storage
@@ -89,7 +122,8 @@ Service Layer (async)
   ├── QualityService       — 10 deterministic extraction quality checks
   ├── SummaryService       — List, compare, set-default, concept diff
   ├── SectionEditService   — Merge/split/reorder/delete (memory + DB)
-  └── [Phase 2]           — annotation, tag, concept, export, backup, reference
+  ├── BackupService        — Automated/manual backups with APScheduler
+  ├── AnnotationService, ConceptService, ExportService, etc.
   │
   ▼
 Repository Layer (thin query builders)
@@ -100,7 +134,7 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 
 ### Key Patterns
 
-- **Constructor DI**: Services receive `AsyncSession`, `LLMProvider`, `Settings` via constructor. Wired in `cli/deps.py:get_services()`.
+- **Constructor DI**: Services receive `AsyncSession`, `LLMProvider`, `Settings` via constructor. CLI wired in `cli/deps.py:get_services()`. API wired via FastAPI dependency injection in `app/api/deps.py` using `app.state.session_factory`.
 - **Async-first**: Everything is async. CLI boundary uses `asyncio.run()`. No sync DB access.
 - **Eager loading required**: `expire_on_commit=False` on sessions means lazy-loaded relationships break after commit. Every repo query must use `selectinload()` for relationships accessed after the query.
 - **LLM via subprocess**: `ClaudeCodeCLIProvider` invokes `claude -p - --output-format json --print` with prompt piped via stdin. JSON schema for structured output via `--json-schema`.
@@ -160,6 +194,9 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 15. **`eval_json` is derived from traces (V1.3)**: `Summary.eval_json` is computed from `EvalTrace` rows via `EvalService.compute_eval_json()`. The wrapped format includes `{passed, total, eval_run_id, assertions: {name: {passed, reasoning, ...}}}`. All callers must consume the `assertions` key.
 16. **Stale eval traces**: Re-import marks traces as `is_stale=True` before section deletion. All `eval_repo` queries filter `WHERE is_stale = FALSE` by default. Pass `include_stale=True` to see old traces.
 17. **Deterministic assertions skip LLM**: `reasonable_length`, `has_key_concepts`, `image_refs_preserved` use pure code checks. Their `EvalTrace` has `model_used="deterministic"`, `prompt_sent=None`.
+18. **Vite proxy**: In dev, the frontend proxies `/api` requests to `localhost:8000`. In production Docker, FastAPI serves the built SPA from `./static/` — no separate frontend server.
+19. **CORS in dev**: FastAPI CORS middleware allows `localhost:5173` (Vite dev server). Not needed in production since same-origin.
+20. **Two-stage Docker build**: Node 20 builds the Vue SPA, Python 3.12-slim runs it. If frontend build fails, the entire Docker build fails.
 
 ## Extended Docs
 
@@ -168,6 +205,10 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 | `docs/specs/2026-04-01_book_companion_v1_spec.md` | V1 spec: models, CLI signatures, eval assertions, search algorithm |
 | `docs/requirements/2026-04-01_book_companion_v1_requirements.md` | Product requirements |
 | `docs/plans/2026-04-02_book_companion_v1_implementation.md` | 43-task implementation plan with complete code |
+| `docs/requirements/2026-04-10_web_interface_v1_requirements.md` | Web interface requirements |
+| `docs/specs/2026-04-10_web_interface_v1_spec.md` | Web interface spec: API routes, Vue components, SSE events |
+| `docs/plans/2026-04-10-web-interface-phase*` | Web interface implementation plans (3 phases) |
+| `docs/changelog.md` | User-facing changelog |
 | `backend/tests/fixtures/README.md` | How to download Gutenberg test books |
 
 ## Workflows
@@ -177,6 +218,12 @@ SQLAlchemy 2.0 async  →  asyncpg  →  PostgreSQL 16 + pgvector
 2. Wire service dependencies via `async with get_services() as svc:`
 3. Register in `backend/app/cli/main.py`: `app.command("my-cmd")(my_cmd.my_function)`
 4. Add to `cli/deps.py:get_services()` if the command needs a new service
+
+### Adding a new API route
+1. Create `backend/app/api/routes/my_route.py` with FastAPI router
+2. Import and include in `backend/app/api/main.py` with appropriate prefix
+3. Use `get_session` dependency from `app/api/deps.py` for DB access
+4. Use `app.state.event_bus` for SSE notifications if needed
 
 ### Adding a new prompt version
 1. Copy existing template: `cp prompts/summarize_section_v1.txt prompts/summarize_section_v2.txt`
