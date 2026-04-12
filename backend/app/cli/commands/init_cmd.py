@@ -15,15 +15,30 @@ console = Console()
 def _run_migrations() -> None:
     """Run alembic migrations programmatically.
 
-    Avoids subprocess/PATH fragility. env.py reads Settings() directly and
-    honors BOOKCOMPANION_DATABASE__URL, so no Config URL override is needed.
+    Runs in a worker thread so env.py's `asyncio.run(run_migrations_online())`
+    can create a fresh event loop. The caller (`init`) is itself inside an
+    `asyncio.run` (via `@async_command`), and nested `asyncio.run` is forbidden.
     """
+    import threading
+
     from alembic.command import upgrade
     from alembic.config import Config
 
     ini_path = files("app.migrations") / "alembic.ini"
     cfg = Config(str(ini_path))
-    upgrade(cfg, "head")
+    err: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            upgrade(cfg, "head")
+        except BaseException as e:
+            err.append(e)
+
+    t = threading.Thread(target=_worker)
+    t.start()
+    t.join()
+    if err:
+        raise err[0]
 
 
 @async_command
