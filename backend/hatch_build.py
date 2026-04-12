@@ -1,4 +1,5 @@
 """Custom Hatchling build hook: build the Vue SPA and bundle it into the wheel."""
+
 from __future__ import annotations
 
 import shutil

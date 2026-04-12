@@ -3,6 +3,7 @@
 Path helpers live here (not in main.py) so the CLI can import them without
 triggering create_app() as a side effect.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-12 — Bundled Web UI in the Wheel
+
+- `pip install bookcompanion` now ships with the Vue web UI included — `bookcompanion serve` immediately serves the UI at `http://localhost:8000/` with no extra build step
+- The Vue SPA is compiled and bundled during wheel creation by a custom Hatchling build hook (`npm ci && npm run build`, copied into `app/static/`)
+- Static assets are served with cache-friendly headers: `no-cache` on `index.html`, `public, max-age=31536000, immutable` on hashed files under `/assets/`
+- SPA deep links (e.g., `/library/<id>`) now fall back to `index.html` so direct-load and refresh work
+- New `bookcompanion serve --api-only` flag (also `BOOKCOMPANION_API_ONLY=1`) starts the JSON API without mounting the SPA — useful for local dev against the Vite dev server
+- Running `serve` from a source checkout without a built frontend now prints a clear, actionable error with two valid workflows instead of silently 404-ing the UI
+
 ## 2026-04-12 — Zero-Dependency Install: SQLite, in-process embeddings, multi-provider LLM
 
 **Install & Run**
