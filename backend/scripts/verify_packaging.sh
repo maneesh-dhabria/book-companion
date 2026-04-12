@@ -13,7 +13,10 @@
 #   cd backend && bash scripts/verify_packaging.sh
 #   VERIFY_DOCKER=1 bash scripts/verify_packaging.sh
 
-set -euo pipefail
+# Note: we use `set -eo pipefail` (no `-u`) because `"${arr[@]:-}"` on an empty
+# array under `set -u` is broken on macOS bash 3.2 (the system default).
+# Users on bash 4+ are unaffected.
+set -eo pipefail
 
 BACKEND_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$BACKEND_DIR/dist"
@@ -31,7 +34,12 @@ PIDS=()
 # These hold ports 88XX and cause confusing false-pass (port is up, but the old
 # wheel is answering). The trap below cleans up the current run's processes,
 # but can't reach prior runs' PIDs.
-pkill -9 -f "bookcompanion serve --port 887" 2>/dev/null || true
+# Use word-boundary + specific port range (8871|8872|8873|8874) so we don't
+# accidentally kill some unrelated dev server that happens to have "887" in its
+# argv (e.g., Vite on :8875).
+for p in 8871 8872 8873 8874; do
+  pkill -9 -f "bookcompanion serve --port $p" 2>/dev/null || true
+done
 
 cleanup() {
   set +eu

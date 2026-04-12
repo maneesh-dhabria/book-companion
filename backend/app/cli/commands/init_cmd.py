@@ -26,12 +26,12 @@ def _run_migrations() -> None:
 
     ini_path = files("app.migrations") / "alembic.ini"
     cfg = Config(str(ini_path))
-    err: list[BaseException] = []
+    err: list[Exception] = []
 
     def _worker() -> None:
         try:
             upgrade(cfg, "head")
-        except BaseException as e:
+        except Exception as e:
             err.append(e)
 
     t = threading.Thread(target=_worker)

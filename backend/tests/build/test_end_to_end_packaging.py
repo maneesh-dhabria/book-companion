@@ -63,3 +63,16 @@ def test_built_sdist_installs_and_runs(tmp_path):
     )
     assert result.returncode == 0, f"bookcompanion --help failed: {result.stderr}"
     assert "bookcompanion" in result.stdout.lower()
+
+    # Prove the prebuilt-detection branch of the hatch hook actually ran during
+    # the sdist→wheel→install flow: the installed site-packages must carry the
+    # Vue SPA that was bundled at sdist-creation time.
+    site_packages = next(env_dir.glob("lib/python*/site-packages"))
+    installed_index = site_packages / "app" / "static" / "index.html"
+    assert installed_index.is_file(), (
+        f"{installed_index} missing — sdist→wheel path did not preserve prebuilt SPA"
+    )
+    installed_migration_ini = site_packages / "app" / "migrations" / "alembic.ini"
+    assert installed_migration_ini.is_file(), (
+        f"{installed_migration_ini} missing — migrations not in installed package"
+    )
