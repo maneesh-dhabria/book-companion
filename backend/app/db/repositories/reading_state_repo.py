@@ -1,7 +1,7 @@
 """Reading state repository — thin query builder for reading_state table."""
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,7 +21,7 @@ class ReadingStateRepository:
         content_mode: str = "summary",
     ) -> ReadingState:
         """Insert or update reading state by user_agent using ON CONFLICT."""
-        stmt = pg_insert(ReadingState).values(
+        stmt = sqlite_insert(ReadingState).values(
             user_agent=user_agent,
             book_id=book_id,
             section_id=section_id,
