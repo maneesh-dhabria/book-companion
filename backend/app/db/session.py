@@ -26,16 +26,6 @@ def create_engine(settings: Settings):
         # Enable foreign key enforcement (off by default in SQLite)
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
-        # Load sqlite-vec extension for vector search
-        try:
-            dbapi_conn.enable_load_extension(True)
-            dbapi_conn.load_extension("vec0")
-            dbapi_conn.enable_load_extension(False)
-        except Exception:
-            logger.warning(
-                "sqlite-vec extension not available — semantic search disabled, BM25-only"
-            )
-
     return engine
 
 

@@ -1,13 +1,17 @@
 """Alembic migration environment — async engine support."""
 
 import asyncio
+import logging
 from logging.config import fileConfig
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from app.config import Settings
 from app.db.models import Base
+
+logger = logging.getLogger(__name__)
 
 config = context.config
 if config.config_file_name is not None:
@@ -18,20 +22,26 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    context.configure(
+        url=url, target_metadata=target_metadata, literal_binds=True, render_as_batch=True
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, render_as_batch=True
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_migrations_online() -> None:
     settings = Settings()
-    connectable = create_async_engine(settings.database.url)
+    connectable = create_async_engine(
+        settings.database.url, connect_args={"check_same_thread": False}
+    )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
