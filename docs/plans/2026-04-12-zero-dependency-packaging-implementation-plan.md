@@ -131,6 +131,7 @@ T1 (Config + Data Dirs)
 | sqlite-vec missing prebuilt wheels for a platform | Medium | Graceful degradation: catch `ImportError`/`OperationalError` on load, fall back to BM25-only. Test on macOS arm64 + Linux x86_64. |
 | fastembed model identifier wrong | Low | Verify with `fastembed.TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")` in T5 before proceeding. |
 | FTS5 content sync triggers interfere with ORM flush order | Medium | Test triggers fire correctly with SQLAlchemy ORM inserts in T7 integration test. If triggers fail, switch to manual FTS5 inserts in SearchService. |
+| sqlite-vec embedding serialization format | Low (resolved) | Use `sqlite_vec.serialize_float32()` for binary serialization on both insert and query. Verified via sqlite-vec Python docs and examples. |
 | Existing tests break in bulk during T13 | High (expected) | Dedicated task with systematic approach: fix conftest first, then unit, then integration. |
 
 ---
@@ -618,13 +619,12 @@ T1 (Config + Data Dirs)
       await db_session.flush()
 
       # Insert embedding into search_vec
-      # Note: sqlite-vec requires embeddings as JSON arrays or binary blobs.
-      # Use JSON serialization: sqlite-vec accepts '[0.1, 0.1, ...]' format.
-      import json
+      # sqlite-vec requires binary serialization via serialize_float32()
+      from sqlite_vec import serialize_float32
       fake_embedding = [0.1] * 384
       await db_session.execute(
           text("INSERT INTO search_vec(rowid, embedding) VALUES (:id, :emb)"),
-          {"id": entry.id, "emb": json.dumps(fake_embedding)}
+          {"id": entry.id, "emb": serialize_float32(fake_embedding)}
       )
 
       from app.db.repositories.search_repo import SearchRepo
@@ -635,16 +635,17 @@ T1 (Config + Data Dirs)
 
 - [ ] Step 2: Rewrite `search_repo.py`
   - `bm25_search()`: use raw SQL `SELECT si.*, bm25(search_fts) as rank FROM search_index si JOIN search_fts ON si.id = search_fts.rowid WHERE search_fts MATCH :query ORDER BY rank LIMIT :limit`
-  - `semantic_search()`: use raw SQL with sqlite-vec `SELECT si.*, distance FROM search_index si JOIN (SELECT rowid, distance FROM search_vec WHERE embedding MATCH :query_embedding AND k = :limit) vec ON si.id = vec.rowid ORDER BY vec.distance`
+  - `semantic_search()`: use raw SQL with sqlite-vec. Query embedding must be serialized via `serialize_float32()` before passing as parameter: `SELECT si.*, distance FROM search_index si JOIN (SELECT rowid, distance FROM search_vec WHERE embedding MATCH :query_embedding AND k = :limit) vec ON si.id = vec.rowid ORDER BY vec.distance`
   - `delete_by_book()` and `delete_by_source()`: add raw SQL to delete from `search_vec` by rowid before deleting from `search_index` (FTS5 handles its own deletion via trigger)
 
 - [ ] Step 3: Update `search_service.py` index methods
   - Remove `tsvector=func.to_tsvector("english", chunk)` from all `SearchIndex(...)` constructors in `index_section`, `index_image_captions`, `index_annotation`, `index_concept`
-  - After each `session.flush()` that creates SearchIndex entries, add raw SQL to insert embeddings into `search_vec`:
+  - After each `session.flush()` that creates SearchIndex entries, add raw SQL to insert embeddings into `search_vec` using `sqlite_vec.serialize_float32()` for binary serialization:
     ```python
+    from sqlite_vec import serialize_float32
     await self.session.execute(
         text("INSERT INTO search_vec(rowid, embedding) VALUES (:id, :emb)"),
-        {"id": entry.id, "emb": serialize_embedding(embedding)}
+        {"id": entry.id, "emb": serialize_float32(embedding)}
     )
     ```
   - FTS5 content syncs automatically via triggers (no manual insert needed)
