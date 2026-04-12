@@ -8,7 +8,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import (
     ai_threads,
@@ -31,6 +30,7 @@ from app.api.routes import (
     settings as settings_routes,
 )
 from app.api.sse import EventBus
+from app.api.static_files import CachingStaticFiles, _assets_present, _resolve_static_dir
 from app.config import Settings
 from app.db.session import create_session_factory
 
@@ -137,11 +137,12 @@ def create_app() -> FastAPI:
     app.include_router(settings_routes.router)
     app.include_router(reading_state.router)
 
-    # Serve static files (built Vue SPA) if directory exists
-    settings = Settings()
-    static_dir = Path(os.getcwd()) / settings.web.static_dir
-    if static_dir.is_dir():
-        app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+    # Serve built Vue SPA if assets are present. Mounted AFTER routers
+    # so /api/*, /health, /docs always match first (FR-11a).
+    api_only = os.environ.get("BOOKCOMPANION_API_ONLY", "") not in ("", "0", "false", "False")
+    if not api_only and _assets_present():
+        static_dir = _resolve_static_dir()
+        app.mount("/", CachingStaticFiles(directory=str(static_dir), html=True), name="static")
 
     return app
 

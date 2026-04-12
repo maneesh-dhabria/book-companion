@@ -70,6 +70,9 @@ class NetworkConfig(BaseModel):
 
 class WebConfig(BaseModel):
     show_cost_estimates: bool = False
+    # Deprecated: no longer honored. Static dir is resolved relative to the `app`
+    # package (`app/static/`). Field retained to avoid validation errors for users
+    # with BOOKCOMPANION_WEB__STATIC_DIR already set.
     static_dir: str = "static"
 
 

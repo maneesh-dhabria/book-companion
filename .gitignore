@@ -78,6 +78,9 @@ config.yaml
 frontend/dist/
 backend/static/
 
+# Built SPA bundled at wheel-build time by hatch_build.py
+backend/app/static/
+
 # uv
 uv.lock
 .worktrees/
