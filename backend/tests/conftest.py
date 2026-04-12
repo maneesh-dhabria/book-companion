@@ -1,10 +1,11 @@
-"""Shared test fixtures."""
+"""Shared test fixtures — SQLite-based."""
 
 import os
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -14,22 +15,72 @@ from sqlalchemy.ext.asyncio import (
 from app.config import Settings
 from app.db.models import Base
 
-TEST_DB_URL = "postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion_test"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(scope="session")
-def test_settings() -> Settings:
-    os.environ["BOOKCOMPANION_DATABASE__URL"] = TEST_DB_URL
+def test_db_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("db") / "test.db"
+
+
+@pytest.fixture(scope="session")
+def test_settings(test_db_path) -> Settings:
+    os.environ["BOOKCOMPANION_DATA__DIRECTORY"] = str(test_db_path.parent)
+    os.environ["BOOKCOMPANION_DATABASE__URL"] = f"sqlite+aiosqlite:///{test_db_path}"
     return Settings()
 
 
 @pytest_asyncio.fixture
-async def engine(test_settings):
-    """Create a fresh engine per test module to avoid event loop issues."""
-    eng = create_async_engine(TEST_DB_URL, pool_pre_ping=True)
+async def engine(test_settings, test_db_path):
+    """Create a fresh engine per test with SQLite + FTS5 virtual tables."""
+    url = f"sqlite+aiosqlite:///{test_db_path}"
+    from sqlalchemy import event
+
+    eng = create_async_engine(url, connect_args={"check_same_thread": False})
+
+    @event.listens_for(eng.sync_engine, "connect")
+    def _set_pragmas(dbapi_conn, connection_record):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
     async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        # Create FTS5 virtual table
+        await conn.execute(
+            text("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts5(
+                    chunk_text,
+                    content=search_index,
+                    content_rowid=id,
+                    tokenize='porter unicode61'
+                )
+            """)
+        )
+        # FTS5 sync triggers
+        await conn.execute(
+            text("""
+                CREATE TRIGGER IF NOT EXISTS search_fts_ai AFTER INSERT ON search_index BEGIN
+                    INSERT INTO search_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+                END
+            """)
+        )
+        await conn.execute(
+            text("""
+                CREATE TRIGGER IF NOT EXISTS search_fts_ad AFTER DELETE ON search_index BEGIN
+                    INSERT INTO search_fts(search_fts, rowid, chunk_text)
+                    VALUES ('delete', old.id, old.chunk_text);
+                END
+            """)
+        )
+        await conn.execute(
+            text("""
+                CREATE TRIGGER IF NOT EXISTS search_fts_au AFTER UPDATE ON search_index BEGIN
+                    INSERT INTO search_fts(search_fts, rowid, chunk_text)
+                    VALUES ('delete', old.id, old.chunk_text);
+                    INSERT INTO search_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+                END
+            """)
+        )
     yield eng
     await eng.dispose()
 

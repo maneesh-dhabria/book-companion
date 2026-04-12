@@ -6,7 +6,7 @@ from datetime import datetime
 import sqlalchemy
 from sqlalchemy import (
     JSON,
-    BigInteger,
+    Integer,
     Boolean,
     DateTime,
     Enum,
@@ -113,7 +113,7 @@ class SectionType(str, enum.Enum):
 class Author(Base):
     __tablename__ = "authors"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -124,15 +124,15 @@ class Author(Base):
 class Book(Base):
     __tablename__ = "books"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
     file_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     file_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     file_format: Mapped[str] = mapped_column(String(10), nullable=False)
-    file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     cover_image: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     default_summary_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
@@ -170,10 +170,10 @@ class BookAuthor(Base):
     __tablename__ = "book_authors"
 
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), primary_key=True
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), primary_key=True
     )
     author_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True
+        Integer, ForeignKey("authors.id", ondelete="CASCADE"), primary_key=True
     )
     role: Mapped[str] = mapped_column(String(50), default="author")
 
@@ -181,12 +181,12 @@ class BookAuthor(Base):
 class BookSection(Base):
     __tablename__ = "book_sections"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     parent_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("book_sections.id", ondelete="SET NULL"),
         nullable=True,
     )
@@ -196,7 +196,7 @@ class BookSection(Base):
     content_md: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     default_summary_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
@@ -224,9 +224,9 @@ class BookSection(Base):
 class Image(Base):
     __tablename__ = "images"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     section_id: Mapped[int] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("book_sections.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -248,11 +248,11 @@ class Image(Base):
 class SearchIndex(Base):
     __tablename__ = "search_index"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_type: Mapped[SourceType] = mapped_column(Enum(SourceType), nullable=False)
-    source_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    source_id: Mapped[int] = mapped_column(Integer, nullable=False)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, default=0)
@@ -268,9 +268,9 @@ class SearchIndex(Base):
 class ProcessingJob(Base):
     __tablename__ = "processing_jobs"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     step: Mapped[ProcessingStep] = mapped_column(Enum(ProcessingStep), nullable=False)
     status: Mapped[ProcessingJobStatus] = mapped_column(
@@ -290,14 +290,14 @@ class ProcessingJob(Base):
 class EvalTrace(Base):
     __tablename__ = "eval_traces"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     section_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("book_sections.id", ondelete="SET NULL"),
         nullable=True,
     )
     summary_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("summaries.id", ondelete="SET NULL"),
         nullable=True,
     )
@@ -328,14 +328,14 @@ class EvalTrace(Base):
 class Summary(Base):
     __tablename__ = "summaries"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     content_type: Mapped[SummaryContentType] = mapped_column(
         Enum(SummaryContentType, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
-    content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    content_id: Mapped[int] = mapped_column(Integer, nullable=False)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     preset_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     facets_used: Mapped[dict] = mapped_column(JSON, nullable=False)
@@ -367,7 +367,7 @@ class Summary(Base):
 class Tag(Base):
     __tablename__ = "tags"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -377,25 +377,25 @@ class Taggable(Base):
     __tablename__ = "taggables"
 
     tag_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
+        Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
     )
     taggable_type: Mapped[str] = mapped_column(String(50), primary_key=True)
-    taggable_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    taggable_id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class Annotation(Base):
     __tablename__ = "annotations"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     content_type: Mapped[ContentType] = mapped_column(Enum(ContentType), nullable=False)
-    content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    content_id: Mapped[int] = mapped_column(Integer, nullable=False)
     text_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
     text_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
     selected_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     type: Mapped[AnnotationType] = mapped_column(Enum(AnnotationType), default=AnnotationType.NOTE)
     linked_annotation_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("annotations.id", ondelete="SET NULL"),
         nullable=True,
     )
@@ -416,12 +416,12 @@ class Annotation(Base):
 class Concept(Base):
     __tablename__ = "concepts"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     first_section_id: Mapped[int | None] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("book_sections.id", ondelete="SET NULL"),
         nullable=True,
     )
@@ -446,10 +446,10 @@ class ConceptSection(Base):
     __tablename__ = "concept_sections"
 
     concept_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("concepts.id", ondelete="CASCADE"), primary_key=True
+        Integer, ForeignKey("concepts.id", ondelete="CASCADE"), primary_key=True
     )
     section_id: Mapped[int] = mapped_column(
-        BigInteger,
+        Integer,
         ForeignKey("book_sections.id", ondelete="CASCADE"),
         primary_key=True,
     )
@@ -458,9 +458,9 @@ class ConceptSection(Base):
 class ExternalReference(Base):
     __tablename__ = "external_references"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     url: Mapped[str] = mapped_column(String(2000), nullable=False)
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
@@ -482,7 +482,7 @@ class ExternalReference(Base):
 class LibraryView(Base):
     __tablename__ = "library_views"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     display_mode: Mapped[str] = mapped_column(String(20), default="grid", server_default="grid")
     sort_field: Mapped[str] = mapped_column(
@@ -502,7 +502,7 @@ class LibraryView(Base):
 class ReadingPreset(Base):
     __tablename__ = "reading_presets"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     font_family: Mapped[str] = mapped_column(
         String(100), default="Georgia", server_default="Georgia"
@@ -521,9 +521,9 @@ class ReadingPreset(Base):
 class AIThread(Base):
     __tablename__ = "ai_threads"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     book_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -540,9 +540,9 @@ class AIThread(Base):
 class AIMessage(Base):
     __tablename__ = "ai_messages"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     thread_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("ai_threads.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("ai_threads.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -554,7 +554,7 @@ class AIMessage(Base):
 class RecentSearch(Base):
     __tablename__ = "recent_searches"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     query: Mapped[str] = mapped_column(String(1000), nullable=False)
     result_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -563,13 +563,13 @@ class RecentSearch(Base):
 class ReadingState(Base):
     __tablename__ = "reading_state"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_agent: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
     book_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("books.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("books.id", ondelete="SET NULL"), nullable=True
     )
     section_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("book_sections.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("book_sections.id", ondelete="SET NULL"), nullable=True
     )
     scroll_position: Mapped[float | None] = mapped_column(
         sqlalchemy.Float, nullable=True
@@ -578,7 +578,7 @@ class ReadingState(Base):
         String(20), default="summary", server_default="summary"
     )
     reading_preset_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("reading_presets.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("reading_presets.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

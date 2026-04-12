@@ -1,24 +1,50 @@
 """Shared fixtures for API integration tests."""
 
+import os
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.api.main import create_app
 from app.config import Settings
+from app.db.models import Base
 from app.db.session import create_session_factory
 
 
 @pytest.fixture
-def app():
-    """Create a FastAPI app with session factory pre-initialized (no lifespan needed)."""
+def app(tmp_path):
+    """Create a FastAPI app with SQLite test database."""
+    db_path = tmp_path / "api_test.db"
+    os.environ["BOOKCOMPANION_DATA__DIRECTORY"] = str(tmp_path)
+    os.environ["BOOKCOMPANION_DATABASE__URL"] = f"sqlite+aiosqlite:///{db_path}"
+
     application = create_app()
     settings = Settings()
-    # Override DB URL to use test database
-    settings.database.url = (
-        "postgresql+asyncpg://bookcompanion:bookcompanion@localhost:5438/bookcompanion_test"
-    )
     application.state.settings = settings
     application.state.session_factory = create_session_factory(settings)
+
+    # Initialize schema synchronously
+    import asyncio
+
+    async def _init_schema():
+        eng = create_async_engine(
+            settings.database.url, connect_args={"check_same_thread": False}
+        )
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(
+                text("""
+                    CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts5(
+                        chunk_text, content=search_index, content_rowid=id,
+                        tokenize='porter unicode61'
+                    )
+                """)
+            )
+        await eng.dispose()
+
+    asyncio.run(_init_schema())
     return application
 
 
