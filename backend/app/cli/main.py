@@ -78,11 +78,13 @@ from app.cli.commands import (
     health_cmd,
     init_cmd,
     search_cmd,
+    serve_cmd,
     status_cmd,
     summarize_cmd,
 )
 
 app.command("init")(init_cmd.init)
+app.command("serve")(serve_cmd.serve)
 app.command("add")(books.add)
 app.command("list")(books.list_books)
 app.command("show")(books.show)

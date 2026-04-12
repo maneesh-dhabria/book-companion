@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -12,39 +13,36 @@ console = Console()
 
 
 @async_command
-async def init(
-    database_url: str = typer.Option(None, "--database-url", help="Override database URL."),
-):
-    """First-time setup: start PostgreSQL, run migrations, verify dependencies."""
+async def init():
+    """First-time setup: create data directory, initialize database, download embedding model."""
+    settings = get_settings()
+    data_dir = Path(settings.data.directory)
+
+    console.print("\n[bold]Book Companion — First-Time Setup[/bold]\n")
+
+    # 1. Create data directory
+    console.print("Creating data directory...")
+    data_dir.mkdir(parents=True, exist_ok=True)
+    console.print(f"  [green]✓[/green] {data_dir}")
+
+    # 2. Check optional dependencies
     console.print("\nChecking dependencies...")
+    _check_dependency("ebook-convert (Calibre)", "ebook-convert", ["--version"], required=False)
 
-    # 1. Check Docker
-    _check_dependency("Docker", "docker", ["--version"])
+    # 3. Detect LLM providers
+    from app.services.summarizer import detect_llm_provider
 
-    # 2. Check Ollama
-    _check_dependency("Ollama", "curl", ["-s", "http://localhost:11434/api/tags"])
-
-    # 3. Check Calibre
-    _check_dependency("ebook-convert", "ebook-convert", ["--version"], required=False)
-
-    # 4. Check Claude Code CLI
-    _check_dependency("Claude Code CLI", "claude", ["--version"])
-
-    # 5. Start PostgreSQL if not running
-    console.print("\nStarting PostgreSQL container...")
-    result = subprocess.run(
-        ["docker", "compose", "up", "-d"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
-        console.print("  [green]PostgreSQL 16 + pgvector: running on port 5438[/green]")
+    provider = detect_llm_provider()
+    if provider:
+        console.print(f"  [green]✓[/green] LLM provider: {provider}")
     else:
-        console.print(f"  [red]Failed: {result.stderr}[/red]")
-        raise typer.Exit(1)
+        console.print(
+            "  [yellow]⚠[/yellow] No LLM provider found (claude/codex). "
+            "Summarization will be unavailable."
+        )
 
-    # 6. Run migrations
-    console.print("\nRunning database migrations...")
+    # 4. Run database migrations
+    console.print("\nInitializing database...")
     result = subprocess.run(
         ["uv", "run", "alembic", "upgrade", "head"],
         capture_output=True,
@@ -52,30 +50,31 @@ async def init(
         cwd="backend" if not shutil.which("alembic") else None,
     )
     if result.returncode == 0:
-        console.print("  [green]Migrations applied[/green]")
+        console.print("  [green]✓[/green] Database initialized")
     else:
-        console.print(f"  [yellow]Migration warning: {result.stderr[:200]}[/yellow]")
+        console.print(f"  [yellow]⚠[/yellow] Migration warning: {result.stderr[:200]}")
 
-    # 7. Pull embedding model
-    console.print("\nPulling embedding model...")
-    result = subprocess.run(
-        ["ollama", "pull", "nomic-embed-text"],
-        capture_output=True,
-        text=True,
-    )
-    console.print("  [green]nomic-embed-text: ready[/green]")
+    # 5. Download embedding model (warm-up)
+    console.print("\nDownloading embedding model (first time only, ~23MB)...")
+    try:
+        from fastembed import TextEmbedding
 
-    # 8. Print getting started
-    settings = get_settings()
-    config_path = "~/.config/bookcompanion/config.yaml"
-    console.print(f"\nConfiguration saved to: {config_path}")
+        model_cache = str(data_dir / "models")
+        TextEmbedding("sentence-transformers/all-MiniLM-L6-v2", cache_dir=model_cache)
+        console.print("  [green]✓[/green] all-MiniLM-L6-v2: ready")
+    except Exception as e:
+        console.print(f"  [yellow]⚠[/yellow] Model download failed: {e}")
+        console.print("    Embedding model will be downloaded on first use.")
+
+    # 6. Print getting started
     console.print("\n[bold]Setup complete![/bold] Here's how to get started:\n")
-    console.print("  1. Add your first book:    bookcompanion add ~/path/to/book.epub")
-    console.print("  2. Quick overview:         bookcompanion add --quick ~/path/to/book.epub")
+    console.print("  1. Start the web UI:       bookcompanion serve")
+    console.print("  2. Add your first book:    bookcompanion add ~/path/to/book.epub")
     console.print("  3. Full summarization:     bookcompanion summarize <book_id>")
     console.print("  4. Browse your library:    bookcompanion list")
     console.print('  5. Search across books:    bookcompanion search "query"')
-    console.print("\nRun `bookcompanion --help` for all commands.\n")
+    console.print(f"\nData stored in: {data_dir}")
+    console.print("Run `bookcompanion --help` for all commands.\n")
 
 
 def _check_dependency(name: str, command: str, args: list, required: bool = True):
