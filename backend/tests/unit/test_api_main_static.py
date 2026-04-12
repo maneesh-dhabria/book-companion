@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.api import static_files
