@@ -1,39 +1,61 @@
-"""Embedding service using local Ollama."""
+"""Embedding service using local fastembed (in-process, no external server)."""
 
 import asyncio
-
-import httpx
+import struct
 
 from app.exceptions import EmbeddingError
+
+EMBEDDING_DIM = 384
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
+
+def serialize_embedding(embedding: list[float]) -> bytes:
+    """Serialize a float list to compact binary (little-endian float32)."""
+    return struct.pack(f"<{len(embedding)}f", *embedding)
+
+
+def deserialize_embedding(data: bytes) -> list[float]:
+    """Deserialize binary embedding back to float list."""
+    count = len(data) // 4
+    return list(struct.unpack(f"<{count}f", data))
 
 
 class EmbeddingService:
     def __init__(
         self,
-        ollama_url: str = "http://localhost:11434",
-        model: str = "nomic-embed-text",
+        cache_dir: str | None = None,
         chunk_size: int = 512,
         chunk_overlap: int = 50,
         max_concurrent: int = 5,
     ):
-        self.ollama_url = ollama_url
-        self.model = model
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._cache_dir = cache_dir
+        self._model = None  # Lazy init
+
+    def _get_model(self):
+        """Lazy-initialize the fastembed model (downloads on first use)."""
+        if self._model is None:
+            from fastembed import TextEmbedding
+
+            kwargs = {"model_name": MODEL_NAME}
+            if self._cache_dir:
+                kwargs["cache_dir"] = self._cache_dir
+            self._model = TextEmbedding(**kwargs)
+        return self._model
 
     async def embed_text(self, text: str) -> list[float]:
-        """Generate embedding for a single text via Ollama API."""
-        async with self._semaphore, httpx.AsyncClient(timeout=30.0) as client:
+        """Generate embedding for a single text via fastembed."""
+        async with self._semaphore:
             try:
-                response = await client.post(
-                    f"{self.ollama_url}/api/embeddings",
-                    json={"model": self.model, "prompt": text},
+                model = self._get_model()
+                embeddings = await asyncio.to_thread(
+                    lambda: list(model.embed([text]))
                 )
-                response.raise_for_status()
-                return response.json()["embedding"]
-            except httpx.HTTPError as e:
-                raise EmbeddingError(f"Ollama embedding failed: {e}")
+                return embeddings[0].tolist()
+            except Exception as e:
+                raise EmbeddingError(f"Embedding failed: {e}")
 
     async def chunk_and_embed(
         self, text: str, chunk_size: int | None = None, overlap: int | None = None
@@ -72,7 +94,3 @@ class EmbeddingService:
             if start >= len(words):
                 break
         return chunks
-
-    def _estimate_tokens(self, text: str) -> int:
-        """Rough token estimation: ~1 token per 4 chars (spec requirement)."""
-        return len(text) // 4
