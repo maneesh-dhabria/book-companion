@@ -35,6 +35,15 @@ class CodexCLIProvider(LLMProvider):
         model = model or self.default_model
         timeout = timeout or self.default_timeout
 
+        if json_schema:
+            # Codex CLI doesn't support --json-schema; inject schema into prompt
+            import json
+
+            prompt = (
+                f"{prompt}\n\nRespond with valid JSON matching this schema:\n"
+                f"{json.dumps(json_schema, indent=2)}"
+            )
+
         cmd = [
             self.cli_command,
             "-p",

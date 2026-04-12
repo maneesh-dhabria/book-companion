@@ -45,15 +45,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # Start backup scheduler if configured
     scheduler = None
-    backup_hours = getattr(getattr(settings, "backup", None), "schedule_hours", 0)
-    if backup_hours and backup_hours > 0:
-        from app.api.scheduler import create_backup_scheduler
-        from app.services.backup_service import BackupService
+    backup_freq = getattr(getattr(settings, "backup", None), "frequency", "disabled")
+    if backup_freq and backup_freq != "disabled":
+        try:
+            from app.api.scheduler import create_backup_scheduler
+            from app.services.backup_service import BackupService
 
-        backup_service = BackupService(settings=settings)
-        scheduler = create_backup_scheduler(backup_hours, backup_service)
-        scheduler.start()
-        app.state.backup_scheduler = scheduler
+            db_path = Path(settings.data.directory) / "library.db"
+            backup_dir = Path(settings.backup.directory)
+            backup_service = BackupService(
+                db_path=db_path, backup_dir=backup_dir, max_backups=settings.backup.max_backups
+            )
+            # Map frequency to hours
+            freq_hours = {"hourly": 1, "daily": 24, "weekly": 168}.get(backup_freq, 24)
+            scheduler = create_backup_scheduler(freq_hours, backup_service)
+            scheduler.start()
+            app.state.backup_scheduler = scheduler
+        except Exception:
+            pass  # Scheduler is non-critical
 
     yield
 

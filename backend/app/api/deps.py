@@ -141,9 +141,13 @@ def get_backup_service(
     settings: Settings = Depends(get_settings),
 ):
     """Construct BackupService with settings."""
+    from pathlib import Path
+
     from app.services.backup_service import BackupService
 
-    return BackupService(settings=settings)
+    db_path = Path(settings.data.directory) / "library.db"
+    backup_dir = Path(settings.backup.directory)
+    return BackupService(db_path=db_path, backup_dir=backup_dir, max_backups=settings.backup.max_backups)
 
 
 def get_reading_state_repo(

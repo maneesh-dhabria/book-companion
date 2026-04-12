@@ -4,6 +4,7 @@ import asyncio
 import functools
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,7 +66,11 @@ async def get_services():
             "tag": TagService(session),
             "concept": ConceptService(session),
             "export": ExportService(session),
-            "backup": BackupService(settings),
+            "backup": BackupService(
+                db_path=Path(settings.data.directory) / "library.db",
+                backup_dir=Path(settings.backup.directory),
+                max_backups=settings.backup.max_backups,
+            ),
             "reference": ReferenceService(session),
             "session": session,
             "settings": settings,

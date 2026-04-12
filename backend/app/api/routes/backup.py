@@ -54,13 +54,13 @@ async def download_backup(
     backup_service: BackupService = Depends(get_backup_service),
 ):
     """Download a backup file."""
-    backup_path = backup_service.backup_dir / f"{backup_id}.sql"
+    backup_path = backup_service.backup_dir / f"{backup_id}.db"
     if not backup_path.exists():
         raise HTTPException(status_code=404, detail=f"Backup not found: {backup_id}")
     return FileResponse(
         path=str(backup_path),
         filename=backup_path.name,
-        media_type="application/sql",
+        media_type="application/octet-stream",
     )
 
 
@@ -88,7 +88,7 @@ async def delete_backup(
     backup_service: BackupService = Depends(get_backup_service),
 ):
     """Delete a backup file."""
-    backup_path = backup_service.backup_dir / f"{backup_id}.sql"
+    backup_path = backup_service.backup_dir / f"{backup_id}.db"
     if not backup_path.exists():
         raise HTTPException(status_code=404, detail=f"Backup not found: {backup_id}")
     backup_path.unlink()

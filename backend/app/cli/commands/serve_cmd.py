@@ -24,11 +24,9 @@ def serve(
     # Auto-init if no database exists
     if not db_path.exists():
         console.print("[yellow]First run detected, initializing...[/yellow]")
-        import asyncio
+        import subprocess
 
-        from app.cli.commands.init_cmd import init
-
-        asyncio.run(init.wrapped())  # Call the unwrapped async function
+        subprocess.run(["bookcompanion", "init"], check=False)
 
     console.print(f"\n[bold]Book Companion[/bold] — serving at http://localhost:{port}")
 

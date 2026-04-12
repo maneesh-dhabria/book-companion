@@ -256,7 +256,11 @@ async def get_services():
         try:
             from app.services.backup_service import BackupService
 
-            services["backup"] = BackupService(settings)
+            db_path = Path(settings.data.directory) / "library.db"
+            backup_dir = Path(settings.backup.directory)
+            services["backup"] = BackupService(
+                db_path=db_path, backup_dir=backup_dir, max_backups=settings.backup.max_backups
+            )
         except ImportError:
             pass
 
