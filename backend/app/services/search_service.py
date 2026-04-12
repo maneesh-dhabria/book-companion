@@ -3,7 +3,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -16,7 +16,7 @@ from app.db.models import (
     Tag,
     Taggable,
 )
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import EmbeddingService, serialize_embedding
 
 
 @dataclass
@@ -110,26 +110,27 @@ class SearchService:
         source_types: list[str] | None,
         limit: int,
     ) -> list[SearchResult]:
-        tsquery = func.plainto_tsquery("english", query)
-        stmt = (
-            select(
-                SearchIndex.id,
-                SearchIndex.source_type,
-                SearchIndex.source_id,
-                SearchIndex.book_id,
-                SearchIndex.chunk_text,
-                func.ts_rank(SearchIndex.tsvector, tsquery).label("rank"),
-            )
-            .where(SearchIndex.tsvector.op("@@")(tsquery))
-            .order_by(text("rank DESC"))
-            .limit(limit)
-        )
+        """BM25 full-text search via FTS5."""
+        # Build FTS5 query — use raw SQL for FTS5 MATCH
+        sql = """
+            SELECT si.id, si.source_type, si.source_id, si.book_id,
+                   si.chunk_text, bm25(search_fts) as rank
+            FROM search_index si
+            JOIN search_fts ON si.id = search_fts.rowid
+            WHERE search_fts MATCH :query
+        """
+        params: dict = {"query": query, "limit": limit}
         if book_id:
-            stmt = stmt.where(SearchIndex.book_id == book_id)
+            sql += " AND si.book_id = :book_id"
+            params["book_id"] = book_id
         if source_types:
-            stmt = stmt.where(SearchIndex.source_type.in_(source_types))
+            placeholders = ", ".join(f":st{i}" for i in range(len(source_types)))
+            sql += f" AND si.source_type IN ({placeholders})"
+            for i, st in enumerate(source_types):
+                params[f"st{i}"] = st
+        sql += " ORDER BY rank LIMIT :limit"
 
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(text(sql), params)
         rows = result.all()
         return await self._rows_to_results(rows)
 
@@ -140,19 +141,21 @@ class SearchService:
         source_types: list[str] | None,
         limit: int,
     ) -> list[SearchResult]:
-        stmt = (
-            select(
-                SearchIndex.id,
-                SearchIndex.source_type,
-                SearchIndex.source_id,
-                SearchIndex.book_id,
-                SearchIndex.chunk_text,
-                SearchIndex.embedding.cosine_distance(embedding).label("distance"),
-            )
-            .where(SearchIndex.embedding.isnot(None))
-            .order_by("distance")
-            .limit(limit)
-        )
+        """Semantic search via in-Python cosine similarity."""
+        import numpy as np
+
+        from app.services.embedding_service import deserialize_embedding
+
+        # Load all embeddings in scope
+        stmt = select(
+            SearchIndex.id,
+            SearchIndex.source_type,
+            SearchIndex.source_id,
+            SearchIndex.book_id,
+            SearchIndex.chunk_text,
+            SearchIndex.embedding,
+        ).where(SearchIndex.embedding.isnot(None))
+
         if book_id:
             stmt = stmt.where(SearchIndex.book_id == book_id)
         if source_types:
@@ -160,7 +163,51 @@ class SearchService:
 
         result = await self.session.execute(stmt)
         rows = result.all()
-        return await self._rows_to_results(rows)
+
+        if not rows:
+            return []
+
+        # Compute cosine similarity
+        query_vec = np.array(embedding, dtype=np.float32)
+        query_norm = np.linalg.norm(query_vec)
+        if query_norm == 0:
+            return []
+
+        scored_rows = []
+        for row in rows:
+            if row.embedding is None:
+                continue
+            vec = np.array(deserialize_embedding(row.embedding), dtype=np.float32)
+            vec_norm = np.linalg.norm(vec)
+            if vec_norm == 0:
+                continue
+            similarity = float(np.dot(query_vec, vec) / (query_norm * vec_norm))
+            scored_rows.append((row, similarity))
+
+        scored_rows.sort(key=lambda x: x[1], reverse=True)
+        top_rows = scored_rows[:limit]
+
+        # Convert to SearchResult using _rows_to_results pattern
+        results = []
+        for row, score in top_rows:
+            book = await self.session.get(Book, row.book_id)
+            section_title = None
+            if row.source_type in ("section_content", "section_summary", "section_title"):
+                section = await self.session.get(BookSection, row.source_id)
+                section_title = section.title if section else None
+            results.append(
+                SearchResult(
+                    source_type=row.source_type,
+                    source_id=row.source_id,
+                    book_id=row.book_id,
+                    book_title=book.title if book else "Unknown",
+                    section_title=section_title,
+                    chunk_text=row.chunk_text[:200],
+                    score=score,
+                    highlight=row.chunk_text[:150],
+                )
+            )
+        return results
 
     async def _rows_to_results(self, rows) -> list[SearchResult]:
         results = []
@@ -227,8 +274,7 @@ class SearchService:
                 book_id=book_id,
                 chunk_text=chunk,
                 chunk_index=idx,
-                embedding=embedding,
-                tsvector=func.to_tsvector("english", chunk),
+                embedding=serialize_embedding(embedding) if embedding else None,
             )
             self.session.add(entry)
         await self.session.flush()
@@ -267,8 +313,7 @@ class SearchService:
                 book_id=book_id,
                 chunk_text=chunk,
                 chunk_index=idx + 1000,  # Offset to avoid collision with regular chunks
-                embedding=embedding,
-                tsvector=func.to_tsvector("english", chunk),
+                embedding=serialize_embedding(embedding) if embedding else None,
             )
             self.session.add(entry)
         await self.session.flush()
@@ -290,8 +335,7 @@ class SearchService:
                 book_id=book_id,
                 chunk_text=chunk,
                 chunk_index=idx,
-                embedding=embedding,
-                tsvector=func.to_tsvector("english", chunk),
+                embedding=serialize_embedding(embedding) if embedding else None,
             )
             self.session.add(entry)
         await self.session.flush()
@@ -308,8 +352,7 @@ class SearchService:
                 book_id=concept.book_id,
                 chunk_text=chunk,
                 chunk_index=idx,
-                embedding=embedding,
-                tsvector=func.to_tsvector("english", chunk),
+                embedding=serialize_embedding(embedding) if embedding else None,
             )
             self.session.add(entry)
         await self.session.flush()
