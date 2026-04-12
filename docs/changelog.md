@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-04-12 — Zero-Dependency Install: SQLite, in-process embeddings, multi-provider LLM
+
+**Install & Run**
+- New `bookcompanion serve` command starts the web UI with one command — no Docker, no separate database, no background services
+- First run auto-initializes the data directory, runs migrations, and downloads the embedding model (~23MB, one-time)
+- Data lives in a standard OS location (`~/.local/share/bookcompanion/` on Linux, `~/Library/Application Support/bookcompanion/` on macOS, `%LOCALAPPDATA%/bookcompanion/` on Windows); override with `BOOKCOMPANION_DATA__DIRECTORY`
+- Removed Docker entirely — `Dockerfile`, `docker-compose.yml`, and `.env.example` are gone
+
+**Embedded Database**
+- Replaced PostgreSQL + pgvector (Docker) with embedded SQLite — your whole library is now a single `library.db` file
+- Full-text search via SQLite FTS5 (BM25 ranking, same quality as before)
+- Semantic search via in-process cosine similarity (no external vector DB required)
+
+**In-Process Embeddings**
+- Replaced Ollama with `fastembed` running in the Python process — embedding generation no longer needs a separate server
+- Default model: `sentence-transformers/all-MiniLM-L6-v2` (384-dim, ~23MB, ~2ms per query on CPU)
+
+**Multi-Provider LLM Support**
+- Auto-detects Claude Code CLI or Codex CLI on `$PATH` — whichever is installed becomes the default
+- Configure provider from the web UI Settings → LLM Provider section (or via `config.yaml`)
+- When no LLM CLI is installed, library/search/reading/annotations still work; summarization is disabled with a clear UI banner
+- Summarization and evaluation are fully wired in the web API — click "Summarize" in the UI and it runs end-to-end with eval and auto-retry on failure
+
+**LAN Access**
+- Web UI is now accessible from other devices on your network without configuration — visit `http://<your-desktop-ip>:8000` from your tablet or phone
+- CORS auto-detects all non-loopback IPv4 addresses at startup
+- `BOOKCOMPANION_CORS_EXTRA_ORIGINS` env var lets you add extra origins if needed
+
+**Backups**
+- Backups are now plain SQLite file copies to a configurable directory (default `{data_dir}/backups/`)
+- Point the backup directory at your Google Drive / Dropbox / iCloud sync folder for free cloud backups — no OAuth or API keys needed
+- Configure frequency (hourly/daily/weekly) and retention (`max_backups`) from Settings
+
+**Fixed**
+- Web UI "Summarize" button now actually runs — was crashing silently since the web interface shipped (wrong kwargs between API route and summarizer service)
+- Summarization no longer crashes with `MissingGreenlet` on books with images (deferred `Image.data` column now loaded eagerly)
+- Invalid preset names return a clear 400 error before queuing a background job (was silently failing mid-job)
+- Job status correctly reports `FAILED` instead of silent `COMPLETED` when all sections fail
+- Backup download/delete endpoints now find backup files (was looking for `.sql`, files are `.db`)
+
+**References**
+- [Requirements](requirements/2026-04-11-self-contained-packaging.md)
+- [Spec](specs/2026-04-12-zero-dependency-packaging-spec.md)
+- [Implementation plan](plans/2026-04-12-zero-dependency-packaging-implementation-plan.md)
+
 ## 2026-04-11 — Web Interface: Full-stack Vue.js UI for reading, summarization, and library management
 
 **Library & Navigation**
