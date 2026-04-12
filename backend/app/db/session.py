@@ -1,18 +1,42 @@
-"""Async database session management."""
+"""Async database session management for SQLite via aiosqlite."""
 
+import logging
+
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import Settings
 
+logger = logging.getLogger(__name__)
+
 
 def create_engine(settings: Settings):
-    """Create async SQLAlchemy engine."""
-    return create_async_engine(
+    """Create async SQLAlchemy engine for SQLite."""
+    engine = create_async_engine(
         settings.database.url,
         echo=False,
-        pool_size=5,
-        max_overflow=10,
+        connect_args={"check_same_thread": False},
     )
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _on_connect(dbapi_conn, connection_record):
+        """Configure SQLite pragmas and load extensions on each connection."""
+        # Enable WAL mode for concurrent reads during writes
+        dbapi_conn.execute("PRAGMA journal_mode=WAL")
+        # Enable foreign key enforcement (off by default in SQLite)
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
+        # Load sqlite-vec extension for vector search
+        try:
+            dbapi_conn.enable_load_extension(True)
+            dbapi_conn.load_extension("vec0")
+            dbapi_conn.enable_load_extension(False)
+        except Exception:
+            logger.warning(
+                "sqlite-vec extension not available — semantic search disabled, BM25-only"
+            )
+
+    return engine
 
 
 def create_session_factory(settings: Settings) -> async_sessionmaker[AsyncSession]:
