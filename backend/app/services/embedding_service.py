@@ -55,7 +55,7 @@ class EmbeddingService:
                 )
                 return embeddings[0].tolist()
             except Exception as e:
-                raise EmbeddingError(f"Embedding failed: {e}")
+                raise EmbeddingError(f"Embedding failed: {e}") from e
 
     async def chunk_and_embed(
         self, text: str, chunk_size: int | None = None, overlap: int | None = None

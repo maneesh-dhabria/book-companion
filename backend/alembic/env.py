@@ -4,7 +4,6 @@ import asyncio
 import logging
 from logging.config import fileConfig
 
-from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context

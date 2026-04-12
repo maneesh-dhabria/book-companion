@@ -1,7 +1,6 @@
 """Tests for SQLite backup service."""
 
 import sqlite3
-import time
 
 import pytest
 

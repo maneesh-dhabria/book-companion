@@ -6,7 +6,6 @@ from datetime import datetime
 import sqlalchemy
 from sqlalchemy import (
     JSON,
-    Integer,
     Boolean,
     DateTime,
     Enum,

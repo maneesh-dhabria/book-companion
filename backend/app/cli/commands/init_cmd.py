@@ -4,7 +4,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import typer
 from rich.console import Console
 
 from app.cli.deps import async_command, get_settings

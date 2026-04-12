@@ -66,8 +66,8 @@ def build_cors_origins(port: int) -> list[str]:
     origins = [
         f"http://localhost:{port}",
         f"http://127.0.0.1:{port}",
-        f"http://localhost:5173",  # Vite dev server
-        f"http://127.0.0.1:5173",
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:5173",
     ]
 
     # Detect LAN IPs

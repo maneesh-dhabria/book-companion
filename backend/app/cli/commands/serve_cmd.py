@@ -24,9 +24,9 @@ def serve(
     # Auto-init if no database exists
     if not db_path.exists():
         console.print("[yellow]First run detected, initializing...[/yellow]")
-        from app.cli.commands.init_cmd import init
-
         import asyncio
+
+        from app.cli.commands.init_cmd import init
 
         asyncio.run(init.wrapped())  # Call the unwrapped async function
 

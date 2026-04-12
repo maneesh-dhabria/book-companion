@@ -1,6 +1,5 @@
 """Tests for dynamic CORS origin builder."""
 
-import os
 from unittest.mock import patch
 
 from app.api.main import build_cors_origins

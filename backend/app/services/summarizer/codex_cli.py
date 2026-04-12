@@ -1,7 +1,6 @@
 """Codex CLI provider — invokes CLI as subprocess."""
 
 import asyncio
-import json
 import os
 import time
 from pathlib import Path
@@ -56,7 +55,7 @@ class CodexCLIProvider(LLMProvider):
                 env=os.environ.copy(),
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise SummarizationError(
                 f"Codex CLI timed out after {timeout}s"
             ) from e

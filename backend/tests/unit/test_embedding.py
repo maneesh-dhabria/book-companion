@@ -1,6 +1,5 @@
 """Tests for embedding service (fastembed-based)."""
 
-import struct
 from unittest.mock import MagicMock, patch
 
 import numpy as np
