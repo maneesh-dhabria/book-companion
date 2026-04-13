@@ -21,6 +21,7 @@ from app.api.routes import (
     eval,
     export,
     health,
+    images,
     processing,
     reading_presets,
     reading_state,
@@ -153,6 +154,7 @@ def create_app() -> FastAPI:
 
     # API routes
     app.include_router(health.router)
+    app.include_router(images.router)
     app.include_router(annotations.router)
     app.include_router(search.router)
     app.include_router(concepts.router)
