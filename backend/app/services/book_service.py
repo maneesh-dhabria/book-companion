@@ -13,6 +13,7 @@ from app.exceptions import ParseError, StorageError
 from app.services.parser.base import BookParser, ParsedBook
 from app.services.parser.epub_parser import EPUBParser
 from app.services.parser.format_detector import detect_format
+from app.services.parser.image_url_rewrite import from_placeholder
 from app.services.parser.mobi_parser import MOBIParser
 from app.services.parser.pdf_parser import PDFParser
 from app.services.parser.structure_detector import StructureDetector
@@ -187,6 +188,8 @@ class BookService:
                 )
                 self.db.add(image)
 
+        await self.db.flush()
+        await self._substitute_image_urls(book.id)
         await self.db.commit()
         return book
 
@@ -273,6 +276,30 @@ class BookService:
                 )
                 await self.db.execute(delete(BookSection).where(BookSection.id == section.id))
 
+        await self.db.flush()
+        await self._substitute_image_urls(existing.id)
         await self.db.commit()
         logger.info("book_reimported", book_id=existing.id)
         return existing
+
+    async def _substitute_image_urls(self, book_id: int) -> None:
+        """Replace __IMG_PLACEHOLDER__:<basename>__ tokens in each section's
+        content_md with /api/v1/images/{id} absolute URLs. Unknown filenames
+        are left as placeholders (will 404 on fetch)."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+
+        result = await self.db.execute(
+            select(BookSection)
+            .where(BookSection.book_id == book_id)
+            .options(selectinload(BookSection.images))
+        )
+        for section in result.scalars().all():
+            if not section.content_md or "__IMG_PLACEHOLDER__" not in section.content_md:
+                continue
+            fn_map: dict[str, int] = {}
+            for img in section.images:
+                if img.filename:
+                    fn_map[img.filename.rsplit("/", 1)[-1]] = img.id
+            if fn_map:
+                section.content_md = from_placeholder(section.content_md, fn_map)
