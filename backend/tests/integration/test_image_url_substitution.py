@@ -30,7 +30,7 @@ async def test_substitute_image_urls_replaces_placeholders(db_session):
         title="s",
         order_index=0,
         depth=1,
-        content_md="before ![a](__IMG_PLACEHOLDER__:cover.png__) after",
+        content_md="before ![a](__IMG_PLACEHOLDER__:cover.png__ENDIMG__) after",
     )
     db_session.add(section)
     await db_session.flush()
@@ -71,7 +71,7 @@ async def test_substitute_image_urls_leaves_unknown(db_session):
         title="s",
         order_index=0,
         depth=1,
-        content_md="![](__IMG_PLACEHOLDER__:missing.png__)",
+        content_md="![](__IMG_PLACEHOLDER__:missing.png__ENDIMG__)",
     )
     db_session.add(section)
     await db_session.flush()
@@ -82,4 +82,4 @@ async def test_substitute_image_urls_leaves_unknown(db_session):
     refreshed = (
         await db_session.execute(select(BookSection).where(BookSection.id == section.id))
     ).scalar_one()
-    assert "__IMG_PLACEHOLDER__:missing.png__" in refreshed.content_md
+    assert "__IMG_PLACEHOLDER__:missing.png__ENDIMG__" in refreshed.content_md

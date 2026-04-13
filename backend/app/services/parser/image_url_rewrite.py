@@ -11,7 +11,7 @@ _HTML_IMG = re.compile(
     r'(<img\s[^>]*?src=)(["\'])([^"\']+)(["\'])([^>]*>)',
     re.IGNORECASE,
 )
-_PLACEHOLDER = re.compile(r"__IMG_PLACEHOLDER__:([^_]+(?:_[^_]+)*?)__")
+_PLACEHOLDER = re.compile(r"__IMG_PLACEHOLDER__:(.+?)__ENDIMG__")
 
 
 def _basename(path: str) -> str:
@@ -19,19 +19,23 @@ def _basename(path: str) -> str:
 
 
 def to_placeholder(md: str) -> str:
-    """Replace local image refs with __IMG_PLACEHOLDER__:<basename>__ tokens."""
+    """Replace local image refs with __IMG_PLACEHOLDER__:<basename>__ENDIMG__ tokens.
+
+    The distinct `__ENDIMG__` terminator (not just `__`) matters because EPUB
+    filenames can legitimately contain consecutive underscores.
+    """
 
     def md_repl(m: re.Match) -> str:
         alt, src = m.group(1), m.group(2)
         if src.startswith(("http://", "https://", "data:")):
             return m.group(0)
-        return f"![{alt}](__IMG_PLACEHOLDER__:{_basename(src)}__)"
+        return f"![{alt}](__IMG_PLACEHOLDER__:{_basename(src)}__ENDIMG__)"
 
     def html_repl(m: re.Match) -> str:
         prefix, q1, src, q2, suffix = m.groups()
         if src.startswith(("http://", "https://", "data:")):
             return m.group(0)
-        return f"{prefix}{q1}__IMG_PLACEHOLDER__:{_basename(src)}__{q2}{suffix}"
+        return f"{prefix}{q1}__IMG_PLACEHOLDER__:{_basename(src)}__ENDIMG__{q2}{suffix}"
 
     out = _MD_IMG.sub(md_repl, md)
     out = _HTML_IMG.sub(html_repl, out)

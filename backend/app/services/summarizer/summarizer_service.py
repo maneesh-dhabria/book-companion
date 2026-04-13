@@ -230,9 +230,12 @@ class SummarizerService:
                 )
                 if on_section_fail:
                     on_section_fail(i + 1, total, section_title, error_msg)
-                # After rollback all ORM attrs are expired; reload remaining
-                # sections so the next iteration can access their attributes.
-                sections = await self._section_repo.get_by_book_id(book_id)
+                # Rollback expires every identity-mapped ORM object in this
+                # session. Issuing a fresh SELECT refreshes them in place via
+                # the identity map so the next iteration's `section.*` access
+                # doesn't MissingGreenlet. Returned list is discarded on
+                # purpose — the existing `sections` iterator keeps going.
+                await self._section_repo.get_by_book_id(book_id)
 
         # High retry rate warning
         if retried_sections and len(retried_sections) > total / 2:
