@@ -431,6 +431,11 @@ class ReadingPresetResponse(BaseModel):
     created_at: datetime
 
 
+class ReadingPresetListResponse(BaseModel):
+    items: list[ReadingPresetResponse]
+    default_id: int | None
+
+
 class ReadingPresetCreateRequest(BaseModel):
     name: str
     font_family: str = "Georgia"

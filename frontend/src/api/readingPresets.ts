@@ -1,12 +1,13 @@
 import { apiClient } from './client'
 import type { ReadingPreset } from '@/types'
 
-export async function listPresets(): Promise<ReadingPreset[]> {
-  return apiClient.get<ReadingPreset[]>('/reading-presets')
+export interface ReadingPresetListResponse {
+  items: ReadingPreset[]
+  default_id: number | null
 }
 
-export async function getActivePreset(): Promise<ReadingPreset> {
-  return apiClient.get<ReadingPreset>('/reading-presets/active')
+export async function listPresets(): Promise<ReadingPresetListResponse> {
+  return apiClient.get<ReadingPresetListResponse>('/reading-presets')
 }
 
 export async function createPreset(

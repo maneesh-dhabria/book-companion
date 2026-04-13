@@ -9,18 +9,31 @@ async def test_list_reading_presets(client: AsyncClient):
     resp = await client.get("/api/v1/reading-presets")
     assert resp.status_code == 200
     data = resp.json()
-    assert isinstance(data, list)
+    assert isinstance(data, dict)
+    assert "items" in data and isinstance(data["items"], list)
+    assert "default_id" in data
+    # If any preset is active its id must match default_id
+    active_items = [i for i in data["items"] if i["is_active"]]
+    if active_items:
+        assert len(active_items) == 1
+        assert active_items[0]["id"] == data["default_id"]
 
 
 @pytest.mark.asyncio
-async def test_get_active_preset(client: AsyncClient):
+async def test_active_endpoint_removed(client: AsyncClient):
     resp = await client.get("/api/v1/reading-presets/active")
-    # On a fresh DB, no active preset exists — 404 is acceptable
-    assert resp.status_code in (200, 404)
+    # Route no longer exists; SPA fallback may serve index.html (200), or 404.
+    # Either way the response must NOT be a preset JSON object.
     if resp.status_code == 200:
-        data = resp.json()
-        assert "font_family" in data
-        assert "font_size_px" in data
+        try:
+            body = resp.json()
+        except Exception:
+            body = None
+        assert not (isinstance(body, dict) and "font_family" in body), (
+            "The /active endpoint should be removed"
+        )
+    else:
+        assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -48,7 +61,7 @@ async def test_create_user_preset(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_cannot_delete_system_preset(client: AsyncClient):
     resp = await client.get("/api/v1/reading-presets")
-    system = next((p for p in resp.json() if p.get("is_system")), None)
+    system = next((p for p in resp.json()["items"] if p.get("is_system")), None)
     if system:
         del_resp = await client.delete(f"/api/v1/reading-presets/{system['id']}")
         assert del_resp.status_code == 400
@@ -57,7 +70,7 @@ async def test_cannot_delete_system_preset(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_activate_preset(client: AsyncClient):
     resp = await client.get("/api/v1/reading-presets")
-    presets = resp.json()
+    presets = resp.json()["items"]
     if presets:
         act_resp = await client.post(f"/api/v1/reading-presets/{presets[0]['id']}/activate")
         assert act_resp.status_code == 200
@@ -92,7 +105,7 @@ async def test_create_and_activate_preset(client: AsyncClient):
     await client.post(f"/api/v1/reading-presets/{id1}/activate")
     await client.post(f"/api/v1/reading-presets/{id2}/activate")
 
-    all_presets = (await client.get("/api/v1/reading-presets")).json()
+    all_presets = (await client.get("/api/v1/reading-presets")).json()["items"]
     active = [p for p in all_presets if p["is_active"]]
     assert len(active) == 1, f"Expected exactly 1 active preset, got {len(active)}"
     assert active[0]["id"] == id2

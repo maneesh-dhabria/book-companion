@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.api.schemas import (
     ReadingPresetCreateRequest,
+    ReadingPresetListResponse,
     ReadingPresetResponse,
     ReadingPresetUpdateRequest,
 )
@@ -15,50 +16,19 @@ from app.db.models import ReadingPreset
 router = APIRouter(prefix="/api/v1/reading-presets", tags=["reading-presets"])
 
 
-@router.get("", response_model=list[ReadingPresetResponse])
+@router.get("", response_model=ReadingPresetListResponse)
 async def list_reading_presets(
     db: AsyncSession = Depends(get_db),
 ):
-    """List all reading presets, system presets first, then alphabetical."""
+    """List all reading presets with the id of the active/default preset."""
     result = await db.execute(
         select(ReadingPreset).order_by(
             ReadingPreset.is_system.desc(), ReadingPreset.name.asc()
         )
     )
-    return list(result.scalars().all())
-
-
-@router.get("/active", response_model=ReadingPresetResponse)
-async def get_active_preset(
-    db: AsyncSession = Depends(get_db),
-):
-    """Get the currently active reading preset. Falls back to 'Comfortable' if none active."""
-    result = await db.execute(
-        select(ReadingPreset).where(ReadingPreset.is_active.is_(True))
-    )
-    preset = result.scalar_one_or_none()
-    if preset:
-        return preset
-
-    # Fallback to Comfortable system preset
-    result = await db.execute(
-        select(ReadingPreset).where(
-            ReadingPreset.name == "Comfortable", ReadingPreset.is_system.is_(True)
-        )
-    )
-    preset = result.scalar_one_or_none()
-    if preset:
-        return preset
-
-    # Last resort: return any system preset
-    result = await db.execute(
-        select(ReadingPreset).where(ReadingPreset.is_system.is_(True)).limit(1)
-    )
-    preset = result.scalar_one_or_none()
-    if preset:
-        return preset
-
-    raise HTTPException(status_code=404, detail="No reading presets found")
+    items = list(result.scalars().all())
+    default = next((p for p in items if p.is_active), None)
+    return {"items": items, "default_id": default.id if default else None}
 
 
 @router.post("", response_model=ReadingPresetResponse, status_code=201)

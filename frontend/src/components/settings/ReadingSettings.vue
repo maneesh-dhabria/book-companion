@@ -18,7 +18,7 @@ const defaultPreset = computed({
 
 onMounted(async () => {
   try {
-    presets.value = await readingPresetsApi.listPresets()
+    presets.value = (await readingPresetsApi.listPresets()).items
   } catch {
     // Presets API may not be available
   }

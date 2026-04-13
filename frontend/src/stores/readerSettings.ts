@@ -2,9 +2,7 @@ import {
   activatePreset,
   createPreset,
   deletePreset as deletePresetApi,
-  getActivePreset,
   listPresets,
-  updatePreset,
 } from '@/api/readingPresets'
 import type { ReadingPreset } from '@/types'
 import { defineStore } from 'pinia'
@@ -58,10 +56,13 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
   async function loadPresets() {
     loading.value = true
     try {
-      presets.value = await listPresets()
-      const active = await getActivePreset()
-      activePreset.value = active
-      applySettingsFromPreset(active)
+      const resp = await listPresets()
+      presets.value = resp.items
+      const active = resp.items.find((p) => p.id === resp.default_id) ?? resp.items[0]
+      if (active) {
+        activePreset.value = active
+        applySettingsFromPreset(active)
+      }
     } catch {
       // Use defaults if API unavailable
     } finally {
@@ -86,7 +87,7 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     applySettingsFromPreset(preset)
     await activatePreset(id)
     // Refresh list to update is_active flags
-    presets.value = await listPresets()
+    presets.value = (await listPresets()).items
   }
 
   function updateSetting<K extends keyof ReaderSettingsState>(key: K, value: ReaderSettingsState[K]) {
@@ -106,10 +107,14 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     await deletePresetApi(id)
     presets.value = presets.value.filter((p) => p.id !== id)
     if (activePreset.value?.id === id) {
-      // Re-fetch active (falls back to Comfortable)
-      const active = await getActivePreset()
-      activePreset.value = active
-      applySettingsFromPreset(active)
+      // Re-fetch the list and pick the new default.
+      const resp = await listPresets()
+      presets.value = resp.items
+      const active = resp.items.find((p) => p.id === resp.default_id) ?? resp.items[0]
+      if (active) {
+        activePreset.value = active
+        applySettingsFromPreset(active)
+      }
     }
   }
 
