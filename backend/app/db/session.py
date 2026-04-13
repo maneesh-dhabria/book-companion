@@ -25,6 +25,8 @@ def create_engine(settings: Settings):
         dbapi_conn.execute("PRAGMA journal_mode=WAL")
         # Enable foreign key enforcement (off by default in SQLite)
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
+        # Wait up to 5s when another writer holds the database lock
+        dbapi_conn.execute("PRAGMA busy_timeout=5000")
 
     return engine
 
