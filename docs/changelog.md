@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-13 — Post-Install Runtime Quality
+
+- Concurrent reads/writes no longer fail with `database is locked` 500s — SQLite now waits up to 5s under write contention (`PRAGMA busy_timeout=5000`), and the pathological case returns a clean 503 "Database busy, please retry" instead of a SQLAlchemy traceback.
+- Partial summarize progress is now preserved: each section commits independently, so killing the server mid-run keeps the completed sections and a resumed run skips them (no duplicate LLM calls).
+- Cleaner browser console on load — removed the `/reading-presets/active` request that 404'd on first use; the list endpoint now returns `{items, default_id}` in a single fetch.
+- Missing images/PDFs/fonts return proper 404s instead of HTML — the SPA-fallback no longer swallows asset requests with known binary extensions.
+- Book images now render in the reader: parse-time placeholders are rewritten to `/api/v1/images/{id}` on store, and a new `GET /api/v1/images/{id}` endpoint serves the bytes with `Cache-Control: immutable`.
+
 ## 2026-04-12 — Packaging Hardening (sdist + programmatic migrations)
 
 - `uv build` now produces both sdist and wheel in a single invocation. Users installing from sdist (e.g., platforms without a prebuilt wheel) no longer need Node.js — the SPA is built at sdist-creation time and shipped inside the tarball.
