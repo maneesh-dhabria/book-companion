@@ -5,6 +5,7 @@ from pathlib import Path
 import pymupdf4llm
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
+from app.services.parser.image_url_rewrite import to_placeholder
 
 
 class PDFParser(BookParser):
@@ -25,6 +26,9 @@ class PDFParser(BookParser):
 
         title = self._extract_title(pages, file_path)
         sections = self._pages_to_sections(pages)
+        for s in sections:
+            if s.content_md:
+                s.content_md = to_placeholder(s.content_md)
 
         return ParsedBook(
             title=title,
@@ -143,6 +147,9 @@ class PDFParser(BookParser):
         rendered = converter(str(file_path))
         # Convert marker output to ParsedBook format
         sections = self._pages_to_sections([{"text": rendered.markdown}])
+        for s in sections:
+            if s.content_md:
+                s.content_md = to_placeholder(s.content_md)
         return ParsedBook(
             title=self._extract_title([{"text": rendered.markdown}], file_path),
             authors=[],

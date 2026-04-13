@@ -9,6 +9,7 @@ from ebooklib import epub
 from markdownify import markdownify
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
+from app.services.parser.image_url_rewrite import to_placeholder
 
 logger = structlog.get_logger()
 
@@ -266,7 +267,7 @@ class EPUBParser(BookParser):
             html = item.get_content().decode("utf-8", errors="replace")
             html = self._clean_html(html)
             md = markdownify(html, heading_style="ATX", strip=["script", "style"])
-            content_map[item.get_name()] = md.strip()
+            content_map[item.get_name()] = to_placeholder(md.strip())
 
         # Build alt-text map from raw HTML
         alt_text_map: dict[str, str] = {}
