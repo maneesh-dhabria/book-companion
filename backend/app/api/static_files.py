@@ -30,6 +30,26 @@ def _assets_present() -> bool:
 _IMMUTABLE = "public, max-age=31536000, immutable"
 _NO_CACHE = "no-cache"
 
+# Missing asset-extension paths should 404 instead of falling back to index.html.
+_ASSET_EXTENSIONS = (
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".pdf",
+    ".mp4",
+    ".webm",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
+    ".map",
+)
+
 
 class CachingStaticFiles(StaticFiles):
     """Emit no-cache on index.html and long-lived immutable on assets/."""
@@ -39,13 +59,21 @@ class CachingStaticFiles(StaticFiles):
             response = await super().get_response(path, scope)
             status = response.status_code
         except (HTTPException, StarletteHTTPException) as exc:
-            if exc.status_code != 404 or path.startswith("assets/"):
+            if (
+                exc.status_code != 404
+                or path.startswith("assets/")
+                or path.lower().endswith(_ASSET_EXTENSIONS)
+            ):
                 raise
             response = await super().get_response("index.html", scope)
             status = response.status_code
 
         # SPA fallback on 404 returned as a response (rare path).
-        if status == 404 and not path.startswith("assets/"):
+        if (
+            status == 404
+            and not path.startswith("assets/")
+            and not path.lower().endswith(_ASSET_EXTENSIONS)
+        ):
             response = await super().get_response("index.html", scope)
             status = response.status_code
 

@@ -50,3 +50,28 @@ def test_spa_fallback_for_unknown_path_has_no_cache(static_tree):
     r = _client(static_tree).get("/library/some-id")
     assert r.status_code == 200
     assert r.headers["cache-control"] == "no-cache"
+
+
+def test_missing_jpg_returns_404(static_tree):
+    r = _client(static_tree).get("/books/nonexistent.jpg")
+    assert r.status_code == 404
+
+
+def test_missing_png_returns_404(static_tree):
+    r = _client(static_tree).get("/some/path/missing.png")
+    assert r.status_code == 404
+
+
+def test_missing_pdf_returns_404(static_tree):
+    r = _client(static_tree).get("/files/manual.pdf")
+    assert r.status_code == 404
+
+
+def test_missing_sourcemap_returns_404(static_tree):
+    r = _client(static_tree).get("/assets-extra/something.map")
+    assert r.status_code == 404
+
+
+def test_missing_woff_returns_404(static_tree):
+    r = _client(static_tree).get("/fonts/f.woff2")
+    assert r.status_code == 404
