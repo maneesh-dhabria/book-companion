@@ -114,6 +114,11 @@ class SummarizerService:
 
             cumulative_context = "\n".join(cumulative_parts)
 
+            # Capture primitives up-front — a rollback on mid-loop failure
+            # expires ORM attributes and would MissingGreenlet on access.
+            section_id = section.id
+            section_title = section.title
+
             try:
                 start = time.monotonic()
                 summary = await self._summarize_single_section(
@@ -205,21 +210,29 @@ class SummarizerService:
                     )
                     on_section_complete(i + 1, total, section.title, elapsed, comp)
 
+                # Commit per-section so partial progress is durable and
+                # existing skip-completed logic works across runs (G2, G3).
+                await self.db.commit()
+
                 logger.info(
                     "section_summarized",
                     section_id=section.id,
                     book_id=book_id,
                 )
             except Exception as e:
-                failed.append(section.id)
+                await self.db.rollback()
+                failed.append(section_id)
                 error_msg = str(e)
                 logger.error(
                     "section_summarization_failed",
-                    section_id=section.id,
+                    section_id=section_id,
                     error=error_msg,
                 )
                 if on_section_fail:
-                    on_section_fail(i + 1, total, section.title, error_msg)
+                    on_section_fail(i + 1, total, section_title, error_msg)
+                # After rollback all ORM attrs are expired; reload remaining
+                # sections so the next iteration can access their attributes.
+                sections = await self._section_repo.get_by_book_id(book_id)
 
         # High retry rate warning
         if retried_sections and len(retried_sections) > total / 2:
