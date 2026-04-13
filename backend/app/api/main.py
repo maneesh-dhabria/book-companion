@@ -6,8 +6,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+import structlog
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app.api.routes import (
     ai_threads,
@@ -97,6 +100,35 @@ def build_cors_origins(port: int) -> list[str]:
     return list(set(origins))
 
 
+_logger = structlog.get_logger()
+
+
+def register_db_busy_handler(app: FastAPI) -> None:
+    """Convert SQLite 'database is locked' into a clean 503; other OperationalErrors → 500."""
+
+    @app.exception_handler(OperationalError)
+    async def _handle_op_error(request: Request, exc: OperationalError):
+        msg = str(getattr(exc, "orig", exc))
+        if "database is locked" in msg:
+            _logger.warning(
+                "db_busy_timeout", path=request.url.path, method=request.method
+            )
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Database busy, please retry"},
+            )
+        _logger.error(
+            "operational_error",
+            path=request.url.path,
+            method=request.method,
+            error=msg,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+        )
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
@@ -136,6 +168,8 @@ def create_app() -> FastAPI:
     app.include_router(backup.router)
     app.include_router(settings_routes.router)
     app.include_router(reading_state.router)
+
+    register_db_busy_handler(app)
 
     # Serve built Vue SPA if assets are present. Mounted AFTER routers
     # so /api/*, /health, /docs always match first (FR-11a).
