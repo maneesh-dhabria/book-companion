@@ -278,3 +278,5 @@ bookcompanion init                       # Re-creates data dir, runs migrations,
 ### Session logging & changelog
 - Before ending a significant session (meaningful work done, not trivial fixes), offer to run `/session-log` to capture learnings
 - After merging to main, run `/changelog` to record user-facing changes
+
++ SQLAlchemy rollback expires all ORM objects in the session even with `expire_on_commit=False`. When iterating a pre-fetched list after rollback, re-issue the SELECT to refresh identity-mapped objects. See `summarizer_service.py` rollback branch for the pattern.
