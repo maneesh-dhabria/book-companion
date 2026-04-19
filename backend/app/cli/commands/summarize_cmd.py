@@ -160,16 +160,16 @@ async def summarize(
             skip_eval=skip_eval,
             no_retry=no_retry,
             eval_service=eval_svc,
-            on_section_complete=lambda i, total, title, elapsed, comp: console.print(
+            on_section_complete=lambda _sid, i, total, title, elapsed, comp: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} done  ({elapsed}s, {comp:.1f}%)"
             ),
-            on_section_skip=lambda i, total, title, reason=None: console.print(
+            on_section_skip=lambda _sid, i, total, title, reason=None: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} skipped ({reason or 'already summarized'})"
             ),
-            on_section_fail=lambda i, total, title, err: console.print(
+            on_section_fail=lambda _sid, i, total, title, err: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} FAILED ({err})"
             ),
-            on_section_retry=lambda i, total, title: console.print(
+            on_section_retry=lambda _sid, i, total, title: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} retried (eval issues found)"
             ),
         )

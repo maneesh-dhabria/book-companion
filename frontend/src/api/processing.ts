@@ -1,11 +1,16 @@
 import type { ProcessingStatus } from '@/types'
 import { apiClient } from './client'
 
+export type ProcessingScope = 'all' | 'pending' | 'section'
+
 export interface ProcessingOptions {
   preset_name?: string
   run_eval?: boolean
   auto_retry?: boolean
   skip_eval?: boolean
+  force?: boolean
+  scope?: ProcessingScope
+  section_id?: number
 }
 
 export function startProcessing(bookId: number, options?: ProcessingOptions) {
@@ -22,36 +27,79 @@ export function cancelProcessing(jobId: number) {
   )
 }
 
+export interface ProcessingStartedPayload {
+  book_id: number
+  job_id: number
+  scope: ProcessingScope
+}
+
+export interface SectionEventPayload {
+  section_id: number
+  title: string
+  index: number
+  total: number
+}
+
+export interface SectionCompletedPayload extends SectionEventPayload {
+  elapsed_seconds?: number
+}
+
+export interface SectionFailedPayload extends SectionEventPayload {
+  error: string
+}
+
+export interface SectionSkippedPayload extends SectionEventPayload {
+  reason: string
+}
+
+export interface ProcessingCompletedPayload {
+  book_id: number
+  completed: number
+  failed: number
+  skipped: number
+}
+
+export interface ProcessingFailedPayload {
+  book_id: number
+  error: string
+}
+
 export interface SSEHandlers {
-  onSectionStarted?: (data: { section_id: number; title: string; index: number; total: number }) => void
-  onSectionCompleted?: (data: { section_id: number; title: string; index: number; total: number }) => void
-  onProcessingCompleted?: (data: { book_id: number }) => void
-  onProcessingFailed?: (data: { book_id: number; error: string }) => void
+  onProcessingStarted?: (data: ProcessingStartedPayload) => void
+  onSectionStarted?: (data: SectionEventPayload) => void
+  onSectionCompleted?: (data: SectionCompletedPayload) => void
+  onSectionFailed?: (data: SectionFailedPayload) => void
+  onSectionSkipped?: (data: SectionSkippedPayload) => void
+  onSectionRetrying?: (data: SectionEventPayload) => void
+  onProcessingCompleted?: (data: ProcessingCompletedPayload) => void
+  onProcessingFailed?: (data: ProcessingFailedPayload) => void
   onError?: (error: Event) => void
 }
 
 export function connectSSE(jobId: number, handlers: SSEHandlers): EventSource {
   const source = new EventSource(`/api/v1/processing/${jobId}/stream`)
 
-  if (handlers.onSectionStarted) {
-    source.addEventListener('section_started', (e) => {
-      handlers.onSectionStarted!(JSON.parse(e.data))
-    })
+  const bind = (event: string, cb: ((d: unknown) => void) | undefined) => {
+    if (!cb) return
+    source.addEventListener(event, (e) => cb(JSON.parse((e as MessageEvent).data)))
   }
-  if (handlers.onSectionCompleted) {
-    source.addEventListener('section_completed', (e) => {
-      handlers.onSectionCompleted!(JSON.parse(e.data))
-    })
-  }
+
+  bind('processing_started', handlers.onProcessingStarted as (d: unknown) => void)
+  bind('section_started', handlers.onSectionStarted as (d: unknown) => void)
+  bind('section_completed', handlers.onSectionCompleted as (d: unknown) => void)
+  bind('section_failed', handlers.onSectionFailed as (d: unknown) => void)
+  bind('section_skipped', handlers.onSectionSkipped as (d: unknown) => void)
+  bind('section_retrying', handlers.onSectionRetrying as (d: unknown) => void)
+
   if (handlers.onProcessingCompleted) {
     source.addEventListener('processing_completed', (e) => {
-      handlers.onProcessingCompleted!(JSON.parse(e.data))
+      handlers.onProcessingCompleted!(JSON.parse((e as MessageEvent).data))
       source.close()
     })
   }
   if (handlers.onProcessingFailed) {
     source.addEventListener('processing_failed', (e) => {
-      handlers.onProcessingFailed!(JSON.parse(e.data))
+      handlers.onProcessingFailed!(JSON.parse((e as MessageEvent).data))
       source.close()
     })
   }

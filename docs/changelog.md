@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-19 — Book Reader UX Polish
+
+- Reopening a book lands on the first real chapter instead of the Copyright page, respecting URL → saved position → first summarizable section → section[0] precedence.
+- Table of Contents now groups Copyright, Acknowledgments, Dedication, Title Page, Contents, Colophon, Cover, and Part dividers under a collapsed "Front Matter" accordion; real chapters sit at the top level.
+- Book header reads "N of M sections summarized" counting only summarizable types, with a *Summarize pending sections* button that fills the remainder over SSE and skips front-matter automatically.
+- The Summary tab now renders actual summary markdown when a section has one, and a typed empty-state ("Summary not applicable", "Not yet summarized", "Generating…", or "Failed: …/Retry") for every other case — no more "Generating…" stuck after skipped sections or failed runs.
+- Footnote/anchor links render as plain text; external links open in a new tab with `rel="noopener noreferrer"`; `javascript:` and unknown-scheme links never render as clickable anchors.
+- Two one-time data migrations run on next startup: legacy `__IMG_PLACEHOLDER__:…__ENDIMG__` tokens are rewritten to `/api/v1/images/{id}` URLs so images render on existing books, and every section is re-classified so pre-existing Copyright-misclassified-as-chapter rows snap into place (with auto-generated front-matter summaries pruned; user-curated summaries preserved).
+- New `POST /api/v1/books/{id}/summarize` request fields: `scope` (`"all"` | `"pending"` | `"section"`) and `section_id`. Section responses now include `summary_md` and `is_summarizable`. Book responses now include `summary_progress: {summarized, total}`.
+- SSE events (`processing_started`, `section_started`, `section_completed`, `section_failed`, `section_skipped`, `section_retrying`) all carry `section_id` so the UI can update individual sections without a full refetch; a 30-second grace window plus 5-second polling fallback keeps the progress counter honest even when the SSE connection drops mid-job.
+
 ## 2026-04-13 — Post-Install Runtime Quality
 
 - Concurrent reads/writes no longer fail with `database is locked` 500s — SQLite now waits up to 5s under write contention (`PRAGMA busy_timeout=5000`), and the pathological case returns a clean 503 "Database busy, please retry" instead of a SQLAlchemy traceback.

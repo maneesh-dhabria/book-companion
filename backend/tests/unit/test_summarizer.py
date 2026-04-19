@@ -17,6 +17,7 @@ def make_mock_section(section_id=1, title="Chapter 1", content="Test content " *
     section.content_md = content
     section.content_token_count = len(content.split())
     section.default_summary_id = None
+    section.section_type = "chapter"
     section.images = []
     return section
 
@@ -152,7 +153,7 @@ async def test_summarize_book_skips_existing(mock_config, mock_llm):
     )
     assert result["skipped"] == 1
     assert result["completed"] == 0
-    skip_cb.assert_called_once_with(1, 1, "Chapter 1", "already summarized")
+    skip_cb.assert_called_once_with(1, 1, 1, "Chapter 1", "already summarized")
 
 
 @pytest.mark.asyncio

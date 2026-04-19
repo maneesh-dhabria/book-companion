@@ -10,35 +10,14 @@ from markdownify import markdownify
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
 from app.services.parser.image_url_rewrite import to_placeholder
+from app.services.parser.section_classifier import detect_section_type
 
 logger = structlog.get_logger()
-
-SECTION_TYPE_PATTERNS = {
-    "glossary": re.compile(r"\bglossary\b", re.IGNORECASE),
-    "notes": re.compile(r"\b(end\s*notes?|chapter\s*notes?|notes?)\b", re.IGNORECASE),
-    "appendix": re.compile(r"\bappendix\b", re.IGNORECASE),
-    "bibliography": re.compile(r"\b(bibliography|works?\s+cited|references)\b", re.IGNORECASE),
-    "index": re.compile(r"\bindex\b", re.IGNORECASE),
-    "about_author": re.compile(r"\babout\s+the\s+author\b", re.IGNORECASE),
-    "foreword": re.compile(r"\bforeword\b", re.IGNORECASE),
-    "preface": re.compile(r"\bpreface\b", re.IGNORECASE),
-    "introduction": re.compile(r"\bintroduction\b", re.IGNORECASE),
-    "epilogue": re.compile(r"\bepilogue\b", re.IGNORECASE),
-    "conclusion": re.compile(r"\bconclusion\b", re.IGNORECASE),
-}
 
 
 class EPUBParser(BookParser):
     def supports_format(self, file_format: str) -> bool:
         return file_format == "epub"
-
-    @staticmethod
-    def _detect_section_type(title: str) -> str:
-        """Detect section type from title using pattern matching."""
-        for section_type, pattern in SECTION_TYPE_PATTERNS.items():
-            if pattern.search(title):
-                return section_type
-        return "chapter"
 
     async def parse(self, file_path: Path) -> ParsedBook:
         book = epub.read_epub(str(file_path))
@@ -310,7 +289,7 @@ class EPUBParser(BookParser):
                                 content_md=content,
                                 depth=0,
                                 order_index=len(sections),
-                                section_type=self._detect_section_type(spine_title),
+                                section_type=detect_section_type(spine_title, content),
                             )
                         )
 
@@ -372,7 +351,7 @@ class EPUBParser(BookParser):
                 content_md=content,
                 depth=depth,
                 order_index=order_counter[0],
-                section_type=self._detect_section_type(effective_title),
+                section_type=detect_section_type(effective_title, content),
                 images=section_images,
             )
         )

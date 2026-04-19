@@ -19,7 +19,7 @@ from app.api.schemas import (
     ProcessingStatusResponse,
 )
 from app.config import Settings  # noqa: TC001
-from app.db.models import Book, ProcessingJob, ProcessingJobStatus, ProcessingStep
+from app.db.models import Book, BookSection, ProcessingJob, ProcessingJobStatus, ProcessingStep
 
 router = APIRouter(tags=["processing"])
 
@@ -46,6 +46,32 @@ async def start_processing(
             PresetService().load(body.preset_name)
         except PresetError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # Validate scope + section_id combinations (FR-24, FR-27)
+    if body.scope == "section":
+        if body.section_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail="scope='section' requires section_id",
+            )
+        section_row = (
+            await db.execute(
+                select(BookSection).where(
+                    BookSection.id == body.section_id,
+                    BookSection.book_id == book_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if section_row is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"section_id={body.section_id} does not belong to book {book_id}",
+            )
+    if body.scope == "pending" and body.force:
+        raise HTTPException(
+            status_code=400,
+            detail="scope='pending' is incompatible with force=true",
+        )
 
     # Create processing job
     job = ProcessingJob(
@@ -106,13 +132,31 @@ async def start_processing(
                 )
                 eval_svc = EvalService(db=bg_session, llm=llm, config=settings)
 
-                def on_section_complete(index, total, section_title, elapsed=None, comp=None):
+                def on_section_start(section_id, index, total, section_title):
+                    if event_bus:
+                        asyncio.create_task(
+                            event_bus.publish(
+                                str(job_id),
+                                "section_started",
+                                {
+                                    "section_id": section_id,
+                                    "title": section_title,
+                                    "index": index,
+                                    "total": total,
+                                },
+                            )
+                        )
+
+                def on_section_complete(
+                    section_id, index, total, section_title, elapsed=None, comp=None
+                ):
                     if event_bus:
                         asyncio.create_task(
                             event_bus.publish(
                                 str(job_id),
                                 "section_completed",
                                 {
+                                    "section_id": section_id,
                                     "title": section_title,
                                     "index": index,
                                     "total": total,
@@ -121,13 +165,14 @@ async def start_processing(
                             )
                         )
 
-                def on_section_skip(index, total, section_title, reason):
+                def on_section_skip(section_id, index, total, section_title, reason):
                     if event_bus:
                         asyncio.create_task(
                             event_bus.publish(
                                 str(job_id),
                                 "section_skipped",
                                 {
+                                    "section_id": section_id,
                                     "title": section_title,
                                     "index": index,
                                     "total": total,
@@ -136,13 +181,14 @@ async def start_processing(
                             )
                         )
 
-                def on_section_fail(index, total, section_title, error):
+                def on_section_fail(section_id, index, total, section_title, error):
                     if event_bus:
                         asyncio.create_task(
                             event_bus.publish(
                                 str(job_id),
                                 "section_failed",
                                 {
+                                    "section_id": section_id,
                                     "title": section_title,
                                     "index": index,
                                     "total": total,
@@ -151,13 +197,14 @@ async def start_processing(
                             )
                         )
 
-                def on_section_retry(index, total, section_title):
+                def on_section_retry(section_id, index, total, section_title):
                     if event_bus:
                         asyncio.create_task(
                             event_bus.publish(
                                 str(job_id),
                                 "section_retrying",
                                 {
+                                    "section_id": section_id,
                                     "title": section_title,
                                     "index": index,
                                     "total": total,
@@ -169,12 +216,27 @@ async def start_processing(
                 skip_eval = body.skip_eval or not body.run_eval
                 no_retry = not body.auto_retry
 
+                if event_bus:
+                    await event_bus.publish(
+                        str(job_id),
+                        "processing_started",
+                        {
+                            "book_id": book_id,
+                            "job_id": job_id,
+                            "scope": body.scope,
+                        },
+                    )
+
                 result = await summarizer.summarize_book(
                     book_id,
                     preset_name=body.preset_name,
+                    scope=body.scope,
+                    section_id=body.section_id,
+                    force=body.force,
                     skip_eval=skip_eval,
                     no_retry=no_retry,
                     eval_service=None if skip_eval else eval_svc,
+                    on_section_start=on_section_start,
                     on_section_complete=on_section_complete,
                     on_section_skip=on_section_skip,
                     on_section_fail=on_section_fail,

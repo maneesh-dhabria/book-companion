@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { FRONT_MATTER_TYPES, SUMMARIZABLE_TYPES } from '@/stores/reader'
 import type { Section } from '@/types'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   sections: Section[]
   currentSectionId: number | null
   bookId: number
@@ -15,25 +16,42 @@ function toggle() {
   isOpen.value = !isOpen.value
   if (isOpen.value) searchQuery.value = ''
 }
+
+const firstSummarizableIndex = computed(() => {
+  const idx = props.sections.findIndex((s) => SUMMARIZABLE_TYPES.has(s.section_type))
+  return idx === -1 ? props.sections.length : idx
+})
+
+const frontMatter = computed(() =>
+  props.sections.filter(
+    (s, i) => FRONT_MATTER_TYPES.has(s.section_type) && i < firstSummarizableIndex.value,
+  ),
+)
+
+const body = computed(() =>
+  props.sections.filter(
+    (s, i) => !(FRONT_MATTER_TYPES.has(s.section_type) && i < firstSummarizableIndex.value),
+  ),
+)
+
+function match(s: Section) {
+  return (
+    !searchQuery.value || s.title.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+}
 </script>
 
 <template>
-  <div class="toc-dropdown" v-click-outside="() => isOpen = false">
+  <div class="toc-dropdown" v-click-outside="() => (isOpen = false)">
     <button class="toc-trigger" @click="toggle">
-      {{ sections.find(s => s.id === currentSectionId)?.title || 'Select Section' }}
+      {{ sections.find((s) => s.id === currentSectionId)?.title || 'Select Section' }}
       <span class="toc-arrow">{{ isOpen ? '▲' : '▼' }}</span>
     </button>
     <div v-if="isOpen" class="toc-panel">
-      <input
-        v-model="searchQuery"
-        placeholder="Search sections..."
-        class="toc-search"
-      />
+      <input v-model="searchQuery" placeholder="Search sections..." class="toc-search" />
       <div class="toc-list">
         <router-link
-          v-for="section in sections.filter(s =>
-            !searchQuery || s.title.toLowerCase().includes(searchQuery.toLowerCase())
-          )"
+          v-for="section in body.filter(match)"
           :key="section.id"
           :to="`/books/${bookId}/sections/${section.id}`"
           class="toc-item"
@@ -44,6 +62,20 @@ function toggle() {
           <span class="toc-title">{{ section.title }}</span>
           <span v-if="section.has_summary" class="toc-summarized">S</span>
         </router-link>
+        <details v-if="frontMatter.length" class="toc-frontmatter">
+          <summary>Front Matter ({{ frontMatter.length }})</summary>
+          <router-link
+            v-for="section in frontMatter.filter(match)"
+            :key="section.id"
+            :to="`/books/${bookId}/sections/${section.id}`"
+            class="toc-item"
+            :class="{ active: section.id === currentSectionId }"
+            @click="isOpen = false"
+          >
+            <span class="toc-index">{{ section.order_index + 1 }}</span>
+            <span class="toc-title">{{ section.title }}</span>
+          </router-link>
+        </details>
       </div>
     </div>
   </div>
@@ -148,5 +180,13 @@ function toggle() {
   background: var(--color-bg-tertiary);
   color: var(--color-text-accent);
   font-weight: 600;
+}
+
+.toc-frontmatter > summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  user-select: none;
 }
 </style>
