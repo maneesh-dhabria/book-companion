@@ -96,6 +96,34 @@ def _spawn_vite(
     )
 
 
+def _kill_vite_group(
+    proc: subprocess.Popen[bytes], grace_seconds: float = 5.0
+) -> None:
+    """SIGTERM the Vite process group, escalate to SIGKILL if it doesn't
+    exit within `grace_seconds`. Never raises — shutdown must not leak.
+
+    Vite runs in its own session (start_new_session=True), so killing the
+    group takes esbuild + any service workers with it.
+    """
+    try:
+        pgid = os.getpgid(proc.pid)
+    except ProcessLookupError:
+        return
+
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(pgid, signal.SIGTERM)
+    try:
+        proc.wait(timeout=grace_seconds)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(pgid, signal.SIGKILL)
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        proc.wait(timeout=grace_seconds)
+
+
 def _pick_available_port(host: str, preferred: int, max_tries: int = 20) -> int:
     """Return `preferred` if free, else the next free port in [preferred, preferred+max_tries).
 
@@ -214,12 +242,26 @@ def serve(
         os.environ["BOOKCOMPANION_API_ONLY"] = "1"
 
     console.print()
+
+    # Convert SIGHUP (terminal close) into SIGINT so uvicorn's existing
+    # handler triggers graceful shutdown AND our finally block runs — without
+    # this, closing the terminal would kill us silently and leak Vite.
+    if vite_proc is not None:
+        signal.signal(
+            signal.SIGHUP,
+            lambda _sig, _frame: signal.raise_signal(signal.SIGINT),
+        )
+
     try:
         uvicorn.run("app.api.main:app", host=host, port=port)
     finally:
         if vite_proc is not None:
-            # Kill the whole Vite process group (esbuild children, etc.) so
-            # nothing lingers after the backend shuts down.
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(vite_proc.pid), signal.SIGTERM)
-            vite_proc.wait(timeout=10)
+            # Ignore further signals during cleanup so an impatient second
+            # Ctrl-C can't short-circuit the kill and leak Vite.
+            old_int = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            old_term = signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            try:
+                _kill_vite_group(vite_proc)
+            finally:
+                signal.signal(signal.SIGINT, old_int)
+                signal.signal(signal.SIGTERM, old_term)
