@@ -114,7 +114,9 @@ class SummarizerService:
                         else f"- {section.title}: {existing.summary_md}"
                     )
                     if on_section_skip:
-                        on_section_skip(i + 1, total, section.title, "already summarized")
+                        on_section_skip(
+                            section.id, i + 1, total, section.title, "already summarized"
+                        )
                     continue
 
             # Minimum content threshold
@@ -126,7 +128,11 @@ class SummarizerService:
                 skipped += 1
                 if on_section_skip:
                     on_section_skip(
-                        i + 1, total, section.title, f"{char_count} chars < {min_chars} min"
+                        section.id,
+                        i + 1,
+                        total,
+                        section.title,
+                        f"{char_count} chars < {min_chars} min",
                     )
                 logger.info(
                     "section_skipped_insufficient_content",
@@ -143,7 +149,7 @@ class SummarizerService:
             section_title = section.title
 
             if on_section_start:
-                on_section_start(i + 1, total, section_title, section_id)
+                on_section_start(section_id, i + 1, total, section_title)
 
             try:
                 start = time.monotonic()
@@ -211,7 +217,9 @@ class SummarizerService:
                             summary = retry_summary  # Use retry for cumulative context
                             retried_sections.append(section.id)
                             if on_section_retry:
-                                on_section_retry(i + 1, total, section.title)
+                                on_section_retry(
+                                    section.id, i + 1, total, section.title
+                                )
                     except Exception as eval_err:
                         logger.warning(
                             "inline_eval_failed",
@@ -234,7 +242,9 @@ class SummarizerService:
                         if summary.input_char_count
                         else 0
                     )
-                    on_section_complete(i + 1, total, section.title, elapsed, comp)
+                    on_section_complete(
+                        section.id, i + 1, total, section.title, elapsed, comp
+                    )
 
                 # Commit per-section so partial progress is durable and
                 # existing skip-completed logic works across runs (G2, G3).
@@ -255,7 +265,9 @@ class SummarizerService:
                     error=error_msg,
                 )
                 if on_section_fail:
-                    on_section_fail(i + 1, total, section_title, error_msg)
+                    on_section_fail(
+                        section_id, i + 1, total, section_title, error_msg
+                    )
                 # Rollback expires every identity-mapped ORM object in this
                 # session. Issuing a fresh SELECT refreshes them in place via
                 # the identity map so the next iteration's `section.*` access

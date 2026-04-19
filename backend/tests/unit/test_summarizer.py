@@ -153,7 +153,7 @@ async def test_summarize_book_skips_existing(mock_config, mock_llm):
     )
     assert result["skipped"] == 1
     assert result["completed"] == 0
-    skip_cb.assert_called_once_with(1, 1, "Chapter 1", "already summarized")
+    skip_cb.assert_called_once_with(1, 1, 1, "Chapter 1", "already summarized")
 
 
 @pytest.mark.asyncio
