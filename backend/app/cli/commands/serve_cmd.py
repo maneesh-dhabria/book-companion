@@ -70,12 +70,18 @@ def _find_frontend_dir() -> Path | None:
     return None
 
 
-def _spawn_vite(frontend_dir: Path, api_port: int) -> subprocess.Popen[bytes]:
+def _spawn_vite(
+    frontend_dir: Path, api_port: int, frontend_port: int
+) -> subprocess.Popen[bytes]:
     """Launch `npm run dev` in its own process group so we can kill its
     children (esbuild, etc.) on shutdown without leaking processes.
 
-    Exports BC_API_PORT so vite.config.ts's proxy target follows the backend
-    when auto-bump picks a non-default port.
+    - Exports BC_API_PORT so vite.config.ts's proxy target follows the backend
+      when auto-bump picks a non-default port.
+    - Passes `--port N --strictPort` so Vite binds exactly the port we
+      pre-probed (or dies loudly if something raced us to it). Without
+      --strictPort, Vite silently bumps to 5174/5175/… and our banner URL
+      would be wrong.
     """
     npm = shutil.which("npm")
     if not npm:
@@ -83,7 +89,7 @@ def _spawn_vite(frontend_dir: Path, api_port: int) -> subprocess.Popen[bytes]:
     env = os.environ.copy()
     env["BC_API_PORT"] = str(api_port)
     return subprocess.Popen(
-        [npm, "run", "dev"],
+        [npm, "run", "dev", "--", "--port", str(frontend_port), "--strictPort"],
         cwd=str(frontend_dir),
         start_new_session=True,
         env=env,
@@ -177,13 +183,18 @@ def serve(
     port = actual_port
 
     if dev:
+        frontend_port = _pick_available_port(host, 5173)
+        if frontend_port != 5173:
+            console.print(
+                f"[yellow]Frontend port 5173 is busy; using {frontend_port}.[/yellow]"
+            )
         try:
-            vite_proc = _spawn_vite(frontend_dir, port)
+            vite_proc = _spawn_vite(frontend_dir, port, frontend_port)
         except RuntimeError as e:
             console.print(f"[red]{e}[/red]")
             raise typer.Exit(code=1) from e
         console.print(
-            "[green]→ Open [bold]http://localhost:5173[/bold] "
+            f"[green]→ Open [bold]http://localhost:{frontend_port}[/bold] "
             "(Vite proxies /api to the backend).[/green]"
         )
 
