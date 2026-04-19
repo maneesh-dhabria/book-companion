@@ -56,7 +56,7 @@ def test_migration_rewrites_placeholders(tmp_path, monkeypatch):
             )
         )
 
-    downgrade(cfg, "-1")
+    downgrade(cfg, "e152941ea209")
     upgrade(cfg, "head")
 
     with engine.begin() as conn:

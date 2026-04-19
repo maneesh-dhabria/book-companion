@@ -15,6 +15,7 @@ from app.db.models import BookSection, Summary, SummaryContentType
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
+from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 from app.services.summarizer.llm_provider import LLMProvider
 from app.services.summary_service import SummaryService
 
@@ -47,10 +48,13 @@ class SummarizerService:
         skip_eval: bool = False,
         no_retry: bool = False,
         eval_service=None,
+        on_section_start: Callable | None = None,
         on_section_complete: Callable | None = None,
         on_section_skip: Callable | None = None,
         on_section_fail: Callable | None = None,
         on_section_retry: Callable | None = None,
+        scope: str = "all",
+        section_id: int | None = None,
     ) -> dict:
         """Orchestrate full book summarization using map-reduce with faceted prompts."""
         # Resolve facets from preset_name if caller didn't provide a complete set.
@@ -68,6 +72,25 @@ class SummarizerService:
             )
 
         sections = await self._section_repo.get_by_book_id(book_id)
+
+        if scope == "section":
+            if section_id is None:
+                raise ValueError("scope='section' requires section_id")
+            sections = [s for s in sections if s.id == section_id]
+            if not sections:
+                raise ValueError(
+                    f"section_id={section_id} does not belong to book {book_id}"
+                )
+        elif scope == "pending":
+            sections = [
+                s
+                for s in sections
+                if s.default_summary_id is None
+                and s.section_type in SUMMARIZABLE_TYPES
+            ]
+        else:
+            sections = [s for s in sections if s.section_type in SUMMARIZABLE_TYPES]
+
         total = len(sections)
 
         completed = 0
@@ -118,6 +141,9 @@ class SummarizerService:
             # expires ORM attributes and would MissingGreenlet on access.
             section_id = section.id
             section_title = section.title
+
+            if on_section_start:
+                on_section_start(i + 1, total, section_title, section_id)
 
             try:
                 start = time.monotonic()

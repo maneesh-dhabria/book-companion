@@ -17,6 +17,7 @@ def make_mock_section(section_id=1, title="Chapter 1", content="Test content " *
     section.content_md = content
     section.content_token_count = len(content.split())
     section.default_summary_id = None
+    section.section_type = "chapter"
     section.images = []
     return section
 
