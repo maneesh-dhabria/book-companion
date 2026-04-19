@@ -6,6 +6,7 @@ import pymupdf4llm
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
 from app.services.parser.image_url_rewrite import to_placeholder
+from app.services.parser.section_classifier import detect_section_type
 
 
 class PDFParser(BookParser):
@@ -90,6 +91,9 @@ class PDFParser(BookParser):
                                     content_md=content,
                                     depth=0,
                                     order_index=order,
+                                    section_type=detect_section_type(
+                                        current_title, content
+                                    ),
                                     images=current_images,
                                 )
                             )
@@ -110,6 +114,7 @@ class PDFParser(BookParser):
                         content_md=content,
                         depth=0,
                         order_index=order,
+                        section_type=detect_section_type(current_title, content),
                         images=current_images,
                     )
                 )
@@ -166,12 +171,14 @@ class PDFParser(BookParser):
             chunk = pages[i : i + pages_per_section]
             content = "\n\n".join(p.get("text", "") for p in chunk).strip()
             if content:
+                title = f"Pages {i + 1}-{min(i + pages_per_section, len(pages))}"
                 sections.append(
                     ParsedSection(
-                        title=f"Pages {i + 1}-{min(i + pages_per_section, len(pages))}",
+                        title=title,
                         content_md=content,
                         depth=0,
                         order_index=len(sections),
+                        section_type=detect_section_type(title, content),
                     )
                 )
         return sections
