@@ -1982,10 +1982,26 @@ Two Alembic revisions and no runtime schema changes. Standard downgrade chain:
     }
   }
 
-  // Expose updateSection in the returned object
+  // Setter action for the book ref — used by summarizationJob.pollOnce() to
+  // refresh summary_progress without a full reload. Explicit action keeps
+  // mutation paths auditable.
+  function setBook(b: Book) { book.value = b }
+
+  // Expose updateSection + setBook in the returned object
   ```
 
   Update BookDetailView (T17) to pass `routeSectionId` + `savedSectionId`. For this task, only change the store; BookDetailView will be updated in T17.
+
+  Add a test for `setBook` alongside `updateSection`:
+  ```typescript
+  it('setBook replaces the book ref', () => {
+    const s = useReaderStore()
+    s.setBook({ id: 1, title: 'a' } as never)
+    expect(s.book?.title).toBe('a')
+    s.setBook({ id: 1, title: 'b' } as never)
+    expect(s.book?.title).toBe('b')
+  })
+  ```
 
 - [ ] Step 4: Run and verify pass
   Run: `cd frontend && npm run test:unit -- --run reader.spec.ts`
@@ -2707,6 +2723,8 @@ Two Alembic revisions and no runtime schema changes. Standard downgrade chain:
   import { describe, it, expect, beforeEach, vi } from 'vitest'
   import { createRouter, createMemoryHistory } from 'vue-router'
   import BookDetailView from '../BookDetailView.vue'
+  import SummaryEmptyState from '@/components/reader/SummaryEmptyState.vue'
+  import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
   import { useReaderStore } from '@/stores/reader'
 
   const stubRouter = () => createRouter({
@@ -2730,7 +2748,7 @@ Two Alembic revisions and no runtime schema changes. Standard downgrade chain:
 
       const w = mount(BookDetailView, { global: { plugins: [router] } })
       await flushPromises()
-      expect(w.findComponent({ name: 'SummaryEmptyState' }).exists()).toBe(true)
+      expect(w.findComponent(SummaryEmptyState).exists()).toBe(true)
       expect(w.text()).toMatch(/Not yet summarized/)
     })
 
@@ -2761,7 +2779,7 @@ Two Alembic revisions and no runtime schema changes. Standard downgrade chain:
       reader.sections = []
       const w = mount(BookDetailView, { global: { plugins: [router] } })
       await flushPromises()
-      expect(w.findComponent({ name: 'SummarizationProgress' }).exists()).toBe(true)
+      expect(w.findComponent(SummarizationProgress).exists()).toBe(true)
     })
   })
   ```
@@ -3114,18 +3132,21 @@ Two Alembic revisions and no runtime schema changes. Standard downgrade chain:
 - [ ] **Frontend unit:** `cd frontend && npm run test:unit` — all suites passed
 - [ ] **Frontend build:** `cd frontend && npm run build` — exits 0
 - [ ] **Database migrations:** `cd backend && uv run alembic -c app/migrations/alembic.ini upgrade head` — applies cleanly on an existing library DB; re-run is a no-op
-- [ ] **Fresh-install smoke:**
+- [ ] **Fresh-install smoke (uses isolated dir — does NOT touch real library):**
   ```bash
-  rm -rf ~/Library/Application\ Support/bookcompanion
+  export BOOKCOMPANION_DATA__DIRECTORY="$(mktemp -d)/bc-smoke"
   cd backend && uv run bookcompanion init
   uv run bookcompanion add /path/to/porter.epub
   uv run bookcompanion serve &
-  # in new terminal:
+  # in new terminal (same env var exported):
   curl -s http://localhost:8000/api/v1/books/1 | jq '.summary_progress'
   # → {"summarized": 0, "total": 12}
   curl -sX POST http://localhost:8000/api/v1/books/1/summarize \
     -H 'content-type: application/json' -d '{"scope":"pending"}' | jq '.job_id'
+  # Cleanup after verification:
+  kill %1 && rm -rf "$BOOKCOMPANION_DATA__DIRECTORY" && unset BOOKCOMPANION_DATA__DIRECTORY
   ```
+  Do NOT `rm -rf` the real data directory (`~/Library/Application Support/bookcompanion/` on macOS) — the `BOOKCOMPANION_DATA__DIRECTORY` override in this block keeps the smoke test isolated from existing books.
 - [ ] **API smoke:**
   ```bash
   # Invalid scope → 422
@@ -3187,7 +3208,7 @@ Two Alembic revisions and no runtime schema changes. Standard downgrade chain:
 | Loop | Findings | Changes Made |
 |------|----------|-------------|
 | 1 | (a) Spec edge cases E4 (SSE drop) + E4a (SSE-fail-to-open grace polling) were not wired into T14 — would leave the button stuck "Summarizing…" on a real network glitch. (b) `reset()` spec text says "clears all state" but literal implementation loses `failedSections` on job completion — user returning to a failed section would lose the Retry banner. (c) T17 view-integration relied on manual testing only; plan reviewer could push back on structural-only verification. | (a) Added grace-polling (30s grace → 5s-interval `GET /books/{id}` polling, cancelled on any real event) to T14 implementation + two new Vitest tests with fake timers. Added decision P15 documenting the choice to implement inline. (b) Introduced decision P14: `reset()` preserves `bookId` + `failedSections`; per-section retry-clears-error lives in `startJob`. Updated the "reset clears everything" test to "reset clears job-session state but preserves failedSections". (c) Added a real component-mount test to T17 covering three render conditions (empty-state, summary_md render, progress mount). Adds ~15 min to T17. |
-| 2 | _to fill in next_ | _to fill in next_ |
+| 2 | (a) T17 component test used `findComponent({ name: 'SummaryEmptyState' })`; Vue 3 `<script setup>` components have no auto-generated name, so the query would fail silently. (b) T14's implementation calls `useReaderStore().setBook(book)` but T12 never explicitly adds the `setBook` action — engineer running T12 in isolation would miss it. (c) T21 fresh-install smoke `rm -rf`-ed the user's real `~/Library/Application Support/bookcompanion` directory, which would destroy their library. | (a) Replaced both `findComponent({ name: ... })` calls in T17 with `findComponent(SummaryEmptyState)` / `findComponent(SummarizationProgress)` using explicit imports. (b) Added an explicit `setBook(b: Book)` action step to T12 plus a unit test — 3-line addition. (c) Rewrote T21 fresh-install to use `BOOKCOMPANION_DATA__DIRECTORY=$(mktemp -d)/...` with explicit cleanup + warning not to touch the real data dir. |
 
 ---
 
