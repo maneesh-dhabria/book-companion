@@ -87,7 +87,7 @@ def test_migration_reclassifies_and_prunes(tmp_path, monkeypatch):
     with engine.begin() as conn:
         _seed(conn)
 
-    downgrade(cfg, "-1")
+    downgrade(cfg, "a1b2c3d4e5f6")  # before Migration B
     upgrade(cfg, "head")
 
     with engine.begin() as conn:
@@ -201,7 +201,7 @@ def test_migration_prunes_multi_batch_frontmatter_with_no_user_curated(
             )
         )
 
-    downgrade(cfg, "-1")
+    downgrade(cfg, "a1b2c3d4e5f6")  # before Migration B
     upgrade(cfg, "head")
 
     with engine.begin() as conn:
