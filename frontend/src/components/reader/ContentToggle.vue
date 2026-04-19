@@ -23,9 +23,9 @@ defineEmits<{
       class="toggle-btn"
       :class="{ active: mode === 'summary' }"
       @click="$emit('toggle')"
-      :disabled="mode === 'summary' || !hasSummary"
+      :disabled="mode === 'summary'"
     >
-      {{ hasSummary ? 'Summary' : 'No Summary' }}
+      Summary
     </button>
   </div>
 </template>
