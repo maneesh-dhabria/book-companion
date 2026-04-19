@@ -41,14 +41,44 @@ export const useReaderStore = defineStore('reader', () => {
   const hasNext = computed(() => currentIndex.value < sections.value.length - 1)
   const hasPrev = computed(() => currentIndex.value > 0)
 
-  async function loadBook(bookId: number) {
+  async function loadBook(
+    bookId: number,
+    opts?: { routeSectionId?: number; savedSectionId?: number },
+  ) {
     loading.value = true
     try {
       book.value = await getBook(bookId)
       sections.value = await listSections(bookId)
+
+      const target =
+        (opts?.routeSectionId && sections.value.find((s) => s.id === opts.routeSectionId)) ||
+        (opts?.savedSectionId && sections.value.find((s) => s.id === opts.savedSectionId)) ||
+        sections.value.find((s) => SUMMARIZABLE_TYPES.has(s.section_type)) ||
+        sections.value[0] ||
+        null
+
+      if (target) {
+        await loadSection(bookId, target.id)
+      }
     } finally {
       loading.value = false
     }
+  }
+
+  function updateSection(updated: Section) {
+    const idx = sections.value.findIndex((s) => s.id === updated.id)
+    if (idx === -1) {
+      console.warn(`updateSection: id ${updated.id} not found in book ${book.value?.id ?? '?'}`)
+      return
+    }
+    sections.value[idx] = updated
+    if (currentSection.value?.id === updated.id) {
+      currentSection.value = updated
+    }
+  }
+
+  function setBook(b: Book) {
+    book.value = b
   }
 
   async function loadSection(bookId: number, sectionId: number) {
@@ -93,5 +123,7 @@ export const useReaderStore = defineStore('reader', () => {
     loadSection,
     navigateSection,
     toggleContent,
+    updateSection,
+    setBook,
   }
 })
