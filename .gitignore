@@ -87,3 +87,6 @@ uv.lock
 
 # Docker bind-mount data (postgres, backups, config)
 data/
+
+# Playwright MCP cache
+.playwright-mcp/
