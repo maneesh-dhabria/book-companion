@@ -19,7 +19,7 @@ from app.api.schemas import (
     ProcessingStatusResponse,
 )
 from app.config import Settings  # noqa: TC001
-from app.db.models import Book, ProcessingJob, ProcessingJobStatus, ProcessingStep
+from app.db.models import Book, BookSection, ProcessingJob, ProcessingJobStatus, ProcessingStep
 
 router = APIRouter(tags=["processing"])
 
@@ -46,6 +46,32 @@ async def start_processing(
             PresetService().load(body.preset_name)
         except PresetError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # Validate scope + section_id combinations (FR-24, FR-27)
+    if body.scope == "section":
+        if body.section_id is None:
+            raise HTTPException(
+                status_code=422,
+                detail="scope='section' requires section_id",
+            )
+        section_row = (
+            await db.execute(
+                select(BookSection).where(
+                    BookSection.id == body.section_id,
+                    BookSection.book_id == book_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if section_row is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"section_id={body.section_id} does not belong to book {book_id}",
+            )
+    if body.scope == "pending" and body.force:
+        raise HTTPException(
+            status_code=400,
+            detail="scope='pending' is incompatible with force=true",
+        )
 
     # Create processing job
     job = ProcessingJob(

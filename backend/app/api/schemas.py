@@ -184,6 +184,9 @@ class ProcessingStartRequest(BaseModel):
     run_eval: bool = True
     auto_retry: bool = True
     skip_eval: bool = False
+    scope: Literal["all", "pending", "section"] = "all"
+    section_id: int | None = None
+    force: bool = False
 
 
 class ProcessingStartResponse(BaseModel):
