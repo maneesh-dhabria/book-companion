@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import MarkdownIt from 'markdown-it'
+import { classifyLink } from '@/utils/link-policy'
 import DOMPurify from 'dompurify'
+import MarkdownIt from 'markdown-it'
 import { computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
@@ -19,9 +20,27 @@ const md = new MarkdownIt({
   typographer: true,
 })
 
+function applyLinkPolicy(sanitized: string): string {
+  const doc = new DOMParser().parseFromString(sanitized, 'text/html')
+  for (const a of Array.from(doc.querySelectorAll('a[href]'))) {
+    const cls = classifyLink(a.getAttribute('href') || '')
+    if (cls === 'external') {
+      a.setAttribute('target', '_blank')
+      a.setAttribute('rel', 'noopener noreferrer')
+    } else {
+      const span = doc.createElement('span')
+      span.textContent = a.textContent || ''
+      if (a.className) span.className = a.className
+      a.replaceWith(span)
+    }
+  }
+  return doc.body.innerHTML
+}
+
 const renderedHtml = computed(() => {
   const raw = md.render(props.content || '')
-  return DOMPurify.sanitize(raw)
+  const sanitized = DOMPurify.sanitize(raw)
+  return applyLinkPolicy(sanitized)
 })
 
 function onKeydown(e: KeyboardEvent) {
