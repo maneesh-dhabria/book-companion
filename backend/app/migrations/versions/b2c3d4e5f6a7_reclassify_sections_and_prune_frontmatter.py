@@ -101,7 +101,35 @@ def upgrade() -> None:
                     or 0
                 )
 
-                if count == 1:
+                newest_non_batch = None
+                if count > 1 and cutoff is not None:
+                    newest_non_batch = conn.execute(
+                        sa.text(
+                            "SELECT id FROM summaries "
+                            "WHERE content_type='section' AND content_id = :sid "
+                            "  AND created_at < :cutoff "
+                            "ORDER BY created_at DESC LIMIT 1"
+                        ),
+                        {"sid": row.id, "cutoff": cutoff},
+                    ).scalar()
+
+                if count == 0:
+                    pass
+                elif newest_non_batch is not None:
+                    # User-curated summary exists pre-batch → preserve it, re-point default.
+                    conn.execute(
+                        sa.text(
+                            "UPDATE book_sections "
+                            "SET default_summary_id = :new "
+                            "WHERE id = :sid"
+                        ),
+                        {"new": newest_non_batch, "sid": row.id},
+                    )
+                    per_book["preserved"] += 1
+                else:
+                    # count == 1, OR count > 1 with all rows inside the batch window
+                    # (no pre-batch user-curated row). Either way these are auto-generated
+                    # summaries of a section that's now classified as front-matter — prune.
                     conn.execute(
                         sa.text(
                             "DELETE FROM summaries "
@@ -117,26 +145,6 @@ def upgrade() -> None:
                         {"sid": row.id},
                     )
                     per_book["pruned"] += 1
-                elif count > 1 and cutoff is not None:
-                    newest_non_batch = conn.execute(
-                        sa.text(
-                            "SELECT id FROM summaries "
-                            "WHERE content_type='section' AND content_id = :sid "
-                            "  AND created_at < :cutoff "
-                            "ORDER BY created_at DESC LIMIT 1"
-                        ),
-                        {"sid": row.id, "cutoff": cutoff},
-                    ).scalar()
-                    if newest_non_batch is not None:
-                        conn.execute(
-                            sa.text(
-                                "UPDATE book_sections "
-                                "SET default_summary_id = :new "
-                                "WHERE id = :sid"
-                            ),
-                            {"new": newest_non_batch, "sid": row.id},
-                        )
-                    per_book["preserved"] += 1
 
         if per_book["reclassified"] > 0:
             totals["books_affected"] += 1

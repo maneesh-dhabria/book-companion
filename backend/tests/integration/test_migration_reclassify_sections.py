@@ -142,3 +142,79 @@ def test_migration_reclassifies_and_prunes(tmp_path, monkeypatch):
             )
         }
     assert types2 == types
+
+
+def test_migration_prunes_multi_batch_frontmatter_with_no_user_curated(
+    tmp_path, monkeypatch
+):
+    """Regression (B1): when a section has multiple auto-summaries all within the
+    60s batch window and no older user-curated summary, reclassifying it as
+    front-matter must still prune and clear the default. Without the fix, the
+    section retained its auto-generated default pointing at a batch-window row.
+    """
+    db_path = tmp_path / "library.db"
+    monkeypatch.setenv(
+        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
+    )
+    cfg = Config(str(ALEMBIC_INI))
+    upgrade(cfg, "head")
+
+    engine = sa.create_engine(f"sqlite:///{db_path}")
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                """
+            INSERT INTO books (id, title, file_data, file_hash, file_format,
+                               file_size_bytes, status)
+            VALUES (1, 'T', x'00', 'h1', 'epub', 1, 'COMPLETED')
+            """
+            )
+        )
+        conn.execute(
+            sa.text(
+                """
+            INSERT INTO book_sections (id, book_id, title, order_index, depth,
+                                       section_type, content_md)
+            VALUES (1, 1, 'Copyright', 0, 0, 'chapter', '\u00a9 2024')
+            """
+            )
+        )
+        now = datetime.utcnow()
+        # Two auto summaries, both within the 60-second batch window.
+        for sid, offset in [(100, 0), (101, 10)]:
+            conn.execute(
+                sa.text(
+                    """
+                INSERT INTO summaries (
+                  id, content_type, content_id, book_id, facets_used,
+                  prompt_text_sent, model_used, input_char_count,
+                  summary_char_count, summary_md, created_at
+                ) VALUES (:id, 'section', 1, 1, '{}', 'p', 'm',
+                          10, 5, 's', :ts)
+                """
+                ),
+                {"id": sid, "ts": now + timedelta(seconds=offset)},
+            )
+        conn.execute(
+            sa.text(
+                "UPDATE book_sections SET default_summary_id = 100 WHERE id = 1"
+            )
+        )
+
+    downgrade(cfg, "-1")
+    upgrade(cfg, "head")
+
+    with engine.begin() as conn:
+        t = conn.execute(
+            sa.text("SELECT section_type, default_summary_id FROM book_sections WHERE id = 1")
+        ).one()
+        remaining = conn.execute(
+            sa.text(
+                "SELECT count(*) FROM summaries "
+                "WHERE content_type='section' AND content_id = 1"
+            )
+        ).scalar()
+
+    assert t.section_type == "copyright"
+    assert t.default_summary_id is None
+    assert remaining == 0
