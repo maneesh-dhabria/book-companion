@@ -29,6 +29,11 @@ export interface SectionBrief {
   has_summary: boolean
 }
 
+export interface SummaryProgress {
+  summarized: number
+  total: number
+}
+
 export interface Book {
   id: number
   title: string
@@ -42,6 +47,7 @@ export interface Book {
   cover_url: string | null
   created_at: string
   updated_at: string
+  summary_progress?: SummaryProgress | null
 }
 
 export interface Section {
@@ -56,6 +62,7 @@ export interface Section {
   summary_count: number
   annotation_count: number
   has_summary: boolean
+  is_summarizable?: boolean
 }
 
 export interface SummaryBrief {
@@ -64,6 +71,7 @@ export interface SummaryBrief {
   model_used: string
   summary_char_count: number
   created_at: string
+  summary_md?: string | null
 }
 
 export interface Summary {

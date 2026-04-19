@@ -1,28 +1,31 @@
 <script setup lang="ts">
-import ReadingArea from '@/components/reader/ReadingArea.vue'
-import ReaderHeader from '@/components/reader/ReaderHeader.vue'
-import FloatingToolbar from '@/components/reader/FloatingToolbar.vue'
-import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
-import ContextSidebar from '@/components/sidebar/ContextSidebar.vue'
-import AnnotationsTab from '@/components/sidebar/AnnotationsTab.vue'
-import AIChatTab from '@/components/sidebar/AIChatTab.vue'
-import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
+import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import { useTextSelection } from '@/composables/useTextSelection'
+import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
+import FloatingToolbar from '@/components/reader/FloatingToolbar.vue'
+import ReaderHeader from '@/components/reader/ReaderHeader.vue'
+import ReadingArea from '@/components/reader/ReadingArea.vue'
+import SummaryEmptyState from '@/components/reader/SummaryEmptyState.vue'
+import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
+import AIChatTab from '@/components/sidebar/AIChatTab.vue'
+import AnnotationsTab from '@/components/sidebar/AnnotationsTab.vue'
+import ContextSidebar from '@/components/sidebar/ContextSidebar.vue'
 import { useReadingState } from '@/composables/useReadingState'
+import { useTextSelection } from '@/composables/useTextSelection'
+import { useAnnotationsStore } from '@/stores/annotations'
 import { useReaderStore } from '@/stores/reader'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
-import { useAnnotationsStore } from '@/stores/annotations'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useSummarizationJobStore } from '@/stores/summarizationJob'
+import { onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 
 const route = useRoute()
 const reader = useReaderStore()
 const settings = useReaderSettingsStore()
 const annotations = useAnnotationsStore()
+const job = useSummarizationJobStore()
 
-// Track reading position for cross-device sync
-useReadingState(
+const readingState = useReadingState(
   () => reader.book?.id,
   () => reader.currentSection?.id,
 )
@@ -33,18 +36,34 @@ const { selection, isSelecting, clear: clearSelection } = useTextSelection(readi
 
 async function loadFromRoute() {
   const bookId = Number(route.params.id)
-  if (!reader.book || reader.book.id !== bookId) {
-    await reader.loadBook(bookId)
-  }
-
-  const sectionId = route.params.sectionId
+  const routeSectionId = route.params.sectionId
     ? Number(route.params.sectionId)
-    : reader.sections[0]?.id
+    : undefined
+  const savedSectionId =
+    (readingState as { savedSectionId?: { value?: number | null } } | undefined)
+      ?.savedSectionId?.value ?? undefined
 
-  if (sectionId) {
-    await reader.loadSection(bookId, sectionId)
+  if (!reader.book || reader.book.id !== bookId) {
+    await reader.loadBook(bookId, {
+      routeSectionId,
+      savedSectionId: savedSectionId ?? undefined,
+    })
+  } else if (routeSectionId && routeSectionId !== reader.currentSection?.id) {
+    await reader.loadSection(bookId, routeSectionId)
   }
 }
+
+async function onSummarizeThisSection() {
+  if (!reader.book || !reader.currentSection) return
+  await job.startJob(reader.book.id, {
+    scope: 'section',
+    section_id: reader.currentSection.id,
+  })
+}
+
+onBeforeRouteLeave(() => {
+  job.reset()
+})
 
 onMounted(() => {
   loadFromRoute()
@@ -108,6 +127,12 @@ function handleAskAi() {
     </template>
 
     <template v-else>
+      <SummarizationProgress
+        v-if="reader.book.summary_progress"
+        :book-id="reader.book.id"
+        :summarized="reader.book.summary_progress.summarized"
+        :total="reader.book.summary_progress.total"
+      />
       <ReaderHeader
         :book-title="reader.book.title"
         :book-id="reader.book.id"
@@ -147,7 +172,24 @@ function handleAskAi() {
       <div class="reader-body">
         <div class="reader-content" ref="readingAreaRef">
           <template v-if="reader.currentSection">
+            <template v-if="reader.contentMode === 'summary'">
+              <ReadingArea
+                v-if="reader.currentSection.default_summary?.summary_md"
+                :content="reader.currentSection.default_summary.summary_md"
+                :has-prev="reader.hasPrev"
+                :has-next="reader.hasNext"
+                @navigate="reader.navigateSection($event)"
+              />
+              <SummaryEmptyState
+                v-else
+                :section="reader.currentSection"
+                :active-job-section-id="job.activeJobSectionId"
+                :failed-error="job.getFailedError(reader.currentSection.id) ?? null"
+                @summarize="onSummarizeThisSection"
+              />
+            </template>
             <ReadingArea
+              v-else
               :content="reader.currentSection.content_md || ''"
               :has-prev="reader.hasPrev"
               :has-next="reader.hasNext"
