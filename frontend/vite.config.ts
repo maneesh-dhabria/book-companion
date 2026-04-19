@@ -15,7 +15,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // `bookcompanion serve --dev` exports BC_API_PORT so Vite proxies to
+        // the port the backend actually bound (auto-bumped if 8000 was busy).
+        // Standalone `npm run dev` falls back to 8000.
+        target: `http://localhost:${process.env.BC_API_PORT ?? '8000'}`,
         changeOrigin: true,
       },
     },

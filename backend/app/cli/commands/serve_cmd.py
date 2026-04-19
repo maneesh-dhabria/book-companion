@@ -1,6 +1,9 @@
 """bookcompanion serve — start the web server."""
 
+import contextlib
 import os
+import shutil
+import signal
 import socket
 import subprocess
 from pathlib import Path
@@ -55,6 +58,38 @@ def _auto_init_if_needed(settings) -> None:
         subprocess.run(["bookcompanion", "init"], check=False)
 
 
+def _find_frontend_dir() -> Path | None:
+    """Walk up from this file to locate a sibling `frontend/` with package.json.
+
+    Returns None in installed-wheel contexts (no adjacent source tree).
+    """
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "frontend" / "package.json"
+        if candidate.is_file():
+            return candidate.parent
+    return None
+
+
+def _spawn_vite(frontend_dir: Path, api_port: int) -> subprocess.Popen[bytes]:
+    """Launch `npm run dev` in its own process group so we can kill its
+    children (esbuild, etc.) on shutdown without leaking processes.
+
+    Exports BC_API_PORT so vite.config.ts's proxy target follows the backend
+    when auto-bump picks a non-default port.
+    """
+    npm = shutil.which("npm")
+    if not npm:
+        raise RuntimeError("npm not found on PATH — install Node.js or drop --dev")
+    env = os.environ.copy()
+    env["BC_API_PORT"] = str(api_port)
+    return subprocess.Popen(
+        [npm, "run", "dev"],
+        cwd=str(frontend_dir),
+        start_new_session=True,
+        env=env,
+    )
+
+
 def _pick_available_port(host: str, preferred: int, max_tries: int = 20) -> int:
     """Return `preferred` if free, else the next free port in [preferred, preferred+max_tries).
 
@@ -86,6 +121,15 @@ def serve(
             "Also settable via BOOKCOMPANION_API_ONLY=1."
         ),
     ),
+    dev: bool = typer.Option(
+        False,
+        "--dev",
+        help=(
+            "Dev mode: spawn `npm run dev` in the sibling frontend/ directory, "
+            "run the backend API-only, and print the Vite URL to open. Requires "
+            "a source checkout (no installed-wheel effect)."
+        ),
+    ),
 ) -> None:
     """Start the Book Companion web server."""
     if not api_only and os.environ.get("BOOKCOMPANION_API_ONLY", "") not in (
@@ -95,6 +139,20 @@ def serve(
         "False",
     ):
         api_only = True
+
+    # --dev implies API-only: Vite serves the SPA, backend just answers /api.
+    vite_proc: subprocess.Popen[bytes] | None = None
+    if dev:
+        frontend_dir = _find_frontend_dir()
+        if frontend_dir is None:
+            console.print(
+                "[red]--dev requires a source checkout with a sibling "
+                "frontend/ directory; nothing found walking up from this file."
+                "[/red]"
+            )
+            raise typer.Exit(code=1)
+        api_only = True
+        os.environ["BOOKCOMPANION_API_ONLY"] = "1"
 
     settings = get_settings()
     _auto_init_if_needed(settings)
@@ -118,6 +176,17 @@ def serve(
         )
     port = actual_port
 
+    if dev:
+        try:
+            vite_proc = _spawn_vite(frontend_dir, port)
+        except RuntimeError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(code=1) from e
+        console.print(
+            "[green]→ Open [bold]http://localhost:5173[/bold] "
+            "(Vite proxies /api to the backend).[/green]"
+        )
+
     console.print(f"\n[bold]Book Companion[/bold] — serving at http://localhost:{port}")
     try:
         hostname = socket.gethostname()
@@ -134,4 +203,12 @@ def serve(
         os.environ["BOOKCOMPANION_API_ONLY"] = "1"
 
     console.print()
-    uvicorn.run("app.api.main:app", host=host, port=port)
+    try:
+        uvicorn.run("app.api.main:app", host=host, port=port)
+    finally:
+        if vite_proc is not None:
+            # Kill the whole Vite process group (esbuild children, etc.) so
+            # nothing lingers after the backend shuts down.
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(os.getpgid(vite_proc.pid), signal.SIGTERM)
+            vite_proc.wait(timeout=10)
