@@ -55,6 +55,26 @@ def _auto_init_if_needed(settings) -> None:
         subprocess.run(["bookcompanion", "init"], check=False)
 
 
+def _pick_available_port(host: str, preferred: int, max_tries: int = 20) -> int:
+    """Return `preferred` if free, else the next free port in [preferred, preferred+max_tries).
+
+    Tiny TOCTOU window between probe and uvicorn bind — acceptable for a
+    single-user tool. If every port in the window is occupied, raise so the
+    user sees a clear error instead of a cryptic uvicorn stack trace.
+    """
+    for candidate in range(preferred, preferred + max_tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                probe.bind((host, candidate))
+                return candidate
+            except OSError:
+                continue
+    raise RuntimeError(
+        f"No free port found in range {preferred}..{preferred + max_tries - 1} on {host}"
+    )
+
+
 def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Port to listen on"),
     host: str = typer.Option("0.0.0.0", "--host", help="Host to bind to"),
@@ -90,6 +110,13 @@ def serve(
 
     if api_only:
         console.print("[yellow]Running in API-only mode; no static assets mounted at /.[/yellow]")
+
+    actual_port = _pick_available_port(host, port)
+    if actual_port != port:
+        console.print(
+            f"[yellow]Port {port} is busy; falling back to {actual_port}.[/yellow]"
+        )
+    port = actual_port
 
     console.print(f"\n[bold]Book Companion[/bold] — serving at http://localhost:{port}")
     try:
