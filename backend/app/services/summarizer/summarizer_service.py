@@ -236,19 +236,26 @@ class SummarizerService:
                     else f"- {section.title}: {summary_text}"
                 )
 
-                if on_section_complete:
-                    comp = (
-                        summary.summary_char_count / summary.input_char_count
-                        if summary.input_char_count
-                        else 0
-                    )
-                    on_section_complete(
-                        section.id, i + 1, total, section.title, elapsed, comp
-                    )
+                # Capture data needed by the callback before commit, since commit
+                # may expire ORM attributes on rollback paths. Commit FIRST so the
+                # event reaches SSE consumers with the summary already visible to
+                # subsequent API reads (the frontend refetches the section on
+                # section_completed and must not race the write).
+                comp = (
+                    summary.summary_char_count / summary.input_char_count
+                    if summary.input_char_count
+                    else 0
+                )
+                section_title_snapshot = section.title
 
                 # Commit per-section so partial progress is durable and
                 # existing skip-completed logic works across runs (G2, G3).
                 await self.db.commit()
+
+                if on_section_complete:
+                    on_section_complete(
+                        section.id, i + 1, total, section_title_snapshot, elapsed, comp
+                    )
 
                 logger.info(
                     "section_summarized",

@@ -6,8 +6,8 @@ const here = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   testDir: here,
-  testMatch: /book-reader-ux-polish\.spec\.ts/,
-  timeout: 60_000,
+  testMatch: /book-reader-ux-polish\.spec\.ts|summarize-live\.spec\.ts/,
+  timeout: 600_000,
   retries: 0,
   use: {
     baseURL: process.env.BC_BASE_URL ?? 'http://localhost:8765',
