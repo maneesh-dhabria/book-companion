@@ -96,6 +96,7 @@ class BookResponse(BaseModel):
     cover_url: str | None = None
     created_at: datetime
     updated_at: datetime
+    summary_progress: dict[str, int] | None = None
 
 
 class BookUpdateRequest(BaseModel):

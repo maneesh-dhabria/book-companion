@@ -20,7 +20,8 @@ from app.api.schemas import (
     PaginatedResponse,
     SectionBriefResponse,
 )
-from app.db.models import Book
+from app.db.models import Book, BookSection
+from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 
 router = APIRouter(prefix="/api/v1/books", tags=["books"])
 
@@ -147,6 +148,26 @@ async def list_books(
     )
 
 
+async def _summary_progress(db: AsyncSession, book_id: int) -> dict[str, int]:
+    summarizable_list = list(SUMMARIZABLE_TYPES)
+    total = (
+        await db.execute(
+            select(func.count(BookSection.id))
+            .where(BookSection.book_id == book_id)
+            .where(BookSection.section_type.in_(summarizable_list))
+        )
+    ).scalar() or 0
+    summarized = (
+        await db.execute(
+            select(func.count(BookSection.id))
+            .where(BookSection.book_id == book_id)
+            .where(BookSection.section_type.in_(summarizable_list))
+            .where(BookSection.default_summary_id.isnot(None))
+        )
+    ).scalar() or 0
+    return {"summarized": summarized, "total": total}
+
+
 @router.get("/{book_id}")
 async def get_book(
     book_id: int,
@@ -161,7 +182,9 @@ async def get_book(
     book = result.scalar_one_or_none()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    return BookResponse(**_book_to_response(book))
+    book_dict = _book_to_response(book)
+    book_dict["summary_progress"] = await _summary_progress(db, book_id)
+    return BookResponse(**book_dict)
 
 
 @router.post("/upload", status_code=201)
