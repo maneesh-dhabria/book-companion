@@ -6,6 +6,7 @@ import shutil
 import signal
 import socket
 import subprocess
+import time
 from pathlib import Path
 
 import typer
@@ -94,6 +95,48 @@ def _spawn_vite(
         start_new_session=True,
         env=env,
     )
+
+
+def _is_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _reap_direct_children(grace_seconds: float = 2.0) -> list[int]:
+    """TERM→(grace)→KILL any subprocess whose PPID is this process.
+
+    Catches orphaned subprocesses that the backend spawned — e.g. the Claude/
+    Codex CLI invoked by the summarizer. uvicorn's shutdown cancels the
+    awaiting task but does not propagate the cancel to the OS subprocess, so
+    without this sweep a mid-summarize Ctrl-C could leave `claude` running.
+
+    Returns the list of PIDs that were targeted (for test / log visibility).
+    Never raises.
+    """
+    try:
+        out = subprocess.check_output(
+            ["pgrep", "-P", str(os.getpid())],
+            stderr=subprocess.DEVNULL,
+        ).decode()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+    children = [int(p) for p in out.split() if p.strip()]
+    for pid in children:
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + grace_seconds
+    while time.monotonic() < deadline and any(_is_alive(p) for p in children):
+        time.sleep(0.05)
+    for pid in children:
+        if _is_alive(pid):
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGKILL)
+    return children
 
 
 def _kill_vite_group(
@@ -255,13 +298,17 @@ def serve(
     try:
         uvicorn.run("app.api.main:app", host=host, port=port)
     finally:
-        if vite_proc is not None:
-            # Ignore further signals during cleanup so an impatient second
-            # Ctrl-C can't short-circuit the kill and leak Vite.
-            old_int = signal.signal(signal.SIGINT, signal.SIG_IGN)
-            old_term = signal.signal(signal.SIGTERM, signal.SIG_IGN)
-            try:
+        # Mask further signals during cleanup so an impatient second Ctrl-C
+        # (or a SIGTERM from an outside watcher) can't short-circuit the
+        # teardown and leave children running.
+        old_int = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        old_term = signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        try:
+            if vite_proc is not None:
                 _kill_vite_group(vite_proc)
-            finally:
-                signal.signal(signal.SIGINT, old_int)
-                signal.signal(signal.SIGTERM, old_term)
+            # Sweep any remaining direct children (Claude/Codex CLI left over
+            # from an in-flight summarization, etc.).
+            _reap_direct_children()
+        finally:
+            signal.signal(signal.SIGINT, old_int)
+            signal.signal(signal.SIGTERM, old_term)
