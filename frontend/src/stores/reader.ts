@@ -4,6 +4,28 @@ import type { Book, Section } from '@/types'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+// Mirrors backend/app/services/parser/section_classifier.py:FRONT_MATTER_TYPES
+// and :SUMMARIZABLE_TYPES. A backend contract test enforces equality.
+export const FRONT_MATTER_TYPES: ReadonlySet<string> = new Set([
+  'copyright',
+  'acknowledgments',
+  'dedication',
+  'title_page',
+  'table_of_contents',
+  'colophon',
+  'cover',
+  'part_header',
+])
+
+export const SUMMARIZABLE_TYPES: ReadonlySet<string> = new Set([
+  'chapter',
+  'introduction',
+  'preface',
+  'foreword',
+  'epilogue',
+  'conclusion',
+])
+
 export const useReaderStore = defineStore('reader', () => {
   const book = ref<Book | null>(null)
   const sections = ref<Section[]>([])
