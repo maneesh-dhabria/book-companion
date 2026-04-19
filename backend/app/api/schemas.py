@@ -78,6 +78,7 @@ class SummaryBriefResponse(BaseModel):
     model_used: str
     summary_char_count: int
     created_at: datetime
+    summary_md: str | None = None
 
 
 class BookResponse(BaseModel):
@@ -127,6 +128,7 @@ class SectionResponse(BaseModel):
     summary_count: int = 0
     annotation_count: int = 0
     has_summary: bool = False
+    is_summarizable: bool = True
 
 
 class SectionMergeRequest(BaseModel):

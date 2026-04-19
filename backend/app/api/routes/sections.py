@@ -16,6 +16,7 @@ from app.api.schemas import (
     SummaryBriefResponse,
 )
 from app.db.models import Book, BookSection, Summary
+from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 
 router = APIRouter(prefix="/api/v1/books/{book_id}/sections", tags=["sections"])
 
@@ -49,6 +50,7 @@ async def _build_section_response(
                 model_used=summary.model_used,
                 summary_char_count=summary.summary_char_count,
                 created_at=summary.created_at,
+                summary_md=summary.summary_md,
             ).model_dump()
 
     # Count all summaries for this section
@@ -72,6 +74,7 @@ async def _build_section_response(
         "summary_count": summary_count,
         "annotation_count": 0,
         "has_summary": has_summary,
+        "is_summarizable": section.section_type in SUMMARIZABLE_TYPES,
     }
 
 
