@@ -22,6 +22,7 @@ from app.api.routes import (
     export,
     health,
     images,
+    llm_status,
     processing,
     reading_presets,
     reading_state,
@@ -172,6 +173,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_routes.router)
     app.include_router(reading_state.router)
     app.include_router(summarize_presets.router)
+    app.include_router(llm_status.router)
 
     register_db_busy_handler(app)
 
