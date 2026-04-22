@@ -203,6 +203,15 @@ class BookSection(Base):
         String(50), default="chapter", server_default="chapter", index=True
     )
     derived_from: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    last_failure_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_failure_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_attempted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    last_preset_used: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     book: Mapped["Book"] = relationship(back_populates="sections")
