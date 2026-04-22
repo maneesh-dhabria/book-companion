@@ -74,6 +74,20 @@ async def start_processing(
             status_code=400,
             detail="scope='pending' is incompatible with force=true",
         )
+    if body.scope == "failed":
+        failed_count = (
+            await db.execute(
+                select(BookSection).where(
+                    BookSection.book_id == book_id,
+                    BookSection.last_failure_type.is_not(None),
+                )
+            )
+        ).all()
+        if not failed_count:
+            raise HTTPException(
+                status_code=400,
+                detail="No failed sections to retry",
+            )
 
     # FR-A7.3 — reject concurrent jobs for the same book (application-level
     # check; the partial UNIQUE index in migration v1_4a is the DB-level

@@ -5,9 +5,11 @@ import json
 import re
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 import jinja2
+import sqlalchemy as sa
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +17,7 @@ from app.db.models import BookSection, Summary, SummaryContentType
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
+from app.exceptions import EmptySummaryError, SummarizationError
 from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 from app.services.summarizer.llm_provider import LLMProvider
 from app.services.summary_service import SummaryService
@@ -88,6 +91,13 @@ class SummarizerService:
                 if s.default_summary_id is None
                 and s.section_type in SUMMARIZABLE_TYPES
             ]
+        elif scope == "failed":
+            sections = [
+                s
+                for s in sections
+                if s.last_failure_type is not None
+                and s.section_type in SUMMARIZABLE_TYPES
+            ]
         else:
             sections = [s for s in sections if s.section_type in SUMMARIZABLE_TYPES]
 
@@ -150,6 +160,26 @@ class SummarizerService:
 
             if on_section_start:
                 on_section_start(section_id, i + 1, total, section_title)
+
+            # FR-A5.0 — atomic pre-subprocess update so the "last preset"
+            # record survives a crash between the UPDATE and LLM call.
+            # Also increments attempt_count and stamps last_attempted_at.
+            effective_preset = preset_name or self.config.summarization.default_preset
+            await self.db.execute(
+                sa.text(
+                    "UPDATE book_sections "
+                    "SET last_preset_used = :preset, "
+                    "    attempt_count = COALESCE(attempt_count, 0) + 1, "
+                    "    last_attempted_at = :now "
+                    "WHERE id = :id"
+                ),
+                {
+                    "preset": effective_preset,
+                    "now": datetime.now(UTC),
+                    "id": section_id,
+                },
+            )
+            await self.db.commit()
 
             try:
                 start = time.monotonic()
@@ -266,14 +296,38 @@ class SummarizerService:
                 await self.db.rollback()
                 failed.append(section_id)
                 error_msg = str(e)
+                failure_type = getattr(e, "failure_type", None) or (
+                    "summarization_error"
+                    if isinstance(e, SummarizationError)
+                    else "unknown"
+                )
                 logger.error(
                     "section_summarization_failed",
                     section_id=section_id,
+                    failure_type=failure_type,
                     error=error_msg,
                 )
+                # FR-A4.1 / FR-A5.3 — persist typed failure state on the
+                # section so the UI can render a typed banner and Retry CTA.
+                # Uses a raw UPDATE to avoid depending on an expired ORM
+                # object after the rollback above.
+                await self.db.execute(
+                    sa.text(
+                        "UPDATE book_sections "
+                        "SET last_failure_type = :type, "
+                        "    last_failure_message = :msg "
+                        "WHERE id = :id"
+                    ),
+                    {
+                        "type": failure_type,
+                        "msg": error_msg[:2000] if error_msg else None,
+                        "id": section_id,
+                    },
+                )
+                await self.db.commit()
                 if on_section_fail:
                     on_section_fail(
-                        section_id, i + 1, total, section_title, error_msg
+                        section_id, i + 1, total, section_title, e
                     )
                 # Rollback expires every identity-mapped ORM object in this
                 # session. Issuing a fresh SELECT refreshes them in place via
@@ -339,10 +393,17 @@ class SummarizerService:
 
         effective_model = model or self.config.llm.model
         start = time.monotonic()
-        response = await self.llm.generate(prompt, model=effective_model)
+        response = await self.llm.generate(
+            prompt,
+            model=effective_model,
+            context={"section_id": section.id, "book_id": book_id},
+        )
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
         summary_text = self._extract_summary_text(response)
+        # FR-A4.5 — reject empty LLM output before persistence.
+        if not summary_text or not summary_text.strip():
+            raise EmptySummaryError("LLM returned empty summary")
 
         # Retry once if summary is longer than source content
         if source_chars > 0 and len(summary_text) >= source_chars:
