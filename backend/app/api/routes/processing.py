@@ -227,6 +227,12 @@ async def start_processing(
 
                 def on_section_fail(section_id, index, total, section_title, error):
                     if event_bus:
+                        # FR-A4.1 / NFR-09 — typed error payload. Accept either
+                        # a typed SummarizationError (preferred) or a plain
+                        # string/exception from legacy call sites.
+                        error_type = getattr(error, "failure_type", None) or "unknown"
+                        message = str(error)
+                        truncated = message[:500] if message else None
                         asyncio.create_task(
                             event_bus.publish(
                                 str(job_id),
@@ -236,7 +242,9 @@ async def start_processing(
                                     "title": section_title,
                                     "index": index,
                                     "total": total,
-                                    "error": str(error),
+                                    "error": message,  # legacy field — unchanged
+                                    "error_type": error_type,
+                                    "error_message_truncated": truncated,
                                 },
                             )
                         )
@@ -315,6 +323,10 @@ async def start_processing(
                             "completed": completed_count,
                             "failed": failed_count,
                             "skipped": result.get("skipped", 0),
+                            # T15 fills this for book-level jobs; null for
+                            # section-scope runs — field is always present
+                            # so frontend can treat it uniformly.
+                            "book_summary_id": None,
                         },
                     )
                     await event_bus.close(str(job_id))

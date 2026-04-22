@@ -196,6 +196,19 @@ class SummarizerService:
                 # Set as default summary for this section
                 await self._section_repo.update_default_summary(section.id, summary.id)
 
+                # FR-C4.3 — clear the failure state the moment a retry succeeds.
+                # attempt_count is intentionally NOT reset; it stays monotonic
+                # for debugging and rate-limit heuristics.
+                await self.db.execute(
+                    sa.text(
+                        "UPDATE book_sections "
+                        "SET last_failure_type = NULL, "
+                        "    last_failure_message = NULL "
+                        "WHERE id = :id"
+                    ),
+                    {"id": section.id},
+                )
+
                 # Inline eval + retry
                 if not skip_eval and eval_service:
                     try:
