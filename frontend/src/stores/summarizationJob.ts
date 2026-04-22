@@ -2,6 +2,7 @@ import { getBook } from '@/api/books'
 import { getSection } from '@/api/sections'
 import {
   connectSSE,
+  getProcessingStatus,
   startProcessing,
   type ProcessingOptions,
   type ProcessingScope,
@@ -23,11 +24,38 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
   const scope = ref<ProcessingScope | null>(null)
   const failedSections = ref<Map<number, string>>(new Map())
   const source = ref<EventSource | null>(null)
+  // NFR-10 / FR-A7.5 — idempotent per-event dedup. Section ids memoized
+  // per-event so a replay of {section_completed, section_failed,
+  // section_skipped} is a no-op.
+  const _seenCompleted = ref<Set<number>>(new Set())
+  const _seenFailed = ref<Set<number>>(new Set())
+  const _seenSkipped = ref<Set<number>>(new Set())
+  // Reconcile-only aggregate counters (populated by GET /processing/:id on
+  // SSE error; stays 0/null otherwise so the UI reflects SSE-driven state).
+  const reconciledCompleted = ref<number | null>(null)
+  const reconciledFailed = ref<number | null>(null)
+  const reconciledSkipped = ref<number | null>(null)
+
   let graceTimer: ReturnType<typeof setTimeout> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let sawAnyEvent = false
 
   const isActive = computed(() => jobId.value !== null)
+  const completedCount = computed(() =>
+    reconciledCompleted.value !== null
+      ? reconciledCompleted.value
+      : _seenCompleted.value.size,
+  )
+  const failedCount = computed(() =>
+    reconciledFailed.value !== null
+      ? reconciledFailed.value
+      : _seenFailed.value.size,
+  )
+  const skippedCount = computed(() =>
+    reconciledSkipped.value !== null
+      ? reconciledSkipped.value
+      : _seenSkipped.value.size,
+  )
   const getFailedError = (id: number) => failedSections.value.get(id)
 
   function cancelGrace() {
@@ -76,6 +104,8 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
 
   async function onSectionCompleted(d: Pick<SectionEventPayload, 'section_id'>) {
     activeJobSectionId.value = null
+    if (_seenCompleted.value.has(d.section_id)) return
+    _seenCompleted.value.add(d.section_id)
     if (!bookId.value) return
     try {
       const fresh = await getSection(bookId.value, d.section_id)
@@ -92,16 +122,39 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
   }
 
   function onSectionFailed(d: SectionFailedPayload) {
-    failedSections.value.set(d.section_id, d.error)
     activeJobSectionId.value = null
+    if (_seenFailed.value.has(d.section_id)) return
+    _seenFailed.value.add(d.section_id)
+    failedSections.value.set(d.section_id, d.error)
   }
 
-  function onSectionSkipped(_d: SectionSkippedPayload) {
-    // progress refreshes on subsequent onSectionCompleted
+  function onSectionSkipped(d: SectionSkippedPayload) {
+    if (_seenSkipped.value.has(d.section_id)) return
+    _seenSkipped.value.add(d.section_id)
   }
 
   function onSectionRetrying(d: Pick<SectionEventPayload, 'section_id'>) {
     activeJobSectionId.value = d.section_id
+  }
+
+  async function onSSEError() {
+    activeJobSectionId.value = null
+    if (!pollTimer) pollTimer = setInterval(pollOnce, POLL_MS)
+    // FR-A7.5 — best-effort reconcile: read the authoritative counts from
+    // the status endpoint so the UI can show "X of Y done" even after we
+    // drop SSE events.
+    if (jobId.value === null) return
+    try {
+      const status = await getProcessingStatus(jobId.value)
+      const prog = (status as { progress?: { completed?: number; failed?: number; skipped?: number } }).progress
+      if (prog) {
+        if (typeof prog.completed === 'number') reconciledCompleted.value = prog.completed
+        if (typeof prog.failed === 'number') reconciledFailed.value = prog.failed
+        if (typeof prog.skipped === 'number') reconciledSkipped.value = prog.skipped
+      }
+    } catch (e) {
+      console.warn('job reconcile failed', e)
+    }
   }
 
   function onCompleted() {
@@ -115,7 +168,13 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
   async function startJob(bookIdIn: number, opts: ProcessingOptions) {
     if (opts.scope === 'section' && opts.section_id !== undefined) {
       failedSections.value.delete(opts.section_id)
+      _seenFailed.value.delete(opts.section_id)
+      _seenCompleted.value.delete(opts.section_id)
     }
+    // Starting a fresh run invalidates the reconciled-count cache.
+    reconciledCompleted.value = null
+    reconciledFailed.value = null
+    reconciledSkipped.value = null
     const { job_id } = await startProcessing(bookIdIn, opts)
     bookId.value = bookIdIn
     jobId.value = job_id
@@ -149,8 +208,7 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
       onProcessingCompleted: () => onCompleted(),
       onProcessingFailed: (d) => onFailed(d.error),
       onError: () => {
-        activeJobSectionId.value = null
-        if (!pollTimer) pollTimer = setInterval(pollOnce, POLL_MS)
+        void onSSEError()
       },
     })
   }
@@ -163,6 +221,12 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     jobId.value = null
     activeJobSectionId.value = null
     scope.value = null
+    _seenCompleted.value.clear()
+    _seenFailed.value.clear()
+    _seenSkipped.value.clear()
+    reconciledCompleted.value = null
+    reconciledFailed.value = null
+    reconciledSkipped.value = null
     // P14: bookId + failedSections preserved across job completion.
   }
 
@@ -173,6 +237,9 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     scope,
     failedSections,
     isActive,
+    completedCount,
+    failedCount,
+    skippedCount,
     getFailedError,
     startJob,
     reset,
@@ -181,6 +248,7 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     onSectionFailed,
     onSectionSkipped,
     onSectionRetrying,
+    onSSEError,
     onCompleted,
     onFailed,
   }

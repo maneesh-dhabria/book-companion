@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/api/processing', () => ({
   startProcessing: vi.fn(async () => ({ job_id: 42 })),
   connectSSE: vi.fn(() => ({ close: vi.fn() })),
+  getProcessingStatus: vi.fn(async () => ({
+    progress: { completed: 5, failed: 1, skipped: 0 },
+  })),
 }))
 
 vi.mock('@/api/books', () => ({
@@ -108,6 +111,57 @@ describe('summarizationJob store', () => {
     await vi.advanceTimersByTimeAsync(5_000)
     expect(getBookMock).toHaveBeenCalled()
     vi.useRealTimers()
+  })
+
+  it('duplicate section_completed is a no-op', async () => {
+    const { useSummarizationJobStore } = await import('../summarizationJob')
+    const s = useSummarizationJobStore()
+    s.bookId = 1
+    await s.onSectionCompleted({ section_id: 42 })
+    expect(s.completedCount).toBe(1)
+    await s.onSectionCompleted({ section_id: 42 }) // replay
+    expect(s.completedCount).toBe(1)
+  })
+
+  it('duplicate section_failed is a no-op', async () => {
+    const { useSummarizationJobStore } = await import('../summarizationJob')
+    const s = useSummarizationJobStore()
+    const payload = {
+      section_id: 7,
+      title: 'S7',
+      index: 1,
+      total: 1,
+      error: 'boom',
+    }
+    s.onSectionFailed(payload)
+    expect(s.failedCount).toBe(1)
+    s.onSectionFailed(payload)
+    expect(s.failedCount).toBe(1)
+  })
+
+  it('duplicate section_skipped is a no-op', async () => {
+    const { useSummarizationJobStore } = await import('../summarizationJob')
+    const s = useSummarizationJobStore()
+    const payload = {
+      section_id: 9,
+      title: 'S9',
+      index: 1,
+      total: 1,
+      reason: 'already summarized',
+    }
+    s.onSectionSkipped(payload)
+    s.onSectionSkipped(payload)
+    expect(s.skippedCount).toBe(1)
+  })
+
+  it('onSSEError reconciles counts via GET /processing/:id', async () => {
+    const { useSummarizationJobStore } = await import('../summarizationJob')
+    const s = useSummarizationJobStore()
+    await s.startJob(1, { scope: 'pending' })
+    await s.onSSEError()
+    expect(s.completedCount).toBe(5)
+    expect(s.failedCount).toBe(1)
+    expect(s.skippedCount).toBe(0)
   })
 
   it('grace-polling cancels when a real SSE event arrives', async () => {
