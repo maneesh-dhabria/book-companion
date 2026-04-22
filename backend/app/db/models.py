@@ -292,7 +292,15 @@ class ProcessingJob(Base):
 
     book: Mapped["Book"] = relationship(back_populates="processing_jobs")
 
-    __table_args__ = (Index("ix_processing_jobs_book_status", "book_id", "status"),)
+    __table_args__ = (
+        Index("ix_processing_jobs_book_status", "book_id", "status"),
+        Index(
+            "ix_processing_jobs_one_active_per_book",
+            "book_id",
+            unique=True,
+            sqlite_where=text("status IN ('PENDING','RUNNING')"),
+        ),
+    )
 
 
 class EvalTrace(Base):

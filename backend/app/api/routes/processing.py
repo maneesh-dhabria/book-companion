@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from collections.abc import AsyncGenerator  # noqa: TC003
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from sse_starlette.sse import EventSourceResponse
 
@@ -73,14 +75,42 @@ async def start_processing(
             detail="scope='pending' is incompatible with force=true",
         )
 
+    # FR-A7.3 — reject concurrent jobs for the same book (application-level
+    # check; the partial UNIQUE index in migration v1_4a is the DB-level
+    # belt-and-suspenders).
+    existing = (
+        await db.execute(
+            select(ProcessingJob).where(
+                ProcessingJob.book_id == book_id,
+                ProcessingJob.status.in_(
+                    [ProcessingJobStatus.PENDING, ProcessingJobStatus.RUNNING]
+                ),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="A summarization job is already running for this book",
+        )
+
     # Create processing job
     job = ProcessingJob(
         book_id=book_id,
         step=ProcessingStep.SUMMARIZE,
         status=ProcessingJobStatus.PENDING,
+        pid=os.getpid(),
     )
     db.add(job)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        # FR-A7.6 — TOCTOU race: another request won. Return 409.
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A summarization job is already running for this book",
+        ) from e
     await db.refresh(job)
 
     job_id = job.id

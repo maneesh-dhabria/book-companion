@@ -49,6 +49,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.session_factory = create_session_factory(settings)
     app.state.event_bus = EventBus()
 
+    # FR-A7.4 — reconcile dead RUNNING/PENDING jobs from a prior crash before
+    # we start accepting new requests. This must run before the app starts
+    # serving or the partial UNIQUE index on processing_jobs will 409 a
+    # legitimate new job against an orphan row.
+    try:
+        from app.services.summarizer.orphan_sweep import orphan_sweep
+
+        async with app.state.session_factory() as sweep_session:
+            await orphan_sweep(sweep_session)
+    except Exception:  # noqa: BLE001 — startup sweep is best-effort
+        pass
+
     # Start backup scheduler if configured
     scheduler = None
     backup_freq = getattr(getattr(settings, "backup", None), "frequency", "disabled")
