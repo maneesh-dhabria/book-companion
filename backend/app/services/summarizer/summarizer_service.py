@@ -500,10 +500,16 @@ class SummarizerService:
 
         effective_model = model or self.config.llm.model
         start = time.monotonic()
-        response = await self.llm.generate(prompt, model=effective_model)
+        response = await self.llm.generate(
+            prompt,
+            model=effective_model,
+            context={"book_id": book_id},
+        )
         elapsed_ms = int((time.monotonic() - start) * 1000)
 
         summary_text = self._extract_summary_text(response)
+        if not summary_text or not summary_text.strip():
+            raise EmptySummaryError("LLM returned empty book summary")
         combined_input = "\n".join(s["summary"] for s in section_data)
 
         concepts = SummaryService.extract_concepts(summary_text)
@@ -593,6 +599,53 @@ class SummarizerService:
                 logger.warning("book_eval_failed", error=str(eval_err))
 
         return saved
+
+    async def summarize_book_level(
+        self,
+        book_id: int,
+        preset_name: str | None = None,
+        facets: dict[str, str] | None = None,
+        model: str | None = None,
+        skip_eval: bool = True,
+        no_retry: bool = True,
+        eval_service=None,
+    ) -> Summary:
+        """Public entry point for book-level map-reduce summarization.
+
+        Resolves facets from ``preset_name`` if incomplete (same semantics
+        as :meth:`summarize_book`), then invokes the reduce step. Raises
+        :class:`EmptySummaryError` if the LLM returns nothing. Raises
+        ``ValueError`` when the book has zero non-empty section summaries
+        available to reduce from.
+        """
+        from app.services.preset_service import FACET_DIMENSIONS, PresetService
+
+        facets = facets or {}
+        missing = [d for d in FACET_DIMENSIONS if d not in facets]
+        if missing:
+            preset_to_use = preset_name or self.config.summarization.default_preset
+            _, facets = PresetService().resolve_facets(
+                preset_to_use,
+                {d: None for d in FACET_DIMENSIONS},
+                preset_to_use,
+            )
+
+        sections = await self._section_repo.get_by_book_id(book_id)
+        summary_count = sum(1 for s in sections if s.default_summary_id)
+        if summary_count == 0:
+            raise ValueError(
+                "No section summaries available — summarize sections first"
+            )
+
+        return await self._generate_book_summary(
+            book_id=book_id,
+            facets=facets,
+            preset_name=preset_name,
+            model=model,
+            eval_service=eval_service,
+            skip_eval=skip_eval,
+            no_retry=no_retry,
+        )
 
     async def quick_summary(self, book_id: int) -> None:
         """Deprecated: runs summarize with executive_brief preset."""

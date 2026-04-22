@@ -16,6 +16,7 @@ from app.api.routes import (
     ai_threads,
     annotations,
     backup,
+    book_summary,
     books,
     concepts,
     eval,
@@ -186,6 +187,7 @@ def create_app() -> FastAPI:
     app.include_router(reading_state.router)
     app.include_router(summarize_presets.router)
     app.include_router(llm_status.router)
+    app.include_router(book_summary.router)
 
     register_db_busy_handler(app)
 
