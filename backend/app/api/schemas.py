@@ -320,6 +320,12 @@ class AnnotationResponse(BaseModel):
     linked_annotation_id: int | None = None
     created_at: datetime
     updated_at: datetime
+    # T18 — joined book + section context for /annotations UI. Null when the
+    # annotation targets a deleted section or a non-section content type.
+    book_id: int | None = None
+    book_title: str | None = None
+    section_id: int | None = None
+    section_title: str | None = None
 
 
 class AnnotationLinkRequest(BaseModel):

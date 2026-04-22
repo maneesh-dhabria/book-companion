@@ -195,6 +195,11 @@ export interface Annotation {
   linked_annotation_id: number | null
   created_at: string
   updated_at: string
+  // T18 — joined context from /annotations list.
+  book_id?: number | null
+  book_title?: string | null
+  section_id?: number | null
+  section_title?: string | null
 }
 
 // --- Concepts ---

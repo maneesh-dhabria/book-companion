@@ -16,8 +16,57 @@ from app.api.schemas import (
     AnnotationResponse,
     AnnotationUpdateRequest,
 )
-from app.db.models import Annotation, AnnotationType, BookSection, ContentType
+from app.db.models import Annotation, AnnotationType, Book, BookSection, ContentType
 from app.db.repositories.annotation_repo import AnnotationRepository
+
+
+async def _enrich_with_context(
+    db: AsyncSession,
+    annotations: list[Annotation],
+) -> list[dict]:
+    """Return annotation dicts augmented with book + section titles.
+
+    Resolves ``content_id`` → section → book for section-scoped annotations.
+    Annotations against other content types keep their book/section fields
+    as null (the frontend can still render the note itself).
+    """
+    from sqlalchemy import select
+
+    section_ids = {
+        a.content_id
+        for a in annotations
+        if a.content_type in (ContentType.SECTION_CONTENT, ContentType.SECTION_SUMMARY)
+    }
+    section_rows: dict[int, tuple[int, str, str]] = {}
+    if section_ids:
+        rows = (
+            await db.execute(
+                select(
+                    BookSection.id,
+                    BookSection.title,
+                    BookSection.book_id,
+                    Book.title,
+                )
+                .join(Book, Book.id == BookSection.book_id)
+                .where(BookSection.id.in_(section_ids))
+            )
+        ).all()
+        for sec_id, sec_title, book_id, book_title in rows:
+            section_rows[sec_id] = (book_id, book_title, sec_title)
+
+    items: list[dict] = []
+    for a in annotations:
+        payload = AnnotationResponse.model_validate(a).model_dump()
+        if a.content_type in (ContentType.SECTION_CONTENT, ContentType.SECTION_SUMMARY):
+            ctx = section_rows.get(a.content_id)
+            if ctx is not None:
+                book_id, book_title, section_title = ctx
+                payload["book_id"] = book_id
+                payload["book_title"] = book_title
+                payload["section_id"] = a.content_id
+                payload["section_title"] = section_title
+        items.append(payload)
+    return items
 
 router = APIRouter(prefix="/api/v1/annotations", tags=["annotations"])
 
@@ -152,8 +201,9 @@ async def list_annotations(
     end = start + per_page
     page_items = annotations[start:end]
 
+    enriched = await _enrich_with_context(repo.session, page_items)
     return {
-        "items": [AnnotationResponse.model_validate(a).model_dump() for a in page_items],
+        "items": enriched,
         "total": total,
         "page": page,
         "per_page": per_page,
