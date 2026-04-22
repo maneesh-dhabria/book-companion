@@ -10,6 +10,29 @@ from app.config import Settings
 from app.db.models import AIMessage, AIThread, Book, BookSection, Summary
 from app.services.summarizer.llm_provider import LLMProvider
 
+_TITLE_MAX = 40
+_DEFAULT_TITLES = {"", "new thread", "untitled", "new chat"}
+
+
+def _is_default_thread_title(title: str | None) -> bool:
+    """True when ``title`` is a placeholder worth replacing with first-message text."""
+    if title is None:
+        return True
+    t = title.strip().lower()
+    return t in _DEFAULT_TITLES
+
+
+def _derive_thread_title(content: str) -> str:
+    """Trim ``content`` to ≤40 chars on a word boundary for the sidebar."""
+    text = " ".join(content.strip().split())
+    if len(text) <= _TITLE_MAX:
+        return text
+    cut = text[:_TITLE_MAX]
+    last_space = cut.rfind(" ")
+    if last_space >= 20:
+        cut = cut[:last_space]
+    return cut.rstrip() + "…"
+
 
 class AIThreadService:
     def __init__(self, session: AsyncSession, llm_provider: LLMProvider, settings: Settings):
@@ -132,6 +155,12 @@ class AIThreadService:
             content=content,
         )
         self.session.add(user_msg)
+
+        # FR-D1.4 — auto-derive thread title from the first user message
+        # when the thread still holds a default/placeholder label. Trim on
+        # word boundary, cap at 40 characters so sidebar lists stay scannable.
+        if len(thread.messages) == 0 and _is_default_thread_title(thread.title):
+            thread.title = _derive_thread_title(content)
 
         # Invoke LLM
         start_time = time.monotonic()

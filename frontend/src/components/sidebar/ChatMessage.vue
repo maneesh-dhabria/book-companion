@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
 import type { AIMessage } from '@/types'
 
 defineProps<{
@@ -9,7 +10,14 @@ defineProps<{
 <template>
   <div class="chat-message" :class="message.role">
     <div class="message-bubble">
-      <div class="message-content">{{ message.content }}</div>
+      <!-- Assistant replies go through markdown; user messages stay plain text
+           so pasted URLs / code fragments aren't reinterpreted. -->
+      <MarkdownRenderer
+        v-if="message.role === 'assistant'"
+        class="message-content"
+        :content="message.content"
+      />
+      <div v-else class="message-content user-text">{{ message.content }}</div>
     </div>
     <div class="message-meta">
       {{ new Date(message.created_at).toLocaleTimeString() }}
