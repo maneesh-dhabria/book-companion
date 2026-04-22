@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import FloatingToolbar from '@/components/reader/FloatingToolbar.vue'
 import ReaderHeader from '@/components/reader/ReaderHeader.vue'
@@ -171,7 +172,14 @@ function handleAskAi() {
 
       <div class="reader-body">
         <div class="reader-content" ref="readingAreaRef">
-          <template v-if="reader.currentSection">
+          <div
+            v-if="reader.loading && reader.book"
+            class="reader-loading"
+            data-testid="reader-loading"
+          >
+            <LoadingSpinner label="Loading section…" />
+          </div>
+          <template v-else-if="reader.currentSection">
             <template v-if="reader.contentMode === 'summary'">
               <ReadingArea
                 v-if="reader.currentSection.default_summary?.summary_md"
@@ -252,6 +260,13 @@ function handleAskAi() {
 .reader-content {
   flex: 1;
   overflow-y: auto;
+}
+
+.reader-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 64px 24px;
 }
 
 .reader-actions {
