@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useSearchStore } from '@/stores/search'
 import { useUiStore } from '@/stores/ui'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const searchStore = useSearchStore()
 const uiStore = useUiStore()
 const router = useRouter()
 const inputRef = ref<HTMLInputElement | null>(null)
+const debouncing = ref(false)
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -19,8 +20,29 @@ onMounted(() => {
 function handleInput(e: Event) {
   const q = (e.target as HTMLInputElement).value
   if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => searchStore.doQuickSearch(q), 200)
+  debouncing.value = !!q.trim()
+  debounceTimer = setTimeout(async () => {
+    await searchStore.doQuickSearch(q)
+    debouncing.value = false
+  }, 200)
 }
+
+const isLoading = computed(() => debouncing.value || searchStore.quickLoading)
+const totalHits = computed(() => {
+  const r = searchStore.quickResults
+  if (!r) return 0
+  return (
+    (r.sections?.length || 0) +
+    (r.concepts?.length || 0) +
+    (r.annotations?.length || 0)
+  )
+})
+const showNoResults = computed(() =>
+  !isLoading.value &&
+  searchStore.query.trim() !== '' &&
+  searchStore.quickResults !== null &&
+  totalHits.value === 0,
+)
 
 function navigateToResult(type: string, id: number, bookId?: number) {
   uiStore.closePalette()
@@ -58,7 +80,27 @@ function openFullSearch() {
           />
         </div>
 
-        <div class="palette-results" v-if="searchStore.quickResults">
+        <div
+          v-if="isLoading"
+          class="palette-loading"
+          data-testid="palette-loading"
+        >
+          <span class="spinner" aria-hidden="true" />
+          Searching…
+        </div>
+
+        <div
+          v-else-if="showNoResults"
+          class="palette-empty"
+          data-testid="palette-no-results"
+        >
+          <p>No results for "{{ searchStore.query }}"</p>
+          <button class="full-search-btn" @click="openFullSearch">
+            Try full search →
+          </button>
+        </div>
+
+        <div class="palette-results" v-else-if="searchStore.quickResults">
           <template v-if="searchStore.quickResults.sections.length">
             <h4 class="group-title">Sections</h4>
             <button
@@ -137,4 +179,23 @@ function openFullSearch() {
 .palette-footer { padding: 0.5rem; border-top: 1px solid var(--color-border, #e0e0e0); }
 .full-search-btn { width: 100%; padding: 0.5rem; background: none; border: none; cursor: pointer; color: var(--color-primary, #3b82f6); font-size: 0.85rem; text-align: center; border-radius: 0.375rem; }
 .full-search-btn:hover { background: var(--color-bg-hover, #f3f4f6); }
+.palette-loading, .palette-empty {
+  padding: 1.25rem 1rem;
+  color: var(--color-text-secondary, #888);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.palette-loading { flex-direction: row; justify-content: center; }
+.palette-loading .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border, #ddd);
+  border-top-color: var(--color-primary, #3b82f6);
+  border-radius: 50%;
+  animation: cpspin 0.8s linear infinite;
+}
+@keyframes cpspin { to { transform: rotate(360deg); } }
 </style>
