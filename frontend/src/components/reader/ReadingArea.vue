@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { classifyLink } from '@/utils/link-policy'
-import DOMPurify from 'dompurify'
-import MarkdownIt from 'markdown-it'
-import { computed, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 const props = defineProps<{
   content: string
@@ -14,35 +12,6 @@ const emit = defineEmits<{
   navigate: [direction: 'prev' | 'next']
 }>()
 
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  typographer: true,
-})
-
-function applyLinkPolicy(sanitized: string): string {
-  const doc = new DOMParser().parseFromString(sanitized, 'text/html')
-  for (const a of Array.from(doc.querySelectorAll('a[href]'))) {
-    const cls = classifyLink(a.getAttribute('href') || '')
-    if (cls === 'external') {
-      a.setAttribute('target', '_blank')
-      a.setAttribute('rel', 'noopener noreferrer')
-    } else {
-      const span = doc.createElement('span')
-      span.textContent = a.textContent || ''
-      if (a.className) span.className = a.className
-      a.replaceWith(span)
-    }
-  }
-  return doc.body.innerHTML
-}
-
-const renderedHtml = computed(() => {
-  const raw = md.render(props.content || '')
-  const sanitized = DOMPurify.sanitize(raw)
-  return applyLinkPolicy(sanitized)
-})
-
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowLeft' && props.hasPrev) emit('navigate', 'prev')
   if (e.key === 'ArrowRight' && props.hasNext) emit('navigate', 'next')
@@ -53,7 +22,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <article class="reading-area" v-html="renderedHtml" />
+  <article class="reading-area">
+    <MarkdownRenderer :content="content" />
+  </article>
 </template>
 
 <style scoped>
