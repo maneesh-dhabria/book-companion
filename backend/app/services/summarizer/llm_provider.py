@@ -23,6 +23,7 @@ class LLMProvider(ABC):
         model: str | None = None,
         json_schema: dict | None = None,
         timeout: int | None = None,
+        context: dict | None = None,
     ) -> LLMResponse: ...
 
     @abstractmethod

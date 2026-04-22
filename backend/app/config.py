@@ -28,6 +28,8 @@ class LLMConfig(BaseModel):
     max_retries: int = 2
     max_budget_usd: float = 5.0
     cross_summary_consistency: bool = True
+    stderr_log_enabled: bool = True
+    test_mode: str | None = None  # e.g. "fail_section_42" — dev-only fault injection
 
 
 class SummarizationConfig(BaseModel):

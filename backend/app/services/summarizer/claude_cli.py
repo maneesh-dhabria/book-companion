@@ -2,11 +2,75 @@
 
 import asyncio
 import json
+import os
 import time
 from pathlib import Path
 
-from app.exceptions import SummarizationError
+from app.config import Settings
+from app.exceptions import (
+    SubprocessNonZeroExitError,
+    SubprocessNotFoundError,
+    SubprocessTimeoutError,
+    SummarizationError,
+)
+from app.services.summarizer.failure_log import log_failure
 from app.services.summarizer.llm_provider import LLMProvider, LLMResponse
+
+STDERR_TRUNCATE = 500
+
+
+def _maybe_log(
+    *,
+    cli_command: str,
+    failure_type: str,
+    section_id: int | None,
+    book_id: int | None,
+    stderr_full: str,
+) -> None:
+    try:
+        settings = Settings()
+    except Exception:  # pragma: no cover — defensive
+        return
+    if not settings.llm.stderr_log_enabled:
+        return
+    data_dir = settings.data.directory
+    if not data_dir:
+        return
+    log_failure(
+        Path(data_dir) / "summarization-failures.log",
+        failure_type=failure_type,
+        section_id=section_id,
+        book_id=book_id,
+        message=f"cli={cli_command} | {stderr_full.strip()[:2000]}",
+    )
+
+
+def _maybe_force_test_failure(
+    cli_command: str,
+    context: dict | None,
+) -> None:
+    """Raise a forced failure for the regression test suite (PD10).
+
+    Activated only when ``BOOKCOMPANION_LLM__TEST_MODE=fail_section_<id>`` is
+    set. Safe in production — default is ``None`` and the fast path is a
+    single attribute read.
+    """
+    try:
+        mode = Settings().llm.test_mode
+    except Exception:  # pragma: no cover
+        return
+    if not mode or not mode.startswith("fail_section_"):
+        return
+    try:
+        target_id = int(mode.rsplit("_", 1)[-1])
+    except ValueError:
+        return
+    if context and context.get("section_id") == target_id:
+        raise SubprocessNonZeroExitError(
+            returncode=1,
+            stderr_truncated="TEST MODE: forced failure",
+            stderr_full="TEST MODE: forced failure",
+        )
 
 
 class ClaudeCodeCLIProvider(LLMProvider):
@@ -26,7 +90,6 @@ class ClaudeCodeCLIProvider(LLMProvider):
 
     def _build_env(self) -> dict[str, str]:
         """Build environment for the subprocess, including CLAUDE_CONFIG_DIR if set."""
-        import os
         env = os.environ.copy()
         if self.config_dir:
             env["CLAUDE_CONFIG_DIR"] = self.config_dir
@@ -39,7 +102,12 @@ class ClaudeCodeCLIProvider(LLMProvider):
         model: str | None = None,
         json_schema: dict | None = None,
         timeout: int | None = None,
+        context: dict | None = None,
     ) -> LLMResponse:
+        _maybe_force_test_failure(self.cli_command, context)
+        section_id = (context or {}).get("section_id")
+        book_id = (context or {}).get("book_id")
+
         cmd = [
             self.cli_command,
             "-p",
@@ -56,28 +124,58 @@ class ClaudeCodeCLIProvider(LLMProvider):
             cmd.extend(["--max-budget-usd", str(self.max_budget_usd)])
 
         start = time.monotonic()
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=self._build_env(),
-        )
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self._build_env(),
+            )
+        except FileNotFoundError as e:
+            _maybe_log(
+                cli_command=self.cli_command,
+                failure_type="cli_not_found",
+                section_id=section_id,
+                book_id=book_id,
+                stderr_full=str(e),
+            )
+            raise SubprocessNotFoundError(self.cli_command) from e
+
+        effective_timeout = timeout or self.default_timeout
         try:
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(input=prompt.encode()),  # Prompt via stdin
-                timeout=timeout or self.default_timeout,
+                timeout=effective_timeout,
             )
-        except TimeoutError:
+        except TimeoutError as e:
             proc.kill()
-            raise SummarizationError(
-                f"Claude CLI timed out after {timeout or self.default_timeout}s"
+            _maybe_log(
+                cli_command=self.cli_command,
+                failure_type="cli_timeout",
+                section_id=section_id,
+                book_id=book_id,
+                stderr_full=f"Timeout after {effective_timeout}s",
             )
+            raise SubprocessTimeoutError(effective_timeout) from e
 
         latency_ms = int((time.monotonic() - start) * 1000)
 
         if proc.returncode != 0:
-            raise SummarizationError(f"Claude CLI failed (rc={proc.returncode}): {stderr.decode()}")
+            stderr_text = stderr.decode(errors="replace") if stderr else ""
+            truncated = stderr_text.strip()[:STDERR_TRUNCATE]
+            _maybe_log(
+                cli_command=self.cli_command,
+                failure_type="cli_nonzero_exit",
+                section_id=section_id,
+                book_id=book_id,
+                stderr_full=stderr_text,
+            )
+            raise SubprocessNonZeroExitError(
+                returncode=proc.returncode or 0,
+                stderr_truncated=truncated,
+                stderr_full=stderr_text,
+            )
 
         return self._parse_response(stdout.decode(), model or self.default_model, latency_ms)
 
@@ -116,9 +214,9 @@ class ClaudeCodeCLIProvider(LLMProvider):
                 proc.communicate(),
                 timeout=self.default_timeout,
             )
-        except TimeoutError:
+        except TimeoutError as e:
             proc.kill()
-            raise SummarizationError("Image captioning timed out")
+            raise SummarizationError("Image captioning timed out") from e
 
         latency_ms = int((time.monotonic() - start) * 1000)
         if proc.returncode != 0:
