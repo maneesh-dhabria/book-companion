@@ -97,6 +97,9 @@ class BookResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     summary_progress: dict[str, int] | None = None
+    # T15 / T16 — book-level summary state for BookSummaryView.
+    default_summary: SummaryBriefResponse | None = None
+    last_used_preset: str | None = None
 
 
 class BookUpdateRequest(BaseModel):

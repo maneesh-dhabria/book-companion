@@ -48,6 +48,8 @@ export interface Book {
   created_at: string
   updated_at: string
   summary_progress?: SummaryProgress | null
+  default_summary?: SummaryBrief | null
+  last_used_preset?: string | null
 }
 
 export interface Section {

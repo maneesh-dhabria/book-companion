@@ -46,6 +46,8 @@ export interface SectionCompletedPayload extends SectionEventPayload {
 
 export interface SectionFailedPayload extends SectionEventPayload {
   error: string
+  error_type?: string
+  error_message_truncated?: string | null
 }
 
 export interface SectionSkippedPayload extends SectionEventPayload {
@@ -57,6 +59,8 @@ export interface ProcessingCompletedPayload {
   completed: number
   failed: number
   skipped: number
+  /** T15 — set on book-level summary jobs, null otherwise. */
+  book_summary_id?: number | null
 }
 
 export interface ProcessingFailedPayload {

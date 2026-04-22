@@ -184,6 +184,50 @@ async def get_book(
         raise HTTPException(status_code=404, detail="Book not found")
     book_dict = _book_to_response(book)
     book_dict["summary_progress"] = await _summary_progress(db, book_id)
+
+    # Resolve the book-level Summary (if any) so the frontend can render
+    # the body directly from /books/:id without a second fetch.
+    if book.default_summary_id:
+        from app.db.models import Summary
+
+        default_summary = (
+            await db.execute(
+                select(Summary).where(Summary.id == book.default_summary_id)
+            )
+        ).scalar_one_or_none()
+        if default_summary is not None:
+            book_dict["default_summary"] = {
+                "id": default_summary.id,
+                "preset_name": default_summary.preset_name,
+                "model_used": default_summary.model_used,
+                "summary_char_count": default_summary.summary_char_count,
+                "created_at": default_summary.created_at,
+                "summary_md": default_summary.summary_md,
+            }
+
+    # Expose the most-recent preset used on any section for Generate-modal
+    # preselection. Section summaries win over the book-level summary when
+    # available — users usually want "re-run the same preset I just used".
+    from app.db.models import BookSection as _BS
+
+    latest_preset = (
+        await db.execute(
+            select(_BS.last_preset_used)
+            .where(_BS.book_id == book_id)
+            .where(_BS.last_preset_used.is_not(None))
+            .where(_BS.last_attempted_at.is_not(None))
+            .order_by(_BS.last_attempted_at.desc())
+            .limit(1)
+        )
+    ).scalar()
+    if latest_preset:
+        book_dict["last_used_preset"] = latest_preset
+    elif (
+        book_dict.get("default_summary")
+        and book_dict["default_summary"].get("preset_name")
+    ):
+        book_dict["last_used_preset"] = book_dict["default_summary"]["preset_name"]
+
     return BookResponse(**book_dict)
 
 
