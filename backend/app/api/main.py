@@ -28,6 +28,7 @@ from app.api.routes import (
     search,
     sections,
     summaries,
+    summarize_presets,
     views,
 )
 from app.api.routes import (
@@ -170,6 +171,7 @@ def create_app() -> FastAPI:
     app.include_router(backup.router)
     app.include_router(settings_routes.router)
     app.include_router(reading_state.router)
+    app.include_router(summarize_presets.router)
 
     register_db_busy_handler(app)
 
