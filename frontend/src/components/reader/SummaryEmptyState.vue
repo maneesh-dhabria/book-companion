@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { FRONT_MATTER_TYPES } from '@/stores/reader'
+import SummaryFailureBanner from '@/components/reader/SummaryFailureBanner.vue'
 import { computed } from 'vue'
 
 const props = defineProps<{
-  section: { id: number; title: string; section_type: string }
+  section: {
+    id: number
+    title: string
+    section_type: string
+    last_failure_type?: string | null
+    last_failure_message?: string | null
+    last_attempted_at?: string | null
+    last_preset_used?: string | null
+  }
   activeJobSectionId: number | null
   failedError: string | null
 }>()
@@ -11,7 +20,10 @@ const emit = defineEmits<{ summarize: [] }>()
 
 const isFrontMatter = computed(() => FRONT_MATTER_TYPES.has(props.section.section_type))
 const isGenerating = computed(() => props.activeJobSectionId === props.section.id)
-const hasFailed = computed(() => !!props.failedError && !isGenerating.value)
+const hasPersistedFailure = computed(() => !!props.section.last_failure_type && !isGenerating.value)
+const hasTransientFailure = computed(
+  () => !!props.failedError && !hasPersistedFailure.value && !isGenerating.value,
+)
 </script>
 
 <template>
@@ -22,7 +34,16 @@ const hasFailed = computed(() => !!props.failedError && !isGenerating.value)
     <template v-else-if="isGenerating">
       <p class="muted">Generating summary… <span class="spinner" /></p>
     </template>
-    <template v-else-if="hasFailed">
+    <template v-else-if="hasPersistedFailure">
+      <SummaryFailureBanner
+        :failure-type="section.last_failure_type ?? null"
+        :message="section.last_failure_message ?? null"
+        :attempted-at="section.last_attempted_at ?? null"
+        :preset="section.last_preset_used ?? null"
+        @retry="emit('summarize')"
+      />
+    </template>
+    <template v-else-if="hasTransientFailure">
       <p class="error">Summary generation failed: {{ failedError }}</p>
       <button class="btn" @click="emit('summarize')">Retry</button>
     </template>
