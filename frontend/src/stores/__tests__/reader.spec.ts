@@ -40,6 +40,7 @@ describe('reader constants', () => {
         'colophon',
         'cover',
         'part_header',
+        'license',
       ]),
     )
   })
