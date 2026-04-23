@@ -2,6 +2,7 @@
 import AnnotationCard from '@/components/sidebar/AnnotationCard.vue'
 import { exportAnnotationsUrl } from '@/api/annotations'
 import { useAnnotationsStore } from '@/stores/annotations'
+import { labelize } from '@/utils/labelize'
 import { onMounted, ref } from 'vue'
 
 const store = useAnnotationsStore()
@@ -27,7 +28,7 @@ function applyTypeFilter(type: string | undefined) {
           <button :class="{ active: filterType === 'note' }" @click="applyTypeFilter('note')">Notes</button>
         </div>
         <a :href="exportAnnotationsUrl(exportFormat)" class="export-btn" download>
-          Export {{ exportFormat.toUpperCase() }}
+          Export {{ labelize(exportFormat) }}
         </a>
       </div>
     </div>

@@ -1,14 +1,26 @@
 <script setup lang="ts">
 import { useKeyboard } from '@/composables/useKeyboard'
+import { useReaderStore } from '@/stores/reader'
 import { useUiStore } from '@/stores/ui'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const uiStore = useUiStore()
+const reader = useReaderStore()
 
 const pageTitle = computed(() => {
   const name = route.name as string
+  // FR-E5 / T22 — on reader and book-summary routes, show the book
+  // title so the user sees where they are, not a generic "Reader" label.
+  if (
+    (name === 'book-detail' ||
+      name === 'section-detail' ||
+      name === 'book-summary') &&
+    reader.book?.title
+  ) {
+    return reader.book.title
+  }
   const titles: Record<string, string> = {
     library: 'Library',
     'book-detail': 'Reader',
