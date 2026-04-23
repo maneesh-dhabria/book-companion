@@ -75,15 +75,17 @@ async def start_processing(
             detail="scope='pending' is incompatible with force=true",
         )
     if body.scope == "failed":
-        failed_count = (
+        has_failed = (
             await db.execute(
-                select(BookSection).where(
+                select(BookSection.id)
+                .where(
                     BookSection.book_id == book_id,
                     BookSection.last_failure_type.is_not(None),
                 )
+                .limit(1)
             )
-        ).all()
-        if not failed_count:
+        ).scalar_one_or_none()
+        if has_failed is None:
             raise HTTPException(
                 status_code=400,
                 detail="No failed sections to retry",

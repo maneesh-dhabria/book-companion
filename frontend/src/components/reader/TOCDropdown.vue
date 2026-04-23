@@ -60,7 +60,13 @@ function match(s: Section) {
         >
           <span class="toc-index">{{ section.order_index + 1 }}</span>
           <span class="toc-title">{{ section.title }}</span>
-          <span v-if="section.has_summary" class="toc-summarized">S</span>
+          <span
+            v-if="section.has_summary"
+            class="toc-summarized"
+            aria-label="Summary available"
+            title="Summary available"
+            >✓</span
+          >
         </router-link>
         <details v-if="frontMatter.length" class="toc-frontmatter">
           <summary>Front Matter ({{ frontMatter.length }})</summary>

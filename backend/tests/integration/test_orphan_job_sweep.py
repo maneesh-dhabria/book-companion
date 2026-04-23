@@ -90,6 +90,47 @@ async def test_orphan_sweep_preserves_live_running_job(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_orphan_sweep_sweeps_stale_job_even_with_live_pid(tmp_path):
+    """FR-A7.4 — PID recycling defence. A job whose PID is currently alive
+    but whose ``started_at`` is >24h old is still swept, because no real
+    summarization takes that long — the live match must be a recycled PID
+    from an unrelated process."""
+    import os as _os
+    from datetime import UTC, datetime, timedelta
+
+    engine, maker = await _setup_db(tmp_path)
+    stale_ts = datetime.now(UTC) - timedelta(hours=48)
+    async with maker() as session:
+        await session.execute(
+            text(
+                "INSERT INTO books (id, title, file_data, file_hash, file_format, "
+                "file_size_bytes, status) VALUES (1, 'T', x'00', 'h', 'epub', 1, 'COMPLETED')"
+            )
+        )
+        await session.execute(
+            text(
+                "INSERT INTO processing_jobs (book_id, status, step, pid, started_at) "
+                "VALUES (1, 'RUNNING', 'SUMMARIZE', :pid, :ts)"
+            ),
+            {"pid": _os.getpid(), "ts": stale_ts.replace(tzinfo=None).isoformat()},
+        )
+        await session.commit()
+
+    async with maker() as session:
+        swept = await orphan_sweep(session)
+    assert swept == 1, "stale job should be swept despite PID matching this process"
+
+    async with maker() as session:
+        row = (
+            await session.execute(
+                sa.select(ProcessingJob).where(ProcessingJob.book_id == 1)
+            )
+        ).scalar_one()
+        assert row.status == ProcessingJobStatus.FAILED
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_orphan_sweep_sweeps_rows_with_null_pid(tmp_path):
     engine, maker = await _setup_db(tmp_path)
     async with maker() as session:

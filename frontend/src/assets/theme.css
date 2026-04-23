@@ -20,6 +20,11 @@
   --color-sidebar-bg: #1e1e2e;
   --color-sidebar-text: #cdd6f4;
   --color-sidebar-active: #4f46e5;
+  /* FR-E10.1 — saved-highlight color, distinct from ::selection (browser
+     blue). Applied to <mark class="annotation"> spans rendered inside the
+     reader. */
+  --highlight-saved-bg: #fef9c3;
+  --highlight-saved-fg: inherit;
 }
 
 [data-theme='dark'] {

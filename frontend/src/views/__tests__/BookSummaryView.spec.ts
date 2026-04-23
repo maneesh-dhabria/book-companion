@@ -18,7 +18,7 @@ vi.mock('@/api/presets', () => ({
   listSummarizerPresets: (...args: unknown[]) => mockListPresets(...args),
 }))
 vi.mock('@/api/processing', () => ({
-  connectSSE: (..._args: unknown[]) => mockConnectSSE(),
+  connectSSE: () => mockConnectSSE(),
 }))
 
 async function loadView() {

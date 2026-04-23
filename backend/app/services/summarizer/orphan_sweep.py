@@ -9,13 +9,21 @@ job whose ``pid`` is not a live process gets marked ``FAILED`` with a
 
 Jobs whose ``pid`` column is NULL (legacy rows predating the column) are
 also swept — we have no way to confirm they're alive.
+
+**Known limitation — PID recycling.** On long-uptime systems with small PID
+spaces the OS may recycle a dead job's PID to an unrelated live process.
+``_pid_is_alive`` would then see "alive" and skip the sweep. We mitigate
+via a ``max_age`` heuristic: any RUNNING/PENDING job whose ``started_at``
+is older than ``max_age`` is treated as dead regardless of PID — a normal
+summarize run completes well under this window, so a live match is
+vanishingly unlikely in practice.
 """
 
 from __future__ import annotations
 
 import contextlib
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
 import structlog
@@ -24,6 +32,10 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from app.db.models import ProcessingJob, ProcessingJobStatus
 
 logger = structlog.get_logger()
+
+# Jobs older than this are swept regardless of PID-liveness — defeats PID
+# recycling. 24h is an order of magnitude above the longest realistic run.
+_STALE_MAX_AGE = timedelta(hours=24)
 
 
 def _pid_is_alive(pid: int | None) -> bool:
@@ -34,6 +46,16 @@ def _pid_is_alive(pid: int | None) -> bool:
     except (OSError, ProcessLookupError):
         return False
     return True
+
+
+def _job_is_too_old(job: ProcessingJob, now: datetime) -> bool:
+    started = job.started_at
+    if started is None:
+        return False
+    # Normalize naive → UTC-aware so the subtraction doesn't error.
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    return (now - started) > _STALE_MAX_AGE
 
 
 async def orphan_sweep(db: AsyncSession) -> int:
@@ -51,7 +73,7 @@ async def orphan_sweep(db: AsyncSession) -> int:
     swept = 0
     now = datetime.now(UTC)
     for job in rows:
-        if _pid_is_alive(job.pid):
+        if _pid_is_alive(job.pid) and not _job_is_too_old(job, now):
             continue
         job.status = ProcessingJobStatus.FAILED
         job.error_message = "Server restarted mid-job"

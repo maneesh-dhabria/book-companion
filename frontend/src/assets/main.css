@@ -18,6 +18,17 @@ body {
   min-height: 100vh;
 }
 
+/* FR-E10.1 — saved-annotation highlight style. Distinct from
+   ::selection (which is browser-blue on text the user is actively
+   selecting) so saved highlights stay visible when selection is cleared. */
+mark.annotation,
+.annotation-highlight {
+  background: var(--highlight-saved-bg, #fef9c3);
+  color: var(--highlight-saved-fg, inherit);
+  padding: 0 0.1em;
+  border-radius: 2px;
+}
+
 /* Focus indicators for keyboard navigation */
 :focus-visible {
   outline: 2px solid var(--color-accent, #2563eb);

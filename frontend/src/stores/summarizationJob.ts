@@ -161,7 +161,11 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     reset(false)
   }
 
-  function onFailed(_err: string) {
+  function onFailed(err: string) {
+    // Error is surfaced per-section via onSectionFailed; the job-level
+    // handler just clears the active state. Kept as a named param for
+    // callers that pass the SSE error payload.
+    void err
     reset(false)
   }
 
