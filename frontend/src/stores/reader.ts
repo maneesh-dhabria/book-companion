@@ -15,6 +15,7 @@ export const FRONT_MATTER_TYPES: ReadonlySet<string> = new Set([
   'colophon',
   'cover',
   'part_header',
+  'license',
 ])
 
 export const SUMMARIZABLE_TYPES: ReadonlySet<string> = new Set([
