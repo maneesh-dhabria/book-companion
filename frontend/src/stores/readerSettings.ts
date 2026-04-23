@@ -57,14 +57,21 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     loading.value = true
     try {
       const resp = await listPresets()
-      presets.value = resp.items
-      const active = resp.items.find((p) => p.id === resp.default_id) ?? resp.items[0]
+      // FR-F1.1 — defensive normalization: every consumer that runs
+      // ``presets.filter(...)`` (PresetCards.vue, ReadingSettings.vue) must
+      // survive an API that returns null/undefined/non-array `items`.
+      presets.value = Array.isArray(resp?.items) ? resp.items : []
+      const active =
+        presets.value.find((p) => p.id === resp?.default_id) ??
+        presets.value[0] ??
+        null
       if (active) {
         activePreset.value = active
         applySettingsFromPreset(active)
       }
     } catch {
-      // Use defaults if API unavailable
+      // Use defaults if API unavailable; ensure presets stays as an array.
+      presets.value = []
     } finally {
       loading.value = false
     }

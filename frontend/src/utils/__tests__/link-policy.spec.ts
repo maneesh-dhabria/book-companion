@@ -9,8 +9,13 @@ describe('classifyLink', () => {
     ['https://a.com', 'external'],
     ['mailto:x@y', 'external'],
     ['//cdn.com/x', 'external'],
-    ['./ch2.xhtml', 'other'],
-    ['../appendix.xhtml', 'other'],
+    // After T23 the EPUB patterns are explicitly internal-anchor; both
+    // classes still map to the same 'strip to span' behavior in
+    // MarkdownRenderer.applyLinkPolicy.
+    ['./ch2.xhtml', 'internal-anchor'],
+    ['../appendix.xhtml', 'internal-anchor'],
+    ['./part1.htm', 'internal-anchor'],
+    ['CR!1234_split_004.htm.xhtml#filepos2205', 'internal-anchor'],
     ['javascript:alert(1)', 'other'],
     ['data:text/html,...', 'other'],
     ['', 'other'],
