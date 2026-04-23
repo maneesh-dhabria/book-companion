@@ -6,7 +6,7 @@ const route = useRoute()
 const navItems = [
   { path: '/', label: 'Library', icon: '📚' },
   { path: '/concepts', label: 'Concepts', icon: '💡' },
-  { path: '/annotations', label: 'Notes', icon: '💬' },
+  { path: '/annotations', label: 'Annotations', icon: '💬' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 </script>

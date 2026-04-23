@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as readingStateApi from '@/api/readingState'
+import { FRONT_MATTER_TYPES } from '@/stores/reader'
 
 export interface ContinueReading {
   bookId: number
@@ -14,7 +15,17 @@ export const useReadingStateStore = defineStore('readingState', () => {
   const continueReading = ref<ContinueReading | null>(null)
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-  function trackPosition(bookId: number, sectionId?: number) {
+  function trackPosition(
+    bookId: number,
+    sectionId?: number,
+    sectionType?: string,
+  ) {
+    // FR-E2.3 — don't persist a front-matter section as the last-read
+    // position; the continue banner would land the user on the cover page
+    // or TOC instead of the last real chapter they were reading.
+    if (sectionType && FRONT_MATTER_TYPES.has(sectionType)) {
+      return
+    }
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(async () => {
       try {

@@ -29,6 +29,7 @@ const job = useSummarizationJobStore()
 const readingState = useReadingState(
   () => reader.book?.id,
   () => reader.currentSection?.id,
+  () => reader.currentSection?.section_type,
 )
 
 const readingAreaRef = ref<HTMLElement | null>(null)
