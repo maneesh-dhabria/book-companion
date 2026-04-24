@@ -105,9 +105,16 @@ clean-fe:  ## rm -rf backend/app/static (full wipe for next build)
 	rm -rf $(BACKEND)/app/static
 .PHONY: clean-fe
 
-dev:  ## Refresh: stop, migrate, build FE if needed, serve on $(PORT)
+ifeq ($(BC_SKIP_MIGRATE),1)
+DEV_MIGRATE_DEP :=
+else
+DEV_MIGRATE_DEP := migrate
+endif
+
+dev: stop $(DEV_MIGRATE_DEP) $(STATIC_INDEX)  ## Refresh: stop, migrate, build FE if needed, serve on $(PORT)
 	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T7 in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+	@printf "\n\033[1;34m==> Starting bookcompanion serve on :$(PORT)\033[0m\n"
+	cd $(BACKEND) && exec uv run bookcompanion serve --port $(PORT)
 .PHONY: dev
 
 reset:  ## ⚠ destructive: backup data dir + re-init (requires CONFIRM=1 if non-TTY)
