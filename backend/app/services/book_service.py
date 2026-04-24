@@ -88,12 +88,24 @@ class BookService:
         return book
 
     async def delete_book(self, book_id: int) -> None:
+        from app.services.tag_service import TagService
+
         book = await self.book_repo.get_by_id(book_id)
         if not book:
             raise StorageError(f"Book not found: {book_id}")
+
+        tag_service = TagService(self.db)
+        # Cascade taggables before the SQL delete — Taggable.taggable_id has
+        # no FK (polymorphic), so ORM cascade wouldn't pick it up. Sections
+        # first (they disappear with the book's cascade), then the book row.
+        section_ids = [s.id for s in book.sections]
+        for sid in section_ids:
+            await tag_service.remove_all_for_entity("section", sid)
+        await tag_service.remove_all_for_entity("book", book_id)
+
         await self.book_repo.delete(book)
         await self.db.commit()
-        logger.info("book_deleted", book_id=book_id)
+        logger.info("book_deleted", book_id=book_id, cascaded_sections=len(section_ids))
 
     async def list_books(
         self, author: str | None = None, status: str | None = None, recent: bool = False

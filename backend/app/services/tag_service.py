@@ -74,6 +74,17 @@ class TagService:
             return False
         return await self.repo.remove_taggable(tag.id, taggable_type, taggable_id)
 
+    async def remove_all_for_entity(self, taggable_type: str, taggable_id: int) -> int:
+        """Drop every Taggable row for a given entity; no-op on unknown entities.
+
+        Used by BookService.delete_book to cascade book + section taggables
+        before the SQL row delete (Taggable.taggable_id has no FK because the
+        type column is polymorphic, so DB cascade cannot help us here).
+        """
+        if taggable_type not in VALID_TAGGABLE_TYPES:
+            raise TagError(f"Invalid taggable_type '{taggable_type}'")
+        return await self.repo.remove_all_for_entity(taggable_type, taggable_id)
+
     async def list_tags(self) -> list[Tag]:
         """List all tags in the system."""
         return await self.repo.list_all()
