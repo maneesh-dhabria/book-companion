@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import type { AnnotationLike } from '@/utils/highlightInjector'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 
-const props = defineProps<{
-  content: string
-  hasPrev: boolean
-  hasNext: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    content: string
+    hasPrev: boolean
+    hasNext: boolean
+    annotations?: AnnotationLike[]
+    highlightsInline?: boolean
+  }>(),
+  { annotations: () => [], highlightsInline: true },
+)
 
 const emit = defineEmits<{
   navigate: [direction: 'prev' | 'next']
@@ -23,7 +29,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 <template>
   <article class="reading-area">
-    <MarkdownRenderer :content="content" />
+    <MarkdownRenderer
+      :content="content"
+      :annotations="annotations"
+      :highlights-inline="highlightsInline"
+    />
   </article>
 </template>
 

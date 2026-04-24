@@ -60,13 +60,23 @@ function scrollToSource(annotationId: number) {
     return
   }
   // Cross-section case — the source annotation lives in another section.
-  // Load that section first via the reader store; after loadSection resolves,
-  // the next tick will render the mark and we can scroll to it.
+  // Push the router (FR-D2) so the URL reflects the jump, then after the
+  // navigation resolves scroll the mark into view with a pulse.
   const target = store.annotations.find((a) => a.id === annotationId)
   if (!target || !reader.book) return
   const section = reader.sections.find((s) => s.id === target.content_id)
   if (!section) return
-  reader.loadSection(reader.book.id, section.id).then(() => {
+  const bookId = reader.book.id
+  ;(async () => {
+    try {
+      const router = (await import('@/router')).default
+      await router.push({
+        name: 'section-detail',
+        params: { id: String(bookId), sectionId: String(section.id) },
+      })
+    } catch {
+      reader.loadSection(bookId, section.id)
+    }
     setTimeout(() => {
       const el2 = document.getElementById(`ann-${annotationId}`)
       if (el2) {
@@ -74,8 +84,8 @@ function scrollToSource(annotationId: number) {
         el2.classList.add('ann-pulse')
         setTimeout(() => el2.classList.remove('ann-pulse'), 1500)
       }
-    }, 50)
-  })
+    }, 80)
+  })()
 }
 
 function showAllToggle() {

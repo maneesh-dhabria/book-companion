@@ -18,7 +18,7 @@ import { useAnnotationsStore } from '@/stores/annotations'
 import { useReaderStore } from '@/stores/reader'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -36,6 +36,16 @@ const readingState = useReadingState(
 const readingAreaRef = ref<HTMLElement | null>(null)
 const sidebarOpen = ref(false)
 const { selection, isSelecting, clear: clearSelection } = useTextSelection(readingAreaRef)
+
+// Only inject inline highlights for annotations whose content_id matches the
+// CURRENT section. Without this guard, scope='all' would let cross-section
+// annotations accidentally match text fragments in unrelated sections and
+// render misleading marks with the wrong scroll anchor.
+const inlineAnnotations = computed(() => {
+  const currentId = reader.currentSection?.id
+  if (currentId == null) return []
+  return annotations.annotations.filter((a) => a.content_id === currentId)
+})
 
 // T29 — NoteCompositionPanel replaces prompt(). Capture the selection
 // before opening the panel so the user can edit without losing anchor.
@@ -82,6 +92,28 @@ onMounted(() => {
   settings.loadPresets()
 })
 watch(() => route.params, loadFromRoute)
+
+// v1.5 T22 — keep the annotations store in sync with the current section so
+// MarkdownRenderer can wrap highlights inline without waiting for the
+// sidebar to open. Respects the annotationsScope toggle in readerSettings.
+watch(
+  [() => reader.currentSection?.id, () => settings.annotationsScope, () => reader.book?.id],
+  () => {
+    if (!reader.book) return
+    if (settings.annotationsScope === 'all') {
+      annotations.loadAnnotations({
+        content_type: 'section_content',
+        book_id: reader.book.id,
+      })
+    } else if (reader.currentSection) {
+      annotations.loadAnnotations({
+        content_type: 'section_content',
+        content_id: reader.currentSection.id,
+      })
+    }
+  },
+  { immediate: true },
+)
 
 function handleHighlight() {
   if (!reader.currentSection || !selection.text) return
@@ -229,6 +261,8 @@ function handleAskAi() {
               :content="reader.currentSection.content_md || ''"
               :has-prev="reader.hasPrev"
               :has-next="reader.hasNext"
+              :annotations="inlineAnnotations"
+              :highlights-inline="settings.highlightsVisible"
               @navigate="reader.navigateSection($event)"
             />
           </template>
