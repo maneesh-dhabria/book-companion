@@ -9,6 +9,7 @@ from ebooklib import epub
 from markdownify import markdownify
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
+from app.services.parser.blockquote_normalizer import normalize_blockquotes
 from app.services.parser.image_url_rewrite import to_placeholder
 from app.services.parser.section_classifier import detect_section_type
 
@@ -246,7 +247,8 @@ class EPUBParser(BookParser):
             html = item.get_content().decode("utf-8", errors="replace")
             html = self._clean_html(html)
             md = markdownify(html, heading_style="ATX", strip=["script", "style"])
-            content_map[item.get_name()] = to_placeholder(md.strip())
+            md = normalize_blockquotes(md.strip())
+            content_map[item.get_name()] = to_placeholder(md)
 
         # Build alt-text map from raw HTML
         alt_text_map: dict[str, str] = {}

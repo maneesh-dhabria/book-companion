@@ -5,6 +5,7 @@ from pathlib import Path
 import pymupdf4llm
 
 from app.services.parser.base import BookParser, ParsedBook, ParsedImage, ParsedSection
+from app.services.parser.blockquote_normalizer import normalize_blockquotes
 from app.services.parser.image_url_rewrite import to_placeholder
 from app.services.parser.section_classifier import detect_section_type
 
@@ -29,7 +30,7 @@ class PDFParser(BookParser):
         sections = self._pages_to_sections(pages)
         for s in sections:
             if s.content_md:
-                s.content_md = to_placeholder(s.content_md)
+                s.content_md = to_placeholder(normalize_blockquotes(s.content_md))
 
         return ParsedBook(
             title=title,
@@ -154,7 +155,7 @@ class PDFParser(BookParser):
         sections = self._pages_to_sections([{"text": rendered.markdown}])
         for s in sections:
             if s.content_md:
-                s.content_md = to_placeholder(s.content_md)
+                s.content_md = to_placeholder(normalize_blockquotes(s.content_md))
         return ParsedBook(
             title=self._extract_title([{"text": rendered.markdown}], file_path),
             authors=[],
