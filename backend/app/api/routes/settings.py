@@ -10,6 +10,8 @@ from app.config import Settings
 from app.services.settings_service import SettingsService
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
+# Separate router so the shipped models.yaml surfaces as /api/v1/config/models.
+config_router = APIRouter(prefix="/api/v1/config", tags=["config"])
 
 
 def _get_settings_service(
@@ -71,3 +73,20 @@ async def run_migrations():
             detail=f"Migration failed: {stderr.decode().strip()}",
         )
     return {"status": "ok", "output": stdout.decode().strip()}
+
+
+# --- T16: /config/models surface ---
+
+
+@config_router.get("/models")
+async def get_config_models(
+    svc: SettingsService = Depends(_get_settings_service),
+    settings: Settings = Depends(get_settings),
+):
+    """Return the shipped models.yaml candidate list + the auto-detected
+    provider so the Settings UI can pre-select a default dropdown value."""
+    from app.services.summarizer import detect_llm_provider
+
+    data = svc.load_models()
+    detected = detect_llm_provider() if settings.llm.provider == "auto" else None
+    return {**data, "detected_provider": detected, "current_model": settings.llm.model}

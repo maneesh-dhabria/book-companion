@@ -71,6 +71,17 @@ class TagRepository:
         await self.session.flush()
         return result.rowcount > 0
 
+    async def remove_all_for_entity(self, taggable_type: str, taggable_id: int) -> int:
+        """Delete every Taggable row for a given (type, id); returns row count."""
+        result = await self.session.execute(
+            delete(Taggable).where(
+                Taggable.taggable_type == taggable_type,
+                Taggable.taggable_id == taggable_id,
+            )
+        )
+        await self.session.flush()
+        return result.rowcount or 0
+
     async def get_tags_for_entity(self, taggable_type: str, taggable_id: int) -> list[Tag]:
         result = await self.session.execute(
             select(Tag)

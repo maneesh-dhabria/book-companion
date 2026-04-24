@@ -29,17 +29,9 @@ def _has_column(table: str, column: str) -> bool:
 
 def upgrade() -> None:
     with op.batch_alter_table("book_sections", schema=None) as batch:
-        batch.add_column(
-            sa.Column("last_failure_type", sa.String(length=64), nullable=True)
-        )
-        batch.add_column(
-            sa.Column("last_failure_message", sa.Text(), nullable=True)
-        )
-        batch.add_column(
-            sa.Column(
-                "last_attempted_at", sa.DateTime(timezone=True), nullable=True
-            )
-        )
+        batch.add_column(sa.Column("last_failure_type", sa.String(length=64), nullable=True))
+        batch.add_column(sa.Column("last_failure_message", sa.Text(), nullable=True))
+        batch.add_column(sa.Column("last_attempted_at", sa.DateTime(timezone=True), nullable=True))
         batch.add_column(
             sa.Column(
                 "attempt_count",
@@ -48,9 +40,7 @@ def upgrade() -> None:
                 server_default="0",
             )
         )
-        batch.add_column(
-            sa.Column("last_preset_used", sa.String(length=200), nullable=True)
-        )
+        batch.add_column(sa.Column("last_preset_used", sa.String(length=200), nullable=True))
 
     op.create_index(
         "ix_book_sections_last_attempted_at",
@@ -76,9 +66,7 @@ def downgrade() -> None:
         "ix_processing_jobs_one_active_per_book",
         table_name="processing_jobs",
     )
-    op.drop_index(
-        "ix_book_sections_last_attempted_at", table_name="book_sections"
-    )
+    op.drop_index("ix_book_sections_last_attempted_at", table_name="book_sections")
     with op.batch_alter_table("book_sections", schema=None) as batch:
         batch.drop_column("last_preset_used")
         batch.drop_column("attempt_count")

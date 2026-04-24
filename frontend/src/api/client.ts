@@ -21,7 +21,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export const apiClient = {
-  async get<T>(url: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  async get<T>(
+    url: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    options?: { signal?: AbortSignal },
+  ): Promise<T> {
     const searchParams = new URLSearchParams()
     if (params) {
       for (const [key, value] of Object.entries(params)) {
@@ -30,7 +34,7 @@ export const apiClient = {
     }
     const query = searchParams.toString()
     const fullUrl = `${BASE_URL}${url}${query ? `?${query}` : ''}`
-    const response = await fetch(fullUrl)
+    const response = await fetch(fullUrl, { signal: options?.signal })
     return handleResponse<T>(response)
   },
 

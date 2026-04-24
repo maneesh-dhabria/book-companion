@@ -1,7 +1,7 @@
 import type { ProcessingStatus } from '@/types'
 import { apiClient } from './client'
 
-export type ProcessingScope = 'all' | 'pending' | 'section'
+export type ProcessingScope = 'all' | 'pending' | 'section' | 'failed'
 
 export interface ProcessingOptions {
   preset_name?: string
@@ -61,6 +61,8 @@ export interface ProcessingCompletedPayload {
   skipped: number
   /** T15 — set on book-level summary jobs, null otherwise. */
   book_summary_id?: number | null
+  /** v1.5 T9b — AI tag suggestions produced by the book-summary job. */
+  suggested_tags?: string[]
 }
 
 export interface ProcessingFailedPayload {

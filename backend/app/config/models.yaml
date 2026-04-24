@@ -1,0 +1,13 @@
+providers:
+  claude:
+    - id: sonnet
+      label: Claude Sonnet (default, balanced)
+    - id: opus
+      label: Claude Opus (highest quality, slower)
+    - id: haiku
+      label: Claude Haiku (fastest, lowest cost)
+  codex:
+    - id: o4-mini
+      label: OpenAI o4-mini (default)
+    - id: o3
+      label: OpenAI o3 (reasoning-focused)

@@ -45,9 +45,7 @@ def upgrade() -> None:
         "books_affected": 0,
     }
 
-    book_ids = [
-        r.id for r in conn.execute(sa.text("SELECT id FROM books ORDER BY id"))
-    ]
+    book_ids = [r.id for r in conn.execute(sa.text("SELECT id FROM books ORDER BY id"))]
 
     for book_id in book_ids:
         rows = conn.execute(
@@ -79,17 +77,12 @@ def upgrade() -> None:
                 continue
 
             conn.execute(
-                sa.text(
-                    "UPDATE book_sections SET section_type = :t WHERE id = :id"
-                ),
+                sa.text("UPDATE book_sections SET section_type = :t WHERE id = :id"),
                 {"t": new_type, "id": row.id},
             )
             per_book["reclassified"] += 1
 
-            if (
-                new_type in FRONT_MATTER_TYPES
-                and row.section_type not in FRONT_MATTER_TYPES
-            ):
+            if new_type in FRONT_MATTER_TYPES and row.section_type not in FRONT_MATTER_TYPES:
                 count = (
                     conn.execute(
                         sa.text(
@@ -119,9 +112,7 @@ def upgrade() -> None:
                     # User-curated summary exists pre-batch → preserve it, re-point default.
                     conn.execute(
                         sa.text(
-                            "UPDATE book_sections "
-                            "SET default_summary_id = :new "
-                            "WHERE id = :sid"
+                            "UPDATE book_sections SET default_summary_id = :new WHERE id = :sid"
                         ),
                         {"new": newest_non_batch, "sid": row.id},
                     )
@@ -139,8 +130,7 @@ def upgrade() -> None:
                     )
                     conn.execute(
                         sa.text(
-                            "UPDATE book_sections "
-                            "SET default_summary_id = NULL WHERE id = :sid"
+                            "UPDATE book_sections SET default_summary_id = NULL WHERE id = :sid"
                         ),
                         {"sid": row.id},
                     )

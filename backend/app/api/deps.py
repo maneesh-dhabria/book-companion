@@ -157,3 +157,21 @@ def get_reading_state_repo(
     from app.db.repositories.reading_state_repo import ReadingStateRepository
 
     return ReadingStateRepository(session=db)
+
+
+def get_tag_service(
+    db: AsyncSession = Depends(get_db),
+):
+    """Construct TagService with shared session."""
+    from app.services.tag_service import TagService
+
+    return TagService(session=db)
+
+
+def get_settings_service(
+    settings: Settings = Depends(get_settings),
+):
+    """Construct SettingsService (T8)."""
+    from app.services.settings_service import SettingsService
+
+    return SettingsService(settings)

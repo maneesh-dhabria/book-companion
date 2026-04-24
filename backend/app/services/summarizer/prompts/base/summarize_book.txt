@@ -12,4 +12,17 @@ This summary synthesizes {{ section_count }} section summaries below.
 {{ section.summary }}
 {% endfor %}
 
-Output your summary directly as markdown. Do not wrap in JSON or code fences.
+{% if existing_tags %}
+## Existing tags for this book
+The user has already applied these tags: {{ existing_tags | join(", ") }}.
+Do not re-suggest anything that overlaps with the existing tags.
+{% endif %}
+
+## Output format
+Return JSON with:
+- `summary_md` (string): the book summary as markdown.
+- `suggested_tags` (array of up to 7 short strings, each <= 40 chars): new
+  tags we should propose to the user. Prefer single or two-word labels that
+  capture the dominant topics, methodologies, or frameworks in the book.
+  Return `[]` if nothing stands out.
+

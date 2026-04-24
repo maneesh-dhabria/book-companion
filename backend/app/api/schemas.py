@@ -100,6 +100,9 @@ class BookResponse(BaseModel):
     # T15 / T16 — book-level summary state for BookSummaryView.
     default_summary: SummaryBriefResponse | None = None
     last_used_preset: str | None = None
+    # v1.5 — AI-suggested tags + book-level failure diagnostics.
+    suggested_tags: list[str] = []
+    last_summary_failure: dict | None = None
 
 
 class BookUpdateRequest(BaseModel):
@@ -299,6 +302,9 @@ class AnnotationCreateRequest(BaseModel):
     text_start: int | None = None
     text_end: int | None = None
     note: str | None = None
+    prefix: str | None = None
+    suffix: str | None = None
+    tags: list[str] | None = None
 
 
 class AnnotationUpdateRequest(BaseModel):
@@ -318,6 +324,9 @@ class AnnotationResponse(BaseModel):
     note: str | None = None
     type: str
     linked_annotation_id: int | None = None
+    prefix: str | None = None
+    suffix: str | None = None
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
     # T18 — joined book + section context for /annotations UI. Null when the

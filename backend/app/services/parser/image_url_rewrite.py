@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
+
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+OnMissing = Literal["keep", "strip"]
 
 # Markdown image: ![alt](path "optional title")
 _MD_IMG = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
@@ -12,6 +19,12 @@ _HTML_IMG = re.compile(
     re.IGNORECASE,
 )
 _PLACEHOLDER = re.compile(r"__IMG_PLACEHOLDER__:(.+?)__ENDIMG__")
+# Matches a whole markdown image whose src is a placeholder — used by strip
+# mode to drop the entire `![alt](__IMG_PLACEHOLDER__:fn__ENDIMG__)` when the
+# target filename is unknown.
+_MD_PLACEHOLDER_IMG = re.compile(
+    r"!\[[^\]]*\]\(__IMG_PLACEHOLDER__:(.+?)__ENDIMG__\)"
+)
 
 
 def _basename(path: str) -> str:
@@ -42,14 +55,44 @@ def to_placeholder(md: str) -> str:
     return out
 
 
-def from_placeholder(md: str, filename_to_image_id: dict[str, int]) -> str:
-    """Substitute placeholders with /api/v1/images/{id}; leave unknown untouched."""
+def from_placeholder(
+    md: str,
+    filename_to_image_id: dict[str, int],
+    on_missing: OnMissing = "keep",
+) -> str:
+    """Substitute placeholders with /api/v1/images/{id}.
 
-    def repl(m: re.Match) -> str:
+    ``on_missing='keep'`` (default) — unknown placeholders are left in place
+    so a later re-index can resolve them. This matches the pre-v1.5 behavior.
+
+    ``on_missing='strip'`` — unknown placeholders are removed. If the
+    placeholder is wrapped in a markdown image ``![alt](…)``, the entire
+    image is removed; otherwise only the ``__IMG_PLACEHOLDER__…__ENDIMG__``
+    token is removed. A structlog warning is emitted per missing filename
+    so operators can see what was dropped.
+    """
+
+    if on_missing == "strip":
+
+        def md_img_repl(m: re.Match) -> str:
+            fn = m.group(1)
+            image_id = filename_to_image_id.get(fn)
+            if image_id is None:
+                logger.warning("image_placeholder_missing", filename=fn)
+                return ""
+            return f"![]({'/api/v1/images/' + str(image_id)})"
+
+        # First strip missing image wrappers in one pass.
+        md = _MD_PLACEHOLDER_IMG.sub(md_img_repl, md)
+
+    def token_repl(m: re.Match) -> str:
         fn = m.group(1)
         image_id = filename_to_image_id.get(fn)
         if image_id is None:
+            if on_missing == "strip":
+                logger.warning("image_placeholder_missing", filename=fn)
+                return ""
             return m.group(0)
         return f"/api/v1/images/{image_id}"
 
-    return _PLACEHOLDER.sub(repl, md)
+    return _PLACEHOLDER.sub(token_repl, md)

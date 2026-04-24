@@ -6,12 +6,21 @@ export interface ListBooksParams {
   per_page?: number
   status?: string
   format?: string
+  q?: string
+  tag?: string
   sort_field?: string
   sort_direction?: string
 }
 
-export function listBooks(params?: ListBooksParams) {
-  return apiClient.get<PaginatedResponse<BookListItem>>('/books', params as Record<string, string | number | boolean | undefined>)
+export function listBooks(
+  params?: ListBooksParams,
+  options?: { signal?: AbortSignal },
+) {
+  return apiClient.get<PaginatedResponse<BookListItem>>(
+    '/books',
+    params as Record<string, string | number | boolean | undefined>,
+    options,
+  )
 }
 
 export function getBook(id: number) {

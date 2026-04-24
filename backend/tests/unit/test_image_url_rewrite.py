@@ -55,3 +55,40 @@ def test_from_placeholder_leaves_unknown_filenames():
     md = "__IMG_PLACEHOLDER__:missing.jpg__ENDIMG__"
     out = from_placeholder(md, {})
     assert out == md
+
+
+def test_from_placeholder_strips_missing_on_strip():
+    md = "before ![alt](__IMG_PLACEHOLDER__:missing.png__ENDIMG__) after"
+    result = from_placeholder(md, {}, on_missing="strip")
+    assert "before" in result
+    assert "after" in result
+    assert "__IMG_PLACEHOLDER__" not in result
+    assert "missing.png" not in result
+    assert "![alt]" not in result
+
+
+def test_from_placeholder_keeps_missing_on_keep():
+    md = "before __IMG_PLACEHOLDER__:missing.png__ENDIMG__ after"
+    result = from_placeholder(md, {}, on_missing="keep")
+    assert "__IMG_PLACEHOLDER__" in result
+
+
+def test_from_placeholder_default_is_keep():
+    md = "before __IMG_PLACEHOLDER__:missing.png__ENDIMG__ after"
+    assert from_placeholder(md, {}, on_missing="keep") == from_placeholder(md, {})
+
+
+def test_from_placeholder_present_image_rewrites_same_as_before_in_strip():
+    md = "before __IMG_PLACEHOLDER__:img.png__ENDIMG__ after"
+    result = from_placeholder(md, {"img.png": 42}, on_missing="strip")
+    assert "/api/v1/images/42" in result
+    assert "__IMG_PLACEHOLDER__" not in result
+
+
+def test_from_placeholder_strip_bare_placeholder_removed():
+    md = "text __IMG_PLACEHOLDER__:missing.png__ENDIMG__ more"
+    result = from_placeholder(md, {}, on_missing="strip")
+    assert "__IMG_PLACEHOLDER__" not in result
+    assert "missing.png" not in result
+    assert "text" in result
+    assert "more" in result

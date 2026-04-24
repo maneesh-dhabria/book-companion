@@ -1,5 +1,7 @@
 """Tag service -- business logic for polymorphic tagging."""
 
+import re
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Tag, Taggable
@@ -7,6 +9,22 @@ from app.db.repositories.tag_repo import TagRepository
 from app.exceptions import BookCompanionError
 
 VALID_TAGGABLE_TYPES = {"book", "section", "annotation"}
+
+_WS = re.compile(r"\s+")
+
+
+def normalize_tag_name(name: str) -> str:
+    """Trim leading/trailing whitespace and collapse internal whitespace.
+
+    Raises ``ValueError`` when the resulting name is empty — callers should
+    treat this as a 422 / CLI validation error, not a tag mutation.
+    """
+    if name is None:
+        raise ValueError("tag name cannot be empty")
+    cleaned = _WS.sub(" ", name).strip()
+    if not cleaned:
+        raise ValueError("tag name cannot be empty")
+    return cleaned
 
 
 class TagError(BookCompanionError):
@@ -25,12 +43,21 @@ class TagService:
         tag_name: str,
         color: str | None = None,
     ) -> Tag:
-        """Add a tag to an entity (book, section, or annotation)."""
+        """Add a tag to an entity (book, section, or annotation).
+
+        Idempotent per FR-E2.5: retrying the same (taggable, name) is a no-op
+        on the association row but still returns the Tag. Name is normalised
+        (whitespace-collapse + trim) and rejected if empty.
+        """
         if taggable_type not in VALID_TAGGABLE_TYPES:
             raise TagError(
                 f"Invalid taggable_type '{taggable_type}'. "
                 f"Must be one of: {', '.join(sorted(VALID_TAGGABLE_TYPES))}"
             )
+        try:
+            tag_name = normalize_tag_name(tag_name)
+        except ValueError as e:
+            raise TagError(str(e)) from e
         await self._validate_entity_exists(taggable_type, taggable_id)
 
         tag = await self.repo.get_or_create(tag_name, color=color)
@@ -38,10 +65,25 @@ class TagService:
         return tag
 
     async def remove_tag(self, taggable_type: str, taggable_id: int, tag_name: str) -> bool:
+        try:
+            tag_name = normalize_tag_name(tag_name)
+        except ValueError:
+            return False
         tag = await self.repo.get_by_name(tag_name)
         if not tag:
             return False
         return await self.repo.remove_taggable(tag.id, taggable_type, taggable_id)
+
+    async def remove_all_for_entity(self, taggable_type: str, taggable_id: int) -> int:
+        """Drop every Taggable row for a given entity; no-op on unknown entities.
+
+        Used by BookService.delete_book to cascade book + section taggables
+        before the SQL row delete (Taggable.taggable_id has no FK because the
+        type column is polymorphic, so DB cascade cannot help us here).
+        """
+        if taggable_type not in VALID_TAGGABLE_TYPES:
+            raise TagError(f"Invalid taggable_type '{taggable_type}'")
+        return await self.repo.remove_all_for_entity(taggable_type, taggable_id)
 
     async def list_tags(self) -> list[Tag]:
         """List all tags in the system."""

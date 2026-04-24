@@ -57,12 +57,17 @@ def test_service_invokes_callbacks_with_section_id_first():
     src = inspect.getsource(summarizer_service)
     # Normalize whitespace for resilient matching
     compact = " ".join(src.split())
+    # Accept both "multi-line formatted" spacing (` section.id,`) and
+    # "single-line formatted" spacing (`section.id,`) — ruff format collapses
+    # short call sites to single lines in newer versions.
     fragments = [
-        "on_section_start(section_id,",
-        "on_section_skip( section.id,",
-        "on_section_complete( section.id,",
-        "on_section_retry( section.id,",
-        "on_section_fail( section_id,",
+        ("on_section_start(section_id,",),
+        ("on_section_skip( section.id,", "on_section_skip(section.id,"),
+        ("on_section_complete( section.id,", "on_section_complete(section.id,"),
+        ("on_section_retry( section.id,", "on_section_retry(section.id,"),
+        ("on_section_fail( section_id,", "on_section_fail(section_id,"),
     ]
-    for frag in fragments:
-        assert frag in compact, f"service call-site drift: expected {frag!r}"
+    for options in fragments:
+        assert any(opt in compact for opt in options), (
+            f"service call-site drift: expected one of {options!r}"
+        )

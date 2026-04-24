@@ -257,11 +257,31 @@ async def create_annotation(
         text_start=body.text_start,
         text_end=body.text_end,
         note=body.note,
+        prefix=body.prefix,
+        suffix=body.suffix,
     )
     annotation = await repo.create(annotation)
     await db.commit()
     await db.refresh(annotation)
-    return AnnotationResponse.model_validate(annotation)
+
+    # FR-C1.6 — attach optional tags via polymorphic TagService so the same
+    # idempotency + normalization rules apply as for book + section tags.
+    tags_attached: list[str] = []
+    if body.tags:
+        from app.services.tag_service import TagError, TagService
+
+        svc = TagService(db)
+        for name in body.tags:
+            try:
+                tag = await svc.add_tag("annotation", annotation.id, name)
+                tags_attached.append(tag.name)
+            except TagError:
+                continue
+        await db.commit()
+
+    resp = AnnotationResponse.model_validate(annotation)
+    resp.tags = tags_attached
+    return resp
 
 
 @router.patch("/{annotation_id}", response_model=AnnotationResponse)

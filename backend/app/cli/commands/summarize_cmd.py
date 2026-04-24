@@ -29,6 +29,11 @@ async def summarize(
     skip_eval: bool = typer.Option(False, "--skip-eval", help="Skip eval assertions."),
     no_retry: bool = typer.Option(False, "--no-retry", help="Skip auto-retry on eval failure."),
     skip_images: bool = typer.Option(False, "--skip-images", help="Skip image captioning."),
+    only_pending: bool = typer.Option(
+        False,
+        "--only-pending",
+        help="Skip sections that already have a default summary (FR-H4.1).",
+    ),
 ):
     """Generate summaries using faceted presets."""
     async with get_services() as svc:
@@ -160,6 +165,7 @@ async def summarize(
             skip_eval=skip_eval,
             no_retry=no_retry,
             eval_service=eval_svc,
+            only_pending=only_pending,
             on_section_complete=lambda _sid, i, total, title, elapsed, comp: console.print(
                 f"  [{i}/{total}] {title[:35]:<35} done  ({elapsed}s, {comp:.1f}%)"
             ),

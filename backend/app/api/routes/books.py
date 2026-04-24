@@ -73,6 +73,46 @@ def _book_to_response(book: Book) -> dict:
         for s in (book.sections or [])
     ]
 
+    # FR-F3.1 / §9.1 extended response fields: tags, suggested_tags,
+    # summary_progress snapshot, last_summary_failure block. Tags come from
+    # the relationship that lazily loads; they're expected to be pre-loaded
+    # via ``selectinload`` by the repo, falling back to an empty list if
+    # the caller didn't bother.
+    try:
+        from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
+
+        summarizable = [
+            s for s in (book.sections or []) if s.section_type in SUMMARIZABLE_TYPES
+        ]
+        summarized_count = sum(
+            1 for s in summarizable if s.default_summary_id is not None
+        )
+        failed_count = sum(
+            1
+            for s in summarizable
+            if s.default_summary_id is None
+            and getattr(s, "last_failure_type", None) is not None
+        )
+    except Exception:
+        summarizable = []
+        summarized_count = 0
+        failed_count = 0
+
+    summary_progress = {
+        "summarizable": len(summarizable),
+        "summarized": summarized_count,
+        "failed_and_pending": failed_count,
+        "pending": max(0, len(summarizable) - summarized_count - failed_count),
+    }
+
+    last_summary_failure = None
+    if book.last_summary_failure_code:
+        last_summary_failure = {
+            "code": book.last_summary_failure_code,
+            "stderr": book.last_summary_failure_stderr,
+            "at": book.last_summary_failure_at,
+        }
+
     return {
         "id": book.id,
         "title": book.title,
@@ -84,6 +124,9 @@ def _book_to_response(book: Book) -> dict:
         "sections": sections,
         "section_count": len(sections),
         "cover_url": f"/api/v1/books/{book.id}/cover" if book.cover_image else None,
+        "suggested_tags": list(book.suggested_tags_json or []),
+        "summary_progress": summary_progress,
+        "last_summary_failure": last_summary_failure,
         "created_at": book.created_at,
         "updated_at": book.updated_at,
     }
@@ -98,17 +141,44 @@ async def list_books(
     per_page: int = 20,
     status: str | None = None,
     file_format: str | None = None,
+    q: str | None = None,
+    tag: str | None = None,
     sort_field: str = "updated_at",
     sort_direction: str = "desc",
     db: AsyncSession = Depends(get_db),
 ):
-    """List books with pagination, filtering, and sorting."""
+    """List books with pagination, filtering, and sorting.
+
+    ``q`` — title LIKE (case-insensitive).
+    ``tag`` — restrict to books carrying a tag with this exact name (NOCASE).
+    """
     # Build filter conditions
     conditions = []
     if status:
         conditions.append(Book.status == status)
     if file_format:
         conditions.append(Book.file_format == file_format)
+    if q:
+        # Escape LIKE wildcards so user-typed `%` / `_` don't act as
+        # wildcards (`100%` must match titles containing literal `100%`).
+        q_esc = q.lower().replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+        conditions.append(func.lower(Book.title).like(f"%{q_esc}%", escape="\\"))
+    tag_filter_ids: list[int] | None = None
+    if tag:
+        # Resolve tag name to Book IDs via taggables (NOCASE via func.lower).
+        from app.db.models import Tag, Taggable
+
+        ids_result = await db.execute(
+            select(Taggable.taggable_id)
+            .join(Tag, Tag.id == Taggable.tag_id)
+            .where(Taggable.taggable_type == "book")
+            .where(func.lower(Tag.name) == tag.lower())
+        )
+        tag_filter_ids = [r[0] for r in ids_result.all()]
+        if not tag_filter_ids:
+            # No books matched the tag filter — short-circuit.
+            return PaginatedResponse(items=[], total=0, page=page, per_page=per_page, pages=0)
+        conditions.append(Book.id.in_(tag_filter_ids))
 
     # Count total (without eager loading)
     count_query = select(func.count(Book.id))
@@ -149,6 +219,11 @@ async def list_books(
 
 
 async def _summary_progress(db: AsyncSession, book_id: int) -> dict[str, int]:
+    """v1.5 shape (FR-F3.1) — includes pending + failed_and_pending alongside
+    the legacy ``total`` / ``summarized`` keys. Existing callers that read
+    only the old two keys continue to work; new callers (BookOverviewView,
+    SummarizationProgress) rely on the enriched fields.
+    """
     summarizable_list = list(SUMMARIZABLE_TYPES)
     total = (
         await db.execute(
@@ -165,7 +240,23 @@ async def _summary_progress(db: AsyncSession, book_id: int) -> dict[str, int]:
             .where(BookSection.default_summary_id.isnot(None))
         )
     ).scalar() or 0
-    return {"summarized": summarized, "total": total}
+    failed = (
+        await db.execute(
+            select(func.count(BookSection.id))
+            .where(BookSection.book_id == book_id)
+            .where(BookSection.section_type.in_(summarizable_list))
+            .where(BookSection.default_summary_id.is_(None))
+            .where(BookSection.last_failure_type.is_not(None))
+        )
+    ).scalar() or 0
+    pending = max(0, total - summarized - failed)
+    return {
+        "summarized": summarized,
+        "total": total,
+        "summarizable": total,
+        "pending": pending,
+        "failed_and_pending": failed,
+    }
 
 
 @router.get("/{book_id}")
@@ -354,3 +445,34 @@ async def upload_cover(
     book.cover_image = await file.read()
     await db.commit()
     return Response(status_code=204)
+
+
+@router.patch("/{book_id}/suggested-tags")
+async def patch_suggested_tags(
+    book_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """FR-E4.4 — dismiss or replace the LLM-proposed tag list.
+
+    Accepts either ``{"reject": ["a", "b"]}`` (remove matching entries) or
+    ``{"set": [...]}`` (replace wholesale). Returns ``{suggested_tags: [...]}``.
+    Reject silently ignores names that aren't in the current list.
+    """
+    result = await db.execute(select(Book).where(Book.id == book_id))
+    book = result.scalar_one_or_none()
+    if not book:
+        raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
+
+    current = list(book.suggested_tags_json or [])
+    if "set" in body:
+        current = [str(x) for x in (body.get("set") or []) if isinstance(x, str)]
+    elif "reject" in body:
+        reject = {r.lower() for r in (body.get("reject") or []) if isinstance(r, str)}
+        current = [c for c in current if c.lower() not in reject]
+    else:
+        raise HTTPException(status_code=400, detail="Provide 'set' or 'reject'")
+
+    book.suggested_tags_json = current
+    await db.commit()
+    return {"suggested_tags": current}

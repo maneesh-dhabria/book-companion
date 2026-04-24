@@ -13,11 +13,12 @@ import sqlalchemy as sa
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BookSection, Summary, SummaryContentType
+from app.db.models import BookSection, Image, Summary, SummaryContentType
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
 from app.exceptions import EmptySummaryError, SummarizationError
+from app.services.parser.image_url_rewrite import from_placeholder
 from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 from app.services.summarizer.llm_provider import LLMProvider
 from app.services.summary_service import SummaryService
@@ -41,6 +42,38 @@ class SummarizerService:
         self._section_repo = SectionRepository(db)
         self._book_repo = BookRepository(db)
 
+    async def _existing_book_tags(self, book_id: int) -> list[str]:
+        """Tag names already applied to a book (FR-E4.3 taxonomy injection)."""
+        from app.db.models import Tag, Taggable
+
+        result = await self.db.execute(
+            sa.select(Tag.name)
+            .join(Taggable, Tag.id == Taggable.tag_id)
+            .where(Taggable.taggable_type == "book", Taggable.taggable_id == book_id)
+            .order_by(Tag.name)
+        )
+        return [r for (r,) in result.all()]
+
+    async def _image_map_for_section(self, section_id: int) -> dict[str, int]:
+        """Build {filename: image_id} for a section — used to rewrite
+        ``__IMG_PLACEHOLDER__`` tokens in LLM-emitted summaries (FR-A1.1)."""
+        result = await self.db.execute(
+            sa.select(Image.filename, Image.id).where(Image.section_id == section_id)
+        )
+        return {fn: iid for fn, iid in result.all() if fn}
+
+    async def _image_map_for_book(self, book_id: int) -> dict[str, int]:
+        """Aggregate {filename: image_id} for all images in a book."""
+        result = await self.db.execute(
+            sa.select(Image.filename, Image.id)
+            .join(BookSection, Image.section_id == BookSection.id)
+            .where(BookSection.book_id == book_id)
+        )
+        # If the same filename appears in multiple sections, the last one
+        # wins — summaries aren't precise enough to reliably pick the right
+        # section, and either image will render.
+        return {fn: iid for fn, iid in result.all() if fn}
+
     async def summarize_book(
         self,
         book_id: int,
@@ -58,6 +91,7 @@ class SummarizerService:
         on_section_retry: Callable | None = None,
         scope: str = "all",
         section_id: int | None = None,
+        only_pending: bool = False,
     ) -> dict:
         """Orchestrate full book summarization using map-reduce with faceted prompts."""
         # Resolve facets from preset_name if caller didn't provide a complete set.
@@ -74,6 +108,11 @@ class SummarizerService:
                 preset_to_use, {d: None for d in FACET_DIMENSIONS}, preset_to_use
             )
 
+        # FR-H4.1 — ``only_pending`` is a CLI-friendly alias that elevates to
+        # scope='pending' unless an explicit scope was already set.
+        if only_pending and scope == "all":
+            scope = "pending"
+
         sections = await self._section_repo.get_by_book_id(book_id)
 
         if scope == "section":
@@ -81,22 +120,18 @@ class SummarizerService:
                 raise ValueError("scope='section' requires section_id")
             sections = [s for s in sections if s.id == section_id]
             if not sections:
-                raise ValueError(
-                    f"section_id={section_id} does not belong to book {book_id}"
-                )
+                raise ValueError(f"section_id={section_id} does not belong to book {book_id}")
         elif scope == "pending":
             sections = [
                 s
                 for s in sections
-                if s.default_summary_id is None
-                and s.section_type in SUMMARIZABLE_TYPES
+                if s.default_summary_id is None and s.section_type in SUMMARIZABLE_TYPES
             ]
         elif scope == "failed":
             sections = [
                 s
                 for s in sections
-                if s.last_failure_type is not None
-                and s.section_type in SUMMARIZABLE_TYPES
+                if s.last_failure_type is not None and s.section_type in SUMMARIZABLE_TYPES
             ]
         else:
             sections = [s for s in sections if s.section_type in SUMMARIZABLE_TYPES]
@@ -260,9 +295,7 @@ class SummarizerService:
                             summary = retry_summary  # Use retry for cumulative context
                             retried_sections.append(section.id)
                             if on_section_retry:
-                                on_section_retry(
-                                    section.id, i + 1, total, section.title
-                                )
+                                on_section_retry(section.id, i + 1, total, section.title)
                     except Exception as eval_err:
                         logger.warning(
                             "inline_eval_failed",
@@ -310,9 +343,7 @@ class SummarizerService:
                 failed.append(section_id)
                 error_msg = str(e)
                 failure_type = getattr(e, "failure_type", None) or (
-                    "summarization_error"
-                    if isinstance(e, SummarizationError)
-                    else "unknown"
+                    "summarization_error" if isinstance(e, SummarizationError) else "unknown"
                 )
                 logger.error(
                     "section_summarization_failed",
@@ -339,9 +370,7 @@ class SummarizerService:
                 )
                 await self.db.commit()
                 if on_section_fail:
-                    on_section_fail(
-                        section_id, i + 1, total, section_title, e
-                    )
+                    on_section_fail(section_id, i + 1, total, section_title, e)
                 # Rollback expires every identity-mapped ORM object in this
                 # session. Issuing a fresh SELECT refreshes them in place via
                 # the identity map so the next iteration's `section.*` access
@@ -448,6 +477,12 @@ class SummarizerService:
         if quote_warnings:
             quality_warnings = {"paraphrased_quotes": quote_warnings}
 
+        # FR-A1.1: rewrite image placeholders before persist so the stored
+        # summary_md renders directly without a post-read rewrite. Missing
+        # image filenames are stripped with a warning.
+        image_map = await self._image_map_for_section(section.id)
+        summary_text = from_placeholder(summary_text, image_map, on_missing="strip")
+
         summary = Summary(
             content_type=SummaryContentType.SECTION,
             content_id=section.id,
@@ -489,12 +524,16 @@ class SummarizerService:
                 if summary:
                     section_data.append({"title": s.title, "summary": summary.summary_md})
 
+        # FR-E4.3 — gather existing book tags so the LLM can avoid re-suggesting.
+        existing_tags = await self._existing_book_tags(book_id)
+
         template = self._jinja_env.get_template("base/summarize_book.txt")
         prompt = template.render(
             book_title=book.title,
             author=author,
             section_count=len(section_data),
             sections=section_data,
+            existing_tags=existing_tags,
             **facets,
         )
 
@@ -512,8 +551,37 @@ class SummarizerService:
             raise EmptySummaryError("LLM returned empty book summary")
         combined_input = "\n".join(s["summary"] for s in section_data)
 
+        # FR-E4.1..3 — parse suggested_tags from the structured output and
+        # fuzzy-dedupe against existing book tags. If the LLM didn't emit
+        # the field we default to [] (feature is best-effort).
+        raw_suggestions = self._extract_suggested_tags(response)
+        from app.utils.text_similarity import fuzzy_dedupe_against
+
+        deduped_suggestions = fuzzy_dedupe_against(
+            raw_suggestions, against=existing_tags, threshold=2
+        )
+        # Normalize whitespace on each suggestion so "  strategy " shows as
+        # "strategy" in the UI. Cap at 7 to match the prompt instruction.
+        from app.services.tag_service import normalize_tag_name
+
+        cleaned_suggestions: list[str] = []
+        for s in deduped_suggestions[:7]:
+            try:
+                cleaned_suggestions.append(normalize_tag_name(s))
+            except ValueError:
+                continue
+        await self.db.execute(
+            sa.update(book.__class__)
+            .where(book.__class__.id == book_id)
+            .values(suggested_tags_json=cleaned_suggestions)
+        )
+
         concepts = SummaryService.extract_concepts(summary_text)
         eval_json_data = {"concepts": sorted(concepts)} if concepts else None
+
+        # FR-A1.1 — rewrite book-wide image placeholders before persist.
+        book_image_map = await self._image_map_for_book(book_id)
+        summary_text = from_placeholder(summary_text, book_image_map, on_missing="strip")
 
         summary = Summary(
             content_type=SummaryContentType.BOOK,
@@ -533,6 +601,18 @@ class SummarizerService:
         )
         saved = await self._summary_repo.create(summary)
         await self._book_repo.update_default_summary(book_id, saved.id)
+
+        # FR-F3.3 — clear book-level failure columns on successful summary.
+        await self.db.execute(
+            sa.text(
+                "UPDATE books "
+                "SET last_summary_failure_code = NULL, "
+                "    last_summary_failure_stderr = NULL, "
+                "    last_summary_failure_at = NULL "
+                "WHERE id = :id"
+            ),
+            {"id": book_id},
+        )
 
         # Book-level eval
         if not skip_eval and eval_service:
@@ -562,6 +642,8 @@ class SummarizerService:
                     retry_response = await self.llm.generate(retry_prompt, model=effective_model)
                     retry_elapsed = int((time.monotonic() - retry_start) * 1000)
                     retry_text = self._extract_summary_text(retry_response)
+                    # FR-A1.1: rewrite placeholders on retry path too.
+                    retry_text = from_placeholder(retry_text, book_image_map, on_missing="strip")
 
                     retry_summary = Summary(
                         content_type=SummaryContentType.BOOK,
@@ -633,9 +715,7 @@ class SummarizerService:
         sections = await self._section_repo.get_by_book_id(book_id)
         summary_count = sum(1 for s in sections if s.default_summary_id)
         if summary_count == 0:
-            raise ValueError(
-                "No section summaries available — summarize sections first"
-            )
+            raise ValueError("No section summaries available — summarize sections first")
 
         return await self._generate_book_summary(
             book_id=book_id,
@@ -662,6 +742,13 @@ class SummarizerService:
 
     def _extract_summary_text(self, response) -> str:
         """Extract summary text from LLM response. Handles markdown, JSON, code-fenced."""
+        # Prefer structured_output.summary_md when available — Claude CLI
+        # surfaces this when --json-schema is used.
+        structured = getattr(response, "structured_output", None)
+        if isinstance(structured, dict) and "summary_md" in structured:
+            s = structured.get("summary_md")
+            if isinstance(s, str) and s.strip():
+                return s
         content = response.content.strip()
         # Strip code fence wrapping
         if content.startswith("```"):
@@ -672,13 +759,36 @@ class SummarizerService:
         try:
             parsed = json.loads(content)
             if isinstance(parsed, dict):
-                for key in ("summary", "detailed_summary", "content"):
+                for key in ("summary_md", "summary", "detailed_summary", "content"):
                     if key in parsed:
                         return parsed[key]
                 return content
         except (json.JSONDecodeError, AttributeError):
             pass
         return content
+
+    def _extract_suggested_tags(self, response) -> list[str]:
+        """Parse `suggested_tags` from LLM response. Returns [] on any error."""
+        structured = getattr(response, "structured_output", None)
+        if isinstance(structured, dict):
+            tags = structured.get("suggested_tags")
+            if isinstance(tags, list):
+                return [t for t in tags if isinstance(t, str)]
+        # Fallback: look inside the JSON text body.
+        content = (response.content or "").strip()
+        if content.startswith("```"):
+            lines = content.split("\n")
+            if lines[-1].strip() == "```":
+                content = "\n".join(lines[1:-1]).strip()
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                tags = parsed.get("suggested_tags")
+                if isinstance(tags, list):
+                    return [t for t in tags if isinstance(t, str)]
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        return []
 
     @staticmethod
     def _check_paraphrased_quotes(source_text: str, summary_text: str) -> list[dict]:

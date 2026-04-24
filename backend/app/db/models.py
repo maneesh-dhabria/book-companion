@@ -138,6 +138,12 @@ class Book(Base):
     status: Mapped[BookStatus] = mapped_column(Enum(BookStatus), default=BookStatus.UPLOADING)
     quick_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    suggested_tags_json: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    last_summary_failure_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    last_summary_failure_stderr: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_summary_failure_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -384,7 +390,9 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(
+        String(200, collation="NOCASE"), nullable=False, unique=True
+    )
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -397,6 +405,11 @@ class Taggable(Base):
     )
     taggable_type: Mapped[str] = mapped_column(String(50), primary_key=True)
     taggable_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    tag: Mapped["Tag"] = relationship(lazy="joined")
+
+    __table_args__ = (Index("ix_taggables_entity", "taggable_type", "taggable_id"),)
 
 
 class Annotation(Base):
@@ -415,6 +428,8 @@ class Annotation(Base):
         ForeignKey("annotations.id", ondelete="SET NULL"),
         nullable=True,
     )
+    prefix: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suffix: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

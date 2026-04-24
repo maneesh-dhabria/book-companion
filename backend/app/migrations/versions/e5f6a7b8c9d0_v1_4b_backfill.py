@@ -53,7 +53,7 @@ def _resolve_db_path() -> Path | None:
     prefix_candidates = ("sqlite+aiosqlite:///", "sqlite:///")
     for prefix in prefix_candidates:
         if url.startswith(prefix):
-            return Path(url[len(prefix):])
+            return Path(url[len(prefix) :])
     return None
 
 
@@ -105,9 +105,7 @@ def upgrade() -> None:
         # Clear default_summary_id if it was pointing at the deleted row.
         conn.execute(
             sa.text(
-                "UPDATE book_sections "
-                "SET default_summary_id = NULL "
-                "WHERE default_summary_id = :sid"
+                "UPDATE book_sections SET default_summary_id = NULL WHERE default_summary_id = :sid"
             ),
             {"sid": summary_id},
         )
@@ -156,9 +154,7 @@ def upgrade() -> None:
     )
     for row in backfilled:
         conn.execute(
-            sa.text(
-                "UPDATE book_sections SET default_summary_id = :sid WHERE id = :bid"
-            ),
+            sa.text("UPDATE book_sections SET default_summary_id = :sid WHERE id = :bid"),
             {"sid": row.summary_id, "bid": row.section_id},
         )
 

@@ -1,24 +1,118 @@
-"""Settings service — read/write YAML config, DB stats, migration status."""
+"""Settings service — read/write YAML config, DB stats, migration status.
+
+Also exposes:
+* ``load_models()`` — read the shipped ``backend/app/config/models.yaml``
+  LLM candidate list, falling back to a hard-coded minimal set if the
+  file is missing or malformed.
+* ``load_user_config()`` / ``persist_patch()`` — deep-merge writes to the
+  XDG-resolved ``~/.config/bookcompanion/settings.yaml`` (platformdirs).
+  Used by PATCH /api/v1/settings + CLI ``model set``.
+"""
 
 import tempfile
 from pathlib import Path
+from typing import Any
 
+import structlog
 import yaml
+from platformdirs import user_config_dir
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
 
-DEFAULT_CONFIG_PATH = Path("~/.config/bookcompanion/config.yaml").expanduser()
+logger = structlog.get_logger(__name__)
+
+DEFAULT_CONFIG_PATH = Path("~/.config/bookcompanion/settings.yaml").expanduser()
 
 # Fields that should never appear in plain text in API responses
 _SENSITIVE_FIELDS = {"password", "access_token", "secret"}
 
+_FALLBACK_MODELS: dict[str, Any] = {
+    "providers": {
+        "claude": [
+            {"id": "sonnet", "label": "Claude Sonnet"},
+            {"id": "opus", "label": "Claude Opus"},
+            {"id": "haiku", "label": "Claude Haiku"},
+        ],
+        "codex": [
+            {"id": "o4-mini", "label": "OpenAI o4-mini"},
+        ],
+    }
+}
+
+
+def default_models_yaml_path() -> Path:
+    """Path to the shipped models.yaml — valid for editable + wheel installs."""
+    return Path(__file__).resolve().parent.parent / "config" / "models.yaml"
+
+
+def default_user_settings_path() -> Path:
+    """XDG-resolved path to the per-user settings.yaml."""
+    return Path(user_config_dir("bookcompanion")) / "settings.yaml"
+
 
 class SettingsService:
-    def __init__(self, settings: Settings, config_path: Path | None = None):
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        config_path: Path | None = None,
+        *,
+        models_yaml_path: Path | None = None,
+        user_config_path: Path | None = None,
+    ):
+        # ``settings`` is optional so unit tests can instantiate with just
+        # path kwargs; existing callers pass a Settings as positional arg.
         self.settings = settings
         self.config_path = config_path or DEFAULT_CONFIG_PATH
+        self.models_yaml_path = models_yaml_path or default_models_yaml_path()
+        self.user_config_path = user_config_path or default_user_settings_path()
+
+    # --- models.yaml (T8) ---
+
+    def load_models(self) -> dict[str, Any]:
+        try:
+            with open(self.models_yaml_path) as f:
+                data = yaml.safe_load(f)
+            if not isinstance(data, dict) or "providers" not in data:
+                raise ValueError("invalid models.yaml shape")
+            return data
+        except (FileNotFoundError, yaml.YAMLError, ValueError) as e:
+            logger.warning(
+                "models_yaml_fallback",
+                err=str(e),
+                path=str(self.models_yaml_path),
+            )
+            return _FALLBACK_MODELS
+
+    def load_user_config(self) -> dict[str, Any]:
+        if self.user_config_path.exists():
+            try:
+                with open(self.user_config_path) as f:
+                    data = yaml.safe_load(f)
+                return data if isinstance(data, dict) else {}
+            except yaml.YAMLError as e:
+                logger.warning("user_config_yaml_error", err=str(e))
+                return {}
+        return {}
+
+    def persist_patch(self, patch: dict[str, Any]) -> None:
+        current = self.load_user_config()
+        merged = self._deep_merge(current, patch)
+        self.user_config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.user_config_path, "w") as f:
+            yaml.safe_dump(merged, f, sort_keys=True)
+        logger.info("user_config_persisted", keys=list(patch.keys()))
+
+    @staticmethod
+    def _deep_merge(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = dict(a)
+        for k, v in b.items():
+            if k in out and isinstance(out[k], dict) and isinstance(v, dict):
+                out[k] = SettingsService._deep_merge(out[k], v)
+            else:
+                out[k] = v
+        return out
 
     def get_safe_settings(self) -> dict:
         """Return settings with sensitive values masked."""
