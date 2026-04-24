@@ -88,7 +88,7 @@ stop:  ## Kill any bookcompanion serve on $(PORT) + stale Playwright MCP chrome
 
 migrate:  ## Apply Alembic migrations against the real data dir
 	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T4 in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+	cd $(BACKEND) && uv run alembic -c app/migrations/alembic.ini upgrade head
 .PHONY: migrate
 
 build-fe:  ## Rebuild frontend into backend/app/static if src has changed
