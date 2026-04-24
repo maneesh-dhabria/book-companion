@@ -119,7 +119,25 @@ dev: stop $(DEV_MIGRATE_DEP) $(STATIC_INDEX)  ## Refresh: stop, migrate, build F
 
 reset:  ## ⚠ destructive: backup data dir + re-init (requires CONFIRM=1 if non-TTY)
 	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T8 in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+	@set -eu; \
+	if [ "$$(uname -s)" = "Darwin" ]; then \
+	  data_dir="$$HOME/Library/Application Support/bookcompanion"; \
+	else \
+	  data_dir="$${XDG_DATA_HOME:-$$HOME/.local/share}/bookcompanion"; \
+	fi; \
+	printf "\033[1;33m!!  About to reset data dir: %s\033[0m\n" "$$data_dir"; \
+	if [ -t 0 ]; then \
+	  printf "Continue? [y/N] "; read -r reply; \
+	  case "$$reply" in y|Y) : ;; *) echo "aborted"; exit 1 ;; esac; \
+	elif [ "$(CONFIRM)" != "1" ]; then \
+	  echo "non-TTY without CONFIRM=1; refusing to proceed"; exit 2; \
+	fi; \
+	if [ -d "$$data_dir" ]; then \
+	  backup="$$data_dir.$$(date +%Y%m%d_%H%M%S).bak"; \
+	  mv "$$data_dir" "$$backup"; \
+	  echo "  backed up to $$backup"; \
+	fi; \
+	cd $(BACKEND) && uv run bookcompanion init
 .PHONY: reset
 
 # --- File targets ----------------------------------------------------------
