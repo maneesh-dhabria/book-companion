@@ -24,12 +24,115 @@ const DEFAULT_SETTINGS: ReaderSettingsState = {
   theme: 'light',
 }
 
+export type AnnotationScope = 'current' | 'all'
+
+// v1.5 — browser-local reader chrome: toggles and a single custom slot
+// saved to localStorage. Not persisted server-side (see §11.3 decision).
+const CHROME_LS_KEY = 'bookcompanion.reader-chrome.v1'
+const CUSTOM_LS_KEY = 'bookcompanion.reader-custom.v1'
+
+interface ReaderChromeState {
+  highlightsVisible: boolean
+  annotationsScope: AnnotationScope
+}
+
+function loadChrome(): ReaderChromeState {
+  try {
+    const raw = window.localStorage.getItem(CHROME_LS_KEY)
+    if (!raw) return { highlightsVisible: true, annotationsScope: 'current' }
+    const parsed = JSON.parse(raw)
+    return {
+      highlightsVisible: parsed?.highlightsVisible !== false,
+      annotationsScope: parsed?.annotationsScope === 'all' ? 'all' : 'current',
+    }
+  } catch {
+    return { highlightsVisible: true, annotationsScope: 'current' }
+  }
+}
+
+function persistChrome(state: ReaderChromeState) {
+  try {
+    window.localStorage.setItem(CHROME_LS_KEY, JSON.stringify(state))
+  } catch {
+    /* quota / disabled storage — fall through silently */
+  }
+}
+
+interface CustomThemeSlot {
+  name: string
+  bg: string
+  fg: string
+  accent: string
+}
+
+function loadCustom(): CustomThemeSlot | null {
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_LS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.bg || !parsed?.fg) return null
+    return {
+      name: String(parsed.name || 'Custom'),
+      bg: String(parsed.bg),
+      fg: String(parsed.fg),
+      accent: String(parsed.accent || parsed.fg),
+    }
+  } catch {
+    return null
+  }
+}
+
+function persistCustom(slot: CustomThemeSlot | null) {
+  try {
+    if (slot === null) window.localStorage.removeItem(CUSTOM_LS_KEY)
+    else window.localStorage.setItem(CUSTOM_LS_KEY, JSON.stringify(slot))
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useReaderSettingsStore = defineStore('readerSettings', () => {
   const presets = ref<ReadingPreset[]>([])
   const activePreset = ref<ReadingPreset | null>(null)
   const currentSettings = ref<ReaderSettingsState>({ ...DEFAULT_SETTINGS })
   const loading = ref(false)
   const popoverOpen = ref(false)
+
+  const initialChrome = loadChrome()
+  const highlightsVisible = ref(initialChrome.highlightsVisible)
+  const annotationsScope = ref<AnnotationScope>(initialChrome.annotationsScope)
+  const customTheme = ref<CustomThemeSlot | null>(loadCustom())
+  const dirty = ref(false)
+  const pendingCustom = ref<CustomThemeSlot | null>(null)
+
+  watch(
+    [highlightsVisible, annotationsScope],
+    () => {
+      persistChrome({
+        highlightsVisible: highlightsVisible.value,
+        annotationsScope: annotationsScope.value,
+      })
+    },
+    { deep: true },
+  )
+
+  function stageCustom(slot: CustomThemeSlot) {
+    pendingCustom.value = slot
+    dirty.value = true
+  }
+
+  function saveCustom() {
+    if (!pendingCustom.value) return
+    customTheme.value = pendingCustom.value
+    persistCustom(customTheme.value)
+    pendingCustom.value = null
+    dirty.value = false
+  }
+
+  function discardCustom() {
+    pendingCustom.value = null
+    dirty.value = false
+  }
 
   const cssVariables = computed(() => ({
     '--reader-font-family': currentSettings.value.font_family,
@@ -150,5 +253,14 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     saveAsPreset,
     deletePreset: deleteUserPreset,
     detectSystemPreference,
+    // v1.5 reader chrome
+    highlightsVisible,
+    annotationsScope,
+    customTheme,
+    dirty,
+    pendingCustom,
+    stageCustom,
+    saveCustom,
+    discardCustom,
   }
 })

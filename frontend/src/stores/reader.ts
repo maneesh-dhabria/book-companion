@@ -96,13 +96,23 @@ export const useReaderStore = defineStore('reader', () => {
     }
   }
 
-  function navigateSection(direction: 'prev' | 'next') {
+  async function navigateSection(direction: 'prev' | 'next') {
     if (!book.value) return
     const idx = currentIndex.value
     const newIdx = direction === 'next' ? idx + 1 : idx - 1
     if (newIdx >= 0 && newIdx < sections.value.length) {
       const newSection = sections.value[newIdx]
-      loadSection(book.value.id, newSection.id)
+      // FR-D2 — push the route so back/forward + deep-link work correctly.
+      try {
+        const router = (await import('@/router')).default
+        await router.push({
+          name: 'book-section',
+          params: { bookId: String(book.value.id), sectionId: String(newSection.id) },
+        })
+      } catch {
+        // Fall back to direct load if router import fails (e.g., tests).
+        loadSection(book.value.id, newSection.id)
+      }
     }
   }
 

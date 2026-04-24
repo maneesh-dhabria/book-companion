@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{
   open: boolean
+  defaultTab?: 'annotations' | 'ai'
 }>()
 
 const emit = defineEmits<{
   close: []
 }>()
 
-const activeTab = ref<'annotations' | 'ai'>('annotations')
+const activeTab = ref<'annotations' | 'ai'>(props.defaultTab ?? 'annotations')
+// D2 — parent passes `defaultTab='ai'` when the user hits Ask AI; update
+// if the prop changes after mount so the tab flips without a remount.
+watch(
+  () => props.defaultTab,
+  (v) => {
+    if (v) activeTab.value = v
+  },
+)
 </script>
 
 <template>
