@@ -100,3 +100,38 @@ async def test_v1_5e_prefix_suffix_nullable(db_session):
     await db_session.refresh(ann)
     assert ann.prefix is None
     assert ann.suffix is None
+
+
+# --- v1_5f: books suggested_tags + failure columns ---
+
+
+@pytest.mark.asyncio
+async def test_v1_5f_books_has_suggested_tags_and_failure_columns(db_session):
+    result = await db_session.execute(text("PRAGMA table_info(books)"))
+    columns = {row[1] for row in result.fetchall()}
+    for col in (
+        "suggested_tags_json",
+        "last_summary_failure_code",
+        "last_summary_failure_stderr",
+        "last_summary_failure_at",
+    ):
+        assert col in columns, f"Missing column: {col}"
+
+
+@pytest.mark.asyncio
+async def test_v1_5f_suggested_tags_stores_list(db_session):
+    from app.db.models import Book, BookStatus
+
+    book = Book(
+        title="Test",
+        file_data=b"",
+        file_hash="h" * 64,
+        file_format="epub",
+        file_size_bytes=0,
+        status=BookStatus.COMPLETED,
+        suggested_tags_json=["strategy", "value-chain"],
+    )
+    db_session.add(book)
+    await db_session.commit()
+    await db_session.refresh(book)
+    assert book.suggested_tags_json == ["strategy", "value-chain"]
