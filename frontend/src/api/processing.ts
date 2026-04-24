@@ -1,7 +1,7 @@
 import type { ProcessingStatus } from '@/types'
 import { apiClient } from './client'
 
-export type ProcessingScope = 'all' | 'pending' | 'section'
+export type ProcessingScope = 'all' | 'pending' | 'section' | 'failed'
 
 export interface ProcessingOptions {
   preset_name?: string
