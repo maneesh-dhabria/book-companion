@@ -91,9 +91,7 @@ migrate:  ## Apply Alembic migrations against the real data dir
 	cd $(BACKEND) && uv run alembic -c app/migrations/alembic.ini upgrade head
 .PHONY: migrate
 
-build-fe:  ## Rebuild frontend into backend/app/static if src has changed
-	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T6a in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+build-fe: $(STATIC_INDEX)  ## Rebuild frontend into backend/app/static if src has changed
 .PHONY: build-fe
 
 force-build-fe:  ## Force rebuild the frontend unconditionally
@@ -122,3 +120,13 @@ $(NODE_LOCK): $(FRONTEND)/package-lock.json
 	@:$(WINDOWS_BAIL)
 	cd $(FRONTEND) && npm ci
 	@touch $@
+
+# $(shell find ...) is parse-time; keep the prerequisite list explicit.
+FRONTEND_SRC := $(shell find $(FRONTEND)/src -type f 2>/dev/null)
+
+$(STATIC_INDEX): $(FRONTEND_SRC) $(FRONTEND)/index.html $(FRONTEND)/vite.config.ts $(FRONTEND)/package.json | $(NODE_LOCK)
+	@:$(WINDOWS_BAIL)
+	cd $(FRONTEND) && npm run build
+	@mkdir -p $(@D)
+	cp -R $(FRONTEND)/dist/. $(dir $@)
+	@echo "  deployed $$(ls $(dir $@)assets 2>/dev/null | grep '^index-' | head -1)"
