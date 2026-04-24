@@ -18,6 +18,8 @@ export interface BookListItem {
   eval_total: number | null
   created_at: string
   updated_at: string
+  // v1.5 — optional; library-list response doesn't always include these.
+  tags?: { id: number; name: string; color: string | null }[]
 }
 
 export interface SectionBrief {

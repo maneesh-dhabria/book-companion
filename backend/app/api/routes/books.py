@@ -141,17 +141,41 @@ async def list_books(
     per_page: int = 20,
     status: str | None = None,
     file_format: str | None = None,
+    q: str | None = None,
+    tag: str | None = None,
     sort_field: str = "updated_at",
     sort_direction: str = "desc",
     db: AsyncSession = Depends(get_db),
 ):
-    """List books with pagination, filtering, and sorting."""
+    """List books with pagination, filtering, and sorting.
+
+    ``q`` — title LIKE (case-insensitive).
+    ``tag`` — restrict to books carrying a tag with this exact name (NOCASE).
+    """
     # Build filter conditions
     conditions = []
     if status:
         conditions.append(Book.status == status)
     if file_format:
         conditions.append(Book.file_format == file_format)
+    if q:
+        conditions.append(func.lower(Book.title).like(f"%{q.lower()}%"))
+    tag_filter_ids: list[int] | None = None
+    if tag:
+        # Resolve tag name to Book IDs via taggables (NOCASE via func.lower).
+        from app.db.models import Tag, Taggable
+
+        ids_result = await db.execute(
+            select(Taggable.taggable_id)
+            .join(Tag, Tag.id == Taggable.tag_id)
+            .where(Taggable.taggable_type == "book")
+            .where(func.lower(Tag.name) == tag.lower())
+        )
+        tag_filter_ids = [r[0] for r in ids_result.all()]
+        if not tag_filter_ids:
+            # No books matched the tag filter — short-circuit.
+            return PaginatedResponse(items=[], total=0, page=page, per_page=per_page, pages=0)
+        conditions.append(Book.id.in_(tag_filter_ids))
 
     # Count total (without eager loading)
     count_query = select(func.count(Book.id))

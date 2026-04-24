@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import CoverFallback from '@/components/common/CoverFallback.vue'
+import TagChip from '@/components/common/TagChip.vue'
 import type { BookListItem } from '@/types'
 
 defineProps<{
@@ -20,9 +22,7 @@ function formatSize(bytes: number): string {
   <router-link :to="`/books/${book.id}`" class="book-card" :class="{ selected }">
     <div class="book-card-cover">
       <img v-if="book.cover_url" :src="book.cover_url" :alt="book.title" class="cover-img" />
-      <div v-else class="cover-placeholder">
-        <span class="cover-format">{{ book.file_format.toUpperCase() }}</span>
-      </div>
+      <CoverFallback v-else :title="book.title" :width="180" :height="240" />
     </div>
     <div class="book-card-info">
       <h3 class="book-card-title">{{ book.title }}</h3>
@@ -35,6 +35,16 @@ function formatSize(bytes: number): string {
         <span v-if="book.eval_passed !== null" class="book-card-eval">
           {{ book.eval_passed }}/{{ book.eval_total }}
         </span>
+      </div>
+      <div v-if="book.tags && book.tags.length" class="book-card-tags">
+        <TagChip
+          v-for="t in book.tags"
+          :key="t.id"
+          :label="t.name"
+          :color="t.color"
+          clickable
+          @click.prevent="$router.push({ path: '/', query: { tag: t.name } })"
+        />
       </div>
     </div>
     <div class="book-card-select" @click.prevent="$emit('toggleSelect', book.id)">
@@ -95,6 +105,13 @@ function formatSize(bytes: number): string {
 
 .book-card-info {
   padding: 12px;
+}
+
+.book-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
 }
 
 .book-card-title {

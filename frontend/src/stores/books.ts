@@ -12,8 +12,10 @@ export const useBooksStore = defineStore('books', () => {
   const pages = ref(0)
   const loading = ref(false)
 
-  const filters = ref<{ status?: string; format?: string }>({})
+  const filters = ref<{ status?: string; format?: string; q?: string; tag?: string }>({})
   const sort = ref<{ field: string; order: string }>({ field: 'updated_at', order: 'desc' })
+  // Track the in-flight list request so fast-typed queries abort the stale one.
+  let inflight: AbortController | null = null
   const displayMode = ref<'grid' | 'list' | 'table'>('grid')
   const selectedIds = ref<number[]>([])
 
@@ -27,6 +29,11 @@ export const useBooksStore = defineStore('books', () => {
 
   async function fetchBooks() {
     loading.value = true
+    // Abort the previous in-flight list call — prevents stale results from
+    // slower responses overwriting newer ones (FR-G3.1 search debounce).
+    if (inflight) inflight.abort()
+    inflight = new AbortController()
+    const signal = inflight.signal
     try {
       const params: ListBooksParams = {
         page: page.value,
@@ -35,13 +42,29 @@ export const useBooksStore = defineStore('books', () => {
         sort_direction: sort.value.order,
         ...filters.value,
       }
-      const result = await listBooks(params)
+      const result = await listBooks(params, { signal })
+      if (signal.aborted) return
       books.value = result.items
       total.value = result.total
       pages.value = result.pages
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
+      throw err
     } finally {
-      loading.value = false
+      if (!signal.aborted) loading.value = false
     }
+  }
+
+  function setSearch(q: string | undefined) {
+    filters.value = { ...filters.value, q: q || undefined }
+    page.value = 1
+    fetchBooks()
+  }
+
+  function setTag(tag: string | undefined) {
+    filters.value = { ...filters.value, tag: tag || undefined }
+    page.value = 1
+    fetchBooks()
   }
 
   function updateFilters(newFilters: typeof filters.value) {
@@ -137,6 +160,8 @@ export const useBooksStore = defineStore('books', () => {
     hasActiveFilters,
     activeView,
     fetchBooks,
+    setSearch,
+    setTag,
     updateFilters,
     setSort,
     setDisplayMode,
