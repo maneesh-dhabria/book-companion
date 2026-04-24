@@ -77,7 +77,11 @@ async def test_summary_progress_counts_only_summarizable_types(
     )
     r = await client.get(f"/api/v1/books/{book_id}")
     assert r.status_code == 200
-    assert r.json()["summary_progress"] == {"summarized": 1, "total": 3}
+    # v1.5 enriched the payload with pending / summarizable / failed_and_pending
+    # while preserving the legacy summarized / total keys. Assert superset.
+    progress = r.json()["summary_progress"]
+    assert progress["summarized"] == 1
+    assert progress["total"] == 3
 
 
 @pytest.mark.asyncio
@@ -87,4 +91,6 @@ async def test_summary_progress_zero_when_no_summarizable_sections(
     book_id = await _seed_book(app, [("glossary", False)])
     r = await client.get(f"/api/v1/books/{book_id}")
     assert r.status_code == 200
-    assert r.json()["summary_progress"] == {"summarized": 0, "total": 0}
+    progress = r.json()["summary_progress"]
+    assert progress["summarized"] == 0
+    assert progress["total"] == 0

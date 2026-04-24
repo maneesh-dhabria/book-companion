@@ -70,6 +70,44 @@ describe('applyHighlights', () => {
     expect(out).not.toContain('<mark')
   })
 
+  it('anchors correctly when HTML text nodes contain raw whitespace', () => {
+    // Regression: plainText previously collapsed whitespace via /\s+/g while
+    // textPositionAt walked raw text nodes — offsets drifted. This test
+    // exercises a paragraph with multiple whitespace runs.
+    const html = '<p>Hello   world.   Next  sentence.</p>'
+    const out = applyHighlights(
+      html,
+      [{ id: 1, text_start: 6, text_end: 14, selected_text: '  world.' }],
+      { showInline: true },
+    )
+    expect(out).toContain('data-annotation-id="1"')
+    // The wrapped text must be the exact substring (incl. the leading spaces).
+    const markMatch = out.match(/<mark[^>]*>([^<]+)<\/mark>/)
+    expect(markMatch?.[1]).toBe('  world.')
+  })
+
+  it('anchors annotations near document start when prefix exceeds available chars', () => {
+    // Regression: findWithContext used endsWith(prefix) which failed when
+    // the prefix window had fewer chars available than the stored prefix.
+    const html = '<p>strategy is important</p>'
+    const out = applyHighlights(
+      html,
+      [
+        {
+          id: 1,
+          text_start: 999,
+          text_end: 1007,
+          // Stored 32-char prefix, but only 0 chars available before this.
+          selected_text: 'strategy',
+          prefix: 'chunks-of-earlier-text-padding!!',
+          suffix: ' is import',
+        },
+      ],
+      { showInline: true },
+    )
+    expect(out).toContain('data-annotation-id="1"')
+  })
+
   it('wraps cross-block selection (uses selected_text fallback)', () => {
     const html = '<p>hello world.</p><p>next paragraph.</p>'
     // The plaintext view is 'hello world.next paragraph.' — no whitespace

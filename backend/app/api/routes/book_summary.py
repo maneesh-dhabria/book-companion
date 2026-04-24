@@ -175,13 +175,16 @@ async def start_book_summary(
                     # chips without an extra fetch.
                     suggested_tags: list[str] = []
                     try:
+                        from sqlalchemy.exc import SQLAlchemyError
+
                         from app.db.models import Book
 
                         async with session_factory() as post_session:
                             b = await post_session.get(Book, book_id)
                             if b and b.suggested_tags_json:
                                 suggested_tags = list(b.suggested_tags_json)
-                    except Exception:
+                    except SQLAlchemyError:
+                        logger.exception("suggested_tags_fetch_failed", book_id=book_id)
                         suggested_tags = []
 
                     await event_bus.publish(

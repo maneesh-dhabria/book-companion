@@ -100,6 +100,9 @@ class BookResponse(BaseModel):
     # T15 / T16 — book-level summary state for BookSummaryView.
     default_summary: SummaryBriefResponse | None = None
     last_used_preset: str | None = None
+    # v1.5 — AI-suggested tags + book-level failure diagnostics.
+    suggested_tags: list[str] = []
+    last_summary_failure: dict | None = None
 
 
 class BookUpdateRequest(BaseModel):

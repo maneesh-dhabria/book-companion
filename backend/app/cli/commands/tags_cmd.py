@@ -42,7 +42,7 @@ async def add_tag(
             print_success(f'Tagged {scope} {entity_id} with "{tag.name}".')
         except Exception as e:
             print_error(str(e))
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
 
 @tags_app.command("list")

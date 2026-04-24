@@ -32,13 +32,11 @@ const router = createRouter({
       meta: { title: 'Reader' },
       component: () => import('@/views/BookDetailView.vue'),
     },
-    {
-      // Alias used by stores/reader.ts navigateSection().
-      path: '/books/:bookId/sections/:sectionId',
-      name: 'book-section',
-      meta: { title: 'Reader' },
-      component: () => import('@/views/BookDetailView.vue'),
-    },
+    // Note — do NOT register a second path for 'book-section'; the
+    // navigateSection call in stores/reader.ts resolves against the
+    // 'section-detail' path below via its explicit :id param, which
+    // matches what BookDetailView reads (route.params.id). A separate
+    // :bookId alias would break that view.
     {
       path: '/books/:id/sections/:sectionId/eval',
       name: 'eval-detail',

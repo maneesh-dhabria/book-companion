@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import typer
-from sqlalchemy import text
+from sqlalchemy import delete, text
 
 from app.cli.deps import async_command, get_services
 from app.cli.formatting import print_success
+from app.db.models import Tag
 
 doctor_app = typer.Typer(help="Diagnostic commands.")
 
@@ -39,10 +40,10 @@ async def orphan_tags(
             typer.echo(f"{r.id}\t{r.name}")
         if fix:
             ids = [r.id for r in rows]
-            await session.execute(
-                text("DELETE FROM tags WHERE id IN :ids"),
-                {"ids": tuple(ids)},
-            )
+            # ORM delete() handles the IN clause via an expanding bindparam —
+            # raw text("... IN :ids") requires bindparam(expanding=True) which
+            # is easy to get wrong. Tag.id.in_(...) is the safe path.
+            await session.execute(delete(Tag).where(Tag.id.in_(ids)))
             await session.commit()
             print_success(f"Deleted {len(ids)} orphaned tag rows.")
         else:

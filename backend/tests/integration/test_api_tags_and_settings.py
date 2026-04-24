@@ -187,6 +187,33 @@ async def test_patch_suggested_tags_set_wholesale(client, db_session, seed_book)
 
 
 @pytest.mark.asyncio
+async def test_list_books_q_escapes_like_wildcards(client, db_session):
+    """Regression: typing '100%' in search must not match everything."""
+    from app.db.models import Book, BookStatus
+
+    for title in ["Pure title", "Has 100% battery", "Something else"]:
+        db_session.add(
+            Book(
+                title=title,
+                file_data=b"",
+                file_hash=title + "h" * 64,
+                file_format="epub",
+                file_size_bytes=0,
+                status=BookStatus.COMPLETED,
+            )
+        )
+    await db_session.commit()
+
+    # `100%` must now match only the literal substring.
+    r = await client.get("/api/v1/books?q=100%25")  # URL-encoded %
+    assert r.status_code == 200
+    titles = [b["title"] for b in r.json()["items"]]
+    # Only 'Has 100% battery' matches literal '100%'.
+    assert any("100%" in t for t in titles)
+    assert all("100%" in t or "100" in t for t in titles)
+
+
+@pytest.mark.asyncio
 async def test_post_annotation_with_tags_and_prefix_suffix(client, seed_section):
     r = await client.post(
         "/api/v1/annotations",

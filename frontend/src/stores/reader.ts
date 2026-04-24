@@ -103,11 +103,13 @@ export const useReaderStore = defineStore('reader', () => {
     if (newIdx >= 0 && newIdx < sections.value.length) {
       const newSection = sections.value[newIdx]
       // FR-D2 — push the route so back/forward + deep-link work correctly.
+      // Use the 'section-detail' named route (path `/books/:id/sections/:sectionId`)
+      // so BookDetailView's `route.params.id` reader keeps matching.
       try {
         const router = (await import('@/router')).default
         await router.push({
-          name: 'book-section',
-          params: { bookId: String(book.value.id), sectionId: String(newSection.id) },
+          name: 'section-detail',
+          params: { id: String(book.value.id), sectionId: String(newSection.id) },
         })
       } catch {
         // Fall back to direct load if router import fails (e.g., tests).

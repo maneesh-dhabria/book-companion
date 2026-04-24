@@ -92,7 +92,11 @@ function textPositionAt(
 }
 
 function plainText(root: Node): string {
-  return (root.textContent || '').replace(/\s+/g, ' ')
+  // Do NOT collapse whitespace here. The offsets returned from this string
+  // are fed directly to textPositionAt(), which walks raw text nodes —
+  // collapsing would make the plaintext and the DOM walk disagree, shifting
+  // mark wrappers by the number of collapsed characters.
+  return root.textContent || ''
 }
 
 /**
@@ -109,13 +113,22 @@ function findWithContext(
   if (!prefix && !suffix) return haystack.indexOf(needle)
   let idx = 0
   // Walk every occurrence, return the first whose prefix/suffix align.
+  // Near document boundaries the available context is shorter than the
+  // stored prefix/suffix — in that case we require the *overlapping tail*
+  // of the prefix to match what's actually available (and mirror for
+  // suffix). This preserves the disambiguating power without silently
+  // rejecting legitimate matches at section boundaries.
   while (true) {
     const at = haystack.indexOf(needle, idx)
     if (at === -1) return -1
-    const before = haystack.slice(Math.max(0, at - prefix.length), at)
-    const after = haystack.slice(at + needle.length, at + needle.length + suffix.length)
-    const prefixOk = !prefix || before.endsWith(prefix)
-    const suffixOk = !suffix || after.startsWith(suffix)
+    const availBefore = at
+    const availAfter = haystack.length - (at + needle.length)
+    const pfxEff = prefix.slice(Math.max(0, prefix.length - availBefore))
+    const sfxEff = suffix.slice(0, availAfter)
+    const before = haystack.slice(Math.max(0, at - pfxEff.length), at)
+    const after = haystack.slice(at + needle.length, at + needle.length + sfxEff.length)
+    const prefixOk = !prefix || before.endsWith(pfxEff)
+    const suffixOk = !suffix || after.startsWith(sfxEff)
     if (prefixOk && suffixOk) return at
     idx = at + 1
   }

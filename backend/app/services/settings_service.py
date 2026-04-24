@@ -23,7 +23,7 @@ from app.config import Settings
 
 logger = structlog.get_logger(__name__)
 
-DEFAULT_CONFIG_PATH = Path("~/.config/bookcompanion/config.yaml").expanduser()
+DEFAULT_CONFIG_PATH = Path("~/.config/bookcompanion/settings.yaml").expanduser()
 
 # Fields that should never appear in plain text in API responses
 _SENSITIVE_FIELDS = {"password", "access_token", "secret"}

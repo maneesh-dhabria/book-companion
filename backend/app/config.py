@@ -85,10 +85,18 @@ class BackupConfig(BaseModel):
 
 
 def _load_yaml_config() -> dict[str, Any]:
-    """Load config from YAML file if it exists. Priority: env var > XDG > fallback."""
+    """Load config from YAML file if it exists. Priority: env var > XDG > fallback.
+
+    v1.5 note: ``settings.yaml`` is the canonical user-config filename (written
+    by both PATCH /api/v1/settings and ``bookcompanion model set``). The older
+    ``config.yaml`` path is still consulted as a fallback so pre-v1.5 installs
+    keep booting with their existing config.
+    """
     candidates = [
         os.environ.get("BOOKCOMPANION_CONFIG", ""),
+        os.path.expanduser("~/.config/bookcompanion/settings.yaml"),
         os.path.expanduser("~/.config/bookcompanion/config.yaml"),
+        os.path.expanduser("~/.bookcompanion/settings.yaml"),
         os.path.expanduser("~/.bookcompanion/config.yaml"),
     ]
     for config_path in candidates:

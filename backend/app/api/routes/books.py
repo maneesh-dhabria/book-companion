@@ -159,7 +159,10 @@ async def list_books(
     if file_format:
         conditions.append(Book.file_format == file_format)
     if q:
-        conditions.append(func.lower(Book.title).like(f"%{q.lower()}%"))
+        # Escape LIKE wildcards so user-typed `%` / `_` don't act as
+        # wildcards (`100%` must match titles containing literal `100%`).
+        q_esc = q.lower().replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+        conditions.append(func.lower(Book.title).like(f"%{q_esc}%", escape="\\"))
     tag_filter_ids: list[int] | None = None
     if tag:
         # Resolve tag name to Book IDs via taggables (NOCASE via func.lower).
@@ -216,6 +219,11 @@ async def list_books(
 
 
 async def _summary_progress(db: AsyncSession, book_id: int) -> dict[str, int]:
+    """v1.5 shape (FR-F3.1) — includes pending + failed_and_pending alongside
+    the legacy ``total`` / ``summarized`` keys. Existing callers that read
+    only the old two keys continue to work; new callers (BookOverviewView,
+    SummarizationProgress) rely on the enriched fields.
+    """
     summarizable_list = list(SUMMARIZABLE_TYPES)
     total = (
         await db.execute(
@@ -232,7 +240,23 @@ async def _summary_progress(db: AsyncSession, book_id: int) -> dict[str, int]:
             .where(BookSection.default_summary_id.isnot(None))
         )
     ).scalar() or 0
-    return {"summarized": summarized, "total": total}
+    failed = (
+        await db.execute(
+            select(func.count(BookSection.id))
+            .where(BookSection.book_id == book_id)
+            .where(BookSection.section_type.in_(summarizable_list))
+            .where(BookSection.default_summary_id.is_(None))
+            .where(BookSection.last_failure_type.is_not(None))
+        )
+    ).scalar() or 0
+    pending = max(0, total - summarized - failed)
+    return {
+        "summarized": summarized,
+        "total": total,
+        "summarizable": total,
+        "pending": pending,
+        "failed_and_pending": failed,
+    }
 
 
 @router.get("/{book_id}")
