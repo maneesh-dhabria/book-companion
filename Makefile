@@ -115,3 +115,10 @@ reset:  ## ⚠ destructive: backup data dir + re-init (requires CONFIRM=1 if non
 	@:$(WINDOWS_BAIL)
 	@echo "not yet implemented — see T8 in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
 .PHONY: reset
+
+# --- File targets ----------------------------------------------------------
+
+$(NODE_LOCK): $(FRONTEND)/package-lock.json
+	@:$(WINDOWS_BAIL)
+	cd $(FRONTEND) && npm ci
+	@touch $@
