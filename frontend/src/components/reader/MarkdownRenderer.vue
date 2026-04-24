@@ -1,12 +1,19 @@
 <script setup lang="ts">
+import type { AnnotationLike } from '@/utils/highlightInjector'
+import { applyHighlights } from '@/utils/highlightInjector'
 import { classifyLink } from '@/utils/link-policy'
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
 import { computed } from 'vue'
 
-const props = defineProps<{
-  content: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    content: string
+    annotations?: AnnotationLike[]
+    highlightsInline?: boolean
+  }>(),
+  { annotations: () => [], highlightsInline: true },
+)
 
 const md = new MarkdownIt({
   html: false,
@@ -44,7 +51,10 @@ function applyLinkPolicy(sanitized: string): string {
 const renderedHtml = computed(() => {
   const raw = md.render(props.content || '')
   const sanitized = DOMPurify.sanitize(raw)
-  return applyLinkPolicy(sanitized)
+  const linkSafe = applyLinkPolicy(sanitized)
+  return applyHighlights(linkSafe, props.annotations || [], {
+    showInline: props.highlightsInline,
+  })
 })
 </script>
 
