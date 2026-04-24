@@ -70,3 +70,33 @@ async def test_v1_5d_taggables_entity_index_exists(db_session):
     )
     indexes = {row[0] for row in result.fetchall()}
     assert "ix_taggables_entity" in indexes
+
+
+# --- v1_5e: annotation prefix + suffix ---
+
+
+@pytest.mark.asyncio
+async def test_v1_5e_annotations_has_prefix_suffix(db_session):
+    result = await db_session.execute(text("PRAGMA table_info(annotations)"))
+    columns = {row[1] for row in result.fetchall()}
+    assert "prefix" in columns
+    assert "suffix" in columns
+
+
+@pytest.mark.asyncio
+async def test_v1_5e_prefix_suffix_nullable(db_session):
+    from app.db.models import Annotation, AnnotationType, ContentType
+
+    ann = Annotation(
+        content_type=ContentType.SECTION_CONTENT,
+        content_id=1,
+        type=AnnotationType.HIGHLIGHT,
+        selected_text="test",
+        text_start=0,
+        text_end=4,
+    )
+    db_session.add(ann)
+    await db_session.commit()
+    await db_session.refresh(ann)
+    assert ann.prefix is None
+    assert ann.suffix is None

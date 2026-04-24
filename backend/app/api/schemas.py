@@ -299,6 +299,9 @@ class AnnotationCreateRequest(BaseModel):
     text_start: int | None = None
     text_end: int | None = None
     note: str | None = None
+    prefix: str | None = None
+    suffix: str | None = None
+    tags: list[str] | None = None
 
 
 class AnnotationUpdateRequest(BaseModel):
@@ -318,6 +321,9 @@ class AnnotationResponse(BaseModel):
     note: str | None = None
     type: str
     linked_annotation_id: int | None = None
+    prefix: str | None = None
+    suffix: str | None = None
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
     # T18 — joined book + section context for /annotations UI. Null when the
