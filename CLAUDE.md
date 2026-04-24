@@ -32,6 +32,8 @@ Book Companion is a personal tool for non-fiction book summarization and knowled
 
 ## Commands
 
+> **Front door:** `make help` lists every dev-loop and verification target. The Makefile delegates to `./test.sh` for the packaging/verification ladder (see `docs/specs/2026-04-25-makefile-dev-loop-spec.md`).
+
 ### Backend (run from `backend/`)
 
 ```bash
