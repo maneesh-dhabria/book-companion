@@ -13,11 +13,12 @@ import sqlalchemy as sa
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BookSection, Summary, SummaryContentType
+from app.db.models import BookSection, Image, Summary, SummaryContentType
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
 from app.exceptions import EmptySummaryError, SummarizationError
+from app.services.parser.image_url_rewrite import from_placeholder
 from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 from app.services.summarizer.llm_provider import LLMProvider
 from app.services.summary_service import SummaryService
@@ -40,6 +41,26 @@ class SummarizerService:
         self._summary_repo = SummaryRepository(db)
         self._section_repo = SectionRepository(db)
         self._book_repo = BookRepository(db)
+
+    async def _image_map_for_section(self, section_id: int) -> dict[str, int]:
+        """Build {filename: image_id} for a section — used to rewrite
+        ``__IMG_PLACEHOLDER__`` tokens in LLM-emitted summaries (FR-A1.1)."""
+        result = await self.db.execute(
+            sa.select(Image.filename, Image.id).where(Image.section_id == section_id)
+        )
+        return {fn: iid for fn, iid in result.all() if fn}
+
+    async def _image_map_for_book(self, book_id: int) -> dict[str, int]:
+        """Aggregate {filename: image_id} for all images in a book."""
+        result = await self.db.execute(
+            sa.select(Image.filename, Image.id)
+            .join(BookSection, Image.section_id == BookSection.id)
+            .where(BookSection.book_id == book_id)
+        )
+        # If the same filename appears in multiple sections, the last one
+        # wins — summaries aren't precise enough to reliably pick the right
+        # section, and either image will render.
+        return {fn: iid for fn, iid in result.all() if fn}
 
     async def summarize_book(
         self,
@@ -448,6 +469,12 @@ class SummarizerService:
         if quote_warnings:
             quality_warnings = {"paraphrased_quotes": quote_warnings}
 
+        # FR-A1.1: rewrite image placeholders before persist so the stored
+        # summary_md renders directly without a post-read rewrite. Missing
+        # image filenames are stripped with a warning.
+        image_map = await self._image_map_for_section(section.id)
+        summary_text = from_placeholder(summary_text, image_map, on_missing="strip")
+
         summary = Summary(
             content_type=SummaryContentType.SECTION,
             content_id=section.id,
@@ -515,6 +542,10 @@ class SummarizerService:
         concepts = SummaryService.extract_concepts(summary_text)
         eval_json_data = {"concepts": sorted(concepts)} if concepts else None
 
+        # FR-A1.1 — rewrite book-wide image placeholders before persist.
+        book_image_map = await self._image_map_for_book(book_id)
+        summary_text = from_placeholder(summary_text, book_image_map, on_missing="strip")
+
         summary = Summary(
             content_type=SummaryContentType.BOOK,
             content_id=book_id,
@@ -562,6 +593,10 @@ class SummarizerService:
                     retry_response = await self.llm.generate(retry_prompt, model=effective_model)
                     retry_elapsed = int((time.monotonic() - retry_start) * 1000)
                     retry_text = self._extract_summary_text(retry_response)
+                    # FR-A1.1: rewrite placeholders on retry path too.
+                    retry_text = from_placeholder(
+                        retry_text, book_image_map, on_missing="strip"
+                    )
 
                     retry_summary = Summary(
                         content_type=SummaryContentType.BOOK,
