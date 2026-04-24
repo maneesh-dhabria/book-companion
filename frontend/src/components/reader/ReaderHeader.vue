@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Section } from '@/types'
 import ContentToggle from './ContentToggle.vue'
+import SectionTagRow from './SectionTagRow.vue'
 import TOCDropdown from './TOCDropdown.vue'
 
 defineProps<{
@@ -32,6 +33,7 @@ defineEmits<{
         :current-section-id="currentSectionId"
         :book-id="bookId"
       />
+      <SectionTagRow :section-id="currentSectionId" />
     </div>
     <div class="reader-controls">
       <button
