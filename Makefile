@@ -96,12 +96,13 @@ build-fe: $(STATIC_INDEX)  ## Rebuild frontend into backend/app/static if src ha
 
 force-build-fe:  ## Force rebuild the frontend unconditionally
 	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T6b in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+	@rm -f $(STATIC_INDEX)
+	@$(MAKE) $(STATIC_INDEX)
 .PHONY: force-build-fe
 
 clean-fe:  ## rm -rf backend/app/static (full wipe for next build)
 	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T6b in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+	rm -rf $(BACKEND)/app/static
 .PHONY: clean-fe
 
 dev:  ## Refresh: stop, migrate, build FE if needed, serve on $(PORT)
