@@ -7,7 +7,7 @@ All write endpoints are idempotent (FR-E2.5); a duplicate POST returns
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select, text

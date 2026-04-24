@@ -8,8 +8,6 @@ deterministic.
 
 from __future__ import annotations
 
-import pytest
-
 from app.services.parser import epub_parser as epub_mod
 from app.services.parser import pdf_parser as pdf_mod
 

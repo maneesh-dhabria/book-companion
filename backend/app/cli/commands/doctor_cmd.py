@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import typer
-from sqlalchemy import select, text
+from sqlalchemy import text
 
 from app.cli.deps import async_command, get_services
 from app.cli.formatting import print_success

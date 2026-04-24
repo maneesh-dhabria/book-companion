@@ -52,7 +52,7 @@ class SummarizerService:
             .where(Taggable.taggable_type == "book", Taggable.taggable_id == book_id)
             .order_by(Tag.name)
         )
-        return [r for r, in result.all()]
+        return [r for (r,) in result.all()]
 
     async def _image_map_for_section(self, section_id: int) -> dict[str, int]:
         """Build {filename: image_id} for a section — used to rewrite
@@ -120,22 +120,18 @@ class SummarizerService:
                 raise ValueError("scope='section' requires section_id")
             sections = [s for s in sections if s.id == section_id]
             if not sections:
-                raise ValueError(
-                    f"section_id={section_id} does not belong to book {book_id}"
-                )
+                raise ValueError(f"section_id={section_id} does not belong to book {book_id}")
         elif scope == "pending":
             sections = [
                 s
                 for s in sections
-                if s.default_summary_id is None
-                and s.section_type in SUMMARIZABLE_TYPES
+                if s.default_summary_id is None and s.section_type in SUMMARIZABLE_TYPES
             ]
         elif scope == "failed":
             sections = [
                 s
                 for s in sections
-                if s.last_failure_type is not None
-                and s.section_type in SUMMARIZABLE_TYPES
+                if s.last_failure_type is not None and s.section_type in SUMMARIZABLE_TYPES
             ]
         else:
             sections = [s for s in sections if s.section_type in SUMMARIZABLE_TYPES]
@@ -299,9 +295,7 @@ class SummarizerService:
                             summary = retry_summary  # Use retry for cumulative context
                             retried_sections.append(section.id)
                             if on_section_retry:
-                                on_section_retry(
-                                    section.id, i + 1, total, section.title
-                                )
+                                on_section_retry(section.id, i + 1, total, section.title)
                     except Exception as eval_err:
                         logger.warning(
                             "inline_eval_failed",
@@ -349,9 +343,7 @@ class SummarizerService:
                 failed.append(section_id)
                 error_msg = str(e)
                 failure_type = getattr(e, "failure_type", None) or (
-                    "summarization_error"
-                    if isinstance(e, SummarizationError)
-                    else "unknown"
+                    "summarization_error" if isinstance(e, SummarizationError) else "unknown"
                 )
                 logger.error(
                     "section_summarization_failed",
@@ -378,9 +370,7 @@ class SummarizerService:
                 )
                 await self.db.commit()
                 if on_section_fail:
-                    on_section_fail(
-                        section_id, i + 1, total, section_title, e
-                    )
+                    on_section_fail(section_id, i + 1, total, section_title, e)
                 # Rollback expires every identity-mapped ORM object in this
                 # session. Issuing a fresh SELECT refreshes them in place via
                 # the identity map so the next iteration's `section.*` access
@@ -653,9 +643,7 @@ class SummarizerService:
                     retry_elapsed = int((time.monotonic() - retry_start) * 1000)
                     retry_text = self._extract_summary_text(retry_response)
                     # FR-A1.1: rewrite placeholders on retry path too.
-                    retry_text = from_placeholder(
-                        retry_text, book_image_map, on_missing="strip"
-                    )
+                    retry_text = from_placeholder(retry_text, book_image_map, on_missing="strip")
 
                     retry_summary = Summary(
                         content_type=SummaryContentType.BOOK,
@@ -727,9 +715,7 @@ class SummarizerService:
         sections = await self._section_repo.get_by_book_id(book_id)
         summary_count = sum(1 for s in sections if s.default_summary_id)
         if summary_count == 0:
-            raise ValueError(
-                "No section summaries available — summarize sections first"
-            )
+            raise ValueError("No section summaries available — summarize sections first")
 
         return await self._generate_book_summary(
             book_id=book_id,

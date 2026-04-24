@@ -56,9 +56,7 @@ def upgrade() -> None:
             pref = md[max(0, start - CONTEXT_CHARS) : start]
             suff = md[end : end + CONTEXT_CHARS]
             conn.execute(
-                sa.text(
-                    "UPDATE annotations SET prefix = :p, suffix = :s WHERE id = :id"
-                ),
+                sa.text("UPDATE annotations SET prefix = :p, suffix = :s WHERE id = :id"),
                 {"p": pref, "s": suff, "id": row.id},
             )
             updated += 1

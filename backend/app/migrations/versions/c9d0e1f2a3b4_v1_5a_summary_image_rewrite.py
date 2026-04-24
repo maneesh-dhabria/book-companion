@@ -55,9 +55,7 @@ def upgrade() -> None:
             new_md = from_placeholder(row.summary_md, fmap, on_missing="strip")
             if new_md != row.summary_md:
                 conn.execute(
-                    sa.text(
-                        "UPDATE summaries SET summary_md = :m WHERE id = :id"
-                    ),
+                    sa.text("UPDATE summaries SET summary_md = :m WHERE id = :id"),
                     {"m": new_md, "id": row.id},
                 )
                 updated += 1

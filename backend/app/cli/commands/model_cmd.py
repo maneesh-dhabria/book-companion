@@ -5,7 +5,7 @@ from __future__ import annotations
 import typer
 
 from app.cli.deps import async_command, get_services
-from app.cli.formatting import print_error, print_success
+from app.cli.formatting import print_success
 
 model_app = typer.Typer(help="LLM model selection.")
 

@@ -45,9 +45,7 @@ def upgrade() -> None:
             new_md = normalize_blockquotes(row.content_md)
             if new_md != row.content_md:
                 conn.execute(
-                    sa.text(
-                        "UPDATE book_sections SET content_md = :m WHERE id = :id"
-                    ),
+                    sa.text("UPDATE book_sections SET content_md = :m WHERE id = :id"),
                     {"m": new_md, "id": row.id},
                 )
                 updated += 1

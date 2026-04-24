@@ -13,7 +13,6 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-
 # --- v1_5d: tags + taggables revival ---
 
 
