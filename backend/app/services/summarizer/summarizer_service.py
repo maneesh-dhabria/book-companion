@@ -42,6 +42,18 @@ class SummarizerService:
         self._section_repo = SectionRepository(db)
         self._book_repo = BookRepository(db)
 
+    async def _existing_book_tags(self, book_id: int) -> list[str]:
+        """Tag names already applied to a book (FR-E4.3 taxonomy injection)."""
+        from app.db.models import Tag, Taggable
+
+        result = await self.db.execute(
+            sa.select(Tag.name)
+            .join(Taggable, Tag.id == Taggable.tag_id)
+            .where(Taggable.taggable_type == "book", Taggable.taggable_id == book_id)
+            .order_by(Tag.name)
+        )
+        return [r for r, in result.all()]
+
     async def _image_map_for_section(self, section_id: int) -> dict[str, int]:
         """Build {filename: image_id} for a section — used to rewrite
         ``__IMG_PLACEHOLDER__`` tokens in LLM-emitted summaries (FR-A1.1)."""
@@ -516,12 +528,16 @@ class SummarizerService:
                 if summary:
                     section_data.append({"title": s.title, "summary": summary.summary_md})
 
+        # FR-E4.3 — gather existing book tags so the LLM can avoid re-suggesting.
+        existing_tags = await self._existing_book_tags(book_id)
+
         template = self._jinja_env.get_template("base/summarize_book.txt")
         prompt = template.render(
             book_title=book.title,
             author=author,
             section_count=len(section_data),
             sections=section_data,
+            existing_tags=existing_tags,
             **facets,
         )
 
@@ -538,6 +554,31 @@ class SummarizerService:
         if not summary_text or not summary_text.strip():
             raise EmptySummaryError("LLM returned empty book summary")
         combined_input = "\n".join(s["summary"] for s in section_data)
+
+        # FR-E4.1..3 — parse suggested_tags from the structured output and
+        # fuzzy-dedupe against existing book tags. If the LLM didn't emit
+        # the field we default to [] (feature is best-effort).
+        raw_suggestions = self._extract_suggested_tags(response)
+        from app.utils.text_similarity import fuzzy_dedupe_against
+
+        deduped_suggestions = fuzzy_dedupe_against(
+            raw_suggestions, against=existing_tags, threshold=2
+        )
+        # Normalize whitespace on each suggestion so "  strategy " shows as
+        # "strategy" in the UI. Cap at 7 to match the prompt instruction.
+        from app.services.tag_service import normalize_tag_name
+
+        cleaned_suggestions: list[str] = []
+        for s in deduped_suggestions[:7]:
+            try:
+                cleaned_suggestions.append(normalize_tag_name(s))
+            except ValueError:
+                continue
+        await self.db.execute(
+            sa.update(book.__class__)
+            .where(book.__class__.id == book_id)
+            .values(suggested_tags_json=cleaned_suggestions)
+        )
 
         concepts = SummaryService.extract_concepts(summary_text)
         eval_json_data = {"concepts": sorted(concepts)} if concepts else None
@@ -697,6 +738,13 @@ class SummarizerService:
 
     def _extract_summary_text(self, response) -> str:
         """Extract summary text from LLM response. Handles markdown, JSON, code-fenced."""
+        # Prefer structured_output.summary_md when available — Claude CLI
+        # surfaces this when --json-schema is used.
+        structured = getattr(response, "structured_output", None)
+        if isinstance(structured, dict) and "summary_md" in structured:
+            s = structured.get("summary_md")
+            if isinstance(s, str) and s.strip():
+                return s
         content = response.content.strip()
         # Strip code fence wrapping
         if content.startswith("```"):
@@ -707,13 +755,36 @@ class SummarizerService:
         try:
             parsed = json.loads(content)
             if isinstance(parsed, dict):
-                for key in ("summary", "detailed_summary", "content"):
+                for key in ("summary_md", "summary", "detailed_summary", "content"):
                     if key in parsed:
                         return parsed[key]
                 return content
         except (json.JSONDecodeError, AttributeError):
             pass
         return content
+
+    def _extract_suggested_tags(self, response) -> list[str]:
+        """Parse `suggested_tags` from LLM response. Returns [] on any error."""
+        structured = getattr(response, "structured_output", None)
+        if isinstance(structured, dict):
+            tags = structured.get("suggested_tags")
+            if isinstance(tags, list):
+                return [t for t in tags if isinstance(t, str)]
+        # Fallback: look inside the JSON text body.
+        content = (response.content or "").strip()
+        if content.startswith("```"):
+            lines = content.split("\n")
+            if lines[-1].strip() == "```":
+                content = "\n".join(lines[1:-1]).strip()
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, dict):
+                tags = parsed.get("suggested_tags")
+                if isinstance(tags, list):
+                    return [t for t in tags if isinstance(t, str)]
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        return []
 
     @staticmethod
     def _check_paraphrased_quotes(source_text: str, summary_text: str) -> list[dict]:

@@ -170,6 +170,20 @@ async def start_book_summary(
 
             if event_bus:
                 if error_message is None:
+                    # FR-E4.3 — surface freshly-written suggested_tags in
+                    # the completion event so the UI can pop the review
+                    # chips without an extra fetch.
+                    suggested_tags: list[str] = []
+                    try:
+                        from app.db.models import Book
+
+                        async with session_factory() as post_session:
+                            b = await post_session.get(Book, book_id)
+                            if b and b.suggested_tags_json:
+                                suggested_tags = list(b.suggested_tags_json)
+                    except Exception:
+                        suggested_tags = []
+
                     await event_bus.publish(
                         str(job_id),
                         "processing_completed",
@@ -179,6 +193,7 @@ async def start_book_summary(
                             "failed": 0,
                             "skipped": 0,
                             "book_summary_id": book_summary_id,
+                            "suggested_tags": suggested_tags,
                         },
                     )
                 else:
