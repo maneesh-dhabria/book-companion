@@ -108,6 +108,20 @@ app.add_typer(summary_app, name="summary")
 app.add_typer(preset_app, name="preset", help="Manage summarization presets.")
 app.command("read")(read)
 
+# V1.5 — wire previously-dormant tag + annotation commands and new
+# model + doctor subcommands. Registered here so `bookcompanion tag …`
+# / `bookcompanion model …` / `bookcompanion annotations …` /
+# `bookcompanion doctor …` are all discoverable.
+from app.cli.commands.annotations_cmd import annotations_app
+from app.cli.commands.doctor_cmd import doctor_app
+from app.cli.commands.model_cmd import model_app
+from app.cli.commands.tags_cmd import tags_app
+
+app.add_typer(tags_app, name="tag", help="Tag books, sections, annotations.")
+app.add_typer(annotations_app, name="annotations", help="List + inspect annotations.")
+app.add_typer(model_app, name="model", help="LLM model selection (FR-F1).")
+app.add_typer(doctor_app, name="doctor", help="Diagnostic commands.")
+
 # Import and register Phase 2 command modules
 from app.cli.commands.annotations_cmd import annotations_app
 from app.cli.commands.backup_cmd import backup_app
