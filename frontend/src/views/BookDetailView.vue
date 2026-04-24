@@ -11,6 +11,7 @@ import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.v
 import AIChatTab from '@/components/sidebar/AIChatTab.vue'
 import AnnotationsTab from '@/components/sidebar/AnnotationsTab.vue'
 import ContextSidebar from '@/components/sidebar/ContextSidebar.vue'
+import NoteCompositionPanel from '@/components/sidebar/NoteCompositionPanel.vue'
 import { useReadingState } from '@/composables/useReadingState'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAnnotationsStore } from '@/stores/annotations'
@@ -35,6 +36,15 @@ const readingState = useReadingState(
 const readingAreaRef = ref<HTMLElement | null>(null)
 const sidebarOpen = ref(false)
 const { selection, isSelecting, clear: clearSelection } = useTextSelection(readingAreaRef)
+
+// T29 — NoteCompositionPanel replaces prompt(). Capture the selection
+// before opening the panel so the user can edit without losing anchor.
+const notePanelOpen = ref(false)
+const pendingSelection = ref<{
+  text: string
+  startOffset: number | null
+  endOffset: number | null
+} | null>(null)
 
 async function loadFromRoute() {
   const bookId = Number(route.params.id)
@@ -89,19 +99,36 @@ function handleHighlight() {
 
 function handleNote() {
   if (!reader.currentSection || !selection.text) return
-  const note = prompt('Add a note:')
-  if (note === null) return
+  pendingSelection.value = {
+    text: selection.text,
+    startOffset: selection.startOffset,
+    endOffset: selection.endOffset,
+  }
+  notePanelOpen.value = true
+  // Keep the selection visible behind the panel; clearing happens on save/close.
+}
+
+function onNoteSave(note: string) {
+  if (!reader.currentSection || !pendingSelection.value) return
   annotations.addAnnotation({
     content_type: 'section_content',
     content_id: reader.currentSection.id,
     type: 'note',
-    selected_text: selection.text,
-    text_start: selection.startOffset,
-    text_end: selection.endOffset,
+    selected_text: pendingSelection.value.text,
+    text_start: pendingSelection.value.startOffset,
+    text_end: pendingSelection.value.endOffset,
     note,
   })
+  notePanelOpen.value = false
+  pendingSelection.value = null
   clearSelection()
   sidebarOpen.value = true
+}
+
+function onNoteClose() {
+  notePanelOpen.value = false
+  pendingSelection.value = null
+  clearSelection()
 }
 
 function handleAskAi() {
@@ -233,7 +260,7 @@ function handleAskAi() {
       </div>
 
       <FloatingToolbar
-        :visible="isSelecting"
+        :visible="isSelecting && !notePanelOpen"
         :rect="selection.rect"
         :selected-text="selection.text"
         @highlight="handleHighlight"
@@ -241,6 +268,16 @@ function handleAskAi() {
         @ask-ai="handleAskAi"
         @copy="clearSelection"
       />
+
+      <!-- T29 — slide-in note editor; replaces prompt() -->
+      <div v-if="notePanelOpen" class="note-panel-host" role="dialog">
+        <NoteCompositionPanel
+          :visible="notePanelOpen"
+          :context="pendingSelection?.text"
+          @save="onNoteSave"
+          @close="onNoteClose"
+        />
+      </div>
     </template>
   </div>
 </template>
@@ -261,6 +298,20 @@ function handleAskAi() {
 .reader-content {
   flex: 1;
   overflow-y: auto;
+}
+
+.note-panel-host {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 95vw);
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
 }
 
 .reader-loading {
