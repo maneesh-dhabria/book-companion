@@ -12,7 +12,16 @@ const router = createRouter({
       component: () => import('@/views/LibraryView.vue'),
     },
     {
+      // v1.5 — /books/:id now shows the overview page. Reader keeps its
+      // own route at /books/:id/sections/:sectionId. A legacy
+      // /books/:id/detail alias preserves existing deep links.
       path: '/books/:id',
+      name: 'book-overview',
+      meta: { title: 'Book' },
+      component: () => import('@/views/BookOverviewView.vue'),
+    },
+    {
+      path: '/books/:id/detail',
       name: 'book-detail',
       meta: { title: 'Reader' },
       component: () => import('@/views/BookDetailView.vue'),
@@ -20,6 +29,13 @@ const router = createRouter({
     {
       path: '/books/:id/sections/:sectionId',
       name: 'section-detail',
+      meta: { title: 'Reader' },
+      component: () => import('@/views/BookDetailView.vue'),
+    },
+    {
+      // Alias used by stores/reader.ts navigateSection().
+      path: '/books/:bookId/sections/:sectionId',
+      name: 'book-section',
       meta: { title: 'Reader' },
       component: () => import('@/views/BookDetailView.vue'),
     },
