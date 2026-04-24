@@ -73,6 +73,46 @@ def _book_to_response(book: Book) -> dict:
         for s in (book.sections or [])
     ]
 
+    # FR-F3.1 / §9.1 extended response fields: tags, suggested_tags,
+    # summary_progress snapshot, last_summary_failure block. Tags come from
+    # the relationship that lazily loads; they're expected to be pre-loaded
+    # via ``selectinload`` by the repo, falling back to an empty list if
+    # the caller didn't bother.
+    try:
+        from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
+
+        summarizable = [
+            s for s in (book.sections or []) if s.section_type in SUMMARIZABLE_TYPES
+        ]
+        summarized_count = sum(
+            1 for s in summarizable if s.default_summary_id is not None
+        )
+        failed_count = sum(
+            1
+            for s in summarizable
+            if s.default_summary_id is None
+            and getattr(s, "last_failure_type", None) is not None
+        )
+    except Exception:
+        summarizable = []
+        summarized_count = 0
+        failed_count = 0
+
+    summary_progress = {
+        "summarizable": len(summarizable),
+        "summarized": summarized_count,
+        "failed_and_pending": failed_count,
+        "pending": max(0, len(summarizable) - summarized_count - failed_count),
+    }
+
+    last_summary_failure = None
+    if book.last_summary_failure_code:
+        last_summary_failure = {
+            "code": book.last_summary_failure_code,
+            "stderr": book.last_summary_failure_stderr,
+            "at": book.last_summary_failure_at,
+        }
+
     return {
         "id": book.id,
         "title": book.title,
@@ -84,6 +124,9 @@ def _book_to_response(book: Book) -> dict:
         "sections": sections,
         "section_count": len(sections),
         "cover_url": f"/api/v1/books/{book.id}/cover" if book.cover_image else None,
+        "suggested_tags": list(book.suggested_tags_json or []),
+        "summary_progress": summary_progress,
+        "last_summary_failure": last_summary_failure,
         "created_at": book.created_at,
         "updated_at": book.updated_at,
     }
@@ -354,3 +397,34 @@ async def upload_cover(
     book.cover_image = await file.read()
     await db.commit()
     return Response(status_code=204)
+
+
+@router.patch("/{book_id}/suggested-tags")
+async def patch_suggested_tags(
+    book_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """FR-E4.4 — dismiss or replace the LLM-proposed tag list.
+
+    Accepts either ``{"reject": ["a", "b"]}`` (remove matching entries) or
+    ``{"set": [...]}`` (replace wholesale). Returns ``{suggested_tags: [...]}``.
+    Reject silently ignores names that aren't in the current list.
+    """
+    result = await db.execute(select(Book).where(Book.id == book_id))
+    book = result.scalar_one_or_none()
+    if not book:
+        raise HTTPException(status_code=404, detail=f"Book {book_id} not found")
+
+    current = list(book.suggested_tags_json or [])
+    if "set" in body:
+        current = [str(x) for x in (body.get("set") or []) if isinstance(x, str)]
+    elif "reject" in body:
+        reject = {r.lower() for r in (body.get("reject") or []) if isinstance(r, str)}
+        current = [c for c in current if c.lower() not in reject]
+    else:
+        raise HTTPException(status_code=400, detail="Provide 'set' or 'reject'")
+
+    book.suggested_tags_json = current
+    await db.commit()
+    return {"suggested_tags": current}

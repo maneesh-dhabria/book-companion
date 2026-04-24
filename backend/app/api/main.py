@@ -31,6 +31,7 @@ from app.api.routes import (
     sections,
     summaries,
     summarize_presets,
+    tags,
     views,
 )
 from app.api.routes import (
@@ -171,6 +172,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(images.router)
     app.include_router(annotations.router)
+    app.include_router(tags.router)
     app.include_router(search.router)
     app.include_router(concepts.router)
     app.include_router(reading_presets.router)
@@ -184,6 +186,7 @@ def create_app() -> FastAPI:
     app.include_router(export.router)
     app.include_router(backup.router)
     app.include_router(settings_routes.router)
+    app.include_router(settings_routes.config_router)
     app.include_router(reading_state.router)
     app.include_router(summarize_presets.router)
     app.include_router(llm_status.router)
