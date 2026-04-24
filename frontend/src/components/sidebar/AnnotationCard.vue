@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Annotation } from '@/types'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps<{
   annotation: Annotation
@@ -8,10 +8,22 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   delete: []
+  'scroll-to-source': []
 }>()
 
 const editing = ref(false)
 const editNote = ref(props.annotation.note || '')
+const expanded = ref(false)
+
+const PREVIEW_CHARS = 180
+const needsExpand = computed(
+  () => (props.annotation.selected_text || '').length > PREVIEW_CHARS,
+)
+const shownText = computed(() => {
+  const t = props.annotation.selected_text || ''
+  if (!needsExpand.value || expanded.value) return t
+  return t.slice(0, PREVIEW_CHARS) + '…'
+})
 
 function startEdit() {
   editNote.value = props.annotation.note || ''
@@ -30,8 +42,21 @@ function startEdit() {
       <span class="sep"> · </span>
       <span class="section">{{ annotation.section_title }}</span>
     </router-link>
-    <div v-if="annotation.selected_text" class="selected-text">
-      "{{ annotation.selected_text }}"
+    <div
+      v-if="annotation.selected_text"
+      class="selected-text"
+      @click="$emit('scroll-to-source')"
+      :title="'Jump to source in reader'"
+    >
+      &ldquo;{{ shownText }}&rdquo;
+      <button
+        v-if="needsExpand"
+        type="button"
+        class="expand-btn"
+        @click.stop="expanded = !expanded"
+      >
+        {{ expanded ? 'Show less' : 'See full' }}
+      </button>
     </div>
     <div v-if="annotation.note && !editing" class="note" @dblclick="startEdit">
       {{ annotation.note }}
@@ -59,7 +84,23 @@ function startEdit() {
 .source-link:hover { text-decoration: underline; }
 .source-link .book { font-weight: 600; }
 .source-link .sep { opacity: 0.6; }
-.selected-text { font-style: italic; color: var(--color-text-secondary, #555); font-size: 0.8rem; margin-bottom: 0.375rem; }
+.selected-text {
+  font-style: italic;
+  color: var(--color-text-secondary, #555);
+  font-size: 0.8rem;
+  margin-bottom: 0.375rem;
+  cursor: pointer;
+}
+.selected-text:hover { color: var(--color-text-primary, #111); }
+.expand-btn {
+  background: transparent;
+  border: 0;
+  color: var(--color-primary, #3b82f6);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  text-decoration: underline;
+}
 .note { font-size: 0.85rem; margin-bottom: 0.375rem; }
 .meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; color: var(--color-text-secondary, #888); }
 .type-badge { text-transform: capitalize; background: var(--color-bg-secondary, #f3f4f6); padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
