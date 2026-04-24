@@ -384,7 +384,9 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(
+        String(200, collation="NOCASE"), nullable=False, unique=True
+    )
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -397,6 +399,11 @@ class Taggable(Base):
     )
     taggable_type: Mapped[str] = mapped_column(String(50), primary_key=True)
     taggable_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    tag: Mapped["Tag"] = relationship(lazy="joined")
+
+    __table_args__ = (Index("ix_taggables_entity", "taggable_type", "taggable_id"),)
 
 
 class Annotation(Base):
