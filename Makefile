@@ -69,7 +69,21 @@ serve-fresh:  ## Build wheel, install into /tmp/bc, run it (delegates to ./test.
 # --- Dev-loop stubs (filled in by T3–T8) -----------------------------------
 stop:  ## Kill any bookcompanion serve on $(PORT) + stale Playwright MCP chrome
 	@:$(WINDOWS_BAIL)
-	@echo "not yet implemented — see T3 in docs/plans/2026-04-25-makefile-dev-loop-implementation-plan.md"
+	@pids="$$(lsof -ti:$(PORT) 2>/dev/null || true)"; \
+	if [ -n "$$pids" ]; then \
+	  kill $$pids 2>/dev/null || true; \
+	  sleep 1; \
+	  pids="$$(lsof -ti:$(PORT) 2>/dev/null || true)"; \
+	  [ -n "$$pids" ] && kill -9 $$pids 2>/dev/null || true; \
+	  echo "  killed :$(PORT)"; \
+	else \
+	  echo "  nothing listening on :$(PORT)"; \
+	fi
+	@pw="$$(pgrep -f 'ms-playwright/mcp-chrome' 2>/dev/null || true)"; \
+	if [ -n "$$pw" ]; then \
+	  kill $$pw 2>/dev/null || true; \
+	  echo "  killed stale Playwright MCP chrome pids: $$pw"; \
+	fi
 .PHONY: stop
 
 migrate:  ## Apply Alembic migrations against the real data dir
