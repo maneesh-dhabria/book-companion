@@ -91,6 +91,7 @@ class SummarizerService:
         on_section_retry: Callable | None = None,
         scope: str = "all",
         section_id: int | None = None,
+        only_pending: bool = False,
     ) -> dict:
         """Orchestrate full book summarization using map-reduce with faceted prompts."""
         # Resolve facets from preset_name if caller didn't provide a complete set.
@@ -106,6 +107,11 @@ class SummarizerService:
             _, facets = preset_svc.resolve_facets(
                 preset_to_use, {d: None for d in FACET_DIMENSIONS}, preset_to_use
             )
+
+        # FR-H4.1 — ``only_pending`` is a CLI-friendly alias that elevates to
+        # scope='pending' unless an explicit scope was already set.
+        if only_pending and scope == "all":
+            scope = "pending"
 
         sections = await self._section_repo.get_by_book_id(book_id)
 
@@ -605,6 +611,18 @@ class SummarizerService:
         )
         saved = await self._summary_repo.create(summary)
         await self._book_repo.update_default_summary(book_id, saved.id)
+
+        # FR-F3.3 — clear book-level failure columns on successful summary.
+        await self.db.execute(
+            sa.text(
+                "UPDATE books "
+                "SET last_summary_failure_code = NULL, "
+                "    last_summary_failure_stderr = NULL, "
+                "    last_summary_failure_at = NULL "
+                "WHERE id = :id"
+            ),
+            {"id": book_id},
+        )
 
         # Book-level eval
         if not skip_eval and eval_service:
