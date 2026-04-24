@@ -275,6 +275,32 @@ rm -rf ~/.local/share/bookcompanion      # Linux
 bookcompanion init                       # Re-creates data dir, runs migrations, warms embedding model
 ```
 
+### Interactive verification (Playwright MCP)
+
+Manual / Playwright MCP verification is **Phase 4 work in `/verify`**, not setup to offload to the user. When a /verify run needs a live UI:
+
+1. **Don't fight a running dev server.** The user often has `bookcompanion serve` on `:8000` pointing at the root repo. Start your verification server on a free port instead:
+   ```bash
+   cd backend && uv run bookcompanion serve --port 8765 &
+   curl -sf http://localhost:8765/api/v1/health   # gate before Playwright
+   ```
+2. **Ship the frontend build into the backend's static dir** so the backend serves both API + SPA — avoids the vite-proxy dance:
+   ```bash
+   cd frontend && npm run build
+   rm -rf ../backend/app/static && cp -R dist ../backend/app/static
+   ```
+   Rebuild + recopy after every frontend fix. The backend serves whatever is in `backend/app/static/index.html` — stale builds will look like working bugs.
+3. **Seed at least one book** if the DB is empty (`sqlite3 ~/Library/Application\ Support/bookcompanion/library.db "SELECT count(*) FROM books"` → 0):
+   ```bash
+   cd backend && uv run python tests/fixtures/download_fixtures.py
+   uv run bookcompanion add tests/fixtures/sample_epub/art_of_war.epub
+   # answer N to the section-cleanup prompt — the book persists as ID 1
+   ```
+4. **Drive the UI via Playwright MCP** (`browser_navigate`, `browser_evaluate`, `browser_snapshot`). `browser_evaluate` with `async () => fetch(...)` is the fastest way to probe API state from inside the same origin. Check `browser_console_messages(level: 'error')` after every interaction.
+5. **Tear down** at the end: `kill $(lsof -ti:8765)`, don't touch the :8000 server.
+
+If the MCP browser is already in use (error: `Browser is already in use for .../mcp-chrome-*`), identify the holding Chrome process (`pgrep -f ms-playwright/mcp-chrome`), kill it, then re-call `browser_navigate`.
+
 ### Session logging & changelog
 - Before ending a significant session (meaningful work done, not trivial fixes), offer to run `/session-log` to capture learnings
 - After merging to main, run `/changelog` to record user-facing changes
