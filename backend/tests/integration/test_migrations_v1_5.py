@@ -135,3 +135,150 @@ async def test_v1_5f_suggested_tags_stores_list(db_session):
     await db_session.commit()
     await db_session.refresh(book)
     assert book.suggested_tags_json == ["strategy", "value-chain"]
+
+
+# --- v1_5a data migration: summary image rewrite ---
+
+
+@pytest.mark.asyncio
+async def test_v1_5a_rewrites_existing_summary_placeholders(db_session):
+    from app.db.models import (
+        Book,
+        BookSection,
+        BookStatus,
+        Image,
+        Summary,
+        SummaryContentType,
+    )
+    from app.services.parser.image_url_rewrite import from_placeholder
+
+    book = Book(
+        title="T",
+        file_data=b"",
+        file_hash="mig1" * 16,
+        file_format="epub",
+        file_size_bytes=0,
+        status=BookStatus.COMPLETED,
+    )
+    db_session.add(book)
+    await db_session.flush()
+    section = BookSection(
+        book_id=book.id, title="c", order_index=0, depth=0, content_md="x"
+    )
+    db_session.add(section)
+    await db_session.flush()
+    img = Image(
+        section_id=section.id, data=b"", mime_type="image/png", filename="pic.png"
+    )
+    db_session.add(img)
+    await db_session.flush()
+    await db_session.refresh(img)
+    summary = Summary(
+        content_type=SummaryContentType.SECTION,
+        content_id=section.id,
+        book_id=book.id,
+        facets_used={},
+        prompt_text_sent="",
+        model_used="x",
+        input_char_count=1,
+        summary_char_count=1,
+        summary_md="pre __IMG_PLACEHOLDER__:pic.png__ENDIMG__ post",
+    )
+    db_session.add(summary)
+    await db_session.commit()
+
+    # Simulate the migration body inline.
+    imgs_rows = {"pic.png": img.id}
+    new_md = from_placeholder(summary.summary_md, imgs_rows, on_missing="strip")
+    assert f"/api/v1/images/{img.id}" in new_md
+    assert "__IMG_PLACEHOLDER__" not in new_md
+
+
+# --- v1_5b data migration: blockquote normalize ---
+
+
+@pytest.mark.asyncio
+async def test_v1_5b_normalizes_nested_blockquotes(db_session):
+    from app.db.models import Book, BookSection, BookStatus
+    from app.services.parser.blockquote_normalizer import normalize_blockquotes
+
+    book = Book(
+        title="T",
+        file_data=b"",
+        file_hash="mig2" * 16,
+        file_format="epub",
+        file_size_bytes=0,
+        status=BookStatus.COMPLETED,
+    )
+    db_session.add(book)
+    await db_session.flush()
+    section = BookSection(
+        book_id=book.id,
+        title="c",
+        order_index=0,
+        depth=0,
+        content_md="> > nested quote",
+    )
+    db_session.add(section)
+    await db_session.commit()
+    new_md = normalize_blockquotes(section.content_md)
+    assert "> >" not in new_md
+    # Idempotent
+    assert normalize_blockquotes(new_md) == new_md
+
+
+# --- v1_5c data migration: annotation prefix + suffix ---
+
+
+@pytest.mark.asyncio
+async def test_v1_5c_backfills_prefix_suffix(db_session):
+    from app.db.models import (
+        Annotation,
+        AnnotationType,
+        Book,
+        BookSection,
+        BookStatus,
+        ContentType,
+    )
+
+    book = Book(
+        title="T",
+        file_data=b"",
+        file_hash="mig3" * 16,
+        file_format="epub",
+        file_size_bytes=0,
+        status=BookStatus.COMPLETED,
+    )
+    db_session.add(book)
+    await db_session.flush()
+    content = "start-of-content " + ("x" * 50) + "TARGET" + ("y" * 50) + "end"
+    section = BookSection(
+        book_id=book.id,
+        title="c",
+        order_index=0,
+        depth=0,
+        content_md=content,
+    )
+    db_session.add(section)
+    await db_session.flush()
+    start = content.index("TARGET")
+    end = start + len("TARGET")
+    ann = Annotation(
+        content_type=ContentType.SECTION_CONTENT,
+        content_id=section.id,
+        type=AnnotationType.HIGHLIGHT,
+        selected_text="TARGET",
+        text_start=start,
+        text_end=end,
+    )
+    db_session.add(ann)
+    await db_session.commit()
+    # Apply the migration body inline.
+    CONTEXT = 32
+    ann.prefix = content[max(0, start - CONTEXT) : start]
+    ann.suffix = content[end : end + CONTEXT]
+    await db_session.commit()
+    await db_session.refresh(ann)
+    assert len(ann.prefix) == CONTEXT
+    assert len(ann.suffix) == CONTEXT
+    assert ann.prefix.endswith("x" * 32)  # chars before TARGET
