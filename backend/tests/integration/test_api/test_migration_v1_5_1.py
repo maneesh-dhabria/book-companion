@@ -49,9 +49,7 @@ async def test_migration_drops_user_rows_columns_and_writes_hint(tmp_path):
         rows = conn.execute("SELECT name FROM reading_presets").fetchall()
         names = sorted(r[0] for r in rows)
         assert "LegacyUserPreset" not in names
-        assert {"Light", "Sepia", "Dark", "Night", "Paper", "High Contrast"}.issubset(
-            set(names)
-        )
+        assert {"Light", "Sepia", "Dark", "Night", "Paper", "High Contrast"}.issubset(set(names))
         cols = [r[1] for r in conn.execute("PRAGMA table_info(reading_presets)").fetchall()]
         assert "is_system" not in cols
         assert "is_active" not in cols

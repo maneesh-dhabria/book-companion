@@ -187,14 +187,10 @@ class SettingsService:
                     {**current_dump, **section_values}
                 )
             except ValidationError as e:
-                errors.extend(
-                    {**err, "loc": (section_name, *err["loc"])} for err in e.errors()
-                )
+                errors.extend({**err, "loc": (section_name, *err["loc"])} for err in e.errors())
 
         if errors:
-            raise ValidationError.from_exception_data(
-                title=Settings.__name__, line_errors=errors
-            )
+            raise ValidationError.from_exception_data(title=Settings.__name__, line_errors=errors)
 
         # 2. Read existing YAML and deep-merge ONLY the user's patch.
         existing: dict[str, Any] = {}

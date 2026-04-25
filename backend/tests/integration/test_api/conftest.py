@@ -14,11 +14,18 @@ from app.db.session import create_session_factory
 
 
 @pytest.fixture
-def app(tmp_path):
+def app(tmp_path, monkeypatch):
     """Create a FastAPI app with SQLite test database."""
     db_path = tmp_path / "api_test.db"
     os.environ["BOOKCOMPANION_DATA__DIRECTORY"] = str(tmp_path)
     os.environ["BOOKCOMPANION_DATABASE__URL"] = f"sqlite+aiosqlite:///{db_path}"
+
+    # Redirect SettingsService writes to tmp_path so PATCH /settings does not
+    # touch the developer's real ~/.config/bookcompanion/settings.yaml.
+    from app.services import settings_service as ss
+
+    monkeypatch.setattr(ss, "DEFAULT_CONFIG_PATH", tmp_path / "settings.yaml")
+    monkeypatch.setattr(ss, "default_user_settings_path", lambda: tmp_path / "settings.yaml")
 
     application = create_app()
     settings = Settings()
@@ -29,9 +36,7 @@ def app(tmp_path):
     import asyncio
 
     async def _init_schema():
-        eng = create_async_engine(
-            settings.database.url, connect_args={"check_same_thread": False}
-        )
+        eng = create_async_engine(settings.database.url, connect_args={"check_same_thread": False})
         async with eng.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             await conn.execute(

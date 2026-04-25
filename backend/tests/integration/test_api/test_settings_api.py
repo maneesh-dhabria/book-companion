@@ -59,17 +59,13 @@ async def test_patch_unknown_key_returns_400(client):
 
 @pytest.mark.asyncio
 async def test_patch_invalid_type_returns_400(client):
-    resp = await client.patch(
-        "/api/v1/settings", json={"llm": {"timeout_seconds": "bad"}}
-    )
+    resp = await client.patch("/api/v1/settings", json={"llm": {"timeout_seconds": "bad"}})
     assert resp.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_patch_valid_returns_200_with_updated_value(client):
-    resp = await client.patch(
-        "/api/v1/settings", json={"llm": {"cli_command": "claude-personal"}}
-    )
+    resp = await client.patch("/api/v1/settings", json={"llm": {"cli_command": "claude-personal"}})
     assert resp.status_code == 200
     assert resp.json()["llm"]["cli_command"] == "claude-personal"
 
@@ -78,9 +74,7 @@ async def test_patch_valid_returns_200_with_updated_value(client):
 async def test_patch_partial_validity_rejects_all(client):
     """D17: partial-bad PATCH must not change any field on disk or in memory."""
     # First, set a known good value
-    r1 = await client.patch(
-        "/api/v1/settings", json={"llm": {"cli_command": "before"}}
-    )
+    r1 = await client.patch("/api/v1/settings", json={"llm": {"cli_command": "before"}})
     assert r1.status_code == 200
     # Now try a partial-bad PATCH
     resp = await client.patch(

@@ -22,6 +22,4 @@ async def test_mutation_routes_are_gone(client, method, path):
         resp = await client.delete(path)
     else:
         raise AssertionError(method)
-    assert resp.status_code in (404, 405), (
-        f"{method.upper()} {path} returned {resp.status_code}"
-    )
+    assert resp.status_code in (404, 405), f"{method.upper()} {path} returned {resp.status_code}"
