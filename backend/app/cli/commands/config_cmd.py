@@ -1,10 +1,12 @@
 """bookcompanion config — view and set configuration.
 Uses Typer sub-app: `config` shows all, `config set <key> <value>` modifies."""
 
+import os
 from pathlib import Path
 
 import typer
 import yaml
+from pydantic import ValidationError
 from rich.console import Console
 from rich.syntax import Syntax
 
@@ -53,21 +55,56 @@ def _get_config(key: str, settings):
     console.print(f"{key} = {obj}")
 
 
-def _set_config(key: str, value: str):
-    config_path = Path("~/.config/bookcompanion/config.yaml").expanduser()
-    config_path.parent.mkdir(parents=True, exist_ok=True)
+def _resolve_settings_yaml_path() -> Path:
+    """Honour BOOKCOMPANION_CONFIG env var; otherwise platformdirs default.
 
-    existing = {}
-    if config_path.exists():
-        with open(config_path) as f:
-            existing = yaml.safe_load(f) or {}
+    Mirrors ``Settings._load_yaml_config()`` so reads/writes target the same
+    file. Falls back to the XDG-resolved default when no env override exists.
+    """
+    override = os.environ.get("BOOKCOMPANION_CONFIG", "")
+    if override:
+        return Path(override)
+    from app.services.settings_service import default_user_settings_path
 
+    return default_user_settings_path()
+
+
+def _build_patch(key: str, value: str) -> dict:
+    """Turn a dotted ``key`` into a nested dict patch.
+
+    ``llm.cli_command`` → ``{"llm": {"cli_command": value}}``.
+    """
     parts = key.split(".")
-    obj = existing
+    patch: dict = {}
+    cursor = patch
     for part in parts[:-1]:
-        obj = obj.setdefault(part, {})
-    obj[parts[-1]] = value
+        cursor[part] = {}
+        cursor = cursor[part]
+    cursor[parts[-1]] = value
+    return patch
 
-    with open(config_path, "w") as f:
-        yaml.dump(existing, f, default_flow_style=False)
+
+def _set_config(key: str, value: str):
+    """Persist a single dotted-key update via ``SettingsService.update_settings``.
+
+    Inherits the strict-validation contract from FR-F1.4 / D17: an invalid
+    value or unknown key raises ``ValidationError`` and the YAML on disk
+    stays untouched. FR-F1.8 / D18 ensures CLI and HTTP PATCH agree.
+    """
+    from app.config import Settings
+    from app.services.settings_service import SettingsService
+
+    config_path = _resolve_settings_yaml_path()
+    patch = _build_patch(key, value)
+
+    try:
+        svc = SettingsService(settings=Settings(), config_path=config_path)
+        svc.update_settings(patch)
+    except ValidationError as e:
+        first = e.errors()[0] if e.errors() else {"msg": "validation failed"}
+        loc = ".".join(str(p) for p in first.get("loc", ()))
+        msg = first.get("msg", "validation failed")
+        console.print(f"[red]Invalid setting {loc}: {msg}[/red]")
+        raise typer.Exit(1) from e
+
     console.print(f"Set {key} = {value}")
