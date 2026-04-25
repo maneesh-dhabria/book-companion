@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
@@ -188,12 +187,6 @@ function handleAskAi() {
     </template>
 
     <template v-else>
-      <SummarizationProgress
-        v-if="reader.book.summary_progress"
-        :book-id="reader.book.id"
-        :summarized="reader.book.summary_progress.summarized"
-        :total="reader.book.summary_progress.total"
-      />
       <ReaderHeader
         :book-title="reader.book.title"
         :book-id="reader.book.id"
