@@ -13,6 +13,7 @@ Flags only valid with --format markdown:
 Library Markdown export was removed in v1.6. Use --format json for
 full-library backups, or run 'export book' per book.
 """
+
 import typer
 
 from app.cli.deps import async_command, get_services
@@ -29,15 +30,18 @@ async def export_book(
     fmt: str = typer.Option("json", "--format", "-f", help="Export format: json or markdown."),
     output: str = typer.Option(None, "--output", "-o", help="Output file path."),
     no_book_summary: bool = typer.Option(
-        False, "--no-book-summary",
+        False,
+        "--no-book-summary",
         help="Exclude the book-level summary block (markdown only).",
     ),
     no_toc: bool = typer.Option(
-        False, "--no-toc",
+        False,
+        "--no-toc",
         help="Exclude the Table of Contents (markdown only).",
     ),
     no_annotations: bool = typer.Option(
-        False, "--no-annotations",
+        False,
+        "--no-annotations",
         help="Exclude all highlights and notes (markdown only).",
     ),
     exclude_section: list[int] = typer.Option(  # noqa: B008
@@ -51,9 +55,7 @@ async def export_book(
     Flags only valid with --format markdown:
       --no-book-summary, --no-toc, --no-annotations, --exclude-section
     """
-    selection_flags_used = (
-        no_book_summary or no_toc or no_annotations or bool(exclude_section)
-    )
+    selection_flags_used = no_book_summary or no_toc or no_annotations or bool(exclude_section)
     if fmt == "json" and selection_flags_used:
         print_error(
             "--no-* and --exclude-section flags are only valid with "
@@ -68,15 +70,14 @@ async def export_book(
                     from sqlalchemy import select
 
                     from app.db.models import BookSection
+
                     result = await svc["export"].session.execute(
                         select(BookSection.id).where(BookSection.book_id == book_id)
                     )
                     valid_ids = {row[0] for row in result.all()}
                     for sid in exclude_section:
                         if sid not in valid_ids:
-                            print_error(
-                                f"section {sid} does not belong to book {book_id}."
-                            )
+                            print_error(f"section {sid} does not belong to book {book_id}.")
                             raise typer.Exit(1)
                 selection = ExportSelection(
                     include_book_summary=not no_book_summary,
@@ -84,19 +85,16 @@ async def export_book(
                     include_annotations=not no_annotations,
                     exclude_section_ids=frozenset(exclude_section or []),
                 )
-                body, _is_empty = await svc["export"].export_book_markdown(
-                    book_id, selection
-                )
+                body, _is_empty = await svc["export"].export_book_markdown(book_id, selection)
                 if output:
                     from pathlib import Path
+
                     Path(output).write_text(body, encoding="utf-8")
                     print_success(f"Book exported to {output}")
                 else:
                     console.print(body)
             else:
-                content = await svc["export"].export_book(
-                    book_id, fmt="json", output_path=output
-                )
+                content = await svc["export"].export_book(book_id, fmt="json", output_path=output)
                 if output:
                     print_success(f"Book exported to {output}")
                 else:
@@ -115,7 +113,9 @@ async def export_book(
 @async_command
 async def export_library(
     fmt: str = typer.Option(
-        "json", "--format", "-f",
+        "json",
+        "--format",
+        "-f",
         help="Export format: json (markdown removed in v1.6).",
     ),
     output: str = typer.Option(None, "--output", "-o", help="Output file path."),

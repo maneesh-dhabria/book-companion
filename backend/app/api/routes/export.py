@@ -39,9 +39,7 @@ async def export_book(
             content = await export_service.export_book(book_id, fmt="json")
             return JSONResponse(
                 content=json.loads(content),
-                headers={
-                    "Content-Disposition": f'attachment; filename="book_{book_id}.json"'
-                },
+                headers={"Content-Disposition": f'attachment; filename="book_{book_id}.json"'},
             )
 
         # Markdown path
@@ -97,7 +95,5 @@ async def export_library(
     content = await export_service.export_library(fmt="json")
     return JSONResponse(
         content=json.loads(content),
-        headers={
-            "Content-Disposition": "attachment; filename=library_export.json"
-        },
+        headers={"Content-Disposition": "attachment; filename=library_export.json"},
     )

@@ -394,7 +394,10 @@ class TestRenderSummaryMarkdownAnnotations:
         body, _ = await svc._render_summary_markdown(
             _book_data(),
             ExportSelection(),
-            book_annotations=[{"id": 1, "selected_text": "", "note": "freeform reader note", "type": "note"}],
+            book_annotations=[
+                {"id": 1, "selected_text": "", "note": "freeform reader note",
+                 "type": "note"}
+            ],
         )
         assert "## Notes" in body
         assert "- freeform reader note" in body

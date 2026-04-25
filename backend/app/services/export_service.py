@@ -388,9 +388,7 @@ class ExportService:
                 notes_emitted = True
 
         body = "\n".join(lines)
-        is_empty = not (
-            toc_emitted or book_summary_emitted or any_section_emitted or notes_emitted
-        )
+        is_empty = not (toc_emitted or book_summary_emitted or any_section_emitted or notes_emitted)
         return body, is_empty
 
     async def export_book_markdown(
@@ -406,6 +404,4 @@ class ExportService:
             raise ExportError(f"Book {book_id} not found.")
         book_data = await self._collect_book_data(book)
         book_anns = await self._collect_book_annotations(book)
-        return await self._render_summary_markdown(
-            book_data, selection, book_annotations=book_anns
-        )
+        return await self._render_summary_markdown(book_data, selection, book_annotations=book_anns)

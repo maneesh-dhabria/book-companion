@@ -177,7 +177,11 @@ const hasNoSummaries = computed(() => {
   const hasBookSummary =
     !!book.value.default_summary || !!book.value.default_summary_id
   const hasAnySectionSummary = (book.value.sections || []).some(
-    (s: any) => s.has_summary || s.default_summary_id || s.default_summary,
+    (s: {
+      has_summary?: boolean
+      default_summary_id?: number | null
+      default_summary?: unknown
+    }) => s.has_summary || s.default_summary_id || s.default_summary,
   )
   return !hasBookSummary && !hasAnySectionSummary
 })
@@ -218,8 +222,13 @@ async function onCopyClick() {
   if (exportDisabled.value) return
   exporting.value = true
   const url = `/api/v1/export/book/${bookId.value}?format=markdown`
+  const winClipboardItem = (window as unknown as { ClipboardItem?: typeof ClipboardItem })
+    .ClipboardItem
+  const navClipboardWrite = (
+    navigator.clipboard as unknown as { write?: (items: ClipboardItem[]) => Promise<void> }
+  ).write
   try {
-    if ((navigator as any).clipboard?.write && (window as any).ClipboardItem) {
+    if (navClipboardWrite && winClipboardItem) {
       let isEmpty = false
       const fetchPromise = fetch(url).then((r) => {
         if (!r.ok) throw new Error('fetch failed')
@@ -227,15 +236,15 @@ async function onCopyClick() {
         return r.blob()
       })
       try {
-        await (navigator as any).clipboard.write([
-          new (window as any).ClipboardItem({ 'text/plain': fetchPromise }),
+        await navigator.clipboard.write([
+          new winClipboardItem({ 'text/plain': fetchPromise }),
         ])
         ui.showToast(
           isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
           'success',
         )
-      } catch (err: any) {
-        if (err?.message === 'fetch failed') {
+      } catch (err) {
+        if (err instanceof Error && err.message === 'fetch failed') {
           ui.showToast('Export failed -- check your connection.', 'error')
         } else {
           ui.showToast("Couldn't copy -- try Export instead.", 'error')

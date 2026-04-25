@@ -17,7 +17,7 @@ const sampleBook = {
 describe('ExportCustomizeModal', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.spyOn(globalThis, 'fetch').mockImplementation((url: any) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
       const u = String(url)
       if (u.includes('/api/v1/books/3'))
         return Promise.resolve(new Response(JSON.stringify(sampleBook)))
@@ -49,7 +49,7 @@ describe('ExportCustomizeModal', () => {
       ...sampleBook,
       sections: sampleBook.sections.filter((s) => s.has_summary),
     }
-    vi.spyOn(globalThis, 'fetch').mockImplementation((url: any) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
       const u = String(url)
       if (u.includes('/api/v1/books/3'))
         return Promise.resolve(new Response(JSON.stringify(allSummed)))
@@ -130,7 +130,7 @@ describe('ExportCustomizeModal', () => {
   })
 
   it('falls back to cached sections on refresh-fetch failure', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation((url: any) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url) => {
       const u = String(url)
       if (u.includes('/api/v1/books/3')) return Promise.reject(new Error('network'))
       return Promise.resolve(new Response('# X', { status: 200 }))

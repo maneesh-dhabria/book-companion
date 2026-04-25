@@ -4,6 +4,7 @@ Two helpers, one intent each (per spec D21):
   - filename_slug: ASCII-only, cross-OS filesystem safety
   - gfm_slug: Unicode-aware, matches GFM viewer auto-anchors
 """
+
 import re
 
 _FILENAME_RE = re.compile(r"[^a-z0-9]+")
