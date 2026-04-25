@@ -173,8 +173,6 @@ export interface SummaryComparison {
 export interface ReadingPreset {
   id: number
   name: string
-  is_system: boolean
-  is_active: boolean
   font_family: string
   font_size_px: number
   line_spacing: number

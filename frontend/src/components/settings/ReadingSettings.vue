@@ -64,10 +64,8 @@ async function saveReadingSettings() {
           v-for="preset in presets"
           :key="preset.id"
           class="preset-chip"
-          :class="{ active: preset.is_active }"
         >
           {{ preset.name }}
-          <span v-if="preset.is_active" class="active-badge">Active</span>
         </div>
       </div>
     </div>
