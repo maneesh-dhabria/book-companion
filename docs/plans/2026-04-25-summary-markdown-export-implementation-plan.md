@@ -32,10 +32,10 @@ Phase C — CLI (depends on Phase A):
   T9 (book: 4 flags + help text + strict --format json combo error;
       library: --format markdown → exit 2 with named error)
 
-Phase D — Frontend (depends on Phase B):
+Phase D — Frontend (depends on Phase B; sequential):
   T11 (api/export.ts: exportBookSummary helper + SummaryExportSelection + library JSON-only)
-  T12 (BookOverviewView: 3 buttons + in-flight UX + clipboard pattern + toasts) [P with T13]
-  T13 (ExportCustomizeModal.vue + tests) [P with T12]
+  T13 (ExportCustomizeModal.vue + tests) — landed BEFORE T12 since BookOverviewView imports it
+  T12 (BookOverviewView: 3 buttons + in-flight UX + clipboard pattern + toasts)
   T14 (BackupSettings cleanup: dropdown → button)
   T15 (ToastContainer regression test — verify existing infra)
 
@@ -47,9 +47,7 @@ Final:
       Playwright smoke; post-merge run /changelog for FR-D2)
 ```
 
-[P] = can run in parallel with the marked sibling.
-
-Note: task slots T8 and T10 were merged into T7 and T9 respectively during review loop 1 — the API library-410 lives inside T7 and the CLI library-exit-2 lives inside T9.
+Note: task slots T8 and T10 were merged into T7 and T9 respectively during review loop 1 — the API library-410 lives inside T7 and the CLI library-exit-2 lives inside T9. T13 ships before T12 in execution order (loop 2 finding) because `BookOverviewView` imports `<ExportCustomizeModal>`; the diagram shows T11 → T13 → T12 to reflect the import dependency.
 
 ---
 
@@ -135,6 +133,7 @@ Note: task slots T8 and T10 were merged into T7 and T9 respectively during revie
 | Create | `frontend/src/components/book/ExportCustomizeModal.vue` | New modal: refresh-on-open, four toggles (Book summary disabled if no book summary, TOC, Annotations, Sections tri-state), section list ordered by `order_index`, count footer, Cancel/Export/Copy buttons + in-flight UX |
 | Create | `frontend/src/components/book/__tests__/ExportCustomizeModal.spec.ts` | Vitest unit tests covering: tri-state toggle behavior, querystring assembly, hidden-count footer, Export and Copy emit the same selection, refresh-fail fallback, in-flight disable |
 | Modify | `frontend/src/components/settings/BackupSettings.vue:122-140` | Replace format `<select>` + button with single `Export library (JSON)` button. Drop `exportFormat` ref. |
+| Create | `frontend/src/components/settings/__tests__/BackupSettings.spec.ts` | Vitest assertions: format dropdown absent, single button labeled "Export library (JSON)" present (T14) |
 | Modify | `frontend/src/components/common/__tests__/ToastContainer.spec.ts` | Add (or verify) regression test asserting `useUiStore().showToast(msg, type)` produces a toast with `aria-live="polite"` region + `toast--{type}` class |
 | Modify | `CLAUDE.md` | Three FR-D1 edits: workflow-example flag, Markdown-export entry, library-deprecation callout |
 
@@ -537,9 +536,9 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           # parse the date line separately when needed.
           pass
 
-      async def test_single_author_front_matter(self, async_session):
-          # async_session: pytest fixture providing AsyncSession (existing in tests/conftest.py)
-          svc = ExportService(async_session)
+      async def test_single_author_front_matter(self, db_session):
+          # db_session: pytest fixture providing AsyncSession (existing in tests/conftest.py)
+          svc = ExportService(db_session)
           body, is_empty = await svc._render_summary_markdown(
               _book_data(title="The Art of War", authors=["Sun Tzu"], summary=None),
               ExportSelection(),
@@ -551,22 +550,22 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           # No book summary, no sections, no annotations -> is_empty=True
           assert is_empty is True
 
-      async def test_multi_author(self, async_session):
-          svc = ExportService(async_session)
+      async def test_multi_author(self, db_session):
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(authors=["A", "B", "C"]), ExportSelection()
           )
           assert "**Authors:** A, B, C" in body
 
-      async def test_zero_authors(self, async_session):
-          svc = ExportService(async_session)
+      async def test_zero_authors(self, db_session):
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(authors=[]), ExportSelection()
           )
           assert "**Author:** Unknown" in body
 
-      async def test_book_summary_renders_under_front_matter(self, async_session):
-          svc = ExportService(async_session)
+      async def test_book_summary_renders_under_front_matter(self, db_session):
+          svc = ExportService(db_session)
           body, is_empty = await svc._render_summary_markdown(
               _book_data(summary="The book is about strategy."),
               ExportSelection(),
@@ -574,8 +573,8 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "The book is about strategy." in body
           assert is_empty is False  # book summary block emitted
 
-      async def test_book_summary_skipped_when_toggle_off(self, async_session):
-          svc = ExportService(async_session)
+      async def test_book_summary_skipped_when_toggle_off(self, db_session):
+          svc = ExportService(db_session)
           body, is_empty = await svc._render_summary_markdown(
               _book_data(summary="Strategy stuff"),
               ExportSelection(include_book_summary=False),
@@ -583,14 +582,14 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "Strategy stuff" not in body
           assert is_empty is True
 
-      async def test_sections_render_with_h2(self, async_session):
+      async def test_sections_render_with_h2(self, db_session):
           sections = [
               {"id": 10, "title": "Chapter 1", "order_index": 0, "depth": 0,
                "has_summary": True, "summary_md": "Chapter 1 content."},
               {"id": 11, "title": "Chapter 2", "order_index": 1, "depth": 0,
                "has_summary": True, "summary_md": "Chapter 2 content."},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, is_empty = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
@@ -600,28 +599,28 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "Chapter 2 content." in body
           assert is_empty is False
 
-      async def test_sections_without_summary_skipped(self, async_session):
+      async def test_sections_without_summary_skipped(self, db_session):
           sections = [
               {"id": 10, "title": "Pending", "order_index": 0, "depth": 0,
                "has_summary": False, "summary_md": None},
               {"id": 11, "title": "Done", "order_index": 1, "depth": 0,
                "has_summary": True, "summary_md": "Real content."},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
           assert "## Pending" not in body
           assert "## Done" in body
 
-      async def test_excluded_section_skipped(self, async_session):
+      async def test_excluded_section_skipped(self, db_session):
           sections = [
               {"id": 10, "title": "Keep", "order_index": 0, "depth": 0,
                "has_summary": True, "summary_md": "K"},
               {"id": 11, "title": "Drop", "order_index": 1, "depth": 0,
                "has_summary": True, "summary_md": "D"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections),
               ExportSelection(exclude_section_ids=frozenset({11})),
@@ -629,21 +628,21 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "## Keep" in body
           assert "## Drop" not in body
 
-      async def test_image_sanitization_applies_to_section_summary(self, async_session):
+      async def test_image_sanitization_applies_to_section_summary(self, db_session):
           sections = [
               {"id": 10, "title": "Ch", "order_index": 0, "depth": 0,
                "has_summary": True,
                "summary_md": "See ![figure](/api/v1/images/3) below."},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
           assert "[Image: figure]" in body
           assert "/api/v1/images/" not in body
 
-      async def test_image_sanitization_applies_to_book_summary(self, async_session):
-          svc = ExportService(async_session)
+      async def test_image_sanitization_applies_to_book_summary(self, db_session):
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(summary='Chart ![alt](/api/v1/images/9) is here.'),
               ExportSelection(),
@@ -651,9 +650,9 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "[Image: alt]" in body
           assert "/api/v1/images/" not in body
 
-      async def test_emptiness_tuple_invariant(self, async_session):
+      async def test_emptiness_tuple_invariant(self, db_session):
           # All toggles off, no content -> is_empty=True
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           _, is_empty = await svc._render_summary_markdown(
               _book_data(summary="x", sections=[
                   {"id": 1, "title": "S", "order_index": 0, "depth": 0,
@@ -669,25 +668,7 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert is_empty is True
   ```
 
-- [ ] Step 2: Verify a `async_session` fixture exists; if not, add it
-  Run: `cd backend && grep -rn "async_session\|@pytest.fixture" tests/conftest.py tests/unit/conftest.py 2>/dev/null | head -10`
-  If `async_session` fixture doesn't exist in `tests/conftest.py`, add to `backend/tests/conftest.py`:
-  ```python
-  import pytest_asyncio
-  from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-  from app.db.models import Base
-
-  @pytest_asyncio.fixture
-  async def async_session():
-      engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-      async with engine.begin() as conn:
-          await conn.run_sync(Base.metadata.create_all)
-      Session = async_sessionmaker(engine, expire_on_commit=False)
-      async with Session() as s:
-          yield s
-      await engine.dispose()
-  ```
-  And mark the new test class methods with `@pytest.mark.asyncio`.
+- [ ] Step 2: Confirm `db_session` fixture exists (it does — `backend/tests/conftest.py:88-97` provides per-test SQLite + FTS5 with auto-rollback). Mark the new test class methods with `@pytest.mark.asyncio` to use it. No conftest changes needed.
 
 - [ ] Step 3: Run new tests; expect all to fail
   Run: `cd backend && uv run python -m pytest tests/unit/test_export_renderer.py::TestRenderSummaryMarkdownFrontMatter -v`
@@ -796,7 +777,7 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
 
 - [ ] Step 8: Commit
   ```bash
-  git add backend/app/services/export_service.py backend/tests/unit/test_export_renderer.py backend/tests/conftest.py
+  git add backend/app/services/export_service.py backend/tests/unit/test_export_renderer.py
   git commit -m "feat(backend): add _render_summary_markdown core (front matter + sections + sanitization)"
   ```
 
@@ -822,14 +803,14 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
   # Append to backend/tests/unit/test_export_renderer.py
   class TestRenderSummaryMarkdownTOC:
       @pytest.mark.asyncio
-      async def test_toc_emitted_with_anchors(self, async_session):
+      async def test_toc_emitted_with_anchors(self, db_session):
           sections = [
               {"id": 1, "title": "Chapter 1", "order_index": 0, "depth": 0,
                "has_summary": True, "summary_md": "x"},
               {"id": 2, "title": "Chapter 2", "order_index": 1, "depth": 0,
                "has_summary": True, "summary_md": "y"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
@@ -838,14 +819,14 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "- [Chapter 2](#chapter-2)" in body
 
       @pytest.mark.asyncio
-      async def test_toc_indents_by_depth(self, async_session):
+      async def test_toc_indents_by_depth(self, db_session):
           sections = [
               {"id": 1, "title": "Part 1", "order_index": 0, "depth": 0,
                "has_summary": True, "summary_md": "a"},
               {"id": 2, "title": "Sub", "order_index": 1, "depth": 1,
                "has_summary": True, "summary_md": "b"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
@@ -853,21 +834,21 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "  - [Sub](#sub)" in body  # 2-space indent for depth 1
 
       @pytest.mark.asyncio
-      async def test_toc_omitted_when_no_sections_render(self, async_session):
+      async def test_toc_omitted_when_no_sections_render(self, db_session):
           # No sections at all
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(), ExportSelection()
           )
           assert "## Table of Contents" not in body
 
       @pytest.mark.asyncio
-      async def test_toc_omitted_when_toggle_off(self, async_session):
+      async def test_toc_omitted_when_toggle_off(self, db_session):
           sections = [
               {"id": 1, "title": "Chapter 1", "order_index": 0, "depth": 0,
                "has_summary": True, "summary_md": "x"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection(include_toc=False)
           )
@@ -875,7 +856,7 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "## Chapter 1" in body  # but section still renders
 
       @pytest.mark.asyncio
-      async def test_duplicate_titles_disambiguate_with_dash_n(self, async_session):
+      async def test_duplicate_titles_disambiguate_with_dash_n(self, db_session):
           # GFM convention: first=bare, second=-1, third=-2 (NOT -2/-3)
           sections = [
               {"id": 1, "title": "Intro", "order_index": 0, "depth": 0,
@@ -885,7 +866,7 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
               {"id": 3, "title": "Intro", "order_index": 2, "depth": 0,
                "has_summary": True, "summary_md": "c"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
@@ -894,26 +875,26 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "(#intro-2)" in body
 
       @pytest.mark.asyncio
-      async def test_empty_slug_falls_back_to_section_orderindex(self, async_session):
+      async def test_empty_slug_falls_back_to_section_orderindex(self, db_session):
           # Spec G2: emoji-only title -> section-{order_index:03d}
           sections = [
               {"id": 1, "title": "🚀🎯", "order_index": 7, "depth": 0,
                "has_summary": True, "summary_md": "a"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=sections), ExportSelection()
           )
           assert "[🚀🎯](#section-007)" in body
 
       @pytest.mark.asyncio
-      async def test_toc_emitted_flag_drives_emptiness(self, async_session):
+      async def test_toc_emitted_flag_drives_emptiness(self, db_session):
           # toc_emitted alone makes is_empty=False
           sections = [
               {"id": 1, "title": "Ch", "order_index": 0, "depth": 0,
                "has_summary": True, "summary_md": "a"},
           ]
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           _, is_empty = await svc._render_summary_markdown(
               _book_data(sections=sections),
               ExportSelection(include_book_summary=False, include_annotations=False),
@@ -988,11 +969,11 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
                   "has_summary": True, "summary_md": "body"}
 
       @pytest.mark.asyncio
-      async def test_section_highlight_with_note(self, async_session):
+      async def test_section_highlight_with_note(self, db_session):
           # section-scope annotations come from book_data["annotations"]
           ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
                  "selected_text": "famous quote", "note": "interesting", "type": "highlight"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[self._section(1, [])]) | {"annotations": [ann]},
               ExportSelection(),
@@ -1002,10 +983,10 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "> — Note: interesting" in body
 
       @pytest.mark.asyncio
-      async def test_section_highlight_no_note(self, async_session):
+      async def test_section_highlight_no_note(self, db_session):
           ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
                  "selected_text": "just a passage", "note": "", "type": "highlight"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[self._section(1, [])]) | {"annotations": [ann]},
               ExportSelection(),
@@ -1014,11 +995,11 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "Note:" not in body
 
       @pytest.mark.asyncio
-      async def test_section_annotation_empty_selected_text_skipped(self, async_session):
+      async def test_section_annotation_empty_selected_text_skipped(self, db_session):
           # Defensive — section-scope with empty selected_text -> silently skipped
           ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
                  "selected_text": "", "note": "stray note", "type": "note"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[self._section(1, [])]) | {"annotations": [ann]},
               ExportSelection(),
@@ -1027,10 +1008,10 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "stray note" not in body
 
       @pytest.mark.asyncio
-      async def test_annotations_toggle_off(self, async_session):
+      async def test_annotations_toggle_off(self, db_session):
           ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
                  "selected_text": "x", "note": "y", "type": "highlight"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[self._section(1, [])]) | {"annotations": [ann]},
               ExportSelection(include_annotations=False),
@@ -1038,10 +1019,10 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "### Highlights" not in body
 
       @pytest.mark.asyncio
-      async def test_excluded_section_drops_its_annotations(self, async_session):
+      async def test_excluded_section_drops_its_annotations(self, db_session):
           ann = {"id": 1, "content_type": "section_summary", "content_id": 5,
                  "selected_text": "should not appear", "note": "", "type": "highlight"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[
                   self._section(1, []),
@@ -1053,11 +1034,11 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "should not appear" not in body
 
       @pytest.mark.asyncio
-      async def test_book_scope_note_in_notes_footer(self, async_session):
+      async def test_book_scope_note_in_notes_footer(self, db_session):
           # book_data carries section-scope annotations only; book-scope come via
           # a separate kwarg (the renderer accepts them in addition).
           # See implementation step for the parameter shape.
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(),
               ExportSelection(),
@@ -1067,8 +1048,8 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "- freeform reader note" in body
 
       @pytest.mark.asyncio
-      async def test_book_scope_highlight_with_and_without_note(self, async_session):
-          svc = ExportService(async_session)
+      async def test_book_scope_highlight_with_and_without_note(self, db_session):
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(),
               ExportSelection(),
@@ -1082,16 +1063,16 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert '- > "lone quote"' in body
 
       @pytest.mark.asyncio
-      async def test_notes_footer_omitted_when_no_book_anns(self, async_session):
-          svc = ExportService(async_session)
+      async def test_notes_footer_omitted_when_no_book_anns(self, db_session):
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(), ExportSelection(), book_annotations=[]
           )
           assert "## Notes" not in body
 
       @pytest.mark.asyncio
-      async def test_book_anns_survive_section_exclusion(self, async_session):
-          svc = ExportService(async_session)
+      async def test_book_anns_survive_section_exclusion(self, db_session):
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[
                   {"id": 1, "title": "S1", "order_index": 0, "depth": 0,
@@ -1104,10 +1085,10 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "kept" in body  # cascade does NOT apply to book-scope notes
 
       @pytest.mark.asyncio
-      async def test_newlines_in_selected_text_collapse_to_space(self, async_session):
+      async def test_newlines_in_selected_text_collapse_to_space(self, db_session):
           ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
                  "selected_text": "line1\nline2", "note": "", "type": "highlight"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[
                   {"id": 1, "title": "S", "order_index": 0, "depth": 0,
@@ -1119,12 +1100,12 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert "> line1\nline2" not in body
 
       @pytest.mark.asyncio
-      async def test_block_level_chars_escaped(self, async_session):
+      async def test_block_level_chars_escaped(self, db_session):
           # FR-B8: leading >, #, -, *, +, "1." escaped with backslash
           ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
                  "selected_text": "> nested quote attempt", "note": "# heading attempt",
                  "type": "highlight"}
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           body, _ = await svc._render_summary_markdown(
               _book_data(sections=[
                   {"id": 1, "title": "S", "order_index": 0, "depth": 0,
@@ -1138,8 +1119,8 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           assert r"\# heading attempt" in body
 
       @pytest.mark.asyncio
-      async def test_emptiness_with_only_book_notes(self, async_session):
-          svc = ExportService(async_session)
+      async def test_emptiness_with_only_book_notes(self, db_session):
+          svc = ExportService(db_session)
           _, is_empty = await svc._render_summary_markdown(
               _book_data(),
               ExportSelection(include_book_summary=False, include_toc=False),
@@ -1283,24 +1264,24 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
   # Append to backend/tests/unit/test_export_renderer.py
   class TestExportBookMarkdownPublic:
       @pytest.mark.asyncio
-      async def test_returns_body_and_is_empty(self, async_session):
+      async def test_returns_body_and_is_empty(self, db_session):
           # Seed minimal book
           from app.db.models import Book, BookStatus
           book = Book(
               title="Pub Test", file_data=b"", file_hash="pub-hash",
               file_format="epub", file_size_bytes=0, status=BookStatus.COMPLETED,
           )
-          async_session.add(book)
-          await async_session.commit()
-          svc = ExportService(async_session)
+          db_session.add(book)
+          await db_session.commit()
+          svc = ExportService(db_session)
           body, is_empty = await svc.export_book_markdown(book.id, ExportSelection())
           assert body.startswith("# Pub Test\n")
           assert is_empty is True  # no summaries, no annotations
 
       @pytest.mark.asyncio
-      async def test_raises_export_error_for_missing_book(self, async_session):
+      async def test_raises_export_error_for_missing_book(self, db_session):
           from app.services.export_service import ExportError
-          svc = ExportService(async_session)
+          svc = ExportService(db_session)
           with pytest.raises(ExportError, match="not found"):
               await svc.export_book_markdown(99999, ExportSelection())
   ```
@@ -1360,7 +1341,7 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
   pytestmark = pytest.mark.asyncio
 
 
-  async def _seed_book_with_summary(client, async_session):
+  async def _seed_book_with_summary(client, db_session):
       """Helper: insert a Book + Author + BookSection + Summary via repos.
       Returns (book_id, section_id)."""
       from app.db.models import (
@@ -1375,51 +1356,51 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           file_size_bytes=0,
           status=BookStatus.COMPLETED,
       )
-      async_session.add(book)
-      await async_session.flush()
+      db_session.add(book)
+      await db_session.flush()
       author = Author(name="Test Author")
-      async_session.add(author)
-      await async_session.flush()
-      async_session.add(BookAuthor(book_id=book.id, author_id=author.id, order_index=0))
+      db_session.add(author)
+      await db_session.flush()
+      db_session.add(BookAuthor(book_id=book.id, author_id=author.id, order_index=0))
       section = BookSection(
           book_id=book.id, title="Chapter 1", order_index=0, depth=0,
           content_md="content", section_type="chapter",
       )
-      async_session.add(section)
-      await async_session.flush()
+      db_session.add(section)
+      await db_session.flush()
       sec_summary = Summary(
           content_type=SummaryContentType.SECTION,
           content_id=section.id, book_id=book.id,
           preset_name="test", summary_md="Section 1 summary content.",
       )
-      async_session.add(sec_summary)
-      await async_session.flush()
+      db_session.add(sec_summary)
+      await db_session.flush()
       section.default_summary_id = sec_summary.id
-      await async_session.commit()
+      await db_session.commit()
       return book.id, section.id
 
 
-  async def test_filename_uses_slug(client, async_session):
-      bid, _ = await _seed_book_with_summary(client, async_session)
+  async def test_filename_uses_slug(client, db_session):
+      bid, _ = await _seed_book_with_summary(client, db_session)
       resp = await client.get(f"/api/v1/export/book/{bid}?format=markdown")
       assert resp.status_code == 200
       cd = resp.headers["content-disposition"]
       today = date.today().strftime("%Y%m%d")
       assert f"test-export-book-summary-{today}.md" in cd
 
-  async def test_cache_control_set(client, async_session):
-      bid, _ = await _seed_book_with_summary(client, async_session)
+  async def test_cache_control_set(client, db_session):
+      bid, _ = await _seed_book_with_summary(client, db_session)
       resp = await client.get(f"/api/v1/export/book/{bid}?format=markdown")
       assert resp.headers.get("cache-control") == "private, max-age=0"
 
-  async def test_x_empty_export_false_when_content(client, async_session):
-      bid, _ = await _seed_book_with_summary(client, async_session)
+  async def test_x_empty_export_false_when_content(client, db_session):
+      bid, _ = await _seed_book_with_summary(client, db_session)
       resp = await client.get(f"/api/v1/export/book/{bid}?format=markdown")
       # X-Empty-Export header omitted OR set to "false" when content exists
       assert resp.headers.get("x-empty-export", "false") == "false"
 
-  async def test_x_empty_export_true_when_all_excluded(client, async_session):
-      bid, sid = await _seed_book_with_summary(client, async_session)
+  async def test_x_empty_export_true_when_all_excluded(client, db_session):
+      bid, sid = await _seed_book_with_summary(client, db_session)
       resp = await client.get(
           f"/api/v1/export/book/{bid}"
           f"?format=markdown"
@@ -1431,8 +1412,8 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
       assert resp.status_code == 200
       assert resp.headers.get("x-empty-export") == "true"
 
-  async def test_invalid_exclude_section_returns_400(client, async_session):
-      bid, _ = await _seed_book_with_summary(client, async_session)
+  async def test_invalid_exclude_section_returns_400(client, db_session):
+      bid, _ = await _seed_book_with_summary(client, db_session)
       resp = await client.get(
           f"/api/v1/export/book/{bid}?format=markdown&exclude_section=99999"
       )
@@ -1441,8 +1422,8 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
       assert "99999" in detail
       assert "does not belong to" in detail
 
-  async def test_selection_querystring_filters_output(client, async_session):
-      bid, _ = await _seed_book_with_summary(client, async_session)
+  async def test_selection_querystring_filters_output(client, db_session):
+      bid, _ = await _seed_book_with_summary(client, db_session)
       # No-toc -> no Table of Contents
       resp = await client.get(
           f"/api/v1/export/book/{bid}?format=markdown&include_toc=false"
@@ -1450,9 +1431,9 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
       assert resp.status_code == 200
       assert "## Table of Contents" not in resp.text
 
-  async def test_json_format_unchanged_byte_equal(client, async_session):
+  async def test_json_format_unchanged_byte_equal(client, db_session):
       """G6: existing JSON export shape unaffected by selection params."""
-      bid, _ = await _seed_book_with_summary(client, async_session)
+      bid, _ = await _seed_book_with_summary(client, db_session)
       resp_a = await client.get(f"/api/v1/export/book/{bid}?format=json")
       resp_b = await client.get(
           f"/api/v1/export/book/{bid}?format=json&include_toc=false&exclude_section=99999"
@@ -1461,7 +1442,7 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
       # Selection params silently ignored on JSON
       assert resp_a.text == resp_b.text
 
-  async def test_slug_falls_back_for_cjk_only_title(client, async_session):
+  async def test_slug_falls_back_for_cjk_only_title(client, db_session):
       # Re-seed with a CJK-only title
       from app.db.models import Book, BookStatus
       book = Book(
@@ -1472,35 +1453,35 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
           file_size_bytes=0,
           status=BookStatus.COMPLETED,
       )
-      async_session.add(book)
-      await async_session.commit()
+      db_session.add(book)
+      await db_session.commit()
       resp = await client.get(f"/api/v1/export/book/{book.id}?format=markdown")
       cd = resp.headers["content-disposition"]
       today = date.today().strftime("%Y%m%d")
       assert f"book-{book.id}-summary-{today}.md" in cd
 
-  async def test_image_urls_never_survive(client, async_session):
+  async def test_image_urls_never_survive(client, db_session):
       """G4: zero `/api/v1/images/` substrings in any exported markdown."""
       from app.db.models import Book, BookStatus, BookSection, Summary, SummaryContentType
       book = Book(
           title="Imagey", file_data=b"", file_hash="hash-img",
           file_format="epub", file_size_bytes=0, status=BookStatus.COMPLETED,
       )
-      async_session.add(book)
-      await async_session.flush()
+      db_session.add(book)
+      await db_session.flush()
       sec = BookSection(book_id=book.id, title="C", order_index=0, depth=0,
                         content_md="x", section_type="chapter")
-      async_session.add(sec)
-      await async_session.flush()
+      db_session.add(sec)
+      await db_session.flush()
       summ = Summary(
           content_type=SummaryContentType.SECTION, content_id=sec.id,
           book_id=book.id, preset_name="t",
           summary_md="See ![figure](/api/v1/images/3) and <img src=\"/api/v1/images/4\" />.",
       )
-      async_session.add(summ)
-      await async_session.flush()
+      db_session.add(summ)
+      await db_session.flush()
       sec.default_summary_id = summ.id
-      await async_session.commit()
+      await db_session.commit()
       resp = await client.get(f"/api/v1/export/book/{book.id}?format=markdown")
       assert resp.status_code == 200
       assert "/api/v1/images/" not in resp.text
@@ -2146,8 +2127,14 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
   )
   const hasNoSummaries = computed(() => {
     if (!book.value) return true
-    if (book.value.default_summary_id) return false
-    return !((book.value.sections || []).some((s: any) => s.has_summary))
+    // The live API exposes `default_summary_id` (per backend/app/api/routes/books.py:281)
+    // but the typed `Book` interface in frontend/src/types/index.ts uses `default_summary?: SummaryBrief`.
+    // Defensive check both fields; either present means a book-level summary exists.
+    const hasBookSummary = !!book.value.default_summary || !!book.value.default_summary_id
+    const hasAnySectionSummary = (book.value.sections || []).some(
+      (s: any) => s.has_summary || s.default_summary_id || s.default_summary
+    )
+    return !hasBookSummary && !hasAnySectionSummary
   })
   const exportDisabled = computed(() => isProcessingStatus.value || hasNoSummaries.value || exporting.value)
   const customizeDisabled = computed(() => isProcessingStatus.value)
@@ -2772,9 +2759,37 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
 
 **Steps:**
 
-- [ ] Step 1: Add a regression assertion to existing tests if any (or skip if none — visual change confirmed in T15 manual smoke)
+- [ ] Step 1: Add (or extend) a Vitest spec asserting the dropdown is gone and the new single-button label is correct
   Run: `cd frontend && find . -path ./node_modules -prune -o -name "*BackupSettings*" -print 2>/dev/null`
-  If a spec exists, modify it to assert single-button shape. If none, this task has no automated test addition (the manual smoke in TN covers it).
+  If `frontend/src/components/settings/__tests__/BackupSettings.spec.ts` exists, add the assertions to it. Otherwise create the file:
+  ```typescript
+  // frontend/src/components/settings/__tests__/BackupSettings.spec.ts
+  import { describe, it, expect, beforeEach, vi } from 'vitest'
+  import { mount } from '@vue/test-utils'
+  import { createPinia, setActivePinia } from 'pinia'
+  import BackupSettings from '@/components/settings/BackupSettings.vue'
+
+  describe('BackupSettings — library export UI (FR-F11 cleanup)', () => {
+    beforeEach(() => {
+      setActivePinia(createPinia())
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify([]))  // empty backups list
+      )
+    })
+
+    it('does not render a format selector dropdown', async () => {
+      const wrapper = mount(BackupSettings)
+      expect(wrapper.find('[data-testid="export-format-select"]').exists()).toBe(false)
+    })
+
+    it('renders a single button labeled "Export library (JSON)"', async () => {
+      const wrapper = mount(BackupSettings)
+      const btn = wrapper.find('[data-testid="export-library-btn"]')
+      expect(btn.exists()).toBe(true)
+      expect(btn.text()).toMatch(/Export library \(JSON\)/)
+    })
+  })
+  ```
 
 - [ ] Step 2: Modify the component
   Apply via `Edit` tool to `frontend/src/components/settings/BackupSettings.vue:122-140`:
@@ -2817,13 +2832,17 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
   Run: `cd frontend && npm run type-check && npm run lint -- src/components/settings/BackupSettings.vue`
   Expected: clean
 
-- [ ] Step 4: Verify the component still mounts (smoke test)
-  Run: `cd frontend && npm run test:unit 2>&1 | tail -20`
-  Expected: existing test count preserved; no new failures
+- [ ] Step 4: Run the new BackupSettings spec
+  Run: `cd frontend && npm run test:unit -- src/components/settings/__tests__/BackupSettings.spec.ts`
+  Expected: 2 passed (dropdown absent + new button label present)
 
-- [ ] Step 5: Commit
+- [ ] Step 5: Run the full unit suite to confirm no regressions elsewhere
+  Run: `cd frontend && npm run test:unit 2>&1 | tail -20`
+  Expected: existing test count preserved + 2 new tests; no new failures
+
+- [ ] Step 6: Commit
   ```bash
-  git add frontend/src/components/settings/BackupSettings.vue
+  git add frontend/src/components/settings/BackupSettings.vue frontend/src/components/settings/__tests__/BackupSettings.spec.ts
   git commit -m "refactor(frontend): replace library export dropdown with single JSON button"
   ```
 
@@ -3023,3 +3042,4 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
 | Loop | Findings | Changes Made |
 |------|----------|-------------|
 | 1 | (a) FR-ID coverage gate (`grep -oE "FR-[A-Z][0-9]+[a-z]?" spec.md \| sort -u \| comm -23 - plan-frs.txt`) flagged 2 misses: FR-C4 (cited nowhere) and FR-D2 (changelog, deferred to post-merge `/changelog`). (b) T8 and T10 were empty fold-stub headings — confusing for a fresh executor. (c) CLI markdown branch (T9) duplicated the route handler's render orchestration: build ExportSelection, call `_collect_book_data` + `_collect_book_annotations` + `_render_summary_markdown` → drift risk. (d) T12's `onCopyClick` issued a separate HEAD request to read `X-Empty-Export` after the ClipboardItem call — wasteful and timing-flaky. | (a) FR-C4 added to T9 spec refs; FR-D2 documented as a Cleanup item in TN ("Run /changelog after merge"). (b) T8 and T10 stub headings deleted; execution-order diagram tightened to fold lib-410 into T7 and lib-exit-2 into T9; explanatory note added under the diagram. (c) New `ExportService.export_book_markdown(book_id, selection) → tuple[str, bool]` public orchestrator added to T6 (step 4b) with two unit tests; T7 route handler and T9 CLI both call it instead of inlining the four-step orchestration. (d) T12 onCopyClick rewritten: capture `isEmpty` inside the fetch promise's `.then` callback; `clipboard.write` resolution then guarantees the side-channel ref is set; HEAD request removed. |
+| 2 | (a) Plan-wide test fixture name was `async_session` but `backend/tests/conftest.py:88` exposes the real fixture as `db_session` (per-test SQLite + FTS5 + auto-rollback) — would fail at collection time. (b) T12's BookOverviewView imports `<ExportCustomizeModal>` from T13's file but execution diagram marked them `[P]` — real implicit dependency that would block T12. (c) T12's `hasNoSummaries` checked only `book.value.default_summary_id`, but the typed `Book` interface in `frontend/src/types/index.ts` exposes `default_summary?: SummaryBrief` (full object) instead — would silently mismatch on a typed surface. (d) T14 (BackupSettings cleanup) had no automated test — only a manual smoke at TN-time; subtle regressions (e.g., dropdown still rendered) would slip. | (a) Plan-wide find-replace `async_session` → `db_session` (109 occurrences); T4 step 2 simplified from "verify-or-create fixture" to "confirm exists, mark `@pytest.mark.asyncio`"; T4 commit step drops the conftest.py addition. (b) Execution-order diagram reordered Phase D to T11 → T13 → T12 → T14 → T15; `[P]` designation removed; explanatory note added. (c) T12's `hasNoSummaries` rewritten as defensive check against BOTH `default_summary` AND `default_summary_id` on the book and on each section; inline comment notes the API/typed-interface divergence as a /verify-time cleanup candidate. (d) T14 gains a new `frontend/src/components/settings/__tests__/BackupSettings.spec.ts` with two assertions (no format selector + new button label); File Map updated; commit step adds the spec file. |
