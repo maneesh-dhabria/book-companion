@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-25 — V1.5 Reader UX Polish Followups (v1.5.1)
+
+- Settings save now shows a global toast top-right (success or error) instead of leaving you to wonder whether the PATCH landed; the Save button shows an inline spinner while in flight.
+- Strict validation on the Settings API: unknown nested keys, type mismatches, or any invalid field rejects the whole PATCH (`HTTP 400` with FastAPI-shape `detail`) and leaves both in-memory state and the on-disk YAML untouched. The same rule applies to `bookcompanion config set <key> <value>` — invalid values exit non-zero with a stderr message and don't write a corrupted YAML.
+- The legacy LLM "Config Directory" field has been retired everywhere — `LLMConfig.config_dir` and the `BOOKCOMPANION_LLM__CONFIG_DIR` env var are gone. Existing `settings.yaml` files containing the key are silently ignored on load. **Breaking**: if you depended on `CLAUDE_CONFIG_DIR` injection from this field, point your CLI at the right profile via your shell environment instead.
+- Reader theme model is one applied state — either a system preset or one browser-local Custom slot. **Breaking**: user-created server-side presets and the `reading_presets.is_system` / `is_active` columns are removed by the new `v1_5_1_collapse_reading_presets` migration. Any preset that was active at upgrade time is captured into a sidecar file the frontend reads exactly once on first launch so your visual settings survive the migration. POST/PATCH/DELETE/activate routes on `/api/v1/reading-presets` are gone; GET returns `{items: [...]}` (no `default_id`, no per-item `is_system`/`is_active`).
+- `+ Add tag` lives behind a tiny text button instead of a persistent input. Click to expand to an underline-only input that supports Enter to commit (clears + stays open), Esc/blur-empty to dismiss, and blur-with-content to commit + dismiss. Tag names exceeding 64 characters are truncated with a one-shot warning toast.
+- Quick-search palette (`⌘K`) is mounted once at app boot via `v-show` instead of `v-if`, so the first keystroke after open is never dropped on a not-yet-mounted input. The 200ms hand-rolled debounce is replaced with a `useDebounceFn(300)` composable that auto-cancels on unmount; opening the palette always clears any prior query and re-focuses the input.
+- The Summarize / Retry button moved off the reader header onto the book overview page (`/books/:id`), next to the Read CTA. Clicking it disables the button and shows an inline spinner until the POST resolves; failures fire an error toast with the underlying message.
+
 ## 2026-04-19 — Book Reader UX Polish
 
 - Reopening a book lands on the first real chapter instead of the Copyright page, respecting URL → saved position → first summarizable section → section[0] precedence.

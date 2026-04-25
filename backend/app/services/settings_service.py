@@ -125,6 +125,7 @@ class SettingsService:
             },
             "llm": {
                 "provider": self.settings.llm.provider,
+                "cli_command": self.settings.llm.cli_command,
                 "model": self.settings.llm.model,
                 "timeout_seconds": self.settings.llm.timeout_seconds,
                 "max_retries": self.settings.llm.max_retries,
@@ -140,27 +141,65 @@ class SettingsService:
         return data
 
     def update_settings(self, updates: dict) -> dict:
-        """Write partial settings to YAML config file using atomic write.
+        """Validate + persist a partial settings patch (D17: all-or-nothing).
 
-        Reads existing YAML, deep-merges updates, writes to a temp file,
-        then renames for atomicity. Also updates the in-memory Settings.
+        Validates every patched section against its own pydantic submodel
+        (``extra="forbid"``) before any disk write. Unknown sections, unknown
+        nested keys, and type mismatches raise ``pydantic.ValidationError``
+        and leave both the in-memory state and the on-disk YAML untouched.
         """
-        # Read existing config
-        existing = {}
+        from pydantic import ValidationError
+
+        # 1. Validate every section in the patch BEFORE any disk write.
+        #    Run all sections so we get one ValidationError covering all bad
+        #    fields rather than failing on the first.
+        # Each value is a validated section submodel (LLMConfig, etc.).
+        # Type left untyped here to keep the runtime light — the dict is
+        # only consumed in this method and the per-section types differ.
+        validated_sections: dict = {}
+        errors: list[dict[str, Any]] = []
+        for section_name, section_values in updates.items():
+            section_obj = getattr(self.settings, section_name, None)
+            if section_obj is None:
+                errors.append(
+                    {
+                        "type": "extra_forbidden",
+                        "loc": (section_name,),
+                        "msg": "Extra inputs are not permitted",
+                        "input": section_values,
+                    }
+                )
+                continue
+            if not isinstance(section_values, dict):
+                errors.append(
+                    {
+                        "type": "dict_type",
+                        "loc": (section_name,),
+                        "msg": "Input should be a valid dictionary",
+                        "input": section_values,
+                    }
+                )
+                continue
+            model_cls = type(section_obj)
+            current_dump = section_obj.model_dump()
+            try:
+                validated_sections[section_name] = model_cls.model_validate(
+                    {**current_dump, **section_values}
+                )
+            except ValidationError as e:
+                errors.extend({**err, "loc": (section_name, *err["loc"])} for err in e.errors())
+
+        if errors:
+            raise ValidationError.from_exception_data(title=Settings.__name__, line_errors=errors)
+
+        # 2. Read existing YAML and deep-merge ONLY the user's patch.
+        existing: dict[str, Any] = {}
         if self.config_path.exists():
             with open(self.config_path) as f:
                 existing = yaml.safe_load(f) or {}
+        existing = self._deep_merge(existing, updates)
 
-        # Deep merge updates into existing
-        for section, values in updates.items():
-            if isinstance(values, dict):
-                if section not in existing:
-                    existing[section] = {}
-                existing[section].update(values)
-            else:
-                existing[section] = values
-
-        # Atomic write: temp file + rename
+        # 3. Atomic write.
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             mode="w",
@@ -172,13 +211,12 @@ class SettingsService:
             tmp_path = Path(tmp.name)
         tmp_path.rename(self.config_path)
 
-        # Update in-memory settings
+        # 4. Apply the validated section values to in-memory Settings.
         for section_name, section_values in updates.items():
-            if hasattr(self.settings, section_name) and isinstance(section_values, dict):
-                section = getattr(self.settings, section_name)
-                for key, value in section_values.items():
-                    if hasattr(section, key):
-                        object.__setattr__(section, key, value)
+            live = getattr(self.settings, section_name)
+            fresh = validated_sections[section_name]
+            for key in section_values:
+                object.__setattr__(live, key, getattr(fresh, key))
 
         return self.get_safe_settings()
 

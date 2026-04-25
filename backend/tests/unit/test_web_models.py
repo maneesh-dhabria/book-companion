@@ -32,16 +32,12 @@ def test_reading_preset_instantiation():
         font_size_px=16,
         line_spacing=1.6,
         content_width_px=720,
-        is_system=False,
-        is_active=False,
     )
     assert preset.name == "Test"
     assert preset.font_family == "Georgia"
     assert preset.font_size_px == 16
     assert preset.line_spacing == 1.6
     assert preset.content_width_px == 720
-    assert preset.is_system is False
-    assert preset.is_active is False
 
 
 def test_ai_thread_creation():

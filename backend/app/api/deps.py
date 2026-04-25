@@ -49,7 +49,6 @@ def _get_llm_provider(settings: Settings):
         default_model=settings.llm.model,
         default_timeout=settings.llm.timeout_seconds,
         max_budget_usd=settings.llm.max_budget_usd,
-        config_dir=settings.llm.config_dir,
     )
 
 

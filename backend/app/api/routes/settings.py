@@ -3,6 +3,7 @@
 import asyncio
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_settings
@@ -33,8 +34,29 @@ async def patch_settings(
     updates: dict = Body(...),
     svc: SettingsService = Depends(_get_settings_service),
 ):
-    """Partially update application settings. Writes to YAML config."""
-    return svc.update_settings(updates)
+    """Partially update application settings. Writes to YAML config.
+
+    Strict validation (FR-F1.4 / D17): unknown nested keys, type mismatches,
+    or any failure in any field → 400 with a FastAPI-shape ``detail`` array;
+    the on-disk YAML and in-memory state are unchanged.
+    """
+    try:
+        return svc.update_settings(updates)
+    except ValidationError as e:
+        # ValidationError.errors() returns dicts that may contain ctx values
+        # carrying non-JSON-serialisable objects (e.g. ValueError instances).
+        # Strip them so FastAPI can JSON-encode the response cleanly.
+        cleaned = []
+        for err in e.errors():
+            cleaned.append(
+                {
+                    "type": err.get("type"),
+                    "loc": list(err.get("loc", ())),
+                    "msg": err.get("msg"),
+                    "input": err.get("input"),
+                }
+            )
+        raise HTTPException(status_code=400, detail=cleaned) from e
 
 
 @router.get("/database-stats")

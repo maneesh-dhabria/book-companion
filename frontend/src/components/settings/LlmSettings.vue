@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watchEffect } from 'vue'
+
 import { useSettingsStore } from '@/stores/settings'
+import { useUiStore } from '@/stores/ui'
 
 interface ModelOption {
   id: string
@@ -38,27 +40,21 @@ const cliCommand = computed({
   },
 })
 
-const configDir = computed({
-  get: () => settingsStore.settings?.llm?.config_dir ?? '',
-  set: (val: string) => {
-    if (settingsStore.settings?.llm) {
-      settingsStore.settings.llm.config_dir = val || null
-    }
-  },
-})
-
 async function save() {
   saving.value = true
+  const ui = useUiStore()
   try {
     const effectiveModel = useCustom.value ? customModel.value.trim() : modelValue.value
     await settingsStore.saveSettings({
       llm: {
         provider: provider.value,
         cli_command: cliCommand.value,
-        config_dir: configDir.value || null,
         ...(effectiveModel ? { model: effectiveModel } : {}),
-      } as any,
-    })
+      } as Partial<import('@/api/settings').AppSettings['llm']>,
+    } as Partial<import('@/api/settings').AppSettings>)
+    ui.showToast('Settings saved', 'success')
+  } catch (e) {
+    ui.showToast(`Settings save failed: ${(e as Error).message}`, 'error')
   } finally {
     saving.value = false
   }
@@ -183,30 +179,40 @@ onMounted(async () => {
         </p>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >Config Directory (optional)</label
-        >
-        <input
-          v-model="configDir"
-          type="text"
-          placeholder="~/.claude"
-          class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-        />
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Override the CLI config directory (e.g., for using a separate Claude profile).
-        </p>
-      </div>
-
       <div class="flex justify-end">
         <button
+          data-testid="save-llm"
           @click="save"
           :disabled="saving"
-          class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 inline-flex items-center gap-2"
         >
+          <span v-if="saving" class="inline-spinner" aria-hidden="true" />
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.inline-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: inline-spin 0.8s linear infinite;
+}
+@keyframes inline-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inline-spinner {
+    animation: none;
+    border-top-color: rgba(255, 255, 255, 0.85);
+  }
+}
+</style>

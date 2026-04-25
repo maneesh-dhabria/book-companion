@@ -26,13 +26,11 @@ class CodexCLIProvider(LLMProvider):
         default_model: str = "o4-mini",
         default_timeout: int = 300,
         max_budget_usd: float | None = None,
-        config_dir: str | None = None,
     ):
         self.cli_command = cli_command
         self.default_model = default_model
         self.default_timeout = default_timeout
         self.max_budget_usd = max_budget_usd
-        self.config_dir = config_dir
 
     async def generate(
         self,

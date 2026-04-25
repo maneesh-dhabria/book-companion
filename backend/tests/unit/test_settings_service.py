@@ -1,6 +1,8 @@
 """Unit tests for SettingsService."""
 
+import pytest
 import yaml
+from pydantic import ValidationError
 
 from app.config import Settings
 from app.services.settings_service import SettingsService
@@ -59,6 +61,46 @@ def test_update_settings_updates_in_memory(tmp_path):
     svc = SettingsService(settings=settings, config_path=config_path)
     svc.update_settings({"network": {"allow_lan": True}})
     assert settings.network.allow_lan is True
+
+
+def test_get_safe_settings_includes_cli_command(tmp_path):
+    """FR-F1.1 / FR-F1.2: cli_command surfaces in API; config_dir does not."""
+    s = Settings()
+    object.__setattr__(s.llm, "cli_command", "claude-personal")
+    svc = SettingsService(settings=s, config_path=tmp_path / "settings.yaml")
+    data = svc.get_safe_settings()
+    assert data["llm"]["cli_command"] == "claude-personal"
+    assert "config_dir" not in data["llm"]
+
+
+def test_update_settings_round_trips_cli_command(tmp_path):
+    """FR-F1.3: PATCH path persists cli_command and surfaces it back."""
+    config_path = tmp_path / "settings.yaml"
+    settings = Settings()
+    svc = SettingsService(settings=settings, config_path=config_path)
+    svc.update_settings({"llm": {"cli_command": "claude-personal"}})
+    assert settings.llm.cli_command == "claude-personal"
+    with open(config_path) as f:
+        assert yaml.safe_load(f)["llm"]["cli_command"] == "claude-personal"
+
+
+def test_update_settings_rejects_unknown_key(tmp_path):
+    """FR-F1.4 / D17: unknown nested key raises ValidationError; YAML untouched."""
+    cfg = tmp_path / "settings.yaml"
+    svc = SettingsService(settings=Settings(), config_path=cfg)
+    with pytest.raises(ValidationError):
+        svc.update_settings({"llm": {"foo": "bar"}})
+    assert not cfg.exists()
+
+
+def test_update_settings_partial_validity_rejects_all(tmp_path):
+    """FR-F1.4 / D17: partial-bad PATCH rejects whole body; YAML on disk unchanged."""
+    cfg = tmp_path / "settings.yaml"
+    cfg.write_text("llm:\n  cli_command: prior\n")
+    svc = SettingsService(settings=Settings(), config_path=cfg)
+    with pytest.raises(ValidationError):
+        svc.update_settings({"llm": {"cli_command": "new", "timeout_seconds": "bad"}})
+    assert yaml.safe_load(cfg.read_text())["llm"]["cli_command"] == "prior"
 
 
 # --- T8: models.yaml + user settings persistence ---

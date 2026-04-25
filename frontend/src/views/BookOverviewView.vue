@@ -59,6 +59,13 @@
             >
               Read
             </router-link>
+            <SummarizationProgress
+              v-if="book.summary_progress && book.summary_progress.summarizable > 0"
+              :book-id="book.id"
+              :summarized="book.summary_progress.summarized"
+              :total="book.summary_progress.summarizable"
+              :failed-and-pending="book.summary_progress.failed_and_pending"
+            />
           </div>
         </div>
       </header>
@@ -98,6 +105,7 @@ import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
 import TagChip from '@/components/common/TagChip.vue'
 import TagChipInput from '@/components/common/TagChipInput.vue'
 import SuggestedTagsBar from '@/components/book/SuggestedTagsBar.vue'
+import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 
 interface BookTag {
   id: number
@@ -235,9 +243,15 @@ h1 {
   font-size: 0.875rem;
   color: #475569;
 }
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
 .actions .cta {
   display: inline-block;
-  margin-top: 0.5rem;
   padding: 0.45rem 1rem;
   border-radius: 0.25rem;
   background: #4f46e5;

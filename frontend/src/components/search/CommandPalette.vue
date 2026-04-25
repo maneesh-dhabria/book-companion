@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { useDebounceFn } from '@/composables/useDebounceFn'
 import { useSearchStore } from '@/stores/search'
 import { useUiStore } from '@/stores/ui'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 const searchStore = useSearchStore()
 const uiStore = useUiStore()
@@ -10,22 +12,36 @@ const router = useRouter()
 const inputRef = ref<HTMLInputElement | null>(null)
 const debouncing = ref(false)
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-onMounted(() => {
-  inputRef.value?.focus()
-  searchStore.loadRecentSearches()
-})
+// FR-F5.4 / D12: 300ms trailing-edge debounce. The composable cancels on
+// unmount, but since the palette is now `v-show` (FR-F5.1) it never
+// unmounts during normal use — that's the point.
+const debouncedSearch = useDebounceFn(async (q: string) => {
+  await searchStore.doQuickSearch(q)
+  debouncing.value = false
+}, 300)
 
 function handleInput(e: Event) {
   const q = (e.target as HTMLInputElement).value
-  if (debounceTimer) clearTimeout(debounceTimer)
+  searchStore.query = q
   debouncing.value = !!q.trim()
-  debounceTimer = setTimeout(async () => {
-    await searchStore.doQuickSearch(q)
-    debouncing.value = false
-  }, 200)
+  debouncedSearch(q)
 }
+
+// FR-F5.5: every open clears the query and focuses the input.
+watch(
+  () => uiStore.commandPaletteOpen,
+  (open) => {
+    if (!open) return
+    searchStore.query = ''
+    debouncing.value = false
+    void nextTick(() => inputRef.value?.focus())
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
+  searchStore.loadRecentSearches()
+})
 
 const isLoading = computed(() => debouncing.value || searchStore.quickLoading)
 const totalHits = computed(() => {
@@ -65,7 +81,7 @@ function openFullSearch() {
 
 <template>
   <Teleport to="body">
-    <div v-if="uiStore.commandPaletteOpen" class="palette-overlay" @click.self="uiStore.closePalette()">
+    <div v-show="uiStore.commandPaletteOpen" class="palette-overlay" @click.self="uiStore.closePalette()">
       <div class="palette-modal">
         <div class="palette-search">
           <input

@@ -1,20 +1,40 @@
 const BASE_URL = '/api/v1'
 
 class ApiError extends Error {
+  /** Raw detail from the server — array (FastAPI ValidationError),
+   * string, or arbitrary structured object. ``Error.message`` is always
+   * a sensible string regardless of the underlying shape so consumers
+   * that read ``e.message`` (e.g. toast surfaces) get clean output. */
+  public readonly detail: unknown
+
   constructor(
     public status: number,
-    public detail: string,
+    detail: unknown,
     public code: string = 'UNKNOWN',
   ) {
-    super(detail)
+    const message = Array.isArray(detail)
+      ? (detail as Array<{ msg?: string }>)
+          .map((d) => (d?.msg ?? String(d)))
+          .join('; ')
+      : typeof detail === 'string'
+        ? detail
+        : detail === undefined || detail === null
+          ? 'Request failed'
+          : JSON.stringify(detail)
+    super(message)
     this.name = 'ApiError'
+    this.detail = detail
   }
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ detail: response.statusText, code: 'UNKNOWN' }))
-    throw new ApiError(response.status, body.detail || response.statusText, body.code)
+    const body = await response
+      .json()
+      .catch(() => ({ detail: response.statusText, code: 'UNKNOWN' }))
+    // Use ?? rather than || so a legitimate empty-string detail still surfaces
+    // through the ApiError constructor's stringification path.
+    throw new ApiError(response.status, body.detail ?? response.statusText, body.code)
   }
   if (response.status === 204) return undefined as T
   return response.json()

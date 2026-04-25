@@ -6,22 +6,24 @@ from typing import Any
 
 import platformdirs
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DataConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     directory: str = ""  # Computed in Settings.model_post_init if empty
 
 
 class DatabaseConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     url: str = ""  # Computed in Settings.model_post_init if empty
 
 
 class LLMConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     provider: str = "auto"
     cli_command: str = "claude"
-    config_dir: str | None = None  # CLAUDE_CONFIG_DIR override (e.g. ~/.claude-personal)
     model: str = "sonnet"
     quick_summary_model: str = "sonnet"
     timeout_seconds: int = 300
@@ -33,30 +35,36 @@ class LLMConfig(BaseModel):
 
 
 class SummarizationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     default_preset: str = "practitioner_bullets"
     eval_prompt_version: str = "v1"
     min_section_chars: int = 200
 
 
 class EmbeddingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     chunk_size: int = 512
     chunk_overlap: int = 50
 
 
 class SearchConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     rrf_k: int = 60
     default_limit: int = 20
 
 
 class ImageConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     captioning_enabled: bool = True
 
 
 class StorageConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     max_file_size_mb: int = 200
 
 
 class LoggingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     level: str = "INFO"
     log_dir: str = "~/.config/bookcompanion/logs/"
     json_format: bool = True
@@ -64,6 +72,7 @@ class LoggingConfig(BaseModel):
 
 
 class NetworkConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     host: str = "127.0.0.1"
     port: int = 8000
     allow_lan: bool = False
@@ -71,6 +80,7 @@ class NetworkConfig(BaseModel):
 
 
 class WebConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     show_cost_estimates: bool = False
     # Deprecated: no longer honored. Static dir is resolved relative to the `app`
     # package (`app/static/`). Field retained to avoid validation errors for users
@@ -79,6 +89,7 @@ class WebConfig(BaseModel):
 
 
 class BackupConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     directory: str = ""  # Computed in Settings.model_post_init if empty
     frequency: str = "daily"  # hourly, daily, weekly, disabled
     max_backups: int = 5

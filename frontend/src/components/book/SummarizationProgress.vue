@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { useSummarizationJobStore } from '@/stores/summarizationJob'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
-// T31 / FR-F3.2 — tri-state summary progress:
-//   pending      → "{n} sections pending" + Summarize button
-//   failures     → "{k} failed, {n} pending" + Retry button (orange badge)
-//   complete     → green checkmark "All sections summarized"
+import { useSummarizationJobStore } from '@/stores/summarizationJob'
+import { useUiStore } from '@/stores/ui'
+
+// FR-F2.x — tri-state summary progress:
+//   pending  → "{n} sections pending" + Summarize button
+//   failures → "{k} failed, {n} pending" + Retry button (orange badge)
+//   complete → green checkmark "All sections summarized"
+// FR-F2.5: while the POST is in flight (between click and the first SSE
+// event landing) the button shows an inline spinner and is disabled.
 const props = defineProps<{
   bookId: number
   summarized: number
@@ -26,8 +30,22 @@ const state = computed<'pending' | 'failures' | 'complete'>(() => {
   return 'pending'
 })
 
+const starting = ref(false)
+
 async function onClick() {
-  await job.startJob(props.bookId, { scope: state.value === 'failures' ? 'failed' : 'pending' })
+  starting.value = true
+  try {
+    await job.startJob(props.bookId, {
+      scope: state.value === 'failures' ? 'failed' : 'pending',
+    })
+  } catch (e) {
+    useUiStore().showToast(
+      `Couldn't start summarization: ${(e as Error).message}`,
+      'error',
+    )
+  } finally {
+    starting.value = false
+  }
 }
 </script>
 
@@ -42,13 +60,23 @@ async function onClick() {
       <span>
         {{ failed }} failed, {{ pending }} pending ({{ summarized }}/{{ total }} done)
       </span>
-      <button class="btn retry" :disabled="isActive" @click="onClick">
+      <button
+        class="btn retry"
+        :disabled="isActive || starting"
+        @click="onClick"
+      >
+        <span v-if="starting" class="inline-spinner" aria-hidden="true" />
         {{ isActive ? `Retrying… ${summarized}/${total}` : 'Retry failed sections' }}
       </button>
     </template>
     <template v-else>
       <span>{{ summarized }} of {{ total }} sections summarized</span>
-      <button class="btn" :disabled="isActive" @click="onClick">
+      <button
+        class="btn"
+        :disabled="isActive || starting"
+        @click="onClick"
+      >
+        <span v-if="starting" class="inline-spinner" aria-hidden="true" />
         {{ isActive ? `Summarizing… ${summarized}/${total}` : 'Summarize pending sections' }}
       </button>
     </template>
@@ -94,6 +122,9 @@ async function onClick() {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -110,5 +141,28 @@ async function onClick() {
 .btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.inline-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: sp-spin 0.8s linear infinite;
+}
+
+@keyframes sp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inline-spinner {
+    animation: none;
+    border-top-color: rgba(0, 0, 0, 0.55);
+  }
 }
 </style>

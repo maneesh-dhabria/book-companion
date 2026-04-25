@@ -1,12 +1,9 @@
-import {
-  activatePreset,
-  createPreset,
-  deletePreset as deletePresetApi,
-  listPresets,
-} from '@/api/readingPresets'
-import type { ReadingPreset } from '@/types'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+
+import { listPresets } from '@/api/readingPresets'
+import { useUiStore } from '@/stores/ui'
+import type { ReadingPreset } from '@/types'
 
 export interface ReaderSettingsState {
   font_family: string
@@ -26,10 +23,23 @@ const DEFAULT_SETTINGS: ReaderSettingsState = {
 
 export type AnnotationScope = 'current' | 'all'
 
-// v1.5 — browser-local reader chrome: toggles and a single custom slot
-// saved to localStorage. Not persisted server-side (see §11.3 decision).
+// v1.5.1 — appliedPresetKey is the single source of truth for which theme
+// the reader is showing. Format: `system:<id>` or `custom`. Validated on
+// every read so a tampered/garbage value falls back to null safely.
+const APPLIED_LS_KEY = 'bookcompanion.reader-applied.v1'
+const APPLIED_REGEX = /^(system:\d+|custom)$/
 const CHROME_LS_KEY = 'bookcompanion.reader-chrome.v1'
 const CUSTOM_LS_KEY = 'bookcompanion.reader-custom.v1'
+
+// FR-F4.7b / P8: module-level flag so the quota-exceeded toast fires at
+// most once per page load. Reset on hard reload, which matches the user's
+// mental model of "session". Exposed as a setter for test isolation.
+let _quotaToastFired = false
+
+/** Test-only: reset the once-per-session quota-toast guard. */
+export function __resetQuotaToastFlag() {
+  _quotaToastFired = false
+}
 
 interface ReaderChromeState {
   highlightsVisible: boolean
@@ -54,7 +64,7 @@ function persistChrome(state: ReaderChromeState) {
   try {
     window.localStorage.setItem(CHROME_LS_KEY, JSON.stringify(state))
   } catch {
-    /* quota / disabled storage — fall through silently */
+    // quota / disabled storage — fall through silently
   }
 }
 
@@ -87,16 +97,73 @@ function persistCustom(slot: CustomThemeSlot | null) {
     if (slot === null) window.localStorage.removeItem(CUSTOM_LS_KEY)
     else window.localStorage.setItem(CUSTOM_LS_KEY, JSON.stringify(slot))
   } catch {
-    /* ignore */
+    // ignore — caller already showed quota toast
   }
+}
+
+function loadAppliedKey(): string | null {
+  let raw: string | null = null
+  try {
+    raw = window.localStorage.getItem(APPLIED_LS_KEY)
+  } catch {
+    return null
+  }
+  if (!raw) return null
+  if (APPLIED_REGEX.test(raw)) return raw
+  console.warn(`Invalid ${APPLIED_LS_KEY} value: ${raw}; clearing.`)
+  try {
+    window.localStorage.removeItem(APPLIED_LS_KEY)
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function persistAppliedKey(key: string | null) {
+  const ui = useUiStore()
+  try {
+    if (key === null) {
+      window.localStorage.removeItem(APPLIED_LS_KEY)
+    } else {
+      window.localStorage.setItem(APPLIED_LS_KEY, key)
+    }
+  } catch (e) {
+    if (e instanceof DOMException) {
+      if (!_quotaToastFired) {
+        _quotaToastFired = true
+        ui.showToast(
+          "Couldn't save your reader preferences — browser storage may be unavailable.",
+          'error',
+          8000,
+        )
+      }
+    }
+  }
+}
+
+function deriveCustomFromPreset(preset: ReadingPreset): CustomThemeSlot {
+  const themeMap: Record<string, { bg: string; fg: string; accent: string }> = {
+    light: { bg: '#ffffff', fg: '#1f2937', accent: '#2563eb' },
+    sepia: { bg: '#f4ecd8', fg: '#3a2f1d', accent: '#8b5a2b' },
+    dark: { bg: '#1f2937', fg: '#e5e7eb', accent: '#60a5fa' },
+    night: { bg: '#0f172a', fg: '#cbd5e1', accent: '#3b82f6' },
+    paper: { bg: '#fafaf5', fg: '#3a3a3a', accent: '#5b21b6' },
+    contrast: { bg: '#000000', fg: '#ffffff', accent: '#fbbf24' },
+  }
+  const seed = themeMap[preset.theme] ?? themeMap.light
+  return { name: 'Custom', ...seed }
 }
 
 export const useReaderSettingsStore = defineStore('readerSettings', () => {
   const presets = ref<ReadingPreset[]>([])
-  const activePreset = ref<ReadingPreset | null>(null)
+  const appliedPresetKey = ref<string | null>(loadAppliedKey())
   const currentSettings = ref<ReaderSettingsState>({ ...DEFAULT_SETTINGS })
   const loading = ref(false)
   const popoverOpen = ref(false)
+  const editingCustom = ref(false)
+  // FR-F4.7c: per-store-instance flag so the legacy hint is consumed at
+  // most once per session, but a fresh Pinia (e.g. tests) gets a fresh flag.
+  let _legacyHintConsumed = false
 
   const initialChrome = loadChrome()
   const highlightsVisible = ref(initialChrome.highlightsVisible)
@@ -142,7 +209,6 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     '--reader-theme': currentSettings.value.theme,
   }))
 
-  // Apply CSS variables to :root when settings change
   watch(
     currentSettings,
     (settings) => {
@@ -156,30 +222,6 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     { deep: true },
   )
 
-  async function loadPresets() {
-    loading.value = true
-    try {
-      const resp = await listPresets()
-      // FR-F1.1 — defensive normalization: every consumer that runs
-      // ``presets.filter(...)`` (PresetCards.vue, ReadingSettings.vue) must
-      // survive an API that returns null/undefined/non-array `items`.
-      presets.value = Array.isArray(resp?.items) ? resp.items : []
-      const active =
-        presets.value.find((p) => p.id === resp?.default_id) ??
-        presets.value[0] ??
-        null
-      if (active) {
-        activePreset.value = active
-        applySettingsFromPreset(active)
-      }
-    } catch {
-      // Use defaults if API unavailable; ensure presets stays as an array.
-      presets.value = []
-    } finally {
-      loading.value = false
-    }
-  }
-
   function applySettingsFromPreset(preset: ReadingPreset) {
     currentSettings.value = {
       font_family: preset.font_family,
@@ -190,68 +232,171 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     }
   }
 
-  async function applyPreset(id: number) {
+  /** FR-F4.6 / FR-F4.10: apply a system preset by id. No backend call.
+   * Clears any pending custom edit + editingCustom flag. Non-existent ids
+   * are a silent no-op (with console.warn). */
+  function applyPreset(id: number) {
     const preset = presets.value.find((p) => p.id === id)
-    if (!preset) return
-    activePreset.value = preset
+    if (!preset) {
+      console.warn(`applyPreset(${id}): no preset with that id; ignoring.`)
+      return
+    }
+    const key = `system:${id}`
+    appliedPresetKey.value = key
+    persistAppliedKey(key)
     applySettingsFromPreset(preset)
-    await activatePreset(id)
-    // Refresh list to update is_active flags
-    presets.value = (await listPresets()).items
+    pendingCustom.value = null
+    dirty.value = false
+    editingCustom.value = false
   }
 
-  function updateSetting<K extends keyof ReaderSettingsState>(key: K, value: ReaderSettingsState[K]) {
-    currentSettings.value[key] = value
-  }
-
-  async function saveAsPreset(name: string) {
-    const newPreset = await createPreset({
-      name,
-      ...currentSettings.value,
-    })
-    presets.value.push(newPreset)
-    return newPreset
-  }
-
-  async function deleteUserPreset(id: number) {
-    await deletePresetApi(id)
-    presets.value = presets.value.filter((p) => p.id !== id)
-    if (activePreset.value?.id === id) {
-      // Re-fetch the list and pick the new default.
-      const resp = await listPresets()
-      presets.value = resp.items
-      const active = resp.items.find((p) => p.id === resp.default_id) ?? resp.items[0]
-      if (active) {
-        activePreset.value = active
-        applySettingsFromPreset(active)
+  /** FR-F4.8 / FR-F4.8a: apply the Custom slot. If empty, seed it from
+   * the active system preset. If we're already on `custom` but the slot
+   * is empty (corrupted state), recover to Light → presets[0] → null. */
+  function applyCustom() {
+    if (!customTheme.value) {
+      // Corrupted-state recovery (G7/G8 simulation finding).
+      if (appliedPresetKey.value === 'custom') {
+        const light = presets.value.find((p) => p.name === 'Light')
+        const fallback = light ?? presets.value[0]
+        if (fallback) {
+          console.warn(
+            `applyCustom(): empty slot but key=custom — falling back to ${fallback.name}.`,
+          )
+          applyPreset(fallback.id)
+          return
+        }
+        console.warn('applyCustom(): empty slot, key=custom, no fallback presets.')
+        appliedPresetKey.value = null
+        persistAppliedKey(null)
+        return
+      }
+      // Seed from the currently-applied system preset if any.
+      const seedFrom =
+        presets.value.find(
+          (p) => `system:${p.id}` === appliedPresetKey.value,
+        ) ??
+        presets.value.find((p) => p.name === 'Light') ??
+        presets.value[0]
+      if (!seedFrom) {
+        console.warn('applyCustom(): no presets to seed Custom slot from.')
+        return
+      }
+      customTheme.value = deriveCustomFromPreset(seedFrom)
+      persistCustom(customTheme.value)
+    }
+    appliedPresetKey.value = 'custom'
+    persistAppliedKey('custom')
+    // Apply Custom-slot colours into currentSettings (theme stays as a
+    // marker; bg/fg/accent live in customTheme).
+    if (customTheme.value) {
+      currentSettings.value = {
+        ...currentSettings.value,
+        theme: 'custom',
       }
     }
   }
 
+  /** FR-F4.13: PresetCards' pencil + first-click-on-Custom call this. */
+  function openCustomPicker() {
+    popoverOpen.value = true
+    editingCustom.value = true
+    applyCustom()
+  }
+
+  /** FR-F4.7c: read the migration sidecar at most once per device. */
+  async function consumeLegacyActiveHint() {
+    if (appliedPresetKey.value !== null) return
+    try {
+      const resp = await fetch('/api/v1/reading-presets/legacy-active-hint')
+      if (!resp.ok) return
+      const body = (await resp.json()) as { name: string | null }
+      if (!body?.name) return
+      const match = presets.value.find((p) => p.name === body.name)
+      if (match) {
+        applyPreset(match.id)
+      }
+    } catch {
+      // network failure — sidecar will be tried on next launch only if it
+      // wasn't successfully consumed (the backend deletes on first 200).
+    }
+  }
+
+  async function loadPresets() {
+    loading.value = true
+    try {
+      const resp = await listPresets()
+      presets.value = Array.isArray(resp?.items) ? resp.items : []
+
+      // FR-F4.11: if the saved key references a system preset that no
+      // longer exists, fall back to the first available system preset.
+      // For `custom` and missing-slot, recovery is left to the next
+      // explicit applyCustom() call (e.g. on first reader interaction).
+      const key = appliedPresetKey.value
+      if (key && key.startsWith('system:')) {
+        const id = Number(key.slice('system:'.length))
+        const stillExists = presets.value.some((p) => p.id === id)
+        if (!stillExists) {
+          const fallback = presets.value[0]
+          if (fallback) applyPreset(fallback.id)
+          else {
+            appliedPresetKey.value = null
+            persistAppliedKey(null)
+          }
+        } else {
+          // Re-apply the settings so currentSettings reflects the live preset.
+          const preset = presets.value.find((p) => p.id === id)
+          if (preset) applySettingsFromPreset(preset)
+        }
+      }
+    } catch {
+      presets.value = []
+    } finally {
+      loading.value = false
+    }
+
+    // Auto-consume the legacy hint once per session, after the first
+    // successful preset list load. FR-F4.7c.
+    if (!_legacyHintConsumed) {
+      _legacyHintConsumed = true
+      await consumeLegacyActiveHint()
+    }
+  }
+
+  function updateSetting<K extends keyof ReaderSettingsState>(
+    key: K,
+    value: ReaderSettingsState[K],
+  ) {
+    currentSettings.value[key] = value
+  }
+
   async function detectSystemPreference() {
+    if (appliedPresetKey.value !== null) return
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     if (prefersDark) {
       const darkPreset = presets.value.find(
         (p) => p.theme === 'dark' || p.name.toLowerCase().includes('night'),
       )
       if (darkPreset) {
-        await applyPreset(darkPreset.id)
+        applyPreset(darkPreset.id)
       }
     }
   }
 
   return {
     presets,
-    activePreset,
+    appliedPresetKey,
     currentSettings,
     loading,
     popoverOpen,
+    editingCustom,
     cssVariables,
     loadPresets,
     applyPreset,
+    applyCustom,
+    openCustomPicker,
+    consumeLegacyActiveHint,
     updateSetting,
-    saveAsPreset,
-    deletePreset: deleteUserPreset,
     detectSystemPreference,
     // v1.5 reader chrome
     highlightsVisible,
