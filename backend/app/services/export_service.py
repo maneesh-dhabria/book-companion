@@ -1,6 +1,7 @@
 """Export service -- JSON and Markdown export for books and library."""
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,36 @@ from app.exceptions import BookCompanionError
 
 class ExportError(BookCompanionError):
     """Export-related errors."""
+
+
+_MD_IMG_RE = re.compile(r'!\[([^\]]*)\]\(/api/v1/images/\d+(?:\s+"[^"]*")?\)')
+_HTML_IMG_RE = re.compile(
+    r'<img\s+[^>]*src=["\']/api/v1/images/\d+["\'][^>]*?>',
+    re.IGNORECASE,
+)
+_ALT_ATTR_RE = re.compile(r'alt=["\']([^"\']*)["\']', re.IGNORECASE)
+
+
+def _sanitize_image_urls(text: str) -> str:
+    """Replace in-app image references with portable [Image: alt] placeholders.
+
+    Targets two patterns (per spec FR-B5):
+      1. Markdown image: ![alt](/api/v1/images/{id}) optionally with " title"
+      2. HTML <img src="/api/v1/images/{id}" alt="...">
+    """
+
+    def _md_repl(m: re.Match) -> str:
+        alt = (m.group(1) or "").strip()
+        return f"[Image: {alt}]" if alt else "[Image]"
+
+    def _html_repl(m: re.Match) -> str:
+        alt_match = _ALT_ATTR_RE.search(m.group(0))
+        alt = alt_match.group(1).strip() if alt_match else ""
+        return f"[Image: {alt}]" if alt else "[Image]"
+
+    out = _MD_IMG_RE.sub(_md_repl, text)
+    out = _HTML_IMG_RE.sub(_html_repl, out)
+    return out
 
 
 @dataclass(frozen=True)
