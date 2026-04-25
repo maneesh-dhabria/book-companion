@@ -1,6 +1,21 @@
 import pytest
 
-from app.services.export_service import ExportSelection, _sanitize_image_urls
+from app.services.export_service import (
+    ExportSelection,
+    ExportService,
+    _sanitize_image_urls,
+)
+
+
+def _book_data(title="Test Book", authors=None, summary=None, sections=None):
+    return {
+        "id": 1,
+        "title": title,
+        "authors": authors if authors is not None else ["Test Author"],
+        "quick_summary": summary,
+        "sections": sections or [],
+        "annotations": [],
+    }
 
 
 class TestExportSelection:
@@ -65,3 +80,144 @@ class TestSanitizeImageUrls:
     def test_zero_substring_invariant(self):
         src = '![x](/api/v1/images/1) <img src="/api/v1/images/2"/> ![](/api/v1/images/3 "t")'
         assert "/api/v1/images/" not in _sanitize_image_urls(src)
+
+
+class TestRenderSummaryMarkdownFrontMatter:
+    @pytest.mark.asyncio
+    async def test_single_author_front_matter(self, db_session):
+        svc = ExportService(db_session)
+        body, is_empty = await svc._render_summary_markdown(
+            _book_data(title="The Art of War", authors=["Sun Tzu"], summary=None),
+            ExportSelection(),
+        )
+        assert body.startswith("# The Art of War\n")
+        assert "**Author:** Sun Tzu" in body
+        assert "**Authors:**" not in body
+        assert "**Exported:** " in body
+        assert is_empty is True
+
+    @pytest.mark.asyncio
+    async def test_multi_author(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(authors=["A", "B", "C"]), ExportSelection()
+        )
+        assert "**Authors:** A, B, C" in body
+
+    @pytest.mark.asyncio
+    async def test_zero_authors(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(authors=[]), ExportSelection()
+        )
+        assert "**Author:** Unknown" in body
+
+    @pytest.mark.asyncio
+    async def test_book_summary_renders_under_front_matter(self, db_session):
+        svc = ExportService(db_session)
+        body, is_empty = await svc._render_summary_markdown(
+            _book_data(summary="The book is about strategy."),
+            ExportSelection(),
+        )
+        assert "The book is about strategy." in body
+        assert is_empty is False
+
+    @pytest.mark.asyncio
+    async def test_book_summary_skipped_when_toggle_off(self, db_session):
+        svc = ExportService(db_session)
+        body, is_empty = await svc._render_summary_markdown(
+            _book_data(summary="Strategy stuff"),
+            ExportSelection(include_book_summary=False),
+        )
+        assert "Strategy stuff" not in body
+        assert is_empty is True
+
+    @pytest.mark.asyncio
+    async def test_sections_render_with_h2(self, db_session):
+        sections = [
+            {"id": 10, "title": "Chapter 1", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "Chapter 1 content."},
+            {"id": 11, "title": "Chapter 2", "order_index": 1, "depth": 0,
+             "has_summary": True, "summary_md": "Chapter 2 content."},
+        ]
+        svc = ExportService(db_session)
+        body, is_empty = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "## Chapter 1" in body
+        assert "## Chapter 2" in body
+        assert "Chapter 1 content." in body
+        assert "Chapter 2 content." in body
+        assert is_empty is False
+
+    @pytest.mark.asyncio
+    async def test_sections_without_summary_skipped(self, db_session):
+        sections = [
+            {"id": 10, "title": "Pending", "order_index": 0, "depth": 0,
+             "has_summary": False, "summary_md": None},
+            {"id": 11, "title": "Done", "order_index": 1, "depth": 0,
+             "has_summary": True, "summary_md": "Real content."},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "## Pending" not in body
+        assert "## Done" in body
+
+    @pytest.mark.asyncio
+    async def test_excluded_section_skipped(self, db_session):
+        sections = [
+            {"id": 10, "title": "Keep", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "K"},
+            {"id": 11, "title": "Drop", "order_index": 1, "depth": 0,
+             "has_summary": True, "summary_md": "D"},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections),
+            ExportSelection(exclude_section_ids=frozenset({11})),
+        )
+        assert "## Keep" in body
+        assert "## Drop" not in body
+
+    @pytest.mark.asyncio
+    async def test_image_sanitization_applies_to_section_summary(self, db_session):
+        sections = [
+            {"id": 10, "title": "Ch", "order_index": 0, "depth": 0,
+             "has_summary": True,
+             "summary_md": "See ![figure](/api/v1/images/3) below."},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "[Image: figure]" in body
+        assert "/api/v1/images/" not in body
+
+    @pytest.mark.asyncio
+    async def test_image_sanitization_applies_to_book_summary(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(summary="Chart ![alt](/api/v1/images/9) is here."),
+            ExportSelection(),
+        )
+        assert "[Image: alt]" in body
+        assert "/api/v1/images/" not in body
+
+    @pytest.mark.asyncio
+    async def test_emptiness_tuple_invariant(self, db_session):
+        svc = ExportService(db_session)
+        _, is_empty = await svc._render_summary_markdown(
+            _book_data(summary="x", sections=[
+                {"id": 1, "title": "S", "order_index": 0, "depth": 0,
+                 "has_summary": True, "summary_md": "y"}
+            ]),
+            ExportSelection(
+                include_book_summary=False,
+                include_toc=False,
+                include_annotations=False,
+                exclude_section_ids=frozenset({1}),
+            ),
+        )
+        assert is_empty is True
