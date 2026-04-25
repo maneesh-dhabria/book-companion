@@ -72,6 +72,8 @@
 | | Render via shared service | FR-B1 | ✓ |
 | | File or stdout output | FR-C2 | ✓ |
 | S5 (zero summaries) | UI buttons disabled | FR-F3 | ✓ |
+| S5b (book has no sections at all — Spec E12) | Customize section list shows placeholder "No sections found" | FR-F7 | ✓ |
+| | Export still works (front matter + optional book summary) | FR-B6 + FR-B11 | ✓ |
 | | Customize remains enabled | D6, FR-F3 | ✓ |
 | | Server emits front-matter-only | FR-B11 | ✓ |
 | | TOC heading omitted | FR-B6 step 4 (post-G12) | ✓ |
@@ -436,4 +438,4 @@ No new Open Questions surfaced by simulation — all gaps resolved via patches o
 
 | Loop | Findings | Changes Made |
 |------|----------|-------------|
-| (TBD) | | |
+| 1 | (a) Scenario completeness — Spec E12 ("book has no sections at all") was implicitly covered via S5 + S12 but not explicitly traced. Cosmetic. (b) All 5 review checks otherwise passed: bucket completeness ✓, cross-reference (forward + reverse) ✓, Gap Register integrity ✓, high-severity coverage ✓. | Added S5b row to §3 Coverage Matrix tracing spec E12 to FR-F7 (modal placeholder) + FR-B6/FR-B11 (front-matter export still works). No new gaps surfaced. |
