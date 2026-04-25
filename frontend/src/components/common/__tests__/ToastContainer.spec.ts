@@ -46,4 +46,12 @@ describe('ToastContainer', () => {
     expect(ui.toasts.find((t) => t.message === 't0')).toBeUndefined()
     expect(ui.toasts.find((t) => t.message === 't5')).toBeDefined()
   })
+
+  // FR-F13 regression: aria-live region must be present so screen readers
+  // announce toasts emitted by useUiStore().showToast.
+  it('renders aria-live=polite region', () => {
+    const w = mount(ToastContainer)
+    const region = w.find('.toast-stack')
+    expect(region.attributes('aria-live')).toBe('polite')
+  })
 })
