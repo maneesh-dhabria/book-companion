@@ -38,4 +38,17 @@ describe('BackupSettings', () => {
     const w = mount(BackupSettings)
     expect(w.find('div.toast').exists()).toBe(false)
   })
+
+  // FR-F11 cleanup: dropdown removed; single JSON button
+  it('does not render a format selector dropdown', () => {
+    const w = mount(BackupSettings)
+    expect(w.find('[data-testid="export-format-select"]').exists()).toBe(false)
+  })
+
+  it('renders a single button labeled "Export library (JSON)"', () => {
+    const w = mount(BackupSettings)
+    const btn = w.find('[data-testid="export-library-btn"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toMatch(/Export library \(JSON\)/)
+  })
 })

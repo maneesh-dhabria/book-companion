@@ -14,12 +14,13 @@ async def test_export_library_json(client):
 
 
 @pytest.mark.asyncio
-async def test_export_library_markdown(client):
-    """Library export returns valid markdown."""
+async def test_export_library_markdown_returns_410(client):
+    """Library Markdown export was removed in v1.6 -- returns 410 Gone."""
     resp = await client.get("/api/v1/export/library?format=markdown")
-    assert resp.status_code == 200
-    assert "text/markdown" in resp.headers["content-type"]
-    assert "# Book Companion Library Export" in resp.text
+    assert resp.status_code == 410
+    body = resp.json()
+    assert "removed in v1.6" in body["detail"]
+    assert "format=json" in body["detail"]
 
 
 @pytest.mark.asyncio

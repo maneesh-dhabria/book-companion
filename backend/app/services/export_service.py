@@ -1,6 +1,9 @@
 """Export service -- JSON and Markdown export for books and library."""
 
 import json
+import re
+from dataclasses import dataclass, field
+from datetime import date as _date
 from datetime import datetime
 from pathlib import Path
 
@@ -12,15 +15,70 @@ from app.db.models import (
     Book,
     BookSection,
     Concept,
+    ContentType,
     ExternalReference,
 )
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.summary_repo import SummaryRepository
 from app.exceptions import BookCompanionError
+from app.services.slug import gfm_slug
 
 
 class ExportError(BookCompanionError):
     """Export-related errors."""
+
+
+_BLOCK_TRIGGER_LINE_RE = re.compile(r"^(\s*)([>#\-*+]|\d+\.)")
+
+
+def _escape_block_triggers(text: str) -> str:
+    """Collapse newlines so block-level triggers cannot start a new line."""
+    return text.replace("\r\n", " ").replace("\n", " ")
+
+
+def _escape_at_line_start(s: str) -> str:
+    """Escape if the string begins with a block-level markdown trigger."""
+    return _BLOCK_TRIGGER_LINE_RE.sub(r"\1\\\2", s)
+
+
+_MD_IMG_RE = re.compile(r'!\[([^\]]*)\]\(/api/v1/images/\d+(?:\s+"[^"]*")?\)')
+_HTML_IMG_RE = re.compile(
+    r'<img\s+[^>]*src=["\']/api/v1/images/\d+["\'][^>]*?>',
+    re.IGNORECASE,
+)
+_ALT_ATTR_RE = re.compile(r'alt=["\']([^"\']*)["\']', re.IGNORECASE)
+
+
+def _sanitize_image_urls(text: str) -> str:
+    """Replace in-app image references with portable [Image: alt] placeholders.
+
+    Targets two patterns (per spec FR-B5):
+      1. Markdown image: ![alt](/api/v1/images/{id}) optionally with " title"
+      2. HTML <img src="/api/v1/images/{id}" alt="...">
+    """
+
+    def _md_repl(m: re.Match) -> str:
+        alt = (m.group(1) or "").strip()
+        return f"[Image: {alt}]" if alt else "[Image]"
+
+    def _html_repl(m: re.Match) -> str:
+        alt_match = _ALT_ATTR_RE.search(m.group(0))
+        alt = alt_match.group(1).strip() if alt_match else ""
+        return f"[Image: {alt}]" if alt else "[Image]"
+
+    out = _MD_IMG_RE.sub(_md_repl, text)
+    out = _HTML_IMG_RE.sub(_html_repl, out)
+    return out
+
+
+@dataclass(frozen=True)
+class ExportSelection:
+    """Immutable selection passed to the markdown renderer."""
+
+    include_book_summary: bool = True
+    include_toc: bool = True
+    include_annotations: bool = True
+    exclude_section_ids: frozenset[int] = field(default_factory=frozenset)
 
 
 class ExportService:
@@ -42,7 +100,11 @@ class ExportService:
         if fmt == "json":
             content = self._render_json([book_data])
         elif fmt == "markdown":
-            content = self._render_markdown([book_data])
+            book_anns = await self._collect_book_annotations(book)
+            body, _is_empty = await self._render_summary_markdown(
+                book_data, ExportSelection(), book_annotations=book_anns
+            )
+            content = body
         else:
             raise ExportError(f"Unsupported format: {fmt}. Use 'json' or 'markdown'.")
 
@@ -53,23 +115,46 @@ class ExportService:
 
     async def export_library(self, fmt: str = "json", output_path: str | None = None) -> str:
         """Export the entire library in the specified format."""
+        if fmt != "json":
+            raise ExportError(
+                "Library Markdown export was removed in v1.6 -- use --format json "
+                "for full-library backups, or run 'export book' per book."
+            )
         books = await self.book_repo.list_all()
         all_data = []
         for book in books:
             book_data = await self._collect_book_data(book)
             all_data.append(book_data)
 
-        if fmt == "json":
-            content = self._render_json(all_data)
-        elif fmt == "markdown":
-            content = self._render_markdown(all_data)
-        else:
-            raise ExportError(f"Unsupported format: {fmt}. Use 'json' or 'markdown'.")
+        content = self._render_json(all_data)
 
         if output_path:
             Path(output_path).write_text(content, encoding="utf-8")
 
         return content
+
+    async def _collect_book_annotations(self, book: Book) -> list[dict]:
+        """Load annotations whose content_type=BOOK_SUMMARY and content_id=book.id.
+
+        Sibling to _collect_book_data. Kept separate so JSON export remains
+        byte-identical (FR-B3); the markdown render path is the only consumer.
+        """
+        result = await self.session.execute(
+            select(Annotation).where(
+                Annotation.content_type == ContentType.BOOK_SUMMARY,
+                Annotation.content_id == book.id,
+            )
+        )
+        anns = list(result.scalars().all())
+        return [
+            {
+                "id": a.id,
+                "selected_text": a.selected_text or "",
+                "note": a.note or "",
+                "type": a.type.value if a.type else None,
+            }
+            for a in anns
+        ]
 
     async def _collect_book_data(self, book: Book) -> dict:
         """Collect all data for a book into a serializable dict."""
@@ -187,68 +272,136 @@ class ExportService:
             ensure_ascii=False,
         )
 
-    def _render_markdown(self, books_data: list[dict]) -> str:
-        """Render book data as a readable Markdown document."""
-        lines = ["# Book Companion Library Export", ""]
+    async def _render_summary_markdown(
+        self,
+        book_data: dict,
+        selection: ExportSelection,
+        book_annotations: list[dict] | None = None,
+    ) -> tuple[str, bool]:
+        """Render the summaries-focused Markdown shape.
 
-        for book in books_data:
-            authors_str = ", ".join(book["authors"]) if book["authors"] else "Unknown"
-            lines.append(f"## {book['title']}")
-            lines.append(f"**Author(s):** {authors_str}  ")
-            lines.append(f"**Status:** {book.get('status', 'unknown')}  ")
+        Returns (body, is_empty) where is_empty is True iff none of TOC,
+        book-summary, per-section, or notes-footer was emitted (FR-A6).
+        """
+        toc_emitted = False
+        book_summary_emitted = False
+        any_section_emitted = False
+        notes_emitted = False
+        lines: list[str] = []
+
+        # Front matter
+        lines.append(f"# {book_data['title']}")
+        authors = book_data.get("authors") or []
+        if not authors:
+            lines.append("**Author:** Unknown")
+        elif len(authors) == 1:
+            lines.append(f"**Author:** {authors[0]}")
+        else:
+            lines.append(f"**Authors:** {', '.join(authors)}")
+        lines.append(f"**Exported:** {_date.today().isoformat()}")
+        lines.append("")
+
+        rendered_sections = sorted(
+            [
+                s
+                for s in (book_data.get("sections") or [])
+                if s.get("has_summary")
+                and s.get("summary_md")
+                and s["id"] not in selection.exclude_section_ids
+            ],
+            key=lambda s: s["order_index"],
+        )
+
+        # Slug-disambiguation table over rendered_sections
+        slug_table: dict[int, str] = {}
+        slug_counter: dict[str, int] = {}
+        for s in rendered_sections:
+            base = gfm_slug(s["title"]) or f"section-{s['order_index']:03d}"
+            n = slug_counter.get(base, 0)
+            slug_table[s["id"]] = base if n == 0 else f"{base}-{n}"
+            slug_counter[base] = n + 1
+
+        if selection.include_toc and rendered_sections:
+            lines.append("## Table of Contents")
+            for s in rendered_sections:
+                indent = "  " * (s.get("depth", 0) or 0)
+                lines.append(f"{indent}- [{s['title']}](#{slug_table[s['id']]})")
             lines.append("")
+            toc_emitted = True
 
-            # Book summary
-            if book.get("quick_summary"):
-                lines.append("### Quick Summary")
-                lines.append(book["quick_summary"])
-                lines.append("")
+        # Highlights + Notes footer: extended in T6
 
-            # Sections
-            if book.get("sections"):
-                lines.append("### Sections")
-                lines.append("")
-                for section in book["sections"]:
-                    indent = "  " * section.get("depth", 0)
-                    status = "summarized" if section.get("has_summary") else "pending"
-                    lines.append(f"{indent}- **{section['title']}** ({status})")
-                    if section.get("summary_md"):
-                        for line in section["summary_md"].split("\n"):
-                            lines.append(f"{indent}  {line}")
-                lines.append("")
+        summary = book_data.get("quick_summary")
+        if selection.include_book_summary and summary:
+            lines.append(_sanitize_image_urls(summary))
+            lines.append("")
+            book_summary_emitted = True
 
-            # Concepts
-            if book.get("concepts"):
-                lines.append("### Concepts Index")
-                lines.append("")
-                for concept in book["concepts"]:
-                    edited = " (user edited)" if concept.get("user_edited") else ""
-                    lines.append(f"- **{concept['term']}**{edited}: {concept['definition']}")
-                lines.append("")
+        section_anns_by_id: dict[int, list[dict]] = {}
+        if selection.include_annotations:
+            for a in book_data.get("annotations") or []:
+                if a.get("content_type") not in ("section_content", "section_summary"):
+                    continue
+                if not (a.get("selected_text") or "").strip():
+                    continue
+                section_anns_by_id.setdefault(a.get("content_id"), []).append(a)
 
-            # Annotations
-            if book.get("annotations"):
-                lines.append("### Annotations")
-                lines.append("")
-                for ann in book["annotations"]:
-                    ann_type = ann.get("type", "note")
-                    if ann.get("selected_text"):
-                        lines.append(f'- [{ann_type}] "{ann["selected_text"]}"')
-                    if ann.get("note"):
-                        lines.append(f"  Note: {ann['note']}")
+        for s in rendered_sections:
+            lines.append(f"## {s['title']}")
+            lines.append(_sanitize_image_urls(s["summary_md"]))
+            lines.append("")
+            any_section_emitted = True
+
+            section_anns = section_anns_by_id.get(s["id"], [])
+            if section_anns:
+                lines.append("### Highlights")
+                for a in section_anns:
+                    sel = _escape_at_line_start(
+                        _escape_block_triggers(a.get("selected_text") or "")
+                    )
+                    lines.append(f"> {sel}")
+                    note = (a.get("note") or "").strip()
+                    if note:
+                        note_e = _escape_at_line_start(_escape_block_triggers(note))
+                        lines.append(f"> — Note: {note_e}")
                     lines.append("")
 
-            # External references
-            if book.get("external_references"):
-                lines.append("### External References")
+        if selection.include_annotations and book_annotations:
+            rendered_notes: list[str] = []
+            for a in book_annotations:
+                sel = (a.get("selected_text") or "").strip()
+                note = (a.get("note") or "").strip()
+                if sel and note:
+                    sel_e = _escape_at_line_start(_escape_block_triggers(sel))
+                    note_e = _escape_at_line_start(_escape_block_triggers(note))
+                    rendered_notes.append(f'- > "{sel_e}"\n  — {note_e}')
+                elif note:
+                    note_e = _escape_at_line_start(_escape_block_triggers(note))
+                    rendered_notes.append(f"- {note_e}")
+                elif sel:
+                    sel_e = _escape_at_line_start(_escape_block_triggers(sel))
+                    rendered_notes.append(f'- > "{sel_e}"')
+            if rendered_notes:
+                lines.append("## Notes")
+                lines.extend(rendered_notes)
                 lines.append("")
-                for ref in book["external_references"]:
-                    lines.append(f"- [{ref['title']}]({ref['url']}) — {ref['source_name']}")
-                    if ref.get("snippet"):
-                        lines.append(f"  {ref['snippet']}")
-                lines.append("")
+                notes_emitted = True
 
-            lines.append("---")
-            lines.append("")
+        body = "\n".join(lines)
+        is_empty = not (toc_emitted or book_summary_emitted or any_section_emitted or notes_emitted)
+        return body, is_empty
 
-        return "\n".join(lines)
+    async def export_book_markdown(
+        self, book_id: int, selection: ExportSelection
+    ) -> tuple[str, bool]:
+        """Public orchestrator for the new Markdown shape.
+
+        Single call site for HTTP route + CLI. Returns (body, is_empty).
+        Raises ExportError when book is not found (callers translate to 404).
+        """
+        book = await self.book_repo.get_by_id(book_id)
+        if not book:
+            raise ExportError(f"Book {book_id} not found.")
+        book_data = await self._collect_book_data(book)
+        book_anns = await self._collect_book_annotations(book)
+        return await self._render_summary_markdown(book_data, selection, book_annotations=book_anns)

@@ -9,7 +9,6 @@ import { useUiStore } from '@/stores/ui'
 const backups = ref<BackupItem[]>([])
 const creating = ref(false)
 const exporting = ref(false)
-const exportFormat = ref<'json' | 'markdown'>('json')
 
 onMounted(loadBackups)
 
@@ -60,7 +59,7 @@ async function handleDelete(backupId: string) {
 async function handleExportLibrary() {
   exporting.value = true
   try {
-    await exportApi.exportLibrary({ format: exportFormat.value })
+    await exportApi.exportLibrary({ format: 'json' })
   } catch (e: unknown) {
     useUiStore().showToast(`Export failed: ${errorText(e, 'unknown error')}`, 'error')
   } finally {
@@ -122,19 +121,15 @@ function formatSize(bytes: number): string {
     <!-- Export Library -->
     <div class="setting-group">
       <h3 class="group-title">Export Library</h3>
-      <p class="group-description">Export your entire library as JSON or Markdown.</p>
+      <p class="group-description">Export your entire library as JSON.</p>
       <div class="export-controls">
-        <select v-model="exportFormat" class="select-input" data-testid="export-format-select">
-          <option value="json">JSON</option>
-          <option value="markdown">Markdown</option>
-        </select>
         <button
           class="btn-primary"
           :disabled="exporting"
           data-testid="export-library-btn"
           @click="handleExportLibrary"
         >
-          {{ exporting ? 'Exporting...' : 'Export' }}
+          {{ exporting ? 'Exporting...' : 'Export library (JSON)' }}
         </button>
       </div>
     </div>

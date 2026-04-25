@@ -69,6 +69,9 @@ uv run bookcompanion add path/to/book.epub                        # Parse + stor
 uv run bookcompanion summarize <book_id> --preset practitioner_bullets
 uv run bookcompanion search "query"
 uv run bookcompanion list
+uv run bookcompanion export book <id> --format markdown [--no-book-summary] [--no-toc] [--no-annotations] [--exclude-section <id>] -o file.md   # Summaries-focused Markdown export
+
+> **v1.6 deprecation:** `bookcompanion export library --format markdown` was removed. Use `--format json` for full-library backups, or run `export book` per book.
 
 # CLI — Presets & summaries
 uv run bookcompanion preset list                                   # List all presets
@@ -268,7 +271,7 @@ bookcompanion summary list <book_id>          # View summary log
 bookcompanion summary read <book_id>          # Read default book summary
 bookcompanion eval <book_id>                  # View eval assertion results
 bookcompanion search "query"                  # Hybrid search across library
-bookcompanion export book <book_id> --format markdown
+bookcompanion export book <book_id> --format markdown --no-toc -o ~/notes/<slug>.md
 ```
 
 ### Fresh database setup

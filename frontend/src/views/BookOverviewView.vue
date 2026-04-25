@@ -59,6 +59,35 @@
             >
               Read
             </router-link>
+            <button
+              class="cta primary"
+              data-testid="export-summary-btn"
+              :disabled="exportDisabled"
+              :title="disabledTooltip()"
+              :aria-disabled="exportDisabled"
+              @click="onExportClick"
+            >
+              {{ exporting ? 'Exporting…' : 'Export summary' }}
+            </button>
+            <button
+              class="cta primary"
+              data-testid="copy-markdown-btn"
+              :disabled="exportDisabled"
+              :title="disabledTooltip()"
+              :aria-disabled="exportDisabled"
+              @click="onCopyClick"
+            >
+              {{ exporting ? 'Copying…' : 'Copy as Markdown' }}
+            </button>
+            <a
+              class="customize-link"
+              data-testid="customize-export-link"
+              :class="{ disabled: customizeDisabled }"
+              :aria-disabled="customizeDisabled"
+              @click.prevent="customizeDisabled ? null : (showModal = true)"
+            >
+              Customize…
+            </a>
             <SummarizationProgress
               v-if="book.summary_progress && book.summary_progress.summarizable > 0"
               :book-id="book.id"
@@ -67,6 +96,12 @@
               :failed-and-pending="book.summary_progress.failed_and_pending"
             />
           </div>
+          <ExportCustomizeModal
+            v-if="showModal && book"
+            :book-id="bookId"
+            :book="book"
+            @close="showModal = false"
+          />
         </div>
       </header>
 
@@ -106,6 +141,9 @@ import TagChip from '@/components/common/TagChip.vue'
 import TagChipInput from '@/components/common/TagChipInput.vue'
 import SuggestedTagsBar from '@/components/book/SuggestedTagsBar.vue'
 import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
+import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
+import { exportBookSummary } from '@/api/export'
+import { useUiStore } from '@/stores/ui'
 
 interface BookTag {
   id: number
@@ -122,6 +160,118 @@ const defaultSummary = ref<string | null>(null)
 const bookId = computed(() => Number(route.params.id))
 const firstSection = computed(() => (book.value?.sections || [])[0] ?? null)
 const suggestedTags = computed<string[]>(() => book.value?.suggested_tags || [])
+
+const showModal = ref(false)
+const exporting = ref(false)
+const ui = useUiStore()
+
+const isProcessingStatus = computed(
+  () =>
+    !!book.value &&
+    (book.value.status === 'UPLOADING' || book.value.status === 'PARSING'),
+)
+const hasNoSummaries = computed(() => {
+  if (!book.value) return true
+  // Live API exposes default_summary_id; the typed Book interface uses
+  // default_summary?: SummaryBrief. Defensive check for both.
+  const hasBookSummary =
+    !!book.value.default_summary || !!book.value.default_summary_id
+  const hasAnySectionSummary = (book.value.sections || []).some(
+    (s: {
+      has_summary?: boolean
+      default_summary_id?: number | null
+      default_summary?: unknown
+    }) => s.has_summary || s.default_summary_id || s.default_summary,
+  )
+  return !hasBookSummary && !hasAnySectionSummary
+})
+const exportDisabled = computed(
+  () => isProcessingStatus.value || hasNoSummaries.value || exporting.value,
+)
+const customizeDisabled = computed(() => isProcessingStatus.value)
+
+function disabledTooltip(): string {
+  if (isProcessingStatus.value) return 'Book is still being processed.'
+  if (hasNoSummaries.value) return 'Generate a summary first.'
+  return ''
+}
+
+async function onExportClick() {
+  if (exportDisabled.value) return
+  exporting.value = true
+  try {
+    const r = await exportBookSummary(bookId.value)
+    const url = URL.createObjectURL(r.blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = r.filename
+    a.click()
+    URL.revokeObjectURL(url)
+    ui.showToast(
+      r.isEmpty ? 'Summary exported (empty)' : `Summary exported as ${r.filename}`,
+      'success',
+    )
+  } catch {
+    ui.showToast('Export failed -- check your connection.', 'error')
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function onCopyClick() {
+  if (exportDisabled.value) return
+  exporting.value = true
+  const url = `/api/v1/export/book/${bookId.value}?format=markdown`
+  const winClipboardItem = (window as unknown as { ClipboardItem?: typeof ClipboardItem })
+    .ClipboardItem
+  const navClipboardWrite = (
+    navigator.clipboard as unknown as { write?: (items: ClipboardItem[]) => Promise<void> }
+  ).write
+  try {
+    if (navClipboardWrite && winClipboardItem) {
+      let isEmpty = false
+      const fetchPromise = fetch(url).then((r) => {
+        if (!r.ok) throw new Error('fetch failed')
+        isEmpty = r.headers.get('x-empty-export') === 'true'
+        return r.blob()
+      })
+      try {
+        await navigator.clipboard.write([
+          new winClipboardItem({ 'text/plain': fetchPromise }),
+        ])
+        ui.showToast(
+          isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
+          'success',
+        )
+      } catch (err) {
+        if (err instanceof Error && err.message === 'fetch failed') {
+          ui.showToast('Export failed -- check your connection.', 'error')
+        } else {
+          ui.showToast("Couldn't copy -- try Export instead.", 'error')
+        }
+      }
+    } else {
+      const resp = await fetch(url)
+      if (!resp.ok) {
+        ui.showToast('Export failed -- check your connection.', 'error')
+        return
+      }
+      const isEmpty = resp.headers.get('x-empty-export') === 'true'
+      const text = await resp.text()
+      try {
+        await navigator.clipboard.writeText(text)
+        ui.showToast(
+          isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
+          'success',
+        )
+      } catch {
+        ui.showToast("Couldn't copy -- try Export instead.", 'error')
+      }
+    }
+  } finally {
+    exporting.value = false
+  }
+}
 
 async function load() {
   loading.value = true
@@ -285,5 +435,26 @@ h1 {
 .error {
   padding: 2rem;
   text-align: center;
+}
+.actions .cta.primary {
+  background: var(--color-bg-muted, #f3f4f6);
+  color: var(--color-text-primary, #111);
+  border: 1px solid var(--color-border, #d1d5db);
+  cursor: pointer;
+}
+.actions .cta.primary:disabled,
+.actions .cta.primary[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.customize-link {
+  font-size: 0.85rem;
+  text-decoration: underline;
+  color: #4f46e5;
+  cursor: pointer;
+}
+.customize-link.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
