@@ -28,6 +28,19 @@ class ExportError(BookCompanionError):
     """Export-related errors."""
 
 
+_BLOCK_TRIGGER_LINE_RE = re.compile(r"^(\s*)([>#\-*+]|\d+\.)")
+
+
+def _escape_block_triggers(text: str) -> str:
+    """Collapse newlines so block-level triggers cannot start a new line."""
+    return text.replace("\r\n", " ").replace("\n", " ")
+
+
+def _escape_at_line_start(s: str) -> str:
+    """Escape if the string begins with a block-level markdown trigger."""
+    return _BLOCK_TRIGGER_LINE_RE.sub(r"\1\\\2", s)
+
+
 _MD_IMG_RE = re.compile(r'!\[([^\]]*)\]\(/api/v1/images/\d+(?:\s+"[^"]*")?\)')
 _HTML_IMG_RE = re.compile(
     r'<img\s+[^>]*src=["\']/api/v1/images/\d+["\'][^>]*?>',
@@ -324,16 +337,75 @@ class ExportService:
             lines.append("")
             book_summary_emitted = True
 
+        section_anns_by_id: dict[int, list[dict]] = {}
+        if selection.include_annotations:
+            for a in book_data.get("annotations") or []:
+                if a.get("content_type") not in ("section_content", "section_summary"):
+                    continue
+                if not (a.get("selected_text") or "").strip():
+                    continue
+                section_anns_by_id.setdefault(a.get("content_id"), []).append(a)
+
         for s in rendered_sections:
             lines.append(f"## {s['title']}")
             lines.append(_sanitize_image_urls(s["summary_md"]))
             lines.append("")
             any_section_emitted = True
 
+            section_anns = section_anns_by_id.get(s["id"], [])
+            if section_anns:
+                lines.append("### Highlights")
+                for a in section_anns:
+                    sel = _escape_at_line_start(
+                        _escape_block_triggers(a.get("selected_text") or "")
+                    )
+                    lines.append(f"> {sel}")
+                    note = (a.get("note") or "").strip()
+                    if note:
+                        note_e = _escape_at_line_start(_escape_block_triggers(note))
+                        lines.append(f"> — Note: {note_e}")
+                    lines.append("")
+
+        if selection.include_annotations and book_annotations:
+            rendered_notes: list[str] = []
+            for a in book_annotations:
+                sel = (a.get("selected_text") or "").strip()
+                note = (a.get("note") or "").strip()
+                if sel and note:
+                    sel_e = _escape_at_line_start(_escape_block_triggers(sel))
+                    note_e = _escape_at_line_start(_escape_block_triggers(note))
+                    rendered_notes.append(f'- > "{sel_e}"\n  — {note_e}')
+                elif note:
+                    note_e = _escape_at_line_start(_escape_block_triggers(note))
+                    rendered_notes.append(f"- {note_e}")
+                elif sel:
+                    sel_e = _escape_at_line_start(_escape_block_triggers(sel))
+                    rendered_notes.append(f'- > "{sel_e}"')
+            if rendered_notes:
+                lines.append("## Notes")
+                lines.extend(rendered_notes)
+                lines.append("")
+                notes_emitted = True
+
         body = "\n".join(lines)
         is_empty = not (
             toc_emitted or book_summary_emitted or any_section_emitted or notes_emitted
         )
-        # `book_annotations` parameter is read by T6's extension; silence linter.
-        _ = book_annotations
         return body, is_empty
+
+    async def export_book_markdown(
+        self, book_id: int, selection: ExportSelection
+    ) -> tuple[str, bool]:
+        """Public orchestrator for the new Markdown shape.
+
+        Single call site for HTTP route + CLI. Returns (body, is_empty).
+        Raises ExportError when book is not found (callers translate to 404).
+        """
+        book = await self.book_repo.get_by_id(book_id)
+        if not book:
+            raise ExportError(f"Book {book_id} not found.")
+        book_data = await self._collect_book_data(book)
+        book_anns = await self._collect_book_annotations(book)
+        return await self._render_summary_markdown(
+            book_data, selection, book_annotations=book_anns
+        )

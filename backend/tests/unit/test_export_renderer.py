@@ -318,3 +318,185 @@ class TestRenderSummaryMarkdownTOC:
             ExportSelection(include_book_summary=False, include_annotations=False),
         )
         assert is_empty is False
+
+
+class TestRenderSummaryMarkdownAnnotations:
+    def _section(self, id_):
+        return {"id": id_, "title": f"S{id_}", "order_index": id_, "depth": 0,
+                "has_summary": True, "summary_md": "body"}
+
+    @pytest.mark.asyncio
+    async def test_section_highlight_with_note(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
+               "selected_text": "famous quote", "note": "interesting", "type": "highlight"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
+            ExportSelection(),
+        )
+        assert "### Highlights" in body
+        assert "> famous quote" in body
+        assert "> — Note: interesting" in body
+
+    @pytest.mark.asyncio
+    async def test_section_highlight_no_note(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
+               "selected_text": "just a passage", "note": "", "type": "highlight"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
+            ExportSelection(),
+        )
+        assert "> just a passage" in body
+        assert "Note:" not in body
+
+    @pytest.mark.asyncio
+    async def test_section_annotation_empty_selected_text_skipped(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
+               "selected_text": "", "note": "stray note", "type": "note"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
+            ExportSelection(),
+        )
+        assert "### Highlights" not in body
+        assert "stray note" not in body
+
+    @pytest.mark.asyncio
+    async def test_annotations_toggle_off(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
+               "selected_text": "x", "note": "y", "type": "highlight"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
+            ExportSelection(include_annotations=False),
+        )
+        assert "### Highlights" not in body
+
+    @pytest.mark.asyncio
+    async def test_excluded_section_drops_its_annotations(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 5,
+               "selected_text": "should not appear", "note": "", "type": "highlight"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[
+                self._section(1),
+                {"id": 5, "title": "S5", "order_index": 5, "depth": 0,
+                 "has_summary": True, "summary_md": "x"},
+            ]) | {"annotations": [ann]},
+            ExportSelection(exclude_section_ids=frozenset({5})),
+        )
+        assert "should not appear" not in body
+
+    @pytest.mark.asyncio
+    async def test_book_scope_note_in_notes_footer(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(),
+            ExportSelection(),
+            book_annotations=[{"id": 1, "selected_text": "", "note": "freeform reader note", "type": "note"}],
+        )
+        assert "## Notes" in body
+        assert "- freeform reader note" in body
+
+    @pytest.mark.asyncio
+    async def test_book_scope_highlight_with_and_without_note(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(),
+            ExportSelection(),
+            book_annotations=[
+                {"id": 1, "selected_text": "great quote", "note": "with note", "type": "highlight"},
+                {"id": 2, "selected_text": "lone quote", "note": "", "type": "highlight"},
+            ],
+        )
+        assert '- > "great quote"' in body
+        assert "  — with note" in body
+        assert '- > "lone quote"' in body
+
+    @pytest.mark.asyncio
+    async def test_notes_footer_omitted_when_no_book_anns(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(), ExportSelection(), book_annotations=[]
+        )
+        assert "## Notes" not in body
+
+    @pytest.mark.asyncio
+    async def test_book_anns_survive_section_exclusion(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[
+                {"id": 1, "title": "S1", "order_index": 0, "depth": 0,
+                 "has_summary": True, "summary_md": "a"},
+            ]),
+            ExportSelection(exclude_section_ids=frozenset({1})),
+            book_annotations=[{"id": 1, "selected_text": "", "note": "kept",
+                               "type": "note"}],
+        )
+        assert "kept" in body
+
+    @pytest.mark.asyncio
+    async def test_newlines_in_selected_text_collapse_to_space(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
+               "selected_text": "line1\nline2", "note": "", "type": "highlight"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[
+                {"id": 1, "title": "S", "order_index": 0, "depth": 0,
+                 "has_summary": True, "summary_md": "x"},
+            ]) | {"annotations": [ann]},
+            ExportSelection(),
+        )
+        assert "> line1 line2" in body
+        assert "> line1\nline2" not in body
+
+    @pytest.mark.asyncio
+    async def test_block_level_chars_escaped(self, db_session):
+        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
+               "selected_text": "> nested quote attempt", "note": "# heading attempt",
+               "type": "highlight"}
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=[
+                {"id": 1, "title": "S", "order_index": 0, "depth": 0,
+                 "has_summary": True, "summary_md": "x"},
+            ]) | {"annotations": [ann]},
+            ExportSelection(),
+        )
+        assert r"> \> nested quote attempt" in body
+        assert r"\# heading attempt" in body
+
+    @pytest.mark.asyncio
+    async def test_emptiness_with_only_book_notes(self, db_session):
+        svc = ExportService(db_session)
+        _, is_empty = await svc._render_summary_markdown(
+            _book_data(),
+            ExportSelection(include_book_summary=False, include_toc=False),
+            book_annotations=[{"id": 1, "selected_text": "", "note": "x",
+                               "type": "note"}],
+        )
+        assert is_empty is False
+
+
+class TestExportBookMarkdownPublic:
+    @pytest.mark.asyncio
+    async def test_returns_body_and_is_empty(self, db_session):
+        from app.db.models import Book, BookStatus
+        book = Book(
+            title="Pub Test", file_data=b"", file_hash="pub-hash",
+            file_format="epub", file_size_bytes=0, status=BookStatus.COMPLETED,
+        )
+        db_session.add(book)
+        await db_session.commit()
+        svc = ExportService(db_session)
+        body, is_empty = await svc.export_book_markdown(book.id, ExportSelection())
+        assert body.startswith("# Pub Test\n")
+        assert is_empty is True
+
+    @pytest.mark.asyncio
+    async def test_raises_export_error_for_missing_book(self, db_session):
+        from app.services.export_service import ExportError
+        svc = ExportService(db_session)
+        with pytest.raises(ExportError, match="not found"):
+            await svc.export_book_markdown(99999, ExportSelection())
