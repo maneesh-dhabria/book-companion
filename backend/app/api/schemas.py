@@ -445,8 +445,6 @@ class ReadingPresetResponse(BaseModel):
 
     id: int
     name: str
-    is_system: bool
-    is_active: bool
     font_family: str
     font_size_px: int
     line_spacing: float
@@ -457,25 +455,6 @@ class ReadingPresetResponse(BaseModel):
 
 class ReadingPresetListResponse(BaseModel):
     items: list[ReadingPresetResponse]
-    default_id: int | None
-
-
-class ReadingPresetCreateRequest(BaseModel):
-    name: str
-    font_family: str = "Georgia"
-    font_size_px: int = 16
-    line_spacing: float = 1.6
-    content_width_px: int = 720
-    theme: str = "light"
-
-
-class ReadingPresetUpdateRequest(BaseModel):
-    name: str | None = None
-    font_family: str | None = None
-    font_size_px: int | None = None
-    line_spacing: float | None = None
-    content_width_px: int | None = None
-    theme: str | None = None
 
 
 # --- AI Threads ---
