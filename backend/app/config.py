@@ -21,7 +21,6 @@ class DatabaseConfig(BaseModel):
 class LLMConfig(BaseModel):
     provider: str = "auto"
     cli_command: str = "claude"
-    config_dir: str | None = None  # CLAUDE_CONFIG_DIR override (e.g. ~/.claude-personal)
     model: str = "sonnet"
     quick_summary_model: str = "sonnet"
     timeout_seconds: int = 300

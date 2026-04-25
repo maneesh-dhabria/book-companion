@@ -61,6 +61,16 @@ def test_update_settings_updates_in_memory(tmp_path):
     assert settings.network.allow_lan is True
 
 
+def test_get_safe_settings_includes_cli_command(tmp_path):
+    """FR-F1.1 / FR-F1.2: cli_command surfaces in API; config_dir does not."""
+    s = Settings()
+    object.__setattr__(s.llm, "cli_command", "claude-personal")
+    svc = SettingsService(settings=s, config_path=tmp_path / "settings.yaml")
+    data = svc.get_safe_settings()
+    assert data["llm"]["cli_command"] == "claude-personal"
+    assert "config_dir" not in data["llm"]
+
+
 # --- T8: models.yaml + user settings persistence ---
 
 

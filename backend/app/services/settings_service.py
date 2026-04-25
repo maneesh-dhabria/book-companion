@@ -125,6 +125,7 @@ class SettingsService:
             },
             "llm": {
                 "provider": self.settings.llm.provider,
+                "cli_command": self.settings.llm.cli_command,
                 "model": self.settings.llm.model,
                 "timeout_seconds": self.settings.llm.timeout_seconds,
                 "max_retries": self.settings.llm.max_retries,
