@@ -219,6 +219,7 @@ Factory: app/services/summarizer/__init__.py
 17. **Deterministic assertions skip LLM**: `reasonable_length`, `has_key_concepts`, `image_refs_preserved` use pure code checks. Their `EvalTrace` has `model_used="deterministic"`, `prompt_sent=None`.
 18. **Vite proxy**: In dev, the frontend proxies `/api` requests to `localhost:8000`. In production (single Python process), FastAPI serves the built SPA from `./static/`.
 19. **Backup file format**: Backups are `library-{YYYYMMDD_HHMMSS}.db` (direct SQLite file copies). The backup route serves them with `application/octet-stream`. Restore validates SQLite header before overwriting.
+20. **In-app image URLs use absolute path scheme**: `Summary.summary_md` and `BookSection.content_md` reference images via `/api/v1/images/{id}` (per `backend/app/services/parser/image_url_rewrite.py:63-96`), NOT a custom `image://N` scheme — older docs may say otherwise. Any code that emits content for use OUTSIDE the app (Markdown export, share-to-clipboard, render-to-PDF, etc.) must sanitize these references; otherwise external viewers show broken images.
 
 ## Extended Docs
 
