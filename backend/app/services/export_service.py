@@ -1,6 +1,7 @@
 """Export service -- JSON and Markdown export for books and library."""
 
 import json
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from app.db.models import (
     Book,
     BookSection,
     Concept,
+    ContentType,
     ExternalReference,
 )
 from app.db.repositories.book_repo import BookRepository
@@ -21,6 +23,16 @@ from app.exceptions import BookCompanionError
 
 class ExportError(BookCompanionError):
     """Export-related errors."""
+
+
+@dataclass(frozen=True)
+class ExportSelection:
+    """Immutable selection passed to the markdown renderer."""
+
+    include_book_summary: bool = True
+    include_toc: bool = True
+    include_annotations: bool = True
+    exclude_section_ids: frozenset[int] = field(default_factory=frozenset)
 
 
 class ExportService:
@@ -70,6 +82,29 @@ class ExportService:
             Path(output_path).write_text(content, encoding="utf-8")
 
         return content
+
+    async def _collect_book_annotations(self, book: Book) -> list[dict]:
+        """Load annotations whose content_type=BOOK_SUMMARY and content_id=book.id.
+
+        Sibling to _collect_book_data. Kept separate so JSON export remains
+        byte-identical (FR-B3); the markdown render path is the only consumer.
+        """
+        result = await self.session.execute(
+            select(Annotation).where(
+                Annotation.content_type == ContentType.BOOK_SUMMARY,
+                Annotation.content_id == book.id,
+            )
+        )
+        anns = list(result.scalars().all())
+        return [
+            {
+                "id": a.id,
+                "selected_text": a.selected_text or "",
+                "note": a.note or "",
+                "type": a.type.value if a.type else None,
+            }
+            for a in anns
+        ]
 
     async def _collect_book_data(self, book: Book) -> dict:
         """Collect all data for a book into a serializable dict."""
