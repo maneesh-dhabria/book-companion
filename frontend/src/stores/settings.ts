@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore('settings', () => {
       settings.value = await settingsApi.updateSettings(updates)
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'Failed to save settings'
+      throw e
     }
   }
 
