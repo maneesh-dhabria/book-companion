@@ -1,4 +1,5 @@
 """Integration tests for the new GET /api/v1/export/book/{id}?format=markdown shape."""
+
 from datetime import date
 
 import pytest
@@ -114,9 +115,7 @@ async def test_x_empty_export_true_when_all_excluded(client, db_session):
 
 async def test_invalid_exclude_section_returns_400(client, db_session):
     bid, _ = await _seed_book_with_summary(db_session)
-    resp = await client.get(
-        f"/api/v1/export/book/{bid}?format=markdown&exclude_section=99999"
-    )
+    resp = await client.get(f"/api/v1/export/book/{bid}?format=markdown&exclude_section=99999")
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert "99999" in detail
@@ -125,9 +124,7 @@ async def test_invalid_exclude_section_returns_400(client, db_session):
 
 async def test_selection_querystring_filters_output(client, db_session):
     bid, _ = await _seed_book_with_summary(db_session)
-    resp = await client.get(
-        f"/api/v1/export/book/{bid}?format=markdown&include_toc=false"
-    )
+    resp = await client.get(f"/api/v1/export/book/{bid}?format=markdown&include_toc=false")
     assert resp.status_code == 200
     assert "## Table of Contents" not in resp.text
 

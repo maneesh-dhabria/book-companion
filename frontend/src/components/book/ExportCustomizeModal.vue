@@ -12,6 +12,7 @@ interface SectionLite {
 interface BookForExport {
   id: number
   default_summary_id: number | null
+  default_summary?: unknown
   sections: SectionLite[]
 }
 
@@ -27,7 +28,11 @@ const summarized = computed(() => sections.value.filter((s) => s.has_summary))
 const summarizedCount = computed(() => summarized.value.length)
 const hiddenCount = computed(() => totalCount.value - summarizedCount.value)
 
-const includeBookSummary = ref(props.book.default_summary_id !== null)
+const hasBookSummary = computed(
+  () =>
+    !!props.book.default_summary_id || !!props.book.default_summary,
+)
+const includeBookSummary = ref(hasBookSummary.value)
 const includeToc = ref(true)
 const includeAnnotations = ref(true)
 const checkedSectionIds = ref<Set<number>>(
@@ -173,10 +178,10 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
             type="checkbox"
             data-testid="toggle-book-summary"
             v-model="includeBookSummary"
-            :disabled="book.default_summary_id === null"
+            :disabled="!hasBookSummary"
           />
           Book summary
-          <span v-if="book.default_summary_id === null" class="muted">
+          <span v-if="!hasBookSummary" class="muted">
             -- no book summary yet
           </span>
         </label>

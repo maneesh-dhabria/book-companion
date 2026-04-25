@@ -1,4 +1,5 @@
 """E2E tests for `bookcompanion export` CLI."""
+
 from typer.testing import CliRunner
 
 from app.cli.main import app
@@ -42,3 +43,21 @@ def test_library_json_still_works():
     result = runner.invoke(app, ["export", "library", "--format", "json"])
     # May exit 0 (works on empty DB) or 1 (no DB yet); must not be the format-2 guard.
     assert result.exit_code != 2
+
+
+def test_invalid_exclude_section_error_string_matches_api_contract():
+    """Regression: the CLI's invalid-section message must match the API contract.
+
+    Both surfaces share the substring "does not belong to book" so user-visible
+    tooling and docs can refer to one phrase. The API uses HTTPException(detail=...)
+    in routes/export.py; the CLI uses print_error(...) in export_cmd.py. If either
+    string drifts, this test fails.
+    """
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[2]
+    cli_src = (repo / "app" / "cli" / "commands" / "export_cmd.py").read_text()
+    api_src = (repo / "app" / "api" / "routes" / "export.py").read_text()
+    phrase = "does not belong to book"
+    assert phrase in cli_src, "CLI error string drifted from contract"
+    assert phrase in api_src, "API error string drifted from contract"

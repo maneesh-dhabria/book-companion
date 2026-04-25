@@ -107,9 +107,7 @@ class TestRenderSummaryMarkdownFrontMatter:
     @pytest.mark.asyncio
     async def test_zero_authors(self, db_session):
         svc = ExportService(db_session)
-        body, _ = await svc._render_summary_markdown(
-            _book_data(authors=[]), ExportSelection()
-        )
+        body, _ = await svc._render_summary_markdown(_book_data(authors=[]), ExportSelection())
         assert "**Author:** Unknown" in body
 
     @pytest.mark.asyncio
@@ -135,10 +133,22 @@ class TestRenderSummaryMarkdownFrontMatter:
     @pytest.mark.asyncio
     async def test_sections_render_with_h2(self, db_session):
         sections = [
-            {"id": 10, "title": "Chapter 1", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "Chapter 1 content."},
-            {"id": 11, "title": "Chapter 2", "order_index": 1, "depth": 0,
-             "has_summary": True, "summary_md": "Chapter 2 content."},
+            {
+                "id": 10,
+                "title": "Chapter 1",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "Chapter 1 content.",
+            },
+            {
+                "id": 11,
+                "title": "Chapter 2",
+                "order_index": 1,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "Chapter 2 content.",
+            },
         ]
         svc = ExportService(db_session)
         body, is_empty = await svc._render_summary_markdown(
@@ -153,10 +163,22 @@ class TestRenderSummaryMarkdownFrontMatter:
     @pytest.mark.asyncio
     async def test_sections_without_summary_skipped(self, db_session):
         sections = [
-            {"id": 10, "title": "Pending", "order_index": 0, "depth": 0,
-             "has_summary": False, "summary_md": None},
-            {"id": 11, "title": "Done", "order_index": 1, "depth": 0,
-             "has_summary": True, "summary_md": "Real content."},
+            {
+                "id": 10,
+                "title": "Pending",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": False,
+                "summary_md": None,
+            },
+            {
+                "id": 11,
+                "title": "Done",
+                "order_index": 1,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "Real content.",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -168,10 +190,22 @@ class TestRenderSummaryMarkdownFrontMatter:
     @pytest.mark.asyncio
     async def test_excluded_section_skipped(self, db_session):
         sections = [
-            {"id": 10, "title": "Keep", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "K"},
-            {"id": 11, "title": "Drop", "order_index": 1, "depth": 0,
-             "has_summary": True, "summary_md": "D"},
+            {
+                "id": 10,
+                "title": "Keep",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "K",
+            },
+            {
+                "id": 11,
+                "title": "Drop",
+                "order_index": 1,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "D",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -184,9 +218,14 @@ class TestRenderSummaryMarkdownFrontMatter:
     @pytest.mark.asyncio
     async def test_image_sanitization_applies_to_section_summary(self, db_session):
         sections = [
-            {"id": 10, "title": "Ch", "order_index": 0, "depth": 0,
-             "has_summary": True,
-             "summary_md": "See ![figure](/api/v1/images/3) below."},
+            {
+                "id": 10,
+                "title": "Ch",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "See ![figure](/api/v1/images/3) below.",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -209,10 +248,19 @@ class TestRenderSummaryMarkdownFrontMatter:
     async def test_emptiness_tuple_invariant(self, db_session):
         svc = ExportService(db_session)
         _, is_empty = await svc._render_summary_markdown(
-            _book_data(summary="x", sections=[
-                {"id": 1, "title": "S", "order_index": 0, "depth": 0,
-                 "has_summary": True, "summary_md": "y"}
-            ]),
+            _book_data(
+                summary="x",
+                sections=[
+                    {
+                        "id": 1,
+                        "title": "S",
+                        "order_index": 0,
+                        "depth": 0,
+                        "has_summary": True,
+                        "summary_md": "y",
+                    }
+                ],
+            ),
             ExportSelection(
                 include_book_summary=False,
                 include_toc=False,
@@ -227,10 +275,22 @@ class TestRenderSummaryMarkdownTOC:
     @pytest.mark.asyncio
     async def test_toc_emitted_with_anchors(self, db_session):
         sections = [
-            {"id": 1, "title": "Chapter 1", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "x"},
-            {"id": 2, "title": "Chapter 2", "order_index": 1, "depth": 0,
-             "has_summary": True, "summary_md": "y"},
+            {
+                "id": 1,
+                "title": "Chapter 1",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "x",
+            },
+            {
+                "id": 2,
+                "title": "Chapter 2",
+                "order_index": 1,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "y",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -243,10 +303,22 @@ class TestRenderSummaryMarkdownTOC:
     @pytest.mark.asyncio
     async def test_toc_indents_by_depth(self, db_session):
         sections = [
-            {"id": 1, "title": "Part 1", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "a"},
-            {"id": 2, "title": "Sub", "order_index": 1, "depth": 1,
-             "has_summary": True, "summary_md": "b"},
+            {
+                "id": 1,
+                "title": "Part 1",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "a",
+            },
+            {
+                "id": 2,
+                "title": "Sub",
+                "order_index": 1,
+                "depth": 1,
+                "has_summary": True,
+                "summary_md": "b",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -258,16 +330,20 @@ class TestRenderSummaryMarkdownTOC:
     @pytest.mark.asyncio
     async def test_toc_omitted_when_no_sections_render(self, db_session):
         svc = ExportService(db_session)
-        body, _ = await svc._render_summary_markdown(
-            _book_data(), ExportSelection()
-        )
+        body, _ = await svc._render_summary_markdown(_book_data(), ExportSelection())
         assert "## Table of Contents" not in body
 
     @pytest.mark.asyncio
     async def test_toc_omitted_when_toggle_off(self, db_session):
         sections = [
-            {"id": 1, "title": "Chapter 1", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "x"},
+            {
+                "id": 1,
+                "title": "Chapter 1",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "x",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -279,12 +355,30 @@ class TestRenderSummaryMarkdownTOC:
     @pytest.mark.asyncio
     async def test_duplicate_titles_disambiguate_with_dash_n(self, db_session):
         sections = [
-            {"id": 1, "title": "Intro", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "a"},
-            {"id": 2, "title": "Intro", "order_index": 1, "depth": 0,
-             "has_summary": True, "summary_md": "b"},
-            {"id": 3, "title": "Intro", "order_index": 2, "depth": 0,
-             "has_summary": True, "summary_md": "c"},
+            {
+                "id": 1,
+                "title": "Intro",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "a",
+            },
+            {
+                "id": 2,
+                "title": "Intro",
+                "order_index": 1,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "b",
+            },
+            {
+                "id": 3,
+                "title": "Intro",
+                "order_index": 2,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "c",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -297,8 +391,14 @@ class TestRenderSummaryMarkdownTOC:
     @pytest.mark.asyncio
     async def test_empty_slug_falls_back_to_section_orderindex(self, db_session):
         sections = [
-            {"id": 1, "title": "🚀🎯", "order_index": 7, "depth": 0,
-             "has_summary": True, "summary_md": "a"},
+            {
+                "id": 1,
+                "title": "🚀🎯",
+                "order_index": 7,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "a",
+            },
         ]
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
@@ -309,8 +409,14 @@ class TestRenderSummaryMarkdownTOC:
     @pytest.mark.asyncio
     async def test_toc_emitted_flag_drives_emptiness(self, db_session):
         sections = [
-            {"id": 1, "title": "Ch", "order_index": 0, "depth": 0,
-             "has_summary": True, "summary_md": "a"},
+            {
+                "id": 1,
+                "title": "Ch",
+                "order_index": 0,
+                "depth": 0,
+                "has_summary": True,
+                "summary_md": "a",
+            },
         ]
         svc = ExportService(db_session)
         _, is_empty = await svc._render_summary_markdown(
@@ -322,13 +428,25 @@ class TestRenderSummaryMarkdownTOC:
 
 class TestRenderSummaryMarkdownAnnotations:
     def _section(self, id_):
-        return {"id": id_, "title": f"S{id_}", "order_index": id_, "depth": 0,
-                "has_summary": True, "summary_md": "body"}
+        return {
+            "id": id_,
+            "title": f"S{id_}",
+            "order_index": id_,
+            "depth": 0,
+            "has_summary": True,
+            "summary_md": "body",
+        }
 
     @pytest.mark.asyncio
     async def test_section_highlight_with_note(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
-               "selected_text": "famous quote", "note": "interesting", "type": "highlight"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 1,
+            "selected_text": "famous quote",
+            "note": "interesting",
+            "type": "highlight",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
             _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
@@ -340,8 +458,14 @@ class TestRenderSummaryMarkdownAnnotations:
 
     @pytest.mark.asyncio
     async def test_section_highlight_no_note(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
-               "selected_text": "just a passage", "note": "", "type": "highlight"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 1,
+            "selected_text": "just a passage",
+            "note": "",
+            "type": "highlight",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
             _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
@@ -352,8 +476,14 @@ class TestRenderSummaryMarkdownAnnotations:
 
     @pytest.mark.asyncio
     async def test_section_annotation_empty_selected_text_skipped(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
-               "selected_text": "", "note": "stray note", "type": "note"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 1,
+            "selected_text": "",
+            "note": "stray note",
+            "type": "note",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
             _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
@@ -364,8 +494,14 @@ class TestRenderSummaryMarkdownAnnotations:
 
     @pytest.mark.asyncio
     async def test_annotations_toggle_off(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
-               "selected_text": "x", "note": "y", "type": "highlight"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 1,
+            "selected_text": "x",
+            "note": "y",
+            "type": "highlight",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
             _book_data(sections=[self._section(1)]) | {"annotations": [ann]},
@@ -375,15 +511,30 @@ class TestRenderSummaryMarkdownAnnotations:
 
     @pytest.mark.asyncio
     async def test_excluded_section_drops_its_annotations(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 5,
-               "selected_text": "should not appear", "note": "", "type": "highlight"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 5,
+            "selected_text": "should not appear",
+            "note": "",
+            "type": "highlight",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
-            _book_data(sections=[
-                self._section(1),
-                {"id": 5, "title": "S5", "order_index": 5, "depth": 0,
-                 "has_summary": True, "summary_md": "x"},
-            ]) | {"annotations": [ann]},
+            _book_data(
+                sections=[
+                    self._section(1),
+                    {
+                        "id": 5,
+                        "title": "S5",
+                        "order_index": 5,
+                        "depth": 0,
+                        "has_summary": True,
+                        "summary_md": "x",
+                    },
+                ]
+            )
+            | {"annotations": [ann]},
             ExportSelection(exclude_section_ids=frozenset({5})),
         )
         assert "should not appear" not in body
@@ -395,8 +546,7 @@ class TestRenderSummaryMarkdownAnnotations:
             _book_data(),
             ExportSelection(),
             book_annotations=[
-                {"id": 1, "selected_text": "", "note": "freeform reader note",
-                 "type": "note"}
+                {"id": 1, "selected_text": "", "note": "freeform reader note", "type": "note"}
             ],
         )
         assert "## Notes" in body
@@ -429,26 +579,48 @@ class TestRenderSummaryMarkdownAnnotations:
     async def test_book_anns_survive_section_exclusion(self, db_session):
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
-            _book_data(sections=[
-                {"id": 1, "title": "S1", "order_index": 0, "depth": 0,
-                 "has_summary": True, "summary_md": "a"},
-            ]),
+            _book_data(
+                sections=[
+                    {
+                        "id": 1,
+                        "title": "S1",
+                        "order_index": 0,
+                        "depth": 0,
+                        "has_summary": True,
+                        "summary_md": "a",
+                    },
+                ]
+            ),
             ExportSelection(exclude_section_ids=frozenset({1})),
-            book_annotations=[{"id": 1, "selected_text": "", "note": "kept",
-                               "type": "note"}],
+            book_annotations=[{"id": 1, "selected_text": "", "note": "kept", "type": "note"}],
         )
         assert "kept" in body
 
     @pytest.mark.asyncio
     async def test_newlines_in_selected_text_collapse_to_space(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
-               "selected_text": "line1\nline2", "note": "", "type": "highlight"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 1,
+            "selected_text": "line1\nline2",
+            "note": "",
+            "type": "highlight",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
-            _book_data(sections=[
-                {"id": 1, "title": "S", "order_index": 0, "depth": 0,
-                 "has_summary": True, "summary_md": "x"},
-            ]) | {"annotations": [ann]},
+            _book_data(
+                sections=[
+                    {
+                        "id": 1,
+                        "title": "S",
+                        "order_index": 0,
+                        "depth": 0,
+                        "has_summary": True,
+                        "summary_md": "x",
+                    },
+                ]
+            )
+            | {"annotations": [ann]},
             ExportSelection(),
         )
         assert "> line1 line2" in body
@@ -456,15 +628,29 @@ class TestRenderSummaryMarkdownAnnotations:
 
     @pytest.mark.asyncio
     async def test_block_level_chars_escaped(self, db_session):
-        ann = {"id": 1, "content_type": "section_summary", "content_id": 1,
-               "selected_text": "> nested quote attempt", "note": "# heading attempt",
-               "type": "highlight"}
+        ann = {
+            "id": 1,
+            "content_type": "section_summary",
+            "content_id": 1,
+            "selected_text": "> nested quote attempt",
+            "note": "# heading attempt",
+            "type": "highlight",
+        }
         svc = ExportService(db_session)
         body, _ = await svc._render_summary_markdown(
-            _book_data(sections=[
-                {"id": 1, "title": "S", "order_index": 0, "depth": 0,
-                 "has_summary": True, "summary_md": "x"},
-            ]) | {"annotations": [ann]},
+            _book_data(
+                sections=[
+                    {
+                        "id": 1,
+                        "title": "S",
+                        "order_index": 0,
+                        "depth": 0,
+                        "has_summary": True,
+                        "summary_md": "x",
+                    },
+                ]
+            )
+            | {"annotations": [ann]},
             ExportSelection(),
         )
         assert r"> \> nested quote attempt" in body
@@ -476,8 +662,7 @@ class TestRenderSummaryMarkdownAnnotations:
         _, is_empty = await svc._render_summary_markdown(
             _book_data(),
             ExportSelection(include_book_summary=False, include_toc=False),
-            book_annotations=[{"id": 1, "selected_text": "", "note": "x",
-                               "type": "note"}],
+            book_annotations=[{"id": 1, "selected_text": "", "note": "x", "type": "note"}],
         )
         assert is_empty is False
 
@@ -486,9 +671,14 @@ class TestExportBookMarkdownPublic:
     @pytest.mark.asyncio
     async def test_returns_body_and_is_empty(self, db_session):
         from app.db.models import Book, BookStatus
+
         book = Book(
-            title="Pub Test", file_data=b"", file_hash="pub-hash",
-            file_format="epub", file_size_bytes=0, status=BookStatus.COMPLETED,
+            title="Pub Test",
+            file_data=b"",
+            file_hash="pub-hash",
+            file_format="epub",
+            file_size_bytes=0,
+            status=BookStatus.COMPLETED,
         )
         db_session.add(book)
         await db_session.commit()
@@ -500,6 +690,7 @@ class TestExportBookMarkdownPublic:
     @pytest.mark.asyncio
     async def test_raises_export_error_for_missing_book(self, db_session):
         from app.services.export_service import ExportError
+
         svc = ExportService(db_session)
         with pytest.raises(ExportError, match="not found"):
             await svc.export_book_markdown(99999, ExportSelection())
