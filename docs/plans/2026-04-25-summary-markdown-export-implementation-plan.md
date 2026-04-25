@@ -2583,6 +2583,15 @@ If T8 (library-markdown 410) ships before the frontend BackupSettings cleanup (T
   }
 
   async function onCopy() {
+    // NOTE: Modal Copy uses the legacy writeText path (await fetch → writeText)
+    // rather than the ClipboardItem-with-promise pattern used by the page-level
+    // Copy button (T12). Rationale: the modal's click→await→writeText chain is
+    // already short (one await on exportBookSummary), and the modal Copy is the
+    // less common entry. Safari's user-gesture-chain rule may still reject; the
+    // existing toast error path covers that. Safari users who hit it should
+    // prefer the page-level Copy button (T12 uses ClipboardItem). If Safari
+    // friction becomes real, factor `copyMarkdown(bookId, selection?)` into
+    // `frontend/src/api/export.ts` and call it from both surfaces.
     exporting.value = true
     try {
       const r = await exportBookSummary(props.bookId, buildSelection())
