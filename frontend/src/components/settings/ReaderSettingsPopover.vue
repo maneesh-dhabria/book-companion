@@ -1,20 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import PresetCards from './PresetCards.vue'
 import StickySaveBar from '@/components/common/StickySaveBar.vue'
 import ContrastBadge from '@/components/common/ContrastBadge.vue'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
-import { computed, ref } from 'vue'
 
 const store = useReaderSettingsStore()
-const savePresetName = ref('')
-const showSaveInput = ref(false)
 
 const fonts = ['Georgia', 'Inter', 'Merriweather', 'Fira Code', 'Lora', 'Source Serif Pro']
 
-// T24 / FR-B1.x — six shipped theme presets with a curated bg/fg/accent.
-// These live next to the popover so the picker UI can render cards without
-// reaching into the preset DB. The "Custom" slot is per-device and lives
-// in the store (see readerSettings.customTheme / pendingCustom).
+// FR-B1.x — six shipped theme labels. The 6-card picker stays here as a
+// secondary surface alongside <PresetCards>; clicks resolve to
+// store.applyPreset(matchByName.id) so this surface and PresetCards
+// agree on the same appliedPresetKey state machine.
 interface ThemePreset {
   id: string
   label: string
@@ -35,8 +34,6 @@ const shippedThemes: ThemePreset[] = [
 const bgPalette = ['#ffffff', '#f4ecd8', '#0b1020', '#000000', '#fafaf6', '#fef3c7', '#ecfdf5']
 const fgPalette = ['#111827', '#3a2e1a', '#e5e7eb', '#cbd5e1', '#1f2937', '#000000', '#f8fafc']
 
-// Seed pending custom from the saved slot when the user clicks "Custom".
-const editingCustom = ref(false)
 const activeCustomBg = computed(() =>
   store.pendingCustom?.bg || store.customTheme?.bg || '#ffffff',
 )
@@ -47,16 +44,22 @@ const activeCustomAccent = computed(() =>
   store.pendingCustom?.accent || store.customTheme?.accent || '#4f46e5',
 )
 
-function applyShippedTheme(preset: ThemePreset) {
-  editingCustom.value = false
-  store.updateSetting('theme', preset.id)
-  store.discardCustom()
+function isThemeActive(t: ThemePreset): boolean {
+  const match = store.presets.find((p) => p.name.toLowerCase() === t.label.toLowerCase())
+  return match ? store.appliedPresetKey === `system:${match.id}` : false
 }
 
-function openCustom() {
-  editingCustom.value = true
-  const base = store.customTheme || { name: 'Custom', bg: '#ffffff', fg: '#111827', accent: '#4f46e5' }
-  store.stageCustom({ ...base })
+function applyShippedTheme(preset: ThemePreset) {
+  const match = store.presets.find(
+    (p) => p.name.toLowerCase() === preset.label.toLowerCase(),
+  )
+  if (!match) {
+    console.warn(`No preset named "${preset.label}" — popover theme click ignored`)
+    return
+  }
+  store.editingCustom = false
+  store.applyPreset(match.id)
+  store.discardCustom()
 }
 
 function stagePatch(patch: Partial<{ bg: string; fg: string; accent: string }>) {
@@ -71,25 +74,21 @@ function stagePatch(patch: Partial<{ bg: string; fg: string; accent: string }>) 
 
 function commitCustom() {
   store.saveCustom()
-  // Apply as theme immediately so the reader reflects the saved colours.
-  store.updateSetting('theme', 'custom')
+  store.applyCustom()
+  store.editingCustom = false
 }
 
 function revertCustom() {
   store.discardCustom()
-  editingCustom.value = false
+  store.editingCustom = false
 }
 
-function adjustValue(key: 'font_size_px' | 'line_spacing' | 'content_width_px', delta: number) {
+function adjustValue(
+  key: 'font_size_px' | 'line_spacing' | 'content_width_px',
+  delta: number,
+) {
   const current = store.currentSettings[key]
   store.updateSetting(key, Number(current) + delta)
-}
-
-async function savePreset() {
-  if (!savePresetName.value.trim()) return
-  await store.saveAsPreset(savePresetName.value.trim())
-  savePresetName.value = ''
-  showSaveInput.value = false
 }
 </script>
 
@@ -111,34 +110,18 @@ async function savePreset() {
           :key="t.id"
           type="button"
           class="theme-card"
-          :class="{
-            active: store.currentSettings.theme === t.id && !editingCustom,
-          }"
+          :class="{ active: isThemeActive(t) }"
           :style="{ background: t.bg, color: t.fg, borderColor: t.accent }"
           @click="applyShippedTheme(t)"
         >
           <span class="theme-card-label">{{ t.label }}</span>
           <span class="theme-card-sample">Aa</span>
         </button>
-        <button
-          type="button"
-          class="theme-card custom"
-          :class="{ active: editingCustom || store.currentSettings.theme === 'custom' }"
-          :style="{
-            background: activeCustomBg,
-            color: activeCustomFg,
-            borderColor: activeCustomAccent,
-          }"
-          @click="openCustom"
-        >
-          <span class="theme-card-label">Custom…</span>
-          <span class="theme-card-sample">Aa</span>
-        </button>
       </div>
     </div>
 
     <!-- FR-B2 — bg/fg/accent colour palettes, visible only while editing Custom -->
-    <div v-if="editingCustom" class="settings-section custom-editor">
+    <div v-if="store.editingCustom" class="settings-section custom-editor">
       <label class="setting-label">Background</label>
       <div class="swatch-row">
         <button
@@ -253,24 +236,8 @@ async function savePreset() {
       </div>
     </div>
 
-    <div class="settings-footer">
-      <template v-if="!showSaveInput">
-        <button class="save-btn" @click="showSaveInput = true">Save as Preset</button>
-      </template>
-      <template v-else>
-        <input
-          v-model="savePresetName"
-          placeholder="Preset name"
-          class="save-input"
-          @keyup.enter="savePreset"
-        />
-        <button class="save-btn" @click="savePreset">Save</button>
-        <button class="cancel-btn" @click="showSaveInput = false">Cancel</button>
-      </template>
-    </div>
-
     <StickySaveBar
-      v-if="editingCustom"
+      v-if="store.editingCustom"
       :dirty="store.dirty"
       :can-revert="true"
       @save="commitCustom"
