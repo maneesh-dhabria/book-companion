@@ -21,6 +21,7 @@ from app.db.models import (
 from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.summary_repo import SummaryRepository
 from app.exceptions import BookCompanionError
+from app.services.slug import gfm_slug
 
 
 class ExportError(BookCompanionError):
@@ -298,7 +299,23 @@ class ExportService:
             key=lambda s: s["order_index"],
         )
 
-        # TOC + slug-disambiguation: extended in T5
+        # Slug-disambiguation table over rendered_sections
+        slug_table: dict[int, str] = {}
+        slug_counter: dict[str, int] = {}
+        for s in rendered_sections:
+            base = gfm_slug(s["title"]) or f"section-{s['order_index']:03d}"
+            n = slug_counter.get(base, 0)
+            slug_table[s["id"]] = base if n == 0 else f"{base}-{n}"
+            slug_counter[base] = n + 1
+
+        if selection.include_toc and rendered_sections:
+            lines.append("## Table of Contents")
+            for s in rendered_sections:
+                indent = "  " * (s.get("depth", 0) or 0)
+                lines.append(f"{indent}- [{s['title']}](#{slug_table[s['id']]})")
+            lines.append("")
+            toc_emitted = True
+
         # Highlights + Notes footer: extended in T6
 
         summary = book_data.get("quick_summary")

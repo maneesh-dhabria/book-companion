@@ -221,3 +221,100 @@ class TestRenderSummaryMarkdownFrontMatter:
             ),
         )
         assert is_empty is True
+
+
+class TestRenderSummaryMarkdownTOC:
+    @pytest.mark.asyncio
+    async def test_toc_emitted_with_anchors(self, db_session):
+        sections = [
+            {"id": 1, "title": "Chapter 1", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "x"},
+            {"id": 2, "title": "Chapter 2", "order_index": 1, "depth": 0,
+             "has_summary": True, "summary_md": "y"},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "## Table of Contents" in body
+        assert "- [Chapter 1](#chapter-1)" in body
+        assert "- [Chapter 2](#chapter-2)" in body
+
+    @pytest.mark.asyncio
+    async def test_toc_indents_by_depth(self, db_session):
+        sections = [
+            {"id": 1, "title": "Part 1", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "a"},
+            {"id": 2, "title": "Sub", "order_index": 1, "depth": 1,
+             "has_summary": True, "summary_md": "b"},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "- [Part 1](#part-1)" in body
+        assert "  - [Sub](#sub)" in body
+
+    @pytest.mark.asyncio
+    async def test_toc_omitted_when_no_sections_render(self, db_session):
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(), ExportSelection()
+        )
+        assert "## Table of Contents" not in body
+
+    @pytest.mark.asyncio
+    async def test_toc_omitted_when_toggle_off(self, db_session):
+        sections = [
+            {"id": 1, "title": "Chapter 1", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "x"},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection(include_toc=False)
+        )
+        assert "## Table of Contents" not in body
+        assert "## Chapter 1" in body
+
+    @pytest.mark.asyncio
+    async def test_duplicate_titles_disambiguate_with_dash_n(self, db_session):
+        sections = [
+            {"id": 1, "title": "Intro", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "a"},
+            {"id": 2, "title": "Intro", "order_index": 1, "depth": 0,
+             "has_summary": True, "summary_md": "b"},
+            {"id": 3, "title": "Intro", "order_index": 2, "depth": 0,
+             "has_summary": True, "summary_md": "c"},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "(#intro)" in body
+        assert "(#intro-1)" in body
+        assert "(#intro-2)" in body
+
+    @pytest.mark.asyncio
+    async def test_empty_slug_falls_back_to_section_orderindex(self, db_session):
+        sections = [
+            {"id": 1, "title": "🚀🎯", "order_index": 7, "depth": 0,
+             "has_summary": True, "summary_md": "a"},
+        ]
+        svc = ExportService(db_session)
+        body, _ = await svc._render_summary_markdown(
+            _book_data(sections=sections), ExportSelection()
+        )
+        assert "[🚀🎯](#section-007)" in body
+
+    @pytest.mark.asyncio
+    async def test_toc_emitted_flag_drives_emptiness(self, db_session):
+        sections = [
+            {"id": 1, "title": "Ch", "order_index": 0, "depth": 0,
+             "has_summary": True, "summary_md": "a"},
+        ]
+        svc = ExportService(db_session)
+        _, is_empty = await svc._render_summary_markdown(
+            _book_data(sections=sections),
+            ExportSelection(include_book_summary=False, include_annotations=False),
+        )
+        assert is_empty is False
