@@ -40,8 +40,9 @@ async def export_book(
         False, "--no-annotations",
         help="Exclude all highlights and notes (markdown only).",
     ),
-    exclude_section: list[int] = typer.Option(
-        None, "--exclude-section",
+    exclude_section: list[int] = typer.Option(  # noqa: B008
+        None,
+        "--exclude-section",
         help="Exclude a section by ID (repeatable; markdown only).",
     ),
 ):
