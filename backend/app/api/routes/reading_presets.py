@@ -6,6 +6,7 @@ mutation surface is the v1_5_1 Alembic migration. Frontend reads via
 ``GET /legacy-active-hint`` (one-shot, deletes the sidecar on first read).
 """
 
+import contextlib
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -44,10 +45,8 @@ async def get_legacy_active_hint(request: Request):
     if not path.exists():
         return {"name": None}
     name = path.read_text().strip()
-    try:
+    # If we can't delete it, the next read will return the same name —
+    # acceptable degradation; data dir is single-user single-process.
+    with contextlib.suppress(OSError):
         path.unlink()
-    except OSError:
-        # If we can't delete it, the next read will return the same name —
-        # acceptable degradation; data dir is single-user single-process.
-        pass
     return {"name": name or None}

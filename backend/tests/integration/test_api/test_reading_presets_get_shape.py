@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
+import pytest  # noqa: F401  -- pytest discovery via decorator namespace
 
 _SEED_PRESETS = [
     ("Light", "light"),

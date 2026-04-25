@@ -16,7 +16,6 @@ from typing import Any
 import structlog
 import yaml
 from platformdirs import user_config_dir
-from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -154,7 +153,10 @@ class SettingsService:
         # 1. Validate every section in the patch BEFORE any disk write.
         #    Run all sections so we get one ValidationError covering all bad
         #    fields rather than failing on the first.
-        validated_sections: dict[str, BaseModel] = {}
+        # Each value is a validated section submodel (LLMConfig, etc.).
+        # Type left untyped here to keep the runtime light — the dict is
+        # only consumed in this method and the per-section types differ.
+        validated_sections: dict = {}
         errors: list[dict[str, Any]] = []
         for section_name, section_values in updates.items():
             section_obj = getattr(self.settings, section_name, None)
@@ -217,7 +219,7 @@ class SettingsService:
         for section_name, section_values in updates.items():
             live = getattr(self.settings, section_name)
             fresh = validated_sections[section_name]
-            for key in section_values.keys():
+            for key in section_values:
                 object.__setattr__(live, key, getattr(fresh, key))
 
         return self.get_safe_settings()
