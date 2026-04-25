@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-25 — Summary Markdown Export (v1.6)
+
+- New on the book detail page: **Export summary**, **Copy as Markdown**, and **Customize…** actions next to **Read**. One-click downloads a portable Markdown file (`<slug>-summary-YYYYMMDD.md`); Copy writes the same bytes to the clipboard. Customize opens a modal with toggles for Book summary, Table of contents, Highlights & notes, and per-section selection (tri-state master toggle, "N of M sections summarized" footer, sections without summaries hidden).
+- The CLI gains four new flags on `export book`: `--no-book-summary`, `--no-toc`, `--no-annotations`, and `--exclude-section <id>` (repeatable). Combining any of them with `--format json` exits status 2 — JSON exports remain full-fidelity. Invalid `--exclude-section <id>` exits 1 with `Error: section <id> does not belong to book <id>.`
+- The Markdown export shape changed: front matter (title, author(s), exported date) → optional anchored Table of Contents → optional book summary → per-section H2 with annotations rendered inline → optional `## Notes` footer for book-scope notes. In-app image URLs (`/api/v1/images/{id}`) are rewritten to `[Image: <alt>]` placeholders so the file renders cleanly in Obsidian, GitHub web preview, and VS Code preview.
+- TOC anchors follow GitHub-flavored Markdown rules (Unicode-aware; duplicate slugs disambiguated `bare → -1 → -2`); filenames are ASCII-only with a `book-<id>-summary-<date>.md` fallback for non-ASCII titles.
+- **Breaking**: library-level Markdown export is removed. `bookcompanion export library --format markdown` exits status 2; `GET /api/v1/export/library?format=markdown` returns `410 Gone`. Use `--format json` for full-library backups, or `export book` per book.
+- **Breaking**: the Settings → Backup & Export library-export dropdown is replaced with a single `Export library (JSON)` button — JSON is now the only supported library export.
+- New response headers on `GET /api/v1/export/book/{id}?format=markdown`: `Cache-Control: private, max-age=0` and `X-Empty-Export: true|false` so the UI can pick the right toast variant.
+- Toast outlet (`ToastContainer`) now mounts in `AppShell` with `aria-live=polite` and per-toast `role=status`. Every export action confirms with a toast — success ("Summary exported as <filename>"), empty ("Summary exported (empty)"), copy success, network failure, or clipboard permission failure.
+
+**References:** [requirements](requirements/2026-04-25-summary-markdown-export.md), [spec](specs/2026-04-25-summary-markdown-export-spec.md), [plan](plans/2026-04-25-summary-markdown-export-implementation-plan.md)
+
 ## 2026-04-25 — V1.5 Reader UX Polish Followups (v1.5.1)
 
 - Settings save now shows a global toast top-right (success or error) instead of leaving you to wonder whether the PATCH landed; the Save button shows an inline spinner while in flight.
