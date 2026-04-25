@@ -308,3 +308,5 @@ If the MCP browser is already in use (error: `Browser is already in use for .../
 - After merging to main, run `/changelog` to record user-facing changes
 
 + SQLAlchemy rollback expires all ORM objects in the session even with `expire_on_commit=False`. When iterating a pre-fetched list after rollback, re-issue the SELECT to refresh identity-mapped objects. See `summarizer_service.py` rollback branch for the pattern.
+
++ `.pmos/settings.yaml` says `docs_path: .pmos`, but the observed convention in this repo is to put pipeline artifacts under `docs/` (`docs/requirements/`, `docs/specs/`, `docs/plans/`, `docs/simulations/`, `docs/audits/`, `docs/changelog.md`, `docs/session-log.md`). When pipeline skills (/requirements, /spec, /plan, /verify, etc.) read settings.yaml they may try to write under `.pmos/` — follow the observed `docs/` convention and write alongside existing siblings instead. Update settings.yaml's `docs_path` to `docs` if you want to align the setting with the convention.
