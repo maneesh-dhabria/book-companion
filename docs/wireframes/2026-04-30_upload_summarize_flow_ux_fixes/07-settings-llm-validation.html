@@ -79,8 +79,9 @@
         <input id="profile" value="~/.claude-personal" placeholder="~/.claude or leave blank for default">
         <div class="hint">
           Lets you isolate Book Companion's CLI usage from your other projects (separate token budget, history, settings).
-          <br>For <strong>claude</strong>: passed as <code>--config-dir</code>.
-          For <strong>codex</strong>: set as <code>CODEX_HOME</code> env var (codex CLI ≥ <code>0.x</code>).
+          <br>For <strong>claude</strong>: injected as <code>CLAUDE_CONFIG_DIR</code> env var.
+          For <strong>codex</strong>: injected as <code>CODEX_HOME</code> env var.
+          <br>Verified working on claude ≥ 2.1.123 and codex-cli ≥ 0.118.0 (2026-04-30).
         </div>
       </div>
 
@@ -191,8 +192,8 @@
         <label for="profile4">Profile directory <span class="muted" style="font-weight: 400;">(optional)</span></label>
         <input id="profile4" placeholder="~/.codex or leave blank for default">
         <div class="hint">
-          For <strong>codex</strong>, this is set as <code>CODEX_HOME</code> in the subprocess environment.
-          Requires codex CLI version that honors <code>CODEX_HOME</code>; see <a href="#" style="color: var(--accent);">version notes</a>.
+          For <strong>codex</strong>, this is injected as <code>CODEX_HOME</code> in the subprocess environment.
+          Verified working on codex-cli 0.118.0 (2026-04-30 live test).
         </div>
       </div>
       <div class="footer">
@@ -201,7 +202,7 @@
     </div>
   </div>
   <div class="note">
-    <strong>OQ1 / OQ1a.</strong> Whether the Profile field is shown for codex (and whether codex's <code>CODEX_HOME</code> support is reliable enough to expose) is parked for /spec. If codex profile support is dropped, this state hides the Profile field entirely when codex is selected.
+    Both providers use env-var injection for profile isolation (no CLI flags). OQ1 was resolved by empirical test — both <code>CLAUDE_CONFIG_DIR</code> and <code>CODEX_HOME</code> route subprocess sessions into the configured directory cleanly. OQ1a remains: whether to ship a version-floor preflight check or defer.
   </div>
 </div>
 
