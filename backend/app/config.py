@@ -163,16 +163,12 @@ class Settings(BaseSettings):
 
         # Compute data directory default if not set
         if not self.data.directory:
-            object.__setattr__(
-                self.data, "directory", platformdirs.user_data_dir("bookcompanion")
-            )
+            object.__setattr__(self.data, "directory", platformdirs.user_data_dir("bookcompanion"))
 
         # Compute database URL default if not set
         if not self.database.url:
             db_path = Path(self.data.directory) / "library.db"
-            object.__setattr__(
-                self.database, "url", f"sqlite+aiosqlite:///{db_path}"
-            )
+            object.__setattr__(self.database, "url", f"sqlite+aiosqlite:///{db_path}")
 
         # Compute backup directory default if not set
         if not self.backup.directory:

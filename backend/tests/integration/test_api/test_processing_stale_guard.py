@@ -11,7 +11,7 @@ Verifies that:
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -45,7 +45,7 @@ async def _seed_book(app, book_id: int = 1):
 async def test_stale_running_job_is_swept(app, client: AsyncClient):
     await _seed_book(app, book_id=1)
     factory = app.state.session_factory
-    started = datetime.now(timezone.utc) - timedelta(minutes=5)
+    started = datetime.now(UTC) - timedelta(minutes=5)
     async with factory() as session:
         await session.execute(
             text(
@@ -68,9 +68,7 @@ async def test_stale_running_job_is_swept(app, client: AsyncClient):
     async with factory() as session:
         row = (
             await session.execute(
-                text(
-                    "SELECT status, error_message FROM processing_jobs WHERE id = 777"
-                )
+                text("SELECT status, error_message FROM processing_jobs WHERE id = 777")
             )
         ).first()
         assert row is not None
@@ -82,7 +80,7 @@ async def test_stale_running_job_is_swept(app, client: AsyncClient):
 async def test_live_running_job_blocks_with_active_job_payload(app, client: AsyncClient):
     await _seed_book(app, book_id=2)
     factory = app.state.session_factory
-    started = datetime.now(timezone.utc) - timedelta(minutes=1)
+    started = datetime.now(UTC) - timedelta(minutes=1)
     async with factory() as session:
         await session.execute(
             text(

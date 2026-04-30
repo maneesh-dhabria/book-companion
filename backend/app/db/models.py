@@ -243,9 +243,7 @@ class BookSection(Base):
     # the book-detail page can show length without fetching content_md.
     # SQLite's LENGTH() on TEXT counts characters (matches Python ``len()``
     # for UTF-8). COALESCE keeps null content_md → 0 instead of None.
-    content_char_count = column_property(
-        func.coalesce(func.length(content_md), 0), deferred=False
-    )
+    content_char_count = column_property(func.coalesce(func.length(content_md), 0), deferred=False)
 
     __table_args__ = (Index("ix_book_sections_book_id_order", "book_id", "order_index"),)
 
@@ -316,9 +314,7 @@ class ProcessingJob(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    last_event_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     request_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     book: Mapped["Book"] = relationship(back_populates="processing_jobs")
@@ -400,9 +396,7 @@ class Summary(Base):
         ForeignKey("summaries.id", ondelete="SET NULL"), nullable=True
     )
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    is_stale: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("0")
-    )
+    is_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -419,9 +413,7 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(
-        String(200, collation="NOCASE"), nullable=False, unique=True
-    )
+    name: Mapped[str] = mapped_column(String(200, collation="NOCASE"), nullable=False, unique=True)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -568,9 +560,7 @@ class ReadingPreset(Base):
         String(100), default="Georgia", server_default="Georgia"
     )
     font_size_px: Mapped[int] = mapped_column(Integer, default=16, server_default="16")
-    line_spacing: Mapped[float] = mapped_column(
-        sqlalchemy.Float, default=1.6, server_default="1.6"
-    )
+    line_spacing: Mapped[float] = mapped_column(sqlalchemy.Float, default=1.6, server_default="1.6")
     content_width_px: Mapped[int] = mapped_column(Integer, default=720, server_default="720")
     theme: Mapped[str] = mapped_column(String(50), default="light", server_default="light")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -629,9 +619,7 @@ class ReadingState(Base):
     section_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("book_sections.id", ondelete="SET NULL"), nullable=True
     )
-    scroll_position: Mapped[float | None] = mapped_column(
-        sqlalchemy.Float, nullable=True
-    )
+    scroll_position: Mapped[float | None] = mapped_column(sqlalchemy.Float, nullable=True)
     content_mode: Mapped[str] = mapped_column(
         String(20), default="summary", server_default="summary"
     )

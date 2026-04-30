@@ -46,9 +46,7 @@ async def test_section_brief_includes_content_char_count(app, client: AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_section_with_null_content_md_has_zero_char_count(
-    app, client: AsyncClient
-):
+async def test_section_with_null_content_md_has_zero_char_count(app, client: AsyncClient):
     await _seed(app, content_md=None)
     r = await client.get("/api/v1/books/1")
     assert r.status_code == 200, r.text

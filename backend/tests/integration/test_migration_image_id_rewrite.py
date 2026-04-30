@@ -6,9 +6,7 @@ import sqlalchemy as sa
 from alembic.command import downgrade, upgrade
 from alembic.config import Config
 
-ALEMBIC_INI = (
-    Path(__file__).parent.parent.parent / "app" / "migrations" / "alembic.ini"
-)
+ALEMBIC_INI = Path(__file__).parent.parent.parent / "app" / "migrations" / "alembic.ini"
 
 
 def _cfg() -> Config:
@@ -60,9 +58,7 @@ def _seed(engine):
 
 def test_migration_rewrites_legacy_image_refs(tmp_path, monkeypatch):
     db_path = tmp_path / "library.db"
-    monkeypatch.setenv(
-        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
-    )
+    monkeypatch.setenv("BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}")
     cfg = _cfg()
     # Step to the revision before B5 (current head is e0c48efb7afe).
     upgrade(cfg, "0a1b2c3d4e5f")
@@ -73,34 +69,26 @@ def test_migration_rewrites_legacy_image_refs(tmp_path, monkeypatch):
     upgrade(cfg, "head")
 
     with engine.begin() as conn:
-        md = conn.execute(
-            sa.text("SELECT summary_md FROM summaries WHERE id=1")
-        ).scalar_one()
+        md = conn.execute(sa.text("SELECT summary_md FROM summaries WHERE id=1")).scalar_one()
     assert "image:5" not in md
     assert "/api/v1/images/5" in md
 
 
 def test_migration_idempotent(tmp_path, monkeypatch):
     db_path = tmp_path / "library.db"
-    monkeypatch.setenv(
-        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
-    )
+    monkeypatch.setenv("BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}")
     cfg = _cfg()
     upgrade(cfg, "0a1b2c3d4e5f")
     engine = sa.create_engine(f"sqlite:///{db_path}")
     _seed(engine)
     upgrade(cfg, "head")
     with engine.begin() as conn:
-        first = conn.execute(
-            sa.text("SELECT summary_md FROM summaries WHERE id=1")
-        ).scalar_one()
+        first = conn.execute(sa.text("SELECT summary_md FROM summaries WHERE id=1")).scalar_one()
     # Re-running upgrade should be a no-op (already at head; downgrade then upgrade).
     downgrade(cfg, "0a1b2c3d4e5f")
     upgrade(cfg, "head")
     with engine.begin() as conn:
-        second = conn.execute(
-            sa.text("SELECT summary_md FROM summaries WHERE id=1")
-        ).scalar_one()
+        second = conn.execute(sa.text("SELECT summary_md FROM summaries WHERE id=1")).scalar_one()
     assert first == second
     assert "/api/v1/images/5" in second
 
@@ -108,9 +96,7 @@ def test_migration_idempotent(tmp_path, monkeypatch):
 def test_migration_strips_orphan_legacy_refs(tmp_path, monkeypatch):
     """Refs to image_ids not in the book's images table are stripped to [alt](#)."""
     db_path = tmp_path / "library.db"
-    monkeypatch.setenv(
-        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
-    )
+    monkeypatch.setenv("BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}")
     cfg = _cfg()
     upgrade(cfg, "0a1b2c3d4e5f")
     engine = sa.create_engine(f"sqlite:///{db_path}")
@@ -148,8 +134,6 @@ def test_migration_strips_orphan_legacy_refs(tmp_path, monkeypatch):
         )
     upgrade(cfg, "head")
     with engine.begin() as conn:
-        md = conn.execute(
-            sa.text("SELECT summary_md FROM summaries WHERE id=1")
-        ).scalar_one()
+        md = conn.execute(sa.text("SELECT summary_md FROM summaries WHERE id=1")).scalar_one()
     assert "image:99" not in md
     assert "[fig](#)" in md

@@ -82,17 +82,12 @@ def _book_to_response(book: Book) -> dict:
     try:
         from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 
-        summarizable = [
-            s for s in (book.sections or []) if s.section_type in SUMMARIZABLE_TYPES
-        ]
-        summarized_count = sum(
-            1 for s in summarizable if s.default_summary_id is not None
-        )
+        summarizable = [s for s in (book.sections or []) if s.section_type in SUMMARIZABLE_TYPES]
+        summarized_count = sum(1 for s in summarizable if s.default_summary_id is not None)
         failed_count = sum(
             1
             for s in summarizable
-            if s.default_summary_id is None
-            and getattr(s, "last_failure_type", None) is not None
+            if s.default_summary_id is None and getattr(s, "last_failure_type", None) is not None
         )
     except Exception:
         summarizable = []
@@ -283,9 +278,7 @@ async def get_book(
         from app.db.models import Summary
 
         default_summary = (
-            await db.execute(
-                select(Summary).where(Summary.id == book.default_summary_id)
-            )
+            await db.execute(select(Summary).where(Summary.id == book.default_summary_id))
         ).scalar_one_or_none()
         if default_summary is not None:
             book_dict["default_summary"] = {
@@ -314,10 +307,7 @@ async def get_book(
     ).scalar()
     if latest_preset:
         book_dict["last_used_preset"] = latest_preset
-    elif (
-        book_dict.get("default_summary")
-        and book_dict["default_summary"].get("preset_name")
-    ):
+    elif book_dict.get("default_summary") and book_dict["default_summary"].get("preset_name"):
         book_dict["last_used_preset"] = book_dict["default_summary"]["preset_name"]
 
     return BookResponse(**book_dict)

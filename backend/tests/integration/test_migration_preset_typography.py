@@ -6,9 +6,7 @@ import sqlalchemy as sa
 from alembic.command import downgrade, upgrade
 from alembic.config import Config
 
-ALEMBIC_INI = (
-    Path(__file__).parent.parent.parent / "app" / "migrations" / "alembic.ini"
-)
+ALEMBIC_INI = Path(__file__).parent.parent.parent / "app" / "migrations" / "alembic.ini"
 
 
 # Spec §11.3 target values per system preset name.
@@ -39,25 +37,19 @@ def _read_presets(engine) -> dict[str, tuple]:
 
 def test_migration_updates_presets_to_spec_values(tmp_path, monkeypatch):
     db_path = tmp_path / "library.db"
-    monkeypatch.setenv(
-        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
-    )
+    monkeypatch.setenv("BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}")
     cfg = _cfg()
     upgrade(cfg, "head")
 
     engine = sa.create_engine(f"sqlite:///{db_path}")
     by_name = _read_presets(engine)
     for name, expected in EXPECTED.items():
-        assert by_name[name] == expected, (
-            f"{name}: {by_name[name]} != {expected}"
-        )
+        assert by_name[name] == expected, f"{name}: {by_name[name]} != {expected}"
 
 
 def test_migration_idempotent(tmp_path, monkeypatch):
     db_path = tmp_path / "library.db"
-    monkeypatch.setenv(
-        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
-    )
+    monkeypatch.setenv("BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}")
     cfg = _cfg()
     upgrade(cfg, "head")
     engine = sa.create_engine(f"sqlite:///{db_path}")
@@ -73,9 +65,7 @@ def test_migration_idempotent(tmp_path, monkeypatch):
 def test_migration_preserves_user_customizations(tmp_path, monkeypatch):
     """If a user already changed Light away from the legacy tuple, leave it alone."""
     db_path = tmp_path / "library.db"
-    monkeypatch.setenv(
-        "BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}"
-    )
+    monkeypatch.setenv("BOOKCOMPANION_DATABASE__URL", f"sqlite+aiosqlite:///{db_path}")
     cfg = _cfg()
     # Stop just before B8 lands.
     upgrade(cfg, "e0c48efb7afe")  # B5 head, B8 not yet applied

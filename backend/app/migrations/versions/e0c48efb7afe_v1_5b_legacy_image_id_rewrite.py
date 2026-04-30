@@ -35,11 +35,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     conn = op.get_bind()
     rows = conn.execute(
-        sa.text(
-            "SELECT id, summary_md, book_id "
-            "FROM summaries "
-            "WHERE summary_md LIKE '%](image:%'"
-        )
+        sa.text("SELECT id, summary_md, book_id FROM summaries WHERE summary_md LIKE '%](image:%'")
     ).fetchall()
 
     updated = 0

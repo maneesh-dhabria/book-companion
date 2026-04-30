@@ -16,16 +16,12 @@ def test_rewrites_existing_id():
 
 
 def test_orphan_id_strips_to_link_with_alt():
-    out = from_image_id_scheme(
-        "before ![alt](image:99) after", {"a.jpg": 42}, on_missing="strip"
-    )
+    out = from_image_id_scheme("before ![alt](image:99) after", {"a.jpg": 42}, on_missing="strip")
     assert out == "before [alt](#) after"
 
 
 def test_orphan_id_keep_mode_leaves_token():
-    out = from_image_id_scheme(
-        "![alt](image:99)", {"a.jpg": 42}, on_missing="keep"
-    )
+    out = from_image_id_scheme("![alt](image:99)", {"a.jpg": 42}, on_missing="keep")
     assert out == "![alt](image:99)"
 
 

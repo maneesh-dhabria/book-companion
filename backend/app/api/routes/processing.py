@@ -7,6 +7,7 @@ import contextlib
 import json
 import os
 from collections.abc import AsyncGenerator  # noqa: TC003
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, text
@@ -116,7 +117,7 @@ async def start_processing(
     # without requiring `bookcompanion init`). If the row is fresh, return
     # an enriched 409 body with the active_job payload so the UI can deep-
     # link the user to /jobs/{id}.
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from app.services.summarizer.orphan_sweep import is_stale
 
@@ -132,7 +133,7 @@ async def start_processing(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         max_age = timedelta(seconds=settings.processing.stale_job_age_seconds)
         if is_stale(existing, now=now, max_age=max_age):
             existing.status = ProcessingJobStatus.FAILED
@@ -191,7 +192,6 @@ async def start_processing(
         )
 
     return ProcessingStartResponse(job_id=job_id)
-
 
 
 @router.get("/api/v1/processing/{job_id}/stream")

@@ -10,12 +10,12 @@ from __future__ import annotations
 import os
 import statistics
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from app.services.summarizer.orphan_sweep import is_stale
 
-NOW = datetime(2026, 4, 30, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 4, 30, 12, 0, 0, tzinfo=UTC)
 MAX_AGE = timedelta(hours=24)
 
 
@@ -53,10 +53,10 @@ def test_is_fresh_when_pid_alive_and_recent(monkeypatch):
 def test_is_stale_predicate_under_5ms_median(monkeypatch):
     """NFR-03: the predicate itself must be << 5ms median over 1000 calls."""
     monkeypatch.setattr(os, "kill", lambda pid, sig: None)
-    job = _job(os.getpid(), datetime.now(timezone.utc))
+    job = _job(os.getpid(), datetime.now(UTC))
     times = []
     for _ in range(1000):
         s = time.perf_counter_ns()
-        is_stale(job, now=datetime.now(timezone.utc), max_age=MAX_AGE)
+        is_stale(job, now=datetime.now(UTC), max_age=MAX_AGE)
         times.append((time.perf_counter_ns() - s) / 1e6)
     assert statistics.median(times) < 5.0

@@ -99,14 +99,18 @@ def is_stale(job, *, now: datetime, max_age: timedelta) -> bool:
 async def orphan_sweep(db: AsyncSession) -> int:
     """Mark dead RUNNING/PENDING jobs FAILED. Returns the count of sweeps."""
     rows = (
-        await db.execute(
-            sa.select(ProcessingJob).where(
-                ProcessingJob.status.in_(
-                    [ProcessingJobStatus.RUNNING, ProcessingJobStatus.PENDING]
+        (
+            await db.execute(
+                sa.select(ProcessingJob).where(
+                    ProcessingJob.status.in_(
+                        [ProcessingJobStatus.RUNNING, ProcessingJobStatus.PENDING]
+                    )
                 )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     swept = 0
     now = datetime.now(UTC)

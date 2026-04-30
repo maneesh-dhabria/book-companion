@@ -22,9 +22,7 @@ _PLACEHOLDER = re.compile(r"__IMG_PLACEHOLDER__:(.+?)__ENDIMG__")
 # Matches a whole markdown image whose src is a placeholder — used by strip
 # mode to drop the entire `![alt](__IMG_PLACEHOLDER__:fn__ENDIMG__)` when the
 # target filename is unknown.
-_MD_PLACEHOLDER_IMG = re.compile(
-    r"!\[[^\]]*\]\(__IMG_PLACEHOLDER__:(.+?)__ENDIMG__\)"
-)
+_MD_PLACEHOLDER_IMG = re.compile(r"!\[[^\]]*\]\(__IMG_PLACEHOLDER__:(.+?)__ENDIMG__\)")
 # Legacy ![alt](image:NNN) — emitted by older summarizer prompts.
 _LEGACY_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(image:(\d+)\)")
 
