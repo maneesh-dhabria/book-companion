@@ -104,6 +104,54 @@ export const apiClient = {
     })
     return handleResponse<T>(response)
   },
+
+  /** XHR-based upload that emits real progress (FR-F01). The fetch API
+   * exposes no upstream progress events; XHR is the only browser primitive
+   * that does. ``onProgress`` fires with whole-percent values 0..100 while
+   * bytes are flushing; the returned Promise resolves with the parsed JSON
+   * response and rejects with ApiError on non-2xx. Pass ``signal`` to support
+   * cancel via AbortController. */
+  uploadWithProgress<T>(
+    url: string,
+    file: File,
+    onProgress: (pct: number) => void,
+    options?: { fields?: Record<string, string>; signal?: AbortSignal },
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      const formData = new FormData()
+      formData.append('file', file)
+      if (options?.fields) {
+        for (const [k, v] of Object.entries(options.fields)) formData.append(k, v)
+      }
+      xhr.open('POST', `${BASE_URL}${url}`)
+      xhr.upload.onprogress = (e: ProgressEvent) => {
+        if (e.lengthComputable) onProgress(Math.round((100 * e.loaded) / e.total))
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(xhr.responseText ? (JSON.parse(xhr.responseText) as T) : (undefined as T))
+          } catch (err) {
+            reject(new ApiError(xhr.status, `Invalid JSON response: ${String(err)}`, 'PARSE'))
+          }
+          return
+        }
+        let detail: unknown = xhr.responseText
+        try {
+          const body = JSON.parse(xhr.responseText)
+          detail = body?.detail ?? body
+        } catch {
+          // body wasn't JSON — leave as raw text
+        }
+        reject(new ApiError(xhr.status, detail))
+      }
+      xhr.onerror = () => reject(new ApiError(0, 'Network error', 'NETWORK'))
+      xhr.onabort = () => reject(new ApiError(0, 'Cancelled', 'ABORT'))
+      options?.signal?.addEventListener('abort', () => xhr.abort())
+      xhr.send(formData)
+    })
+  },
 }
 
 export { ApiError }
