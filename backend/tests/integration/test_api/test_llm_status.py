@@ -9,11 +9,19 @@ from app.services.llm_preflight import PreflightResult, get_preflight_service
 
 
 @pytest.fixture(autouse=True)
-def _reset_preflight_cache(monkeypatch):
+def _force_auto_provider(app):
     """Force `provider="auto"` so resolution depends on the patched
     `shutil.which`, not whatever the dev's local settings.yaml says.
-    Also clear the in-process preflight cache before and after each test."""
-    monkeypatch.setenv("BOOKCOMPANION_LLM__PROVIDER", "auto")
+
+    Mutates BOTH `app.state.settings` and the module-level `_settings`
+    cache used by `get_settings()` (Depends), since the route reaches
+    settings via the latter.
+    """
+    from app.api import deps as api_deps
+
+    object.__setattr__(app.state.settings.llm, "provider", "auto")
+    if api_deps._settings is not None:
+        object.__setattr__(api_deps._settings.llm, "provider", "auto")
     get_preflight_service().invalidate_cache()
     yield
     get_preflight_service().invalidate_cache()

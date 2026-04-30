@@ -49,6 +49,21 @@ async def start_processing(
         except PresetError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
+    # Preflight gate (FR-B10): block job creation when no usable LLM CLI is
+    # available. Returns 400 with structured payload so the UI can render a
+    # specific message instead of "summarization failed" mid-job.
+    from app.services.llm_preflight import get_preflight_service
+
+    preflight = await get_preflight_service().check(settings.llm.provider)
+    if not preflight.binary_resolved:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "llm_provider_unavailable",
+                "preflight": preflight.model_dump(),
+            },
+        )
+
     # Validate scope + section_id combinations (FR-24, FR-27)
     if body.scope == "section":
         if body.section_id is None:
