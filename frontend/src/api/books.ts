@@ -31,6 +31,16 @@ export function uploadBook(file: File) {
   return apiClient.upload<Book>('/books/upload', file)
 }
 
+export function uploadBookWithProgress(
+  file: File,
+  onProgress: (pct: number) => void,
+  signal?: AbortSignal,
+) {
+  return apiClient.uploadWithProgress<Book>('/books/upload', file, onProgress, {
+    signal,
+  })
+}
+
 export function updateBook(id: number, data: { title?: string }) {
   return apiClient.patch<Book>(`/books/${id}`, data)
 }

@@ -4,11 +4,17 @@ import os
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from app.config import Settings
+from app.config import LLMConfig, Settings
 
-# Path where e2e tests may write config
-_CONFIG_PATH = Path("~/.config/bookcompanion/config.yaml").expanduser()
+# Paths where Settings looks for YAML config (mirrors app.config._load_yaml_config)
+_YAML_PATHS = [
+    Path("~/.config/bookcompanion/settings.yaml").expanduser(),
+    Path("~/.config/bookcompanion/config.yaml").expanduser(),
+    Path("~/.bookcompanion/settings.yaml").expanduser(),
+    Path("~/.bookcompanion/config.yaml").expanduser(),
+]
 
 
 @pytest.fixture(autouse=True)
@@ -20,20 +26,21 @@ def clean_env():
         if key.startswith("BOOKCOMPANION_"):
             saved_vars[key] = os.environ.pop(key)
 
-    # Remove any config file from e2e tests
-    config_backup = None
-    if _CONFIG_PATH.exists():
-        config_backup = _CONFIG_PATH.read_text()
-        _CONFIG_PATH.unlink()
+    # Stash + remove any user YAML configs so default-settings tests are deterministic
+    backups: dict[Path, str] = {}
+    for p in _YAML_PATHS:
+        if p.exists():
+            backups[p] = p.read_text()
+            p.unlink()
 
     yield
 
-    # Restore
+    # Restore env + YAML files
     for key, val in saved_vars.items():
         os.environ[key] = val
-    if config_backup is not None:
-        _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _CONFIG_PATH.write_text(config_backup)
+    for p, content in backups.items():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
 
 
 def test_default_settings():
@@ -45,7 +52,8 @@ def test_default_settings():
     assert "sqlite+aiosqlite" in settings.database.url
     assert "library.db" in settings.database.url
     # LLM config
-    assert settings.llm.cli_command == "claude"
+    assert settings.llm.config_dir is None
+    assert not hasattr(settings.llm, "cli_command")
     assert settings.llm.model == "sonnet"
     assert settings.llm.timeout_seconds == 300
     # Embedding config — no more ollama fields
@@ -103,3 +111,23 @@ def test_config_min_section_chars():
     """V1.2: min_section_chars defaults to 200."""
     settings = Settings()
     assert settings.summarization.min_section_chars == 200
+
+
+def test_llm_config_accepts_config_dir(tmp_path):
+    cfg = LLMConfig(config_dir=tmp_path)
+    assert cfg.config_dir == tmp_path
+
+
+def test_llm_config_config_dir_default_none():
+    cfg = LLMConfig()
+    assert cfg.config_dir is None
+
+
+def test_llm_config_rejects_cli_command():
+    with pytest.raises(ValidationError):
+        LLMConfig(cli_command="claude")
+
+
+def test_llm_config_accepts_path_string():
+    cfg = LLMConfig(config_dir="/tmp/some-claude-config")
+    assert isinstance(cfg.config_dir, Path)

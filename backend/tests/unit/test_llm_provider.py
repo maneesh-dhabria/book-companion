@@ -5,9 +5,17 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.exceptions import SubprocessNotFoundError
 from app.services.summarizer import create_llm_provider, detect_llm_provider
 from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
 from app.services.summarizer.llm_provider import LLMResponse
+
+
+def test_subprocess_not_found_error_uses_binary_param():
+    err = SubprocessNotFoundError(binary="claude")
+    assert err.binary == "claude"
+    assert "claude" in str(err)
+    assert not hasattr(err, "cli_command")
 
 
 def test_llm_response_model():
@@ -18,9 +26,7 @@ def test_llm_response_model():
 
 @pytest.mark.asyncio
 async def test_claude_cli_constructs_correct_args():
-    provider = ClaudeCodeCLIProvider(
-        cli_command="claude", default_model="sonnet", default_timeout=300
-    )
+    provider = ClaudeCodeCLIProvider(default_model="sonnet", default_timeout=300)
     mock_proc = AsyncMock()
     mock_proc.communicate.return_value = (
         json.dumps(
@@ -48,9 +54,7 @@ async def test_claude_cli_constructs_correct_args():
 
 @pytest.mark.asyncio
 async def test_claude_cli_timeout_raises():
-    provider = ClaudeCodeCLIProvider(
-        cli_command="claude", default_model="sonnet", default_timeout=1
-    )
+    provider = ClaudeCodeCLIProvider(default_model="sonnet", default_timeout=1)
     mock_proc = AsyncMock()
     mock_proc.communicate.side_effect = TimeoutError()
     mock_proc.kill = AsyncMock()

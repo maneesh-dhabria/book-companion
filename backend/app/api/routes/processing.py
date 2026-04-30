@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 from collections.abc import AsyncGenerator  # noqa: TC003
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 from sse_starlette.sse import EventSourceResponse
@@ -48,6 +49,21 @@ async def start_processing(
             PresetService().load(body.preset_name)
         except PresetError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    # Preflight gate (FR-B10): block job creation when no usable LLM CLI is
+    # available. Returns 400 with structured payload so the UI can render a
+    # specific message instead of "summarization failed" mid-job.
+    from app.services.llm_preflight import get_preflight_service
+
+    preflight = await get_preflight_service().check(settings.llm.provider)
+    if not preflight.binary_resolved:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "llm_provider_unavailable",
+                "preflight": preflight.model_dump(),
+            },
+        )
 
     # Validate scope + section_id combinations (FR-24, FR-27)
     if body.scope == "section":
@@ -111,11 +127,14 @@ async def start_processing(
         )
 
     # Create processing job
+    from app.services.job_queue_worker import serialize_request_params
+
     job = ProcessingJob(
         book_id=book_id,
         step=ProcessingStep.SUMMARIZE,
         status=ProcessingJobStatus.PENDING,
         pid=os.getpid(),
+        request_params=serialize_request_params(body),
     )
     db.add(job)
     try:
@@ -133,221 +152,15 @@ async def start_processing(
 
     # Get event bus from app state
     event_bus = getattr(request.app.state, "event_bus", None)
-
-    # Launch background task
-    async def _run_processing():
-        from app.db.session import create_session_factory
-
-        session_factory = create_session_factory(settings)
-        async with session_factory() as bg_session:
-            # Update job to running
-            result = await bg_session.execute(
-                select(ProcessingJob).where(ProcessingJob.id == job_id)
-            )
-            bg_job = result.scalar_one()
-            bg_job.status = ProcessingJobStatus.RUNNING
-            await bg_session.commit()
-
-            try:
-                from app.services.summarizer import create_llm_provider, detect_llm_provider
-                from app.services.summarizer.evaluator import EvalService
-                from app.services.summarizer.image_captioner import ImageCaptioner
-                from app.services.summarizer.summarizer_service import SummarizerService
-
-                provider = settings.llm.provider
-                if provider == "auto":
-                    provider = detect_llm_provider()
-
-                llm = create_llm_provider(
-                    provider,
-                    cli_command=settings.llm.cli_command,
-                    default_model=settings.llm.model,
-                    default_timeout=settings.llm.timeout_seconds,
-                    max_budget_usd=settings.llm.max_budget_usd,
-                )
-                if llm is None:
-                    raise RuntimeError(
-                        "No LLM provider available. Install Claude CLI or Codex CLI."
-                    )
-                captioner = (
-                    ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
-                )
-                summarizer = SummarizerService(
-                    db=bg_session, llm=llm, config=settings, captioner=captioner
-                )
-                eval_svc = EvalService(db=bg_session, llm=llm, config=settings)
-
-                def on_section_start(section_id, index, total, section_title):
-                    if event_bus:
-                        asyncio.create_task(
-                            event_bus.publish(
-                                str(job_id),
-                                "section_started",
-                                {
-                                    "section_id": section_id,
-                                    "title": section_title,
-                                    "index": index,
-                                    "total": total,
-                                },
-                            )
-                        )
-
-                def on_section_complete(
-                    section_id, index, total, section_title, elapsed=None, comp=None
-                ):
-                    if event_bus:
-                        asyncio.create_task(
-                            event_bus.publish(
-                                str(job_id),
-                                "section_completed",
-                                {
-                                    "section_id": section_id,
-                                    "title": section_title,
-                                    "index": index,
-                                    "total": total,
-                                    "elapsed_seconds": elapsed,
-                                },
-                            )
-                        )
-
-                def on_section_skip(section_id, index, total, section_title, reason):
-                    if event_bus:
-                        asyncio.create_task(
-                            event_bus.publish(
-                                str(job_id),
-                                "section_skipped",
-                                {
-                                    "section_id": section_id,
-                                    "title": section_title,
-                                    "index": index,
-                                    "total": total,
-                                    "reason": reason,
-                                },
-                            )
-                        )
-
-                def on_section_fail(section_id, index, total, section_title, error):
-                    if event_bus:
-                        # FR-A4.1 / NFR-09 — typed error payload. Accept either
-                        # a typed SummarizationError (preferred) or a plain
-                        # string/exception from legacy call sites.
-                        error_type = getattr(error, "failure_type", None) or "unknown"
-                        message = str(error)
-                        truncated = message[:500] if message else None
-                        asyncio.create_task(
-                            event_bus.publish(
-                                str(job_id),
-                                "section_failed",
-                                {
-                                    "section_id": section_id,
-                                    "title": section_title,
-                                    "index": index,
-                                    "total": total,
-                                    "error": message,  # legacy field — unchanged
-                                    "error_type": error_type,
-                                    "error_message_truncated": truncated,
-                                },
-                            )
-                        )
-
-                def on_section_retry(section_id, index, total, section_title):
-                    if event_bus:
-                        asyncio.create_task(
-                            event_bus.publish(
-                                str(job_id),
-                                "section_retrying",
-                                {
-                                    "section_id": section_id,
-                                    "title": section_title,
-                                    "index": index,
-                                    "total": total,
-                                },
-                            )
-                        )
-
-                # run_eval=True + auto_retry=True means eval runs and failures trigger retry
-                skip_eval = body.skip_eval or not body.run_eval
-                no_retry = not body.auto_retry
-
-                if event_bus:
-                    await event_bus.publish(
-                        str(job_id),
-                        "processing_started",
-                        {
-                            "book_id": book_id,
-                            "job_id": job_id,
-                            "scope": body.scope,
-                        },
-                    )
-
-                result = await summarizer.summarize_book(
-                    book_id,
-                    preset_name=body.preset_name,
-                    scope=body.scope,
-                    section_id=body.section_id,
-                    force=body.force,
-                    skip_eval=skip_eval,
-                    no_retry=no_retry,
-                    eval_service=None if skip_eval else eval_svc,
-                    on_section_start=on_section_start,
-                    on_section_complete=on_section_complete,
-                    on_section_skip=on_section_skip,
-                    on_section_fail=on_section_fail,
-                    on_section_retry=on_section_retry,
-                )
-
-                failed_count = len(result.get("failed", []))
-                completed_count = result.get("completed", 0)
-
-                # If all sections failed and none succeeded, mark job as failed
-                if failed_count > 0 and completed_count == 0:
-                    bg_job.status = ProcessingJobStatus.FAILED
-                    bg_job.error_message = (
-                        f"All {failed_count} sections failed to summarize. "
-                        f"Check logs for details."
-                    )
-                else:
-                    bg_job.status = ProcessingJobStatus.COMPLETED
-                    if failed_count > 0:
-                        bg_job.error_message = (
-                            f"{completed_count} sections succeeded, "
-                            f"{failed_count} failed."
-                        )
-                await bg_session.commit()
-
-                if event_bus:
-                    await event_bus.publish(
-                        str(job_id),
-                        "processing_completed",
-                        {
-                            "book_id": book_id,
-                            "completed": completed_count,
-                            "failed": failed_count,
-                            "skipped": result.get("skipped", 0),
-                            # T15 fills this for book-level jobs; null for
-                            # section-scope runs — field is always present
-                            # so frontend can treat it uniformly.
-                            "book_summary_id": None,
-                        },
-                    )
-                    await event_bus.close(str(job_id))
-
-            except Exception as e:
-                bg_job.status = ProcessingJobStatus.FAILED
-                bg_job.error_message = str(e)
-                await bg_session.commit()
-
-                if event_bus:
-                    await event_bus.publish(
-                        str(job_id),
-                        "processing_failed",
-                        {"book_id": book_id, "error": str(e)},
-                    )
-                    await event_bus.close(str(job_id))
-
-    asyncio.create_task(_run_processing())
+    if event_bus is not None:
+        await event_bus.publish(
+            str(job_id),
+            "job_queued",
+            {"job_id": job_id, "book_id": book_id},
+        )
 
     return ProcessingStartResponse(job_id=job_id)
+
 
 
 @router.get("/api/v1/processing/{job_id}/stream")
@@ -415,24 +228,128 @@ async def get_processing_status(
 @router.post("/api/v1/processing/{job_id}/cancel")
 async def cancel_processing(
     job_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Cancel a processing job."""
+    """Cancel a processing job (FR-B14, FR-B15).
+
+    PENDING → atomic delete. The partial UNIQUE index `one_active_per_book`
+    is freed, so a new submission can take its place immediately.
+
+    RUNNING → set ``cancel_requested=True`` and emit ``job_cancelling``;
+    the queue worker observes the flag between sections, SIGTERMs the
+    active subprocess, and finalizes the job FAILED with reason='cancelled'.
+
+    Already-terminal states (COMPLETED / FAILED) → return ``ALREADY_DONE``.
+    """
+    # Atomic PENDING-cancel: DELETE WHERE status='PENDING' guarantees we
+    # don't race a worker that just promoted the row.
+    deleted = await db.execute(
+        text("DELETE FROM processing_jobs WHERE id = :id AND status = 'PENDING'"),
+        {"id": job_id},
+    )
+    await db.commit()
+    if deleted.rowcount == 1:
+        event_bus = getattr(request.app.state, "event_bus", None)
+        if event_bus is not None:
+            await event_bus.publish(
+                str(job_id),
+                "job_cancelling",
+                {"job_id": job_id, "phase": "pending_removed"},
+            )
+            await event_bus.close(str(job_id))
+        return ProcessingCancelResponse(
+            job_id=job_id,
+            status="PENDING_REMOVED",
+            message="Pending job removed from queue",
+        )
+
+    # Either RUNNING, terminal, or non-existent.
     result = await db.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Processing job not found")
 
     if job.status == ProcessingJobStatus.RUNNING:
-        job.status = ProcessingJobStatus.FAILED
-        job.error_message = "Cancelled by user"
+        job.cancel_requested = True
         await db.commit()
+        event_bus = getattr(request.app.state, "event_bus", None)
+        if event_bus is not None:
+            await event_bus.publish(
+                str(job_id),
+                "job_cancelling",
+                {
+                    "job_id": job.id,
+                    "book_id": job.book_id,
+                    "phase": "running_terminating",
+                },
+            )
+        # FR-B15 — SIGTERM the active subprocess via the running worker.
+        # Snapshot both _active_job_id and _active_provider into local vars
+        # before checking; the worker can clear them between attribute reads
+        # when the job finishes mid-cancel.
+        worker = getattr(request.app.state, "job_queue_worker", None)
+        if worker is not None:
+            active_id = worker._active_job_id
+            active_provider = worker._active_provider
+            if active_id == job_id and active_provider is not None:
+                with contextlib.suppress(Exception):
+                    await active_provider.terminate()
         return ProcessingCancelResponse(
-            job_id=job.id, status="cancelled", message="Processing cancelled"
+            job_id=job.id, status="CANCEL_REQUESTED", message="Cancel requested"
         )
 
     return ProcessingCancelResponse(
         job_id=job.id,
-        status=job.status.value if hasattr(job.status, "value") else str(job.status),
-        message="Job is not running",
+        status="ALREADY_DONE",
+        message=job.status.value if hasattr(job.status, "value") else str(job.status),
     )
+
+
+@router.get("/api/v1/processing/jobs")
+async def list_processing_jobs(
+    status: str = "PENDING,RUNNING",
+    db: AsyncSession = Depends(get_db),
+):
+    """Active-jobs seed endpoint (T13 / FR-B14a).
+
+    Returns active processing jobs ordered by ``created_at ASC`` with a
+    computed ``queue_position`` (0 for RUNNING, 1..N for PENDING). The
+    frontend's ``useJobQueueStore`` hits this on mount to hydrate before
+    the SSE stream connects.
+    """
+    statuses = [s.strip().upper() for s in status.split(",") if s.strip()]
+    if not statuses:
+        statuses = ["PENDING", "RUNNING"]
+
+    rows = (
+        await db.execute(
+            select(ProcessingJob, Book.title)
+            .join(Book, Book.id == ProcessingJob.book_id)
+            .where(ProcessingJob.status.in_(statuses))
+            .order_by(ProcessingJob.created_at.asc())
+        )
+    ).all()
+
+    jobs: list[dict] = []
+    pending_index = 1
+    for job, book_title in rows:
+        is_running = job.status == ProcessingJobStatus.RUNNING
+        queue_position = 0 if is_running else pending_index
+        if not is_running:
+            pending_index += 1
+        jobs.append(
+            {
+                "job_id": job.id,
+                "book_id": job.book_id,
+                "book_title": book_title,
+                "status": job.status.value if hasattr(job.status, "value") else str(job.status),
+                "queue_position": queue_position,
+                "progress": job.progress,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "last_event_at": job.last_event_at.isoformat() if job.last_event_at else None,
+                "cancel_requested": bool(job.cancel_requested),
+            }
+        )
+    return {"jobs": jobs}

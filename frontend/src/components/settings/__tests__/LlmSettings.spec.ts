@@ -11,7 +11,7 @@ function seedSettings() {
   settings.settings = {
     llm: {
       provider: 'auto',
-      cli_command: 'claude',
+      config_dir: null,
       model: 'sonnet',
       timeout_seconds: 300,
       max_retries: 2,
@@ -27,18 +27,44 @@ function seedSettings() {
 describe('LlmSettings', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.spyOn(global, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        providers: { claude: [{ id: 'sonnet', label: 'Sonnet' }] },
-      }),
-    } as Response)
+    // Mock /api/v1/llm/status (called on mount), /api/v1/config/models, and
+    // any other GET. Distinguish by URL.
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('/llm/status') || url.includes('/llm/recheck')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            configured_provider: 'auto',
+            provider: 'claude',
+            preflight: {
+              ok: true,
+              provider: 'claude',
+              binary: 'claude',
+              binary_resolved: true,
+              version: '2.1.123',
+              version_ok: true,
+              reason: null,
+            },
+          }),
+        } as Response
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          providers: { claude: [{ id: 'sonnet', label: 'Sonnet' }] },
+        }),
+      } as Response
+    })
   })
 
-  it('does not render a Config Directory field', () => {
+  it('renders a Config Directory input, not cli_command', () => {
     seedSettings()
     const w = mount(LlmSettings)
-    expect(w.text()).not.toMatch(/Config Directory/i)
+    expect(w.find('[data-testid="config-dir-input"]').exists()).toBe(true)
+    expect(w.text()).not.toMatch(/CLI Command/i)
   })
 
   it('fires success toast on successful save', async () => {

@@ -125,7 +125,11 @@ class SettingsService:
             },
             "llm": {
                 "provider": self.settings.llm.provider,
-                "cli_command": self.settings.llm.cli_command,
+                "config_dir": (
+                    str(self.settings.llm.config_dir)
+                    if self.settings.llm.config_dir
+                    else None
+                ),
                 "model": self.settings.llm.model,
                 "timeout_seconds": self.settings.llm.timeout_seconds,
                 "max_retries": self.settings.llm.max_retries,
@@ -217,6 +221,16 @@ class SettingsService:
             fresh = validated_sections[section_name]
             for key in section_values:
                 object.__setattr__(live, key, getattr(fresh, key))
+
+        # 5. Invalidate the LLM preflight cache so the next status read
+        #    reflects the new provider / config_dir / version-floor outcome
+        #    instead of the previous 60s-cached one (FR-B08a).
+        try:
+            from app.services.llm_preflight import get_preflight_service
+
+            get_preflight_service().invalidate_cache()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("preflight_cache_invalidate_failed", exc_info=True)
 
         return self.get_safe_settings()
 

@@ -63,25 +63,60 @@ def test_update_settings_updates_in_memory(tmp_path):
     assert settings.network.allow_lan is True
 
 
-def test_get_safe_settings_includes_cli_command(tmp_path):
-    """FR-F1.1 / FR-F1.2: cli_command surfaces in API; config_dir does not."""
+def test_update_settings_invalidates_preflight_cache(tmp_path):
+    """FR-B08a: settings PATCH must clear the in-process preflight cache."""
+    from app.services.llm_preflight import (
+        PreflightResult,
+        get_preflight_service,
+    )
+
+    config_path = tmp_path / "config.yaml"
+    svc = SettingsService(settings=Settings(), config_path=config_path)
+    preflight = get_preflight_service()
+    preflight._cache["claude"] = (
+        9999999999.0,
+        PreflightResult(
+            ok=True,
+            provider="claude",
+            binary="claude",
+            binary_resolved=True,
+            version="2.1.0",
+            version_ok=True,
+            reason=None,
+        ),
+    )
+    svc.update_settings({"llm": {"model": "haiku"}})
+    assert preflight._cache == {}
+
+
+def test_get_safe_settings_includes_config_dir(tmp_path):
+    """FR-B01a: config_dir surfaces in API as a string (or None); cli_command does not."""
+    from pathlib import Path
     s = Settings()
-    object.__setattr__(s.llm, "cli_command", "claude-personal")
+    object.__setattr__(s.llm, "config_dir", Path("/tmp/claude-personal"))
     svc = SettingsService(settings=s, config_path=tmp_path / "settings.yaml")
     data = svc.get_safe_settings()
-    assert data["llm"]["cli_command"] == "claude-personal"
-    assert "config_dir" not in data["llm"]
+    assert data["llm"]["config_dir"] == "/tmp/claude-personal"
+    assert "cli_command" not in data["llm"]
 
 
-def test_update_settings_round_trips_cli_command(tmp_path):
-    """FR-F1.3: PATCH path persists cli_command and surfaces it back."""
+def test_get_safe_settings_config_dir_default_none(tmp_path):
+    s = Settings()
+    object.__setattr__(s.llm, "config_dir", None)
+    svc = SettingsService(settings=s, config_path=tmp_path / "settings.yaml")
+    data = svc.get_safe_settings()
+    assert data["llm"]["config_dir"] is None
+
+
+def test_update_settings_round_trips_config_dir(tmp_path):
+    """FR-B01a: PATCH path persists config_dir and surfaces it back."""
     config_path = tmp_path / "settings.yaml"
     settings = Settings()
     svc = SettingsService(settings=settings, config_path=config_path)
-    svc.update_settings({"llm": {"cli_command": "claude-personal"}})
-    assert settings.llm.cli_command == "claude-personal"
+    svc.update_settings({"llm": {"config_dir": "/tmp/claude-personal"}})
+    assert str(settings.llm.config_dir) == "/tmp/claude-personal"
     with open(config_path) as f:
-        assert yaml.safe_load(f)["llm"]["cli_command"] == "claude-personal"
+        assert yaml.safe_load(f)["llm"]["config_dir"] == "/tmp/claude-personal"
 
 
 def test_update_settings_rejects_unknown_key(tmp_path):
@@ -96,11 +131,11 @@ def test_update_settings_rejects_unknown_key(tmp_path):
 def test_update_settings_partial_validity_rejects_all(tmp_path):
     """FR-F1.4 / D17: partial-bad PATCH rejects whole body; YAML on disk unchanged."""
     cfg = tmp_path / "settings.yaml"
-    cfg.write_text("llm:\n  cli_command: prior\n")
+    cfg.write_text("llm:\n  config_dir: /tmp/prior\n")
     svc = SettingsService(settings=Settings(), config_path=cfg)
     with pytest.raises(ValidationError):
-        svc.update_settings({"llm": {"cli_command": "new", "timeout_seconds": "bad"}})
-    assert yaml.safe_load(cfg.read_text())["llm"]["cli_command"] == "prior"
+        svc.update_settings({"llm": {"config_dir": "/tmp/new", "timeout_seconds": "bad"}})
+    assert yaml.safe_load(cfg.read_text())["llm"]["config_dir"] == "/tmp/prior"
 
 
 # --- T8: models.yaml + user settings persistence ---

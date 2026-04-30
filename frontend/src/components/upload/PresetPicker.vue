@@ -7,10 +7,13 @@ import { onMounted, ref } from 'vue'
 
 const props = defineProps<{
   bookId: number
+  /** v1.6: when true, the Start button is disabled (preflight failed). */
+  startDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
   select: [preset: string]
+  started: [payload: { preset: string; jobId: number }]
   back: []
 }>()
 
@@ -45,16 +48,17 @@ async function loadPresets() {
 onMounted(loadPresets)
 
 async function handleStart() {
-  if (!selected.value || starting.value) return
+  if (!selected.value || starting.value || props.startDisabled) return
   starting.value = true
   startError.value = null
   try {
-    await startProcessing(props.bookId, {
+    const resp = await startProcessing(props.bookId, {
       preset_name: selected.value,
       run_eval: true,
       auto_retry: true,
       skip_eval: false,
     })
+    emit('started', { preset: selected.value, jobId: resp.job_id })
     emit('select', selected.value)
   } catch (err) {
     startError.value = err instanceof Error ? err.message : 'Could not start processing'
@@ -86,7 +90,7 @@ async function handleStart() {
       <button
         class="primary-btn"
         data-testid="start-processing"
-        :disabled="!selected || starting || fetchError !== null"
+        :disabled="!selected || starting || fetchError !== null || startDisabled"
         @click="handleStart"
       >
         {{ starting ? 'Starting…' : 'Start Processing' }}

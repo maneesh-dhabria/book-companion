@@ -31,7 +31,7 @@ def _reset_logger():
 @pytest.mark.asyncio
 async def test_subprocess_not_found_raises_typed_error(tmp_path, monkeypatch):
     monkeypatch.setenv("BOOKCOMPANION_DATA__DIRECTORY", str(tmp_path))
-    provider = ClaudeCodeCLIProvider(cli_command="/no/such/claude")
+    provider = ClaudeCodeCLIProvider()
     with (
         patch("asyncio.create_subprocess_exec", side_effect=FileNotFoundError("nope")),
         pytest.raises(SubprocessNotFoundError) as exc,

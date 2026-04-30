@@ -9,7 +9,7 @@ export interface AppSettings {
   }
   llm: {
     provider: string
-    cli_command: string
+    config_dir: string | null
     model: string
     timeout_seconds: number
     max_retries: number
@@ -56,4 +56,28 @@ export function getMigrationStatus() {
 
 export function runMigrations() {
   return apiClient.post<{ status: string; output: string }>('/settings/run-migrations')
+}
+
+export interface PreflightResult {
+  ok: boolean
+  provider: string | null
+  binary: string | null
+  binary_resolved: boolean
+  version: string | null
+  version_ok: boolean
+  reason: string | null
+}
+
+export interface LLMStatusResponse {
+  configured_provider: string
+  provider: string
+  preflight: PreflightResult
+}
+
+export function getLlmStatus() {
+  return apiClient.get<LLMStatusResponse>('/llm/status')
+}
+
+export function recheckLlm() {
+  return apiClient.post<LLMStatusResponse>('/llm/recheck')
 }

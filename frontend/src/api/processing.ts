@@ -27,6 +27,25 @@ export function cancelProcessing(jobId: number) {
   )
 }
 
+export interface ProcessingJobListItem {
+  job_id: number
+  book_id: number
+  book_title: string
+  status: string
+  queue_position: number
+  progress: unknown
+  created_at: string | null
+  started_at: string | null
+  last_event_at: string | null
+  cancel_requested: boolean
+}
+
+export function listProcessingJobs(statuses: string[] = ['PENDING', 'RUNNING']) {
+  return apiClient.get<{ jobs: ProcessingJobListItem[] }>('/processing/jobs', {
+    status: statuses.join(','),
+  })
+}
+
 export interface ProcessingStartedPayload {
   book_id: number
   job_id: number
@@ -68,6 +87,27 @@ export interface ProcessingCompletedPayload {
 export interface ProcessingFailedPayload {
   book_id: number
   error: string
+  /** v1.6: 'cancelled' | 'cli_disappeared' | 'error' */
+  reason?: string
+}
+
+export interface JobQueuedPayload {
+  job_id: number
+  book_id: number
+  last_event_at?: string
+}
+
+export interface JobPromotedPayload {
+  job_id: number
+  book_id: number
+  last_event_at?: string
+}
+
+export interface JobCancellingPayload {
+  job_id: number
+  book_id?: number
+  phase?: string
+  last_event_at?: string
 }
 
 export interface SSEHandlers {
@@ -79,6 +119,9 @@ export interface SSEHandlers {
   onSectionRetrying?: (data: SectionEventPayload) => void
   onProcessingCompleted?: (data: ProcessingCompletedPayload) => void
   onProcessingFailed?: (data: ProcessingFailedPayload) => void
+  onJobQueued?: (data: JobQueuedPayload) => void
+  onJobPromoted?: (data: JobPromotedPayload) => void
+  onJobCancelling?: (data: JobCancellingPayload) => void
   onError?: (error: Event) => void
 }
 
@@ -96,6 +139,10 @@ export function connectSSE(jobId: number, handlers: SSEHandlers): EventSource {
   bind('section_failed', handlers.onSectionFailed as (d: unknown) => void)
   bind('section_skipped', handlers.onSectionSkipped as (d: unknown) => void)
   bind('section_retrying', handlers.onSectionRetrying as (d: unknown) => void)
+  // v1.6 queue events (FR-F19, FR-F19a, FR-F19b)
+  bind('job_queued', handlers.onJobQueued as (d: unknown) => void)
+  bind('job_promoted', handlers.onJobPromoted as (d: unknown) => void)
+  bind('job_cancelling', handlers.onJobCancelling as (d: unknown) => void)
 
   if (handlers.onProcessingCompleted) {
     source.addEventListener('processing_completed', (e) => {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CommandPalette from '@/components/search/CommandPalette.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
+import PersistentProcessingIndicator from '@/components/job/PersistentProcessingIndicator.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import BottomTabBar from './BottomTabBar.vue'
 import IconRail from './IconRail.vue'
@@ -21,6 +22,7 @@ const { isMobile } = useBreakpoint()
     <BottomTabBar v-if="isMobile" />
     <CommandPalette />
     <ToastContainer />
+    <PersistentProcessingIndicator />
   </div>
 </template>
 

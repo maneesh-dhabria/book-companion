@@ -88,6 +88,13 @@
             >
               Customize…
             </a>
+            <router-link
+              class="customize-link"
+              data-testid="edit-structure-link"
+              :to="`/books/${book.id}/edit-structure`"
+            >
+              Edit structure
+            </router-link>
             <SummarizationProgress
               v-if="book.summary_progress && book.summary_progress.summarizable > 0"
               :book-id="book.id"

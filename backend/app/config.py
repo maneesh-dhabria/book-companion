@@ -23,7 +23,7 @@ class DatabaseConfig(BaseModel):
 class LLMConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     provider: str = "auto"
-    cli_command: str = "claude"
+    config_dir: Path | None = None
     model: str = "sonnet"
     quick_summary_model: str = "sonnet"
     timeout_seconds: int = 300
