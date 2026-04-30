@@ -21,6 +21,8 @@ interface Card {
   type: 'system' | 'custom'
   presetId?: number
   empty?: boolean
+  fontFamily?: string
+  fontSize?: number
 }
 
 const systemCards = computed<Card[]>(() =>
@@ -28,7 +30,16 @@ const systemCards = computed<Card[]>(() =>
     .sort((a, b) => rank(a.name) - rank(b.name))
     .map((p) => {
       const c = themeMap[p.theme] ?? themeMap.light
-      return { key: `system:${p.id}`, label: p.name, bg: c.bg, fg: c.fg, presetId: p.id, type: 'system' as const }
+      return {
+        key: `system:${p.id}`,
+        label: p.name,
+        bg: c.bg,
+        fg: c.fg,
+        presetId: p.id,
+        type: 'system' as const,
+        fontFamily: p.font_family,
+        fontSize: p.font_size_px,
+      }
     }),
 )
 
@@ -129,12 +140,15 @@ defineExpose({ focusActiveCard })
         v-for="(c, idx) in cards"
         :key="c.key"
         :ref="(el) => setCardRef(idx, el)"
+        :data-preset-name="c.label"
         :label="c.label"
         :bg="c.bg"
         :fg="c.fg"
         :active="isActive(c)"
         :tabindex="idx === focusedIndex ? 0 : -1"
         :empty-custom="c.type === 'custom' && c.empty === true"
+        :preview-font="c.fontFamily ?? ''"
+        :preview-size="c.fontSize ?? 16"
         @click="onCardClick(idx)"
         @keydown="(e: KeyboardEvent) => onCardKeydown(e, idx)"
       />
