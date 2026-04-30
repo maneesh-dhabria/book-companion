@@ -1,76 +1,61 @@
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 
 import ReaderSettingsPopover from '../ReaderSettingsPopover.vue'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 
 const PRESETS = [
-  {
-    id: 1,
-    name: 'Light',
-    font_family: 'Georgia',
-    font_size_px: 16,
-    line_spacing: 1.6,
-    content_width_px: 720,
-    theme: 'light',
-    created_at: '',
-  },
-  {
-    id: 2,
-    name: 'Sepia',
-    font_family: 'Georgia',
-    font_size_px: 16,
-    line_spacing: 1.6,
-    content_width_px: 720,
-    theme: 'sepia',
-    created_at: '',
-  },
+  { id: 1, name: 'Light', font_family: 'Georgia', font_size_px: 16, line_spacing: 1.6, content_width_px: 720, theme: 'light', created_at: '' },
 ]
 
-describe('ReaderSettingsPopover', () => {
+describe('ReaderSettingsPopover (T7 smoke)', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('clicking a shipped-theme card calls applyPreset for the matching preset name', async () => {
+  it('renders ThemeGrid and chrome toggles when popoverOpen', () => {
     const s = useReaderSettingsStore()
     s.presets = PRESETS as never
     s.popoverOpen = true
-    const spy = vi.spyOn(s, 'applyPreset').mockImplementation(() => {})
     const w = mount(ReaderSettingsPopover)
-    const sepiaCard = w
-      .findAll('.theme-card')
-      .find((c) => /Sepia/i.test(c.text()))!
-    expect(sepiaCard).toBeTruthy()
-    await sepiaCard.trigger('click')
-    expect(spy).toHaveBeenCalledWith(2)
+    expect(w.findComponent({ name: 'ThemeGrid' }).exists()).toBe(true)
+    expect(w.text()).toMatch(/highlights/i)
   })
 
-  it('shipped-theme without a matching preset name is a no-op (does not break)', async () => {
+  it('does not render CustomEditor by default', () => {
     const s = useReaderSettingsStore()
-    s.presets = [PRESETS[0]] as never
+    s.presets = PRESETS as never
     s.popoverOpen = true
-    const spy = vi.spyOn(s, 'applyPreset').mockImplementation(() => {})
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    s.editingCustom = false
     const w = mount(ReaderSettingsPopover)
-    const sepiaCard = w
-      .findAll('.theme-card')
-      .find((c) => /Sepia/i.test(c.text()))!
-    await sepiaCard.trigger('click')
-    expect(spy).not.toHaveBeenCalled()
-    expect(warnSpy).toHaveBeenCalled()
+    expect(w.findComponent({ name: 'CustomEditor' }).exists()).toBe(false)
   })
 
-  it('does not render Save-as-Preset block', () => {
+  it('renders CustomEditor when editingCustom and Custom is applied', () => {
     const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
     s.popoverOpen = true
+    s.appliedPresetKey = 'custom'
+    s.editingCustom = true
     const w = mount(ReaderSettingsPopover)
-    expect(w.text()).not.toMatch(/Save as Preset/i)
+    expect(w.findComponent({ name: 'CustomEditor' }).exists()).toBe(true)
   })
 
-  it('does not render the standalone Custom theme-card', () => {
+  it('does NOT render font/size/spacing/width controls in default state (FR-10)', () => {
     const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
+    s.popoverOpen = true
+    s.editingCustom = false
+    const w = mount(ReaderSettingsPopover)
+    expect(w.findComponent({ name: 'CustomEditor' }).exists()).toBe(false)
+    expect(w.text()).not.toMatch(/Line Spacing/i)
+    expect(w.text()).not.toMatch(/Content Width/i)
+  })
+
+  it('does NOT render StickySaveBar (FR-29 / D5)', () => {
+    const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
     s.popoverOpen = true
     const w = mount(ReaderSettingsPopover)
-    expect(w.find('.theme-card.custom').exists()).toBe(false)
+    expect(w.findComponent({ name: 'StickySaveBar' }).exists()).toBe(false)
   })
 })
