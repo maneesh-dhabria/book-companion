@@ -41,17 +41,18 @@
             @accept="acceptSuggestion"
             @reject="rejectSuggestion"
           />
-          <div class="progress" v-if="book.summary_progress">
-            <strong>Summaries:</strong>
-            {{ book.summary_progress.summarized }} of
-            {{ book.summary_progress.summarizable }}
-            ({{ book.summary_progress.pending }} pending,
-            {{ book.summary_progress.failed_and_pending }} failed)
-          </div>
-          <div class="actions">
+          <SummarizationProgress
+            v-if="book.summary_progress && book.summary_progress.summarizable > 0"
+            :book-id="book.id"
+            :summarized="book.summary_progress.summarized"
+            :total="book.summary_progress.summarizable"
+            :failed-and-pending="book.summary_progress.failed_and_pending"
+          />
+          <div class="action-row">
             <router-link
               v-if="firstSection"
-              class="cta resume"
+              class="btn-primary"
+              data-action="read"
               :to="{
                 name: 'section-detail',
                 params: { id: String(book.id), sectionId: String(firstSection.id) },
@@ -59,26 +60,30 @@
             >
               Read
             </router-link>
-            <button
-              class="cta primary"
+            <router-link
+              class="btn-secondary"
+              data-action="read-summary"
+              :class="{ 'is-disabled': !hasBookSummary }"
+              :aria-disabled="!hasBookSummary || undefined"
+              :title="hasBookSummary ? '' : 'No book summary yet — summarize sections first.'"
+              :to="
+                hasBookSummary
+                  ? { name: 'book-summary', params: { id: String(book.id) } }
+                  : { name: 'book-overview', params: { id: String(book.id) } }
+              "
+              @click="(e: MouseEvent) => !hasBookSummary && e.preventDefault()"
+            >
+              Read Summary
+            </router-link>
+            <ExportSplitButton
+              data-action="export"
               data-testid="export-summary-btn"
               :disabled="exportDisabled"
-              :title="disabledTooltip()"
-              :aria-disabled="exportDisabled"
-              @click="onExportClick"
-            >
-              {{ exporting ? 'Exporting…' : 'Export summary' }}
-            </button>
-            <button
-              class="cta primary"
-              data-testid="copy-markdown-btn"
-              :disabled="exportDisabled"
-              :title="disabledTooltip()"
-              :aria-disabled="exportDisabled"
-              @click="onCopyClick"
-            >
-              {{ exporting ? 'Copying…' : 'Copy as Markdown' }}
-            </button>
+              :disabled-reason="disabledTooltip()"
+              :loading="exporting"
+              @download="onExportClick"
+              @copy="onCopyClick"
+            />
             <a
               class="customize-link"
               data-testid="customize-export-link"
@@ -88,20 +93,12 @@
             >
               Customize…
             </a>
-            <router-link
-              class="customize-link"
-              data-testid="edit-structure-link"
-              :to="`/books/${book.id}/edit-structure`"
-            >
-              Edit structure
-            </router-link>
-            <SummarizationProgress
-              v-if="book.summary_progress && book.summary_progress.summarizable > 0"
-              :book-id="book.id"
-              :summarized="book.summary_progress.summarized"
-              :total="book.summary_progress.summarizable"
-              :failed-and-pending="book.summary_progress.failed_and_pending"
+            <OverflowMenu
+              data-action="overflow"
+              :edit-route="{ name: 'book-edit-structure', params: { id: String(book.id) } }"
+              @open-reader-settings="settings.popoverOpen = true"
             />
+            <ReaderSettingsPopover />
           </div>
           <ExportCustomizeModal
             v-if="showModal && book"
@@ -119,20 +116,11 @@
 
       <section class="sections-toc">
         <h2>Sections</h2>
-        <ol>
-          <li v-for="s in book.sections || []" :key="s.id">
-            <router-link
-              :to="{
-                name: 'section-detail',
-                params: { id: String(book.id), sectionId: String(s.id) },
-              }"
-            >
-              {{ s.title }}
-            </router-link>
-            <span class="section-type">{{ s.section_type }}</span>
-            <span v-if="s.has_summary" class="summarized">✓</span>
-          </li>
-        </ol>
+        <SectionListTable
+          :sections="(book.sections || []) as SectionRow[]"
+          :book-id="book.id"
+          :compact="false"
+        />
       </section>
     </template>
     <div v-else class="error">Book not found.</div>
@@ -149,8 +137,24 @@ import TagChipInput from '@/components/common/TagChipInput.vue'
 import SuggestedTagsBar from '@/components/book/SuggestedTagsBar.vue'
 import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
+import SectionListTable from '@/components/book/SectionListTable.vue'
+import ExportSplitButton from '@/components/book/ExportSplitButton.vue'
+import OverflowMenu from '@/components/book/OverflowMenu.vue'
+import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
+import { useReaderSettingsStore } from '@/stores/readerSettings'
+
+interface SectionRow {
+  id: number
+  title: string
+  order_index: number
+  section_type: string
+  content_char_count?: number | null
+  has_summary: boolean
+  default_summary?: { summary_char_count: number } | null
+  last_failure_type?: string | null
+}
 
 interface BookTag {
   id: number
@@ -171,6 +175,11 @@ const suggestedTags = computed<string[]>(() => book.value?.suggested_tags || [])
 const showModal = ref(false)
 const exporting = ref(false)
 const ui = useUiStore()
+const settings = useReaderSettingsStore()
+
+const hasBookSummary = computed(
+  () => !!book.value?.default_summary || !!book.value?.default_summary_id,
+)
 
 const isProcessingStatus = computed(
   () =>
