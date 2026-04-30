@@ -68,6 +68,7 @@ def _book_to_response(book: Book) -> dict:
             order_index=s.order_index,
             section_type=s.section_type,
             content_token_count=s.content_token_count,
+            content_char_count=s.content_char_count or 0,
             has_summary=s.default_summary_id is not None,
         )
         for s in (book.sections or [])

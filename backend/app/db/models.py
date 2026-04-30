@@ -19,7 +19,14 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    column_property,
+    deferred,
+    mapped_column,
+    relationship,
+)
 
 
 class Base(DeclarativeBase):
@@ -230,6 +237,14 @@ class BookSection(Base):
         cascade="all, delete-orphan",
         primaryjoin="and_(BookSection.id == foreign(Annotation.content_id), "
         "Annotation.content_type.in_(['section_content', 'section_summary']))",
+    )
+
+    # FR-25 / B7 — derived char count exposed on SectionBriefResponse so
+    # the book-detail page can show length without fetching content_md.
+    # SQLite's LENGTH() on TEXT counts characters (matches Python ``len()``
+    # for UTF-8). COALESCE keeps null content_md → 0 instead of None.
+    content_char_count = column_property(
+        func.coalesce(func.length(content_md), 0), deferred=False
     )
 
     __table_args__ = (Index("ix_book_sections_book_id_order", "book_id", "order_index"),)

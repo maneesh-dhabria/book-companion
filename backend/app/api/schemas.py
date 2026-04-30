@@ -67,6 +67,7 @@ class SectionBriefResponse(BaseModel):
     order_index: int
     section_type: str
     content_token_count: int | None = None
+    content_char_count: int = 0
     has_summary: bool = False
 
 
