@@ -63,6 +63,32 @@ def test_update_settings_updates_in_memory(tmp_path):
     assert settings.network.allow_lan is True
 
 
+def test_update_settings_invalidates_preflight_cache(tmp_path):
+    """FR-B08a: settings PATCH must clear the in-process preflight cache."""
+    from app.services.llm_preflight import (
+        PreflightResult,
+        get_preflight_service,
+    )
+
+    config_path = tmp_path / "config.yaml"
+    svc = SettingsService(settings=Settings(), config_path=config_path)
+    preflight = get_preflight_service()
+    preflight._cache["claude"] = (
+        9999999999.0,
+        PreflightResult(
+            ok=True,
+            provider="claude",
+            binary="claude",
+            binary_resolved=True,
+            version="2.1.0",
+            version_ok=True,
+            reason=None,
+        ),
+    )
+    svc.update_settings({"llm": {"model": "haiku"}})
+    assert preflight._cache == {}
+
+
 def test_get_safe_settings_includes_config_dir(tmp_path):
     """FR-B01a: config_dir surfaces in API as a string (or None); cli_command does not."""
     from pathlib import Path
@@ -76,6 +102,7 @@ def test_get_safe_settings_includes_config_dir(tmp_path):
 
 def test_get_safe_settings_config_dir_default_none(tmp_path):
     s = Settings()
+    object.__setattr__(s.llm, "config_dir", None)
     svc = SettingsService(settings=s, config_path=tmp_path / "settings.yaml")
     data = svc.get_safe_settings()
     assert data["llm"]["config_dir"] is None

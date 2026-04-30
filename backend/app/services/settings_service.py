@@ -222,6 +222,16 @@ class SettingsService:
             for key in section_values:
                 object.__setattr__(live, key, getattr(fresh, key))
 
+        # 5. Invalidate the LLM preflight cache so the next status read
+        #    reflects the new provider / config_dir / version-floor outcome
+        #    instead of the previous 60s-cached one (FR-B08a).
+        try:
+            from app.services.llm_preflight import get_preflight_service
+
+            get_preflight_service().invalidate_cache()
+        except Exception:  # pragma: no cover - defensive
+            logger.warning("preflight_cache_invalidate_failed", exc_info=True)
+
         return self.get_safe_settings()
 
     async def get_database_stats(self, session: AsyncSession) -> dict:
