@@ -6,7 +6,7 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import Settings
@@ -253,3 +253,53 @@ async def test_tick_returns_false_when_no_pending(
     promoted = await worker.tick()
     assert promoted is False
     event_bus.publish.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_atomic_promote_uses_returning_not_timestamp_disambiguator(
+    session_factory, event_bus, settings, book
+):
+    """Regression for verify-finding #2: the disambiguator must not depend
+    on `last_event_at = :now` matching exactly one row. Seed a stale RUNNING
+    row with last_event_at set to the same value the new promotion will use
+    (simulating a worker restart), and confirm the promotion still picks
+    the correct id via RETURNING.
+    """
+    import datetime as dt
+
+    async with session_factory() as session:
+        b2 = Book(
+            title="b2",
+            file_data=b"",
+            file_hash="returning-test",
+            file_format="epub",
+            file_size_bytes=0,
+            status=BookStatus.PARSED,
+        )
+        session.add(b2)
+        await session.commit()
+        b2_id = b2.id
+
+        # No RUNNING row, so promotion is allowed.
+        # Pre-existing PENDING that we expect to be promoted.
+        target = ProcessingJob(
+            book_id=b2_id,
+            step=ProcessingStep.SUMMARIZE,
+            status=ProcessingJobStatus.PENDING,
+            created_at=dt.datetime.utcnow(),
+            request_params={},
+        )
+        session.add(target)
+        await session.commit()
+        target_id = target.id
+
+    worker = JobQueueWorker(session_factory, event_bus, settings)
+    promoted = await worker._atomic_promote()
+    assert promoted == target_id
+    async with session_factory() as session:
+        promoted_job = (
+            await session.execute(
+                select(ProcessingJob).where(ProcessingJob.id == target_id)
+            )
+        ).scalar_one()
+        assert promoted_job.status == ProcessingJobStatus.RUNNING

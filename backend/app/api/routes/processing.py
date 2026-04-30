@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 from collections.abc import AsyncGenerator  # noqa: TC003
@@ -283,15 +284,17 @@ async def cancel_processing(
                     "phase": "running_terminating",
                 },
             )
-        # Best-effort: SIGTERM the active subprocess via the running worker.
+        # FR-B15 — SIGTERM the active subprocess via the running worker.
+        # Snapshot both _active_job_id and _active_provider into local vars
+        # before checking; the worker can clear them between attribute reads
+        # when the job finishes mid-cancel.
         worker = getattr(request.app.state, "job_queue_worker", None)
-        if worker is not None and worker._active_job_id == job_id:
-            provider = worker._active_provider
-            if provider is not None and hasattr(provider, "terminate"):
-                try:
-                    await provider.terminate()
-                except Exception:  # noqa: BLE001
-                    pass
+        if worker is not None:
+            active_id = worker._active_job_id
+            active_provider = worker._active_provider
+            if active_id == job_id and active_provider is not None:
+                with contextlib.suppress(Exception):
+                    await active_provider.terminate()
         return ProcessingCancelResponse(
             job_id=job.id, status="CANCEL_REQUESTED", message="Cancel requested"
         )

@@ -32,7 +32,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
-from app.db.models import Book, ProcessingJob, ProcessingJobStatus
+from app.db.models import ProcessingJob, ProcessingJobStatus
 
 log = structlog.get_logger(__name__)
 
@@ -111,16 +111,16 @@ class JobQueueWorker:
         """Atomically pick the oldest PENDING job and flip it to RUNNING.
 
         ``UPDATE ... WHERE id = (SELECT ... ORDER BY created_at LIMIT 1) AND
-        NOT EXISTS (RUNNING)`` is a single-statement update that SQLite
-        executes serializably under WAL — no two callers can flip the
-        same row, and no flip happens while a RUNNING row exists.
+        NOT EXISTS (RUNNING) RETURNING id`` is a single-statement update that
+        SQLite executes serializably under WAL — no two callers can flip
+        the same row, and no flip happens while a RUNNING row exists. The
+        ``RETURNING`` clause gives us the promoted row id directly, avoiding
+        a fragile second SELECT keyed on ``last_event_at`` (which would
+        match multiple rows if two ticks happened to share a microsecond,
+        e.g., on a worker restart that preserved a stale RUNNING row).
         """
         async with self._session_factory() as session:
             now = datetime.utcnow()
-            # SQLite needs the inner SELECT to use the same status filter
-            # because subqueries can't reference the outer row in UPDATE
-            # constructs the way Postgres can. The NOT EXISTS clause guards
-            # against double-promotion when a RUNNING already exists.
             result = await session.execute(
                 text(
                     """
@@ -138,26 +138,14 @@ class JobQueueWorker:
                           ORDER BY created_at ASC
                           LIMIT 1
                      )
+                    RETURNING id
                     """
                 ),
                 {"now": now},
             )
+            row = result.fetchone()
             await session.commit()
-            if result.rowcount != 1:
-                return None
-            # Find which row got promoted: it's the one with started_at == now
-            # and status RUNNING. Use last_event_at as the disambiguator since
-            # we just set it.
-            promoted = (
-                await session.execute(
-                    text(
-                        "SELECT id FROM processing_jobs "
-                        "WHERE status = 'RUNNING' AND last_event_at = :now"
-                    ),
-                    {"now": now},
-                )
-            ).scalar_one_or_none()
-            return int(promoted) if promoted is not None else None
+            return int(row[0]) if row is not None else None
 
     async def _on_promoted(self, session: AsyncSession, job: ProcessingJob) -> None:
         """Emit job_promoted SSE then run the actual processing inline.

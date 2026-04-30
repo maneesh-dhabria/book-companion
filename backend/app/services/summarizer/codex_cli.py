@@ -114,54 +114,59 @@ class CodexCLIProvider(LLMProvider):
                 )
                 raise SubprocessNotFoundError(binary=self.BINARY) from e
 
+            # FR-B15 — track active subprocess for cancel SIGTERM
+            self._track_active(proc)
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(input=prompt.encode("utf-8")),
-                    timeout=timeout,
-                )
-            except TimeoutError as e:
-                proc.kill()
-                _maybe_log(
-                    binary=self.BINARY,
-                    failure_type="cli_timeout",
-                    section_id=section_id,
-                    book_id=book_id,
-                    stderr_full=f"Timeout after {timeout}s",
-                )
-                raise SubprocessTimeoutError(timeout) from e
+                try:
+                    stdout, stderr = await asyncio.wait_for(
+                        proc.communicate(input=prompt.encode("utf-8")),
+                        timeout=timeout,
+                    )
+                except TimeoutError as e:
+                    proc.kill()
+                    _maybe_log(
+                        binary=self.BINARY,
+                        failure_type="cli_timeout",
+                        section_id=section_id,
+                        book_id=book_id,
+                        stderr_full=f"Timeout after {timeout}s",
+                    )
+                    raise SubprocessTimeoutError(timeout) from e
 
-            if proc.returncode != 0:
-                stderr_text = stderr.decode(errors="replace") if stderr else ""
-                truncated = stderr_text.strip()[:STDERR_TRUNCATE]
-                _maybe_log(
-                    binary=self.BINARY,
-                    failure_type="cli_nonzero_exit",
-                    section_id=section_id,
-                    book_id=book_id,
-                    stderr_full=stderr_text,
-                )
-                raise SubprocessNonZeroExitError(
-                    returncode=proc.returncode or 0,
-                    stderr_truncated=truncated,
-                    stderr_full=stderr_text,
-                )
+                if proc.returncode != 0:
+                    stderr_text = stderr.decode(errors="replace") if stderr else ""
+                    truncated = stderr_text.strip()[:STDERR_TRUNCATE]
+                    _maybe_log(
+                        binary=self.BINARY,
+                        failure_type="cli_nonzero_exit",
+                        section_id=section_id,
+                        book_id=book_id,
+                        stderr_full=stderr_text,
+                    )
+                    raise SubprocessNonZeroExitError(
+                        returncode=proc.returncode or 0,
+                        stderr_truncated=truncated,
+                        stderr_full=stderr_text,
+                    )
 
-            # Final message is written to out_path; fall back to stdout if empty.
-            try:
-                raw_output = Path(out_path).read_text().strip()
-            except OSError:
-                raw_output = ""
-            if not raw_output:
-                raw_output = stdout.decode().strip()
-            latency_ms = int((time.monotonic() - start_time) * 1000)
+                # Final message is written to out_path; fall back to stdout if empty.
+                try:
+                    raw_output = Path(out_path).read_text().strip()
+                except OSError:
+                    raw_output = ""
+                if not raw_output:
+                    raw_output = stdout.decode().strip()
+                latency_ms = int((time.monotonic() - start_time) * 1000)
 
-            return LLMResponse(
-                content=raw_output,
-                model=model,
-                input_tokens=None,
-                output_tokens=None,
-                latency_ms=latency_ms,
-            )
+                return LLMResponse(
+                    content=raw_output,
+                    model=model,
+                    input_tokens=None,
+                    output_tokens=None,
+                    latency_ms=latency_ms,
+                )
+            finally:
+                self._track_active(None)
         finally:
             _cleanup_paths(out_path, *([schema_path] if schema_path else []))
 

@@ -58,7 +58,7 @@ interface UndoRow {
 const undoStack = ref<UndoRow[]>([])
 
 const confirmOpen = ref(false)
-const confirmAction = ref<(() => Promise<void>) | null>(null)
+const confirmAction = ref<(() => void) | null>(null)
 const confirmCopy = ref<{ title: string; message: string }>({ title: '', message: '' })
 
 const canBulkDelete = computed(
@@ -296,6 +296,11 @@ async function confirmIfImpactful(
   title: string,
   fallbackMessage: string | undefined,
 ): Promise<boolean> {
+  // Single-pending-guard: if a confirm is already open, a second concurrent
+  // call would clobber pendingCancel/confirmAction and leave the prior
+  // Promise unresolved (UI half-locked). Instead, the second caller bails
+  // immediately — the user resolves the existing dialog first.
+  if (confirmOpen.value) return false
   try {
     const impact = await getEditImpact(props.bookId, sectionIds)
     if (
@@ -321,19 +326,19 @@ async function confirmIfImpactful(
         title,
         message: parts.join(' '),
       }
-      confirmAction.value = async () => {
+      confirmAction.value = () => {
         confirmOpen.value = false
+        confirmAction.value = null
+        pendingCancel.value = null
         resolve(true)
       }
-      confirmOpen.value = true
-      const onCancel = () => {
+      pendingCancel.value = () => {
         confirmOpen.value = false
+        confirmAction.value = null
+        pendingCancel.value = null
         resolve(false)
       }
-      // attach cancel via our dialog component handler — we resolve(false)
-      // when user clicks Cancel; the dialog emits the event. We pipe that
-      // through `confirmAction` only on confirm; cancel lives below.
-      pendingCancel.value = onCancel
+      confirmOpen.value = true
     })
   } catch {
     // If preflight fails, allow the action; backend will still validate.
@@ -342,16 +347,19 @@ async function confirmIfImpactful(
 }
 
 const pendingCancel = ref<(() => void) | null>(null)
-async function onConfirmOk() {
-  if (confirmAction.value) await confirmAction.value()
-  confirmAction.value = null
-  pendingCancel.value = null
+function onConfirmOk() {
+  confirmAction.value?.()
 }
 function onConfirmCancel() {
-  if (pendingCancel.value) pendingCancel.value()
-  confirmOpen.value = false
-  confirmAction.value = null
-  pendingCancel.value = null
+  // Always route through pendingCancel — it owns the resolve(false) call
+  // and the cleanup. Falling back to manual cleanup keeps the dialog
+  // closeable even if pendingCancel is somehow null (defensive).
+  if (pendingCancel.value) {
+    pendingCancel.value()
+  } else {
+    confirmOpen.value = false
+    confirmAction.value = null
+  }
 }
 </script>
 

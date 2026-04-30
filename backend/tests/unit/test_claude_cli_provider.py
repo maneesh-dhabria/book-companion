@@ -69,3 +69,47 @@ async def test_claude_provider_argv_uses_class_binary():
     assert argv[0] == "claude"
     assert "-p" in argv
     assert "--print" in argv
+
+
+@pytest.mark.asyncio
+async def test_claude_provider_terminate_calls_process_terminate():
+    """Regression for verify-finding #1: cancel-RUNNING must SIGTERM the
+    in-flight subprocess. Provider tracks the active proc; terminate()
+    forwards SIGTERM via proc.terminate()."""
+    provider = ClaudeCodeCLIProvider()
+    fake_proc = AsyncMock()
+    fake_proc.returncode = None
+    fake_proc.terminate = lambda: setattr(fake_proc, "_terminated", True)
+    provider._track_active(fake_proc)
+    await provider.terminate()
+    assert getattr(fake_proc, "_terminated", False) is True
+
+
+@pytest.mark.asyncio
+async def test_claude_provider_terminate_noop_when_idle():
+    provider = ClaudeCodeCLIProvider()
+    # No active proc — must not raise.
+    await provider.terminate()
+
+
+@pytest.mark.asyncio
+async def test_claude_provider_terminate_noop_when_proc_already_exited():
+    provider = ClaudeCodeCLIProvider()
+    fake_proc = AsyncMock()
+    fake_proc.returncode = 0  # already exited
+    called = {"terminate": False}
+    fake_proc.terminate = lambda: called.__setitem__("terminate", True)
+    provider._track_active(fake_proc)
+    await provider.terminate()
+    assert called["terminate"] is False
+
+
+@pytest.mark.asyncio
+async def test_claude_provider_clears_active_proc_after_call():
+    provider = ClaudeCodeCLIProvider()
+    with patch(
+        "asyncio.create_subprocess_exec",
+        return_value=_mock_proc(json.dumps({"result": "ok"})),
+    ):
+        await provider.generate("hi")
+    assert provider._active_proc is None

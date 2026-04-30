@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import AsyncClient
 
-from app.services.llm_preflight import PreflightResult, get_preflight_service
+from app.services.llm_preflight import get_preflight_service
 
 
 @pytest.fixture(autouse=True)

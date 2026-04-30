@@ -157,42 +157,49 @@ class ClaudeCodeCLIProvider(LLMProvider):
             )
             raise SubprocessNotFoundError(binary=self.BINARY) from e
 
+        # Track this process so the queue worker can SIGTERM it on cancel
+        # (FR-B15). Cleared in finally so the provider is idle between calls.
+        self._track_active(proc)
+
         effective_timeout = timeout or self.default_timeout
         try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(input=prompt.encode()),  # Prompt via stdin
-                timeout=effective_timeout,
-            )
-        except TimeoutError as e:
-            proc.kill()
-            _maybe_log(
-                binary=self.BINARY,
-                failure_type="cli_timeout",
-                section_id=section_id,
-                book_id=book_id,
-                stderr_full=f"Timeout after {effective_timeout}s",
-            )
-            raise SubprocessTimeoutError(effective_timeout) from e
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(input=prompt.encode()),  # Prompt via stdin
+                    timeout=effective_timeout,
+                )
+            except TimeoutError as e:
+                proc.kill()
+                _maybe_log(
+                    binary=self.BINARY,
+                    failure_type="cli_timeout",
+                    section_id=section_id,
+                    book_id=book_id,
+                    stderr_full=f"Timeout after {effective_timeout}s",
+                )
+                raise SubprocessTimeoutError(effective_timeout) from e
 
-        latency_ms = int((time.monotonic() - start) * 1000)
+            latency_ms = int((time.monotonic() - start) * 1000)
 
-        if proc.returncode != 0:
-            stderr_text = stderr.decode(errors="replace") if stderr else ""
-            truncated = stderr_text.strip()[:STDERR_TRUNCATE]
-            _maybe_log(
-                binary=self.BINARY,
-                failure_type="cli_nonzero_exit",
-                section_id=section_id,
-                book_id=book_id,
-                stderr_full=stderr_text,
-            )
-            raise SubprocessNonZeroExitError(
-                returncode=proc.returncode or 0,
-                stderr_truncated=truncated,
-                stderr_full=stderr_text,
-            )
+            if proc.returncode != 0:
+                stderr_text = stderr.decode(errors="replace") if stderr else ""
+                truncated = stderr_text.strip()[:STDERR_TRUNCATE]
+                _maybe_log(
+                    binary=self.BINARY,
+                    failure_type="cli_nonzero_exit",
+                    section_id=section_id,
+                    book_id=book_id,
+                    stderr_full=stderr_text,
+                )
+                raise SubprocessNonZeroExitError(
+                    returncode=proc.returncode or 0,
+                    stderr_truncated=truncated,
+                    stderr_full=stderr_text,
+                )
 
-        return self._parse_response(stdout.decode(), model or self.default_model, latency_ms)
+            return self._parse_response(stdout.decode(), model or self.default_model, latency_ms)
+        finally:
+            self._track_active(None)
 
     async def generate_with_image(
         self,
