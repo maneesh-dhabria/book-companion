@@ -76,6 +76,7 @@ Within a phase, tasks are sequential — later tasks consume earlier code. Acros
 | P12 | **`config_dir` directory auto-create logged once per process via a module-level flag** | (a) Log every time; (b) Once per process | (b) — `mkdir(parents=True, exist_ok=True)` is idempotent but the log line shouldn't spam. Module-level `_config_dir_logged: set[str]` keyed by path string. |
 | P13 | **Queue worker is a `BackgroundTasks`-style asyncio task started in FastAPI lifespan, stored on `app.state.job_queue_worker`** | (a) Lifespan task; (b) Separate process; (c) Per-request | (a) — single-process zero-service architecture. Lifespan startup/shutdown gives clean cancel semantics. |
 | P14 | **Preflight result Pydantic model lives at `backend/app/services/llm_preflight.py`** | (a) New module; (b) Inside `summarizer/__init__.py` | (a) — separate concern, separate module. Settings UI consumes via API route, queue worker consumes via direct call. Keeps `summarizer/` focused on generation. |
+| P15 | **Codex argv revised vs spec D3 (resolved during T3 smoke)** | (a) `--output-format json`; (b) `--output-schema <FILE>` + `--output-last-message <FILE>` | (b) — codex 0.118 `exec` does not have `--output-format`. T3 smoke (2026-04-30) returned `error: unexpected argument '--output-format' found`. Codex provides `--output-schema <FILE>` (JSON Schema) and `--output-last-message <FILE>` (writes final agent message to file) natively. This is **better** than the original plan: it removes the schema-in-prompt injection workaround (`codex_cli.py:48-58`), bringing Codex to parity with Claude's native `--json-schema`. Spec D3 + FR-B06 amended. T2/T6/code-study lines below reflect (b). |
 
 ---
 
@@ -85,7 +86,7 @@ Within a phase, tasks are sequential — later tasks consume earlier code. Acros
 - **`backend/app/config.py:23-35`** — `LLMConfig` has `extra="forbid"`. Fields to remove: `cli_command` (line 26). Field to add: `config_dir: Path | None = None`. Settings YAML merged in `Settings.model_post_init()` (lines 142–172) — `Path` fields are auto-coerced from strings by pydantic v2.
 - **`backend/app/services/summarizer/llm_provider.py:17-36`** — `LLMProvider` ABC has `generate()` and `generate_with_image()`. No constructor signature in ABC.
 - **`backend/app/services/summarizer/claude_cli.py:76-239`** — Subprocess env at `:124` already uses `os.environ.copy()`. `cli_command` references at `:24,44,49,79,84,98,103,128,134,145,159,183`. Helpers `_maybe_force_test_failure` (`:48-73`) and `_maybe_log` (`:22-45`) take `cli_command` parameter — rename to `binary` per FR-B07b.
-- **`backend/app/services/summarizer/codex_cli.py:22-142`** — Currently `[self.cli_command, "-p", prompt, "--model", model]` at `:60-66`. Change to `[self.BINARY, "exec", "--skip-git-repo-check", "--model", model, "--output-format", "json"]` per spec D3 + FR-B06; prompt to stdin (matches Claude pattern). Schema-in-prompt injection at `:48-58` unchanged.
+- **`backend/app/services/summarizer/codex_cli.py:22-142`** — Currently `[self.cli_command, "-p", prompt, "--model", model]` at `:60-66`. Change to `[self.BINARY, "exec", "--skip-git-repo-check", "--model", model, "--output-schema", str(schema_path), "--output-last-message", str(out_path), "-"]` per spec D3 + FR-B06 (P15). Prompt piped via stdin. Schema is written to a temp file (`tempfile.NamedTemporaryFile`) and passed via `--output-schema`; structured response is read from `--output-last-message` file. The schema-in-prompt injection at `:48-58` is **deleted** (no longer needed — codex consumes the schema natively, matching Claude's `--json-schema`). Both temp files cleaned up in a `try/finally` after the call.
 - **`backend/app/services/summarizer/__init__.py:8-27`** — `detect_llm_provider()` at `:8-14`, `create_llm_provider(provider, **kwargs)` at `:17-27`. Both providers accept `**kwargs` — drop `cli_command`, add `config_dir`.
 - **`backend/app/exceptions.py:66-73`** — `SubprocessNotFoundError(cli_command)` constructor; rename param to `binary`.
 - **`backend/app/api/routes/processing.py`** — `_run_processing()` at `:138-348`, launched via `asyncio.create_task(_run_processing())` at `:348` from the start route (`:29-36`). Cancel route at `:415-438` — currently flips DB to FAILED with no SIGTERM. `cli_command` at `:163` (provider construction inside `_run_processing`).
@@ -208,7 +209,7 @@ Within a phase, tasks are sequential — later tasks consume earlier code. Acros
 
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
-| `codex exec --skip-git-repo-check` doesn't accept the same `--model`/stdin pattern as `codex -p` (OQ1). | Medium | T3 first task: smoke `codex exec --skip-git-repo-check --model gpt-5 --output-format json` with a tiny prompt on stdin and confirm JSON output. If it fails, halt and update spec D3 before proceeding. |
+| ~~`codex exec --skip-git-repo-check` doesn't accept the same `--model`/stdin pattern as `codex -p` (OQ1).~~ **RESOLVED:** smoke confirmed `--output-format json` does NOT exist; spec D3 + FR-B06 amended to use `--output-schema` + `--output-last-message` (P15). | — | — |
 | Atomic `UPDATE … WHERE NOT EXISTS` SQL is dialect-fragile under SQLite + WAL. | Medium | T11 unit test asserts double-promotion is impossible by simulating two concurrent ticks (asyncio.gather with two worker instances against the same DB). |
 | Pydantic `extra="forbid"` rejects existing dev settings.yaml that still has `cli_command`. | Low | T1 acceptance includes deleting `cli_command:` from the maintainer's local settings.yaml and verifying `bookcompanion serve` boots. Pre-release; no users to migrate. |
 | FastAPI lifespan startup ordering: the queue worker depends on Settings being loaded. | Low | P13 puts the worker start AFTER Settings + DB engine init (already pattern). |
@@ -357,25 +358,49 @@ Within a phase, tasks are sequential — later tasks consume earlier code. Acros
   - Rename `_maybe_force_test_failure(cli_command, context)` → `_maybe_force_test_failure(binary, context)` and update call site at line ~98.
   - Rename `_maybe_log(cli_command=...)` → `_maybe_log(binary=...)` and update call site.
 
-- [ ] Step 5: Edit `backend/app/services/summarizer/codex_cli.py`:
+- [ ] Step 5: Edit `backend/app/services/summarizer/codex_cli.py` (per P15):
   - Class-level `BINARY = "codex"`.
   - Same `__init__` change pattern (drop `cli_command`, add `config_dir`).
-  - **Argv switch:** at line ~60, replace `[self.cli_command, "-p", prompt, "--model", model]` with `[self.BINARY, "exec", "--skip-git-repo-check", "--model", model, "--output-format", "json"]`. Pass prompt via stdin (mirror Claude pattern in `claude_cli.py:108-119`):
+  - **Delete** the schema-in-prompt injection block at `:48-58` — Codex now consumes the schema natively.
+  - **Argv switch:** at line ~60, replace `[self.cli_command, "-p", prompt, "--model", model]` with the new shape. Use `tempfile.NamedTemporaryFile` for both schema and output paths, wrap in `try/finally` for cleanup:
     ```python
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        env=env,
-    )
-    stdout, stderr = await asyncio.wait_for(
-        proc.communicate(input=prompt.encode("utf-8")),
-        timeout=...,
-    )
+    import tempfile, json, os
+    schema_fd, schema_path = tempfile.mkstemp(suffix=".json", prefix="codex_schema_")
+    out_fd, out_path = tempfile.mkstemp(suffix=".txt", prefix="codex_out_")
+    os.close(schema_fd); os.close(out_fd)
+    try:
+        Path(schema_path).write_text(json.dumps(json_schema))
+        cmd = [
+            self.BINARY, "exec", "--skip-git-repo-check",
+            "--model", model,
+            "--output-schema", schema_path,
+            "--output-last-message", out_path,
+            "-",  # read prompt from stdin
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(input=prompt.encode("utf-8")),
+            timeout=...,
+        )
+        # Parse structured response from --output-last-message file
+        if proc.returncode == 0:
+            structured = json.loads(Path(out_path).read_text())
+        else:
+            raise SubprocessNonZeroExitError(...)
+    finally:
+        for p in (schema_path, out_path):
+            try: os.unlink(p)
+            except FileNotFoundError: pass
     ```
   - Env injection: same shape as Claude but `env["CODEX_HOME"] = str(cfg)`.
   - Update all raise sites and log helper calls.
+  - `_parse_response()` now parses content of `out_path` instead of stdout.
 
 - [ ] Step 6: Edit `backend/app/services/summarizer/__init__.py:17-27` — `create_llm_provider(provider, **kwargs)` no longer needs special handling; just pass kwargs through. Drop any `cli_command` reference.
 
@@ -395,48 +420,11 @@ Within a phase, tasks are sequential — later tasks consume earlier code. Acros
 
 ---
 
-### T3: Smoke-test `codex exec` invocation (resolves OQ1)
+### T3: ~~Smoke-test `codex exec` invocation~~ — RESOLVED PRE-EXECUTION (P15)
 
-**Goal:** Confirm `codex exec --skip-git-repo-check --model X --output-format json` accepts stdin prompt + emits JSON before committing the rewrite.
-**Spec refs:** D3, OQ1, FR-B06
+**Status:** Completed during /execute Phase 1 (2026-04-30). Smoke run with `--output-format json` failed: `error: unexpected argument '--output-format' found`. Codex 0.118 actually exposes `--output-schema <FILE>` + `--output-last-message <FILE>`. Spec D3 + FR-B06 amended; plan T2 Step 5 updated to use the native flags. See P15 in Decision Log. No scratch script committed.
 
-**Files:**
-- Add: scratch script `backend/tests/manual/codex_exec_smoke.py` (gitignored or deleted after).
-
-**Steps:**
-
-- [ ] Step 1: Write smoke script.
-  ```python
-  # backend/tests/manual/codex_exec_smoke.py
-  import asyncio, sys
-  async def main():
-      proc = await asyncio.create_subprocess_exec(
-          "codex", "exec", "--skip-git-repo-check", "--model", "gpt-5",
-          "--output-format", "json",
-          stdin=asyncio.subprocess.PIPE,
-          stdout=asyncio.subprocess.PIPE,
-          stderr=asyncio.subprocess.PIPE,
-      )
-      out, err = await proc.communicate(b"Reply with the literal JSON: {\"ok\": true}")
-      print("STDOUT:", out.decode()[:500])
-      print("STDERR:", err.decode()[:500])
-      print("RC:", proc.returncode)
-  asyncio.run(main())
-  ```
-
-- [ ] Step 2: Run.
-  Run: `cd backend && uv run python tests/manual/codex_exec_smoke.py`
-  Expected: rc=0, stdout contains parseable JSON.
-
-- [ ] Step 3: **If smoke succeeds** — proceed to T4. **If smoke fails** — STOP, capture error, update spec D3 with corrective decision before proceeding.
-
-- [ ] Step 4: Delete the scratch script.
-  Run: `rm backend/tests/manual/codex_exec_smoke.py`
-
-- [ ] Step 5: No commit (scratch only). Decision recorded inline if smoke failed.
-
-**Inline verification:**
-- Decision documented in this plan's Review Log if smoke result alters T2 implementation.
+**Resolution:** OQ1 closed. Skip to T4.
 
 ---
 
@@ -595,7 +583,7 @@ Within a phase, tasks are sequential — later tasks consume earlier code. Acros
       provider = ClaudeCodeCLIProvider(config_dir=target)
       # ...invoke generate(); assert target.exists()
   ```
-  Mirror in `test_codex_cli_provider.py` with `CODEX_HOME` and assert argv = `["codex", "exec", "--skip-git-repo-check", "--model", ...]`.
+  Mirror in `test_codex_cli_provider.py` with `CODEX_HOME` and assert argv contains `["codex", "exec", "--skip-git-repo-check", "--model", ..., "--output-schema", <schema_path>, "--output-last-message", <out_path>, "-"]` (per P15). Additional assertions: schema temp file is written with the expected JSON Schema content; `--output-last-message` file is read after the call; both temp files are unlinked on success and on failure.
 
 - [ ] Step 2: Run → fail or pass depending on T2 quality. Fix any gaps in T2 implementation.
   Run: `cd backend && uv run python -m pytest tests/unit/test_claude_cli_provider.py tests/unit/test_codex_cli_provider.py -v`
