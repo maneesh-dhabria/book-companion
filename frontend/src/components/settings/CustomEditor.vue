@@ -58,7 +58,7 @@ onMounted(async () => {
       <ColorSwatchRow
         :palette="BG_PALETTE"
         :model-value="activeBg"
-        aria-label-prefix="Background"
+        ariaLabelPrefix="Background"
         @update:model-value="(v: string) => stagePatch({ bg: v })"
       />
     </div>
@@ -67,7 +67,7 @@ onMounted(async () => {
     <ColorSwatchRow
       :palette="FG_PALETTE"
       :model-value="activeFg"
-      aria-label-prefix="Foreground"
+      ariaLabelPrefix="Foreground"
       @update:model-value="(v: string) => stagePatch({ fg: v })"
     />
 
@@ -94,7 +94,7 @@ onMounted(async () => {
       :model-value="store.currentSettings.font_size_px"
       :step="1"
       :format="(v: number) => `${v}px`"
-      aria-label="Size"
+      ariaLabel="Size"
       @update:model-value="(v: number) => store.updateSetting('font_size_px', v)"
     />
 
@@ -103,7 +103,7 @@ onMounted(async () => {
       :model-value="store.currentSettings.line_spacing"
       :step="0.1"
       :format="(v: number) => v.toFixed(1)"
-      aria-label="Line Spacing"
+      ariaLabel="Line Spacing"
       @update:model-value="(v: number) => store.updateSetting('line_spacing', v)"
     />
 
@@ -112,7 +112,7 @@ onMounted(async () => {
       :model-value="store.currentSettings.content_width_px"
       :step="40"
       :format="(v: number) => `${v}px`"
-      aria-label="Content Width"
+      ariaLabel="Content Width"
       @update:model-value="(v: number) => store.updateSetting('content_width_px', v)"
     />
 

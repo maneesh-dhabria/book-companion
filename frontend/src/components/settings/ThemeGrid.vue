@@ -51,10 +51,13 @@ const focusedIndex = ref(activeIndex.value >= 0 ? activeIndex.value : 0)
 
 const cardEls = ref<Array<HTMLElement | null>>([])
 function setCardRef(idx: number, el: unknown) {
-  const node = el && typeof el === 'object' && 'tagName' in (el as object)
-    ? (el as HTMLElement)
-    : null
-  cardEls.value[idx] = node
+  if (!el || typeof el !== 'object') {
+    cardEls.value[idx] = null
+    return
+  }
+  const obj = el as { $el?: unknown; tagName?: string }
+  const node = obj.tagName ? (obj as unknown as HTMLElement) : (obj.$el as HTMLElement | undefined) ?? null
+  cardEls.value[idx] = node ?? null
 }
 
 const emptyCellCount = computed(() => {
@@ -125,7 +128,7 @@ defineExpose({ focusActiveCard })
       <ThemeCard
         v-for="(c, idx) in cards"
         :key="c.key"
-        :ref="(el) => setCardRef(idx, (el as { $el?: HTMLElement } | null)?.$el ?? el)"
+        :ref="(el) => setCardRef(idx, el)"
         :label="c.label"
         :bg="c.bg"
         :fg="c.fg"
