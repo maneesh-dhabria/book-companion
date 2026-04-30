@@ -107,9 +107,18 @@ async def start_processing(
                 detail="No failed sections to retry",
             )
 
-    # FR-A7.3 — reject concurrent jobs for the same book (application-level
-    # check; the partial UNIQUE index in migration v1_4a is the DB-level
-    # belt-and-suspenders).
+    # FR-01/FR-02/FR-03 — on-demand stale-job sweep. Wrap the active-job
+    # guard in BEGIN IMMEDIATE so concurrent retries serialize. If we find
+    # a PENDING/RUNNING row that is_stale(), mark it FAILED in-place and
+    # fall through to INSERT (recovers from server-killed-mid-job state
+    # without requiring `bookcompanion init`). If the row is fresh, return
+    # an enriched 409 body with the active_job payload so the UI can deep-
+    # link the user to /jobs/{id}.
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.summarizer.orphan_sweep import is_stale
+
+    await db.execute(text("BEGIN IMMEDIATE"))
     existing = (
         await db.execute(
             select(ProcessingJob).where(
@@ -121,10 +130,30 @@ async def start_processing(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise HTTPException(
-            status_code=409,
-            detail="A summarization job is already running for this book",
-        )
+        now = datetime.now(timezone.utc)
+        max_age = timedelta(seconds=settings.processing.stale_job_age_seconds)
+        if is_stale(existing, now=now, max_age=max_age):
+            existing.status = ProcessingJobStatus.FAILED
+            existing.error_message = "Marked stale by on-demand sweep"
+            existing.completed_at = now
+            # Fall through to INSERT a fresh job; the same transaction will
+            # commit both writes atomically.
+        else:
+            await db.commit()  # release the BEGIN IMMEDIATE write lock
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "detail": "A summarization job is already running for this book",
+                    "active_job": {
+                        "id": existing.id,
+                        "scope": (existing.request_params or {}).get("scope"),
+                        "started_at": existing.started_at.isoformat()
+                        if existing.started_at
+                        else None,
+                        "progress": existing.progress or {},
+                    },
+                },
+            )
 
     # Create processing job
     from app.services.job_queue_worker import serialize_request_params
