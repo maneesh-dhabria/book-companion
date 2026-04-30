@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 
 import ColorSwatchRow from './ColorSwatchRow.vue'
-import Stepper from './Stepper.vue'
+import Stepper from './ValueStepper.vue'
 import ContrastBadge from '@/components/common/ContrastBadge.vue'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 

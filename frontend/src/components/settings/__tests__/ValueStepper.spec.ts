@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
 
-import Stepper from '../Stepper.vue'
+import Stepper from '../ValueStepper.vue'
 
 describe('Stepper', () => {
   it('renders − [value] + and emits update on click', async () => {

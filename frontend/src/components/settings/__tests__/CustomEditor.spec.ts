@@ -90,7 +90,7 @@ describe('CustomEditor', () => {
     s.currentSettings = { ...s.currentSettings, font_size_px: 16 }
     const updateSpy = vi.spyOn(s, 'updateSetting')
     const w = mount(CustomEditor)
-    const stepper = w.findAllComponents({ name: 'Stepper' }).find((c) => c.props('ariaLabel') === 'Size')!
+    const stepper = w.findAllComponents({ name: 'ValueStepper' }).find((c) => c.props('ariaLabel') === 'Size')!
     stepper.vm.$emit('update:modelValue', 17)
     await nextTick()
     expect(updateSpy).toHaveBeenCalledWith('font_size_px', 17)
