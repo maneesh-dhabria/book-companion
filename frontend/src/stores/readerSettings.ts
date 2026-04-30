@@ -202,8 +202,22 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     dirty.value = false
   }
 
+  // FR-39a: fallback chains so reader content keeps rendering when the
+  // bundled webfont fails to load (offline cache miss, CSP block, etc.).
+  const FALLBACK_CHAINS: Record<string, string> = {
+    Georgia: "Georgia, 'Lora', 'Merriweather', serif",
+    Inter: "'Inter', system-ui, -apple-system, sans-serif",
+    Merriweather: "'Merriweather', 'Lora', Georgia, serif",
+    'Fira Code': "'Fira Code', 'Source Code Pro', ui-monospace, monospace",
+    Lora: "'Lora', 'Merriweather', Georgia, serif",
+    'Source Serif Pro': "'Source Serif Pro', 'Lora', 'Merriweather', serif",
+  }
+  function resolveFontFamily(name: string): string {
+    return FALLBACK_CHAINS[name] ?? name
+  }
+
   const cssVariables = computed(() => ({
-    '--reader-font-family': currentSettings.value.font_family,
+    '--reader-font-family': resolveFontFamily(currentSettings.value.font_family),
     '--reader-font-size': `${currentSettings.value.font_size_px}px`,
     '--reader-line-spacing': String(currentSettings.value.line_spacing),
     '--reader-content-width': `${currentSettings.value.content_width_px}px`,
@@ -214,7 +228,7 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     currentSettings,
     (settings) => {
       const root = document.documentElement
-      root.style.setProperty('--reader-font-family', settings.font_family)
+      root.style.setProperty('--reader-font-family', resolveFontFamily(settings.font_family))
       root.style.setProperty('--reader-font-size', `${settings.font_size_px}px`)
       root.style.setProperty('--reader-line-spacing', String(settings.line_spacing))
       root.style.setProperty('--reader-content-width', `${settings.content_width_px}px`)
