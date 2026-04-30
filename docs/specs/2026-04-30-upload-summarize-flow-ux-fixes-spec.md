@@ -70,6 +70,8 @@ Additionally, multi-book uploads have no queue UX, and editing structure post-su
 | D15 | Book summary invalidation on post-summary edit: only when affected sections were summarized | (a) always invalidate; (b) only-if-summarized; (c) leave-and-warn | (b) precise: merging never-summarized sections doesn't dirty the book summary because nothing read them. Pre-save dialog text adapts. |
 | D16 | Merge ordering: document-order, non-contiguous selections allowed, lowest-index slot | (a) doc-order non-contig; (b) contiguous-only; (c) selection-order | (a) most flexible without surprising the user. Result content reads in document order regardless of selection-order. |
 | D17 | Per-row vs. toolbar split | (a) as documented; (b) all in overflow menu; (c) all in toolbar | Per-row: rename, delete, split, drag handle. Toolbar (multi-select): merge, bulk delete, bulk set-type. Matches Calibre/Scrivener norms. |
+| D18 | Provider re-instantiated per-job; not held as worker singleton | (a) per-job; (b) singleton at worker boot | (a) lets settings changes apply to next queued job without app restart. In-flight jobs keep their provider (E11). Cost: tiny — `create_llm_provider()` is cheap; subprocess spawn cost dominates. |
+| D19 | SSE store seed sequence: subscribe → buffer → fetch → drain → live | (a) the sequence; (b) fetch first then subscribe; (c) subscribe only | (a) avoids both event-loss (between fetch and subscribe) and double-apply (event arrives during fetch). Each event carries `last_event_at` for reconciliation against seed rows. Standard pattern for SSE+REST hybrid stores. |
 
 ---
 
@@ -151,6 +153,7 @@ grep -rn 'cli_command' backend/app/ frontend/src/ \
 
 This grep is added to `/verify` as a hard regression gate.
 | FR-B08 | New service method `LLMPreflightService.check(provider: str) -> PreflightResult` where `PreflightResult` is a typed dict `{ok: bool, binary_resolved: bool, version: str | None, version_ok: bool, reason: str | None}`. Implementation: `shutil.which(binary_name)` → if found, run `<binary> --version` with 5s timeout, parse, compare to floor. Result cached for 60s in-process keyed by provider. |
+| FR-B08a | Preflight cache is **invalidated on every successful `PATCH /api/v1/settings`** (regardless of whether `provider` or `config_dir` changed — simpler invariant than partial invalidation). The settings handler calls `LLMPreflightService.invalidate_cache()` post-commit. New route `POST /api/v1/llm/recheck` bypasses the cache and returns the fresh result; surfaced to the user as a "Re-detect" button (FR-F23a). |
 | FR-B09 | New API route `GET /api/v1/llm/status` returns `{provider: str, preflight: PreflightResult}` for the currently configured provider. Used by Settings page banner + provider dropdown badges. |
 | FR-B10 | `POST /api/v1/books/:id/summarize` calls `LLMPreflightService.check()` and returns `400 {error_code: "llm_provider_unavailable", detail: PreflightResult}` if `ok=False`. Job is NOT queued. |
 
@@ -158,26 +161,106 @@ This grep is added to `/verify` as a hard regression gate.
 
 | ID | Requirement |
 |----|-------------|
-| FR-B11 | New `JobQueueWorker` (asyncio task launched at app startup, lifecycle managed by `app.state`) polls every 2s for `ProcessingJob{status=PENDING}` ordered by `created_at ASC` and promotes the oldest to RUNNING only if no other RUNNING job exists. Promotion is atomic via: `UPDATE processing_jobs SET status='RUNNING', started_at=:now WHERE id=:id AND status='PENDING' AND NOT EXISTS (SELECT 1 FROM processing_jobs WHERE status='RUNNING')`. The worker re-checks `rowcount==1` before launching the run; if 0 (another worker tick or app instance promoted first), it loops. |
+| FR-B11 | New `JobQueueWorker` (asyncio task launched at app startup, lifecycle managed by `app.state`) polls every 2s for `ProcessingJob{status=PENDING}` ordered by `created_at ASC` and promotes the oldest to RUNNING only if no other RUNNING job exists. Promotion is atomic via: `UPDATE processing_jobs SET status='RUNNING', started_at=:now WHERE id=:id AND status='PENDING' AND NOT EXISTS (SELECT 1 FROM processing_jobs WHERE status='RUNNING')`. The worker re-checks `rowcount==1` before launching the run; if 0 (another worker tick or app instance promoted first), it loops. **The worker also emits `job_promoted` AND `processing_started` from the same coroutine** (worker calls `_run_processing()` inline, which emits `processing_started` as its first action) so SSE FIFO ordering between the two is preserved. |
 | FR-B11a | At app shutdown, the queue worker's polling loop is cancelled cleanly. Any subprocess running at that moment is left to its OS-level fate; the existing 24h-orphan-detection (`ProcessingRepository.get_orphaned_jobs()`) recovers stuck RUNNING rows on next startup. No new shutdown logic. |
-| FR-B12 | Existing `_run_processing()` function is moved out of the API route's background-task launch and into the queue worker; the API route only creates the `ProcessingJob` row. |
+| FR-B12 | Existing `_run_processing()` function is moved out of the API route's background-task launch and into the queue worker; the API route only creates the `ProcessingJob` row. **Provider is re-instantiated per-job** at the start of each promoted run by reading `settings.llm` fresh and calling `create_llm_provider(...)` — NOT held as a worker-lifetime singleton. This means `provider`/`config_dir`/`model` changes from the Settings UI take effect on the NEXT promoted job (the in-flight job keeps its instantiated provider, per E11). |
 | FR-B13 | New column `ProcessingJob.cancel_requested: bool default false`. Alembic migration adds the column. |
-| FR-B14 | **Extend** existing `POST /api/v1/processing/{job_id}/cancel` (currently just marks DB row FAILED with no subprocess termination). New behavior: PENDING → delete row (no side effects, no SSE); RUNNING → set `cancel_requested=true` and immediately emit SSE `job_cancelling`; the queue worker's polling task detects the flag and sends SIGTERM (FR-B15). Returns 200 with `{job_id, status: "PENDING_REMOVED" | "CANCEL_REQUESTED" | "ALREADY_DONE"}`. The existing direct-FAILED behavior is removed. |
+| FR-B14 | **Extend** existing `POST /api/v1/processing/{job_id}/cancel` (currently just marks DB row FAILED with no subprocess termination). The route is **race-safe via a single atomic statement**: `DELETE FROM processing_jobs WHERE id=:id AND status='PENDING'`. If `rowcount==1`, return `{status: "PENDING_REMOVED"}` (no SSE). If `rowcount==0`, SELECT the row again — branch on status: RUNNING → set `cancel_requested=true`, emit SSE `job_cancelling`, return `{status: "CANCEL_REQUESTED"}`; COMPLETED/FAILED → return `{status: "ALREADY_DONE"}`; row missing → 404. The queue worker's polling watcher detects `cancel_requested=true` and triggers SIGTERM (FR-B15). The existing direct-FAILED behavior is removed. |
 | FR-B14a | New API route `GET /api/v1/processing/jobs?status=PENDING,RUNNING` returns array of active jobs `[{job_id, book_id, book_title, status, scope, preset_name, started_at, progress, queue_position}]` ordered by `created_at ASC`. Used by `useJobQueueStore.connect()` to seed state on app mount before subscribing to SSE. Closes the page-refresh + SSE-disconnect gap. `queue_position` is 1-indexed (1 = next up). |
-| FR-B15 | Cancel during RUNNING is **immediate**, not graceful: the queue worker's per-loop check on `cancel_requested` (reloaded between sections AND once via a separate asyncio task that polls every 1s during a section) triggers `proc.terminate()` immediately. SIGKILL after 5s if the subprocess hasn't exited (NFR-03). Current section is marked failed; already-completed sections are preserved (existing per-section commit semantics already handle this). Job marked `FAILED` with `error_message="cancelled"`. SSE `processing_failed` fires with `reason="cancelled"`. |
+| FR-B15 | Cancel during RUNNING is **immediate**, not graceful: the queue worker's per-loop check on `cancel_requested` (reloaded between sections AND once via a separate asyncio task that polls every 1s during a section) triggers `proc.terminate()` immediately. SIGKILL after 5s if the subprocess hasn't exited (NFR-03). Current section is marked failed; already-completed sections are preserved (existing per-section commit semantics already handle this). Job marked `FAILED` with `error_message="cancelled"`. SSE `processing_failed` fires with `reason="cancelled"`. See §6.4 for full pseudocode. |
+| FR-B15b | **Fail-fast on missing CLI mid-job:** if 2 consecutive sections raise `SubprocessNotFoundError` (binary disappeared from PATH after the job started), abort the whole job: mark FAILED with `error_message="cli_disappeared_mid_job"`, emit `processing_failed` with `reason="cli_disappeared"`. Avoids cascading 25 per-section failures when the root cause is one missing binary. |
 | FR-B15a | New SSE event `job_cancelling` fires the moment SIGTERM is sent: `{job_id, book_id}`. UI uses this to render a "Cancelling…" state in `<JobProgress>` and the persistent indicator across all open tabs. The terminal `processing_failed` event lands when the subprocess has actually exited. |
-| FR-B16 | New SSE event `job_queued` emitted on PENDING job creation: `{job_id, book_id, queue_position, scope, preset_name}`. `queue_position` is 1-indexed (1 = next to run; 2 = one job ahead; etc.). Used by frontend to update Pinia queue state. |
-| FR-B17 | New SSE event `job_promoted` emitted on PENDING→RUNNING transition: `{job_id, book_id}`. Listeners reuse this to swap their UI from "queued" to "live progress". |
+| FR-B16 | New SSE event `job_queued` emitted **from the API route post-commit** on PENDING job creation: `{job_id, book_id, queue_position, scope, preset_name, last_event_at}`. `queue_position` is 1-indexed (1 = next to run; 2 = one job ahead; etc.). `last_event_at` is the server's emit timestamp (used by frontend reconciliation, FR-F19b). Used by frontend to update Pinia queue state. |
+| FR-B17 | New SSE event `job_promoted` emitted **from the queue worker** on PENDING→RUNNING transition: `{job_id, book_id, last_event_at}`. Listeners reuse this to swap their UI from "queued" to "live progress". All other SSE events (`processing_started`, `section_*`, `processing_completed`, `processing_failed`, `job_cancelling`) also include `last_event_at`. |
 
 ### 6.3 Backend — section edit impact
 
 | ID | Requirement |
 |----|-------------|
 | FR-B18 | New API route `GET /api/v1/books/:id/sections/edit-impact?section_ids=1,2,3` returns `{summaries_to_invalidate: int[], invalidate_book_summary: bool, summarized_section_count: int}`. Implementation: query `Summary.section_id IN ids` for non-stale; `invalidate_book_summary = (summarized_section_count > 0 AND book.book_summary_id IS NOT NULL)`. The endpoint takes only `section_ids` — no `op` query param; semantics are uniform ("these sections lose their original content"). Frontend skips this endpoint entirely for rename/set_type ops (no content change). |
+| FR-B18a | New API route `GET /api/v1/books/:id/sections/:section_id/split-preview?mode=heading|paragraph|char&position=int`. Heading mode parses `content_md` for `^## ` and `^### ` markers, returns one candidate per heading with `{title, char_count, first_line}`. Paragraph mode splits at `\n\n` boundaries, returns the same shape with auto-generated titles (e.g., "Part 1", "Part 2"). Char mode validates `position` falls on a non-whitespace boundary and returns 2 candidates (before/after). Returns the contract in §8.5. The route does NOT mutate; it's a preview. |
 | FR-B19 | All existing section-edit routes (`POST /merge`, `POST /split`, `PATCH /:id`, `DELETE /:id`) **always auto-mark** affected `Summary` rows as `is_stale=true` (existing pattern from re-import) — no opt-in flag. When the affected sections include any with a non-stale summary AND the book has a `book_summary_id`, the route additionally sets `Book.book_summary_id = None` AND transitions `Book.status` from `SUMMARIZED` back to `PARSED` so existing UI surfaces the "Re-summarize" CTA. In wizard-mode (no summaries exist yet) this is a no-op. |
 | FR-B20 | `Book` rows with an active `ProcessingJob{status IN PENDING|RUNNING}` reject section-edit routes with 409. Frontend hides/disables Edit Structure when job in flight (E4). |
+| FR-B21 | `PATCH /api/v1/books/:id/sections/:section_id` enforces title validation: 1–500 chars after trim; reject empty/whitespace-only with 400 `{error: "title_required"}`; reject >500 chars with 400 `{error: "title_too_long"}`. Mirrors FR-F26. |
+| FR-B22 | `config_dir` directory handling: if `LLMConfig.config_dir` is set but the directory does not exist, the provider creates it with `Path.mkdir(parents=True, exist_ok=True)` before invoking the subprocess. Logged at INFO level the first time per process. (Both `claude` and `codex` CLIs auto-populate their config dirs on first use; pre-creating just avoids a permissions surprise.) |
+| FR-B23 | Queue worker observability: structlog INFO entries on (a) worker startup `queue_worker_started`, (b) every promotion `job_promoted` with `{job_id, book_id, queue_depth_before, queue_depth_after}`, (c) cancel-detected `job_cancel_signal` with `{job_id}`, (d) shutdown `queue_worker_stopped`. No new metrics infrastructure; just structured logs. |
 
-### 6.4 Frontend — Step 1 upload
+### 6.4 Cancel-RUNNING flow (pseudocode)
+
+```
+# Inside _run_processing(job_id, book_id, ...) running in queue worker coroutine.
+
+ASYNC FUNCTION run_with_cancel_watch(job_id, book_id, sections, provider):
+    cancel_event = asyncio.Event()
+    watcher_task = asyncio.create_task(poll_cancel_flag(job_id, cancel_event))
+    try:
+        FOR section IN sections:
+            IF cancel_event.is_set():
+                BREAK  # cancelled before next section starts
+            proc = await provider.spawn_subprocess(section)
+            DONE_AWAITABLE = asyncio.create_task(proc.communicate())
+            CANCEL_AWAITABLE = asyncio.create_task(cancel_event.wait())
+            done, pending = await asyncio.wait(
+                {DONE_AWAITABLE, CANCEL_AWAITABLE},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            IF CANCEL_AWAITABLE in done:
+                # SIGTERM, then SIGKILL after 5s if still alive
+                proc.terminate()
+                emit_sse("job_cancelling", {job_id, book_id})
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    proc.kill()
+                    await proc.wait()  # always reap
+                # current section becomes failed
+                mark_section_failed(section.id, error="cancelled")
+                emit_sse("section_failed", {...})
+                BREAK
+            ELSE:
+                # normal completion path
+                stdout, stderr = DONE_AWAITABLE.result()
+                process_section_result(section, stdout)
+    finally:
+        watcher_task.cancel()
+        # Final job-state commit
+        IF cancel_event.is_set():
+            mark_job_failed(job_id, error_message="cancelled")
+            emit_sse("processing_failed", {job_id, reason: "cancelled"})
+        # else normal completion path emits processing_completed elsewhere
+
+ASYNC FUNCTION poll_cancel_flag(job_id, cancel_event):
+    WHILE NOT cancel_event.is_set():
+        await asyncio.sleep(1.0)
+        async with new_db_session() as db:
+            row = await db.get(ProcessingJob, job_id)
+            IF row.cancel_requested:
+                cancel_event.set()
+                RETURN
+```
+
+**DB calls:**
+- `SELECT cancel_requested FROM processing_jobs WHERE id=:job_id` (every 1s while job runs)
+- `UPDATE processing_jobs SET status='FAILED', error_message='cancelled', completed_at=:now WHERE id=:job_id` (on cancel finalization)
+- per-section failure mark via `UPDATE book_sections SET last_failure_*` (existing pattern)
+
+**State transitions:**
+- `RUNNING → FAILED` (with `error_message='cancelled'`) — on cancel detect + cleanup complete
+- per-section: NULL → `last_failure_at != NULL` for the in-flight section
+
+**Error branches:**
+- `proc.terminate()` then 5s timeout → `proc.kill()` (NFR-03). Both branches reach the same final FAILED state.
+- DB error during `mark_job_failed` — let it propagate; orphan-detection (24h cutoff) recovers on next startup.
+- watcher_task cancellation in `finally` — wrapped in try/except so a never-started task doesn't crash cleanup.
+- `SubprocessNotFoundError` mid-job (binary disappeared) — counted by separate counter; 2 consecutive aborts the job (FR-B15b).
+
+**Concurrency notes:**
+- `cancel_event` is per-job (asyncio.Event in the worker coroutine); poller task is the only writer; `_run_processing` is the only reader.
+- The poller uses a fresh DB session per tick to avoid stale-snapshot reads under WAL.
+- `proc.wait()` in `finally` after SIGKILL is required to reap the zombie — without it, the asyncio child-process tracker leaks.
+- The cancel route's atomic DELETE-WHERE-PENDING (FR-B14) means PENDING-cancellation never reaches this flow; only RUNNING-cancellation does.
+
+### 6.5 Frontend — Step 1 upload
 
 | ID | Requirement |
 |----|-------------|
@@ -185,7 +268,7 @@ This grep is added to `/verify` as a hard regression gate.
 | FR-F02 | New `<UploadFileCard>` component renders a per-file row with: filename, size, two-phase indicator (determinate bar 0–100% during upload, indeterminate spinner with "Parsing EPUB…" text after upload completes). Cancel button: enabled during upload (calls `xhr.abort()`); disabled with tooltip "Cannot cancel during parse" once parse begins. |
 | FR-F03 | `<DropZone>` swaps to `<UploadFileCard>` on file pick; on parse error, card shows red error state + Retry button (returns to dropzone). |
 
-### 6.5 Frontend — Step 2 / Edit Structure (shared component)
+### 6.6 Frontend — Step 2 / Edit Structure (shared component)
 
 | ID | Requirement |
 |----|-------------|
@@ -198,14 +281,14 @@ This grep is added to `/verify` as a hard regression gate.
 | FR-F10 | Split modal `<SplitModal>`: 3 tabs — **Auto-detect headings** (default; calls `GET /api/v1/books/:id/sections/:section_id/split-preview?mode=heading` returning `{candidates: [{title, char_count, first_line}]}`), **At paragraph** (rendered content with click-to-mark on `\n\n`-snapped points), **At cursor** (textarea selection → char position). Confirm calls existing `POST /split` route with mode + position. |
 | FR-F11 | When `mode='post-summary'`, on save click, frontend calls `GET /sections/edit-impact?ids=...` and shows confirm dialog before the actual mutation route, passing `mark_summaries_stale=true`. When `mode='wizard'`, no confirm dialog (sections aren't summarized yet). |
 
-### 6.6 Frontend — Step 3 preset + preflight
+### 6.7 Frontend — Step 3 preset + preflight
 
 | ID | Requirement |
 |----|-------------|
 | FR-F12 | Step 3 fetches `GET /api/v1/llm/status` on mount. If `preflight.ok=false`, render inline red banner with `preflight.reason` + "[Fix in Settings → LLM]" link. **Disable Start Processing button.** |
 | FR-F13 | On Start click, frontend calls `POST /api/v1/books/:id/summarize`. On 400 `llm_provider_unavailable`, render the same banner from response payload (defense-in-depth — handles the rare race where preflight passed but PATH changed). |
 
-### 6.7 Frontend — Step 4 / persistent indicator
+### 6.8 Frontend — Step 4 / persistent indicator
 
 | ID | Requirement |
 |----|-------------|
@@ -216,8 +299,14 @@ This grep is added to `/verify` as a hard regression gate.
 | FR-F18 | New `<PersistentProcessingIndicator>` component mounted in `AppShell` (`v-show` toggle). Visible when any `ProcessingJob{status IN PENDING|RUNNING}` exists. Renders current running job (title + progress bar + counters), "+N queued" badge, expand-collapse arrow. Expanded state shows mini queue list with [Cancel] per row. |
 | FR-F19 | New Pinia store `useJobQueueStore` (extends or replaces `useSummarizationJobStore`) with `runningJob`, `pendingJobs[]`, derived getter `queuePositionOf(jobId): number | null`, subscribed to all SSE events. Single SSE connection per app session (do not open per-component); `connect()` called once from `AppShell.onMounted`. |
 | FR-F19a | Cancel-running confirm dialog copy: title "Cancel summarization?", body "The current section will be lost, but already-summarized sections will be kept. This can't be undone.", primary button "Cancel summarization", secondary "Keep running". Cancel-PENDING confirm: title "Remove from queue?", body "'{book_title}' won't be summarized.", primary "Remove", secondary "Keep in queue". |
+| FR-F19b | `useJobQueueStore.connect()` follows a strict 5-step sequence to avoid event-loss/double-apply: (1) open SSE EventSource and route every incoming event to a buffer array (no state mutation yet); (2) call `GET /api/v1/processing/jobs?status=PENDING,RUNNING` for seed; (3) apply seed to store; (4) drain buffer — for each buffered event, if its `last_event_at` is ≤ the seed row's `last_event_at` for the same `job_id`, drop it (already represented in seed); else apply; (5) switch buffer mode to live (events apply directly to store). On SSE `error` / `close`, repeat steps 1–5 (reconnect + re-seed). Reconnect is bounded to exponential backoff: 1s, 2s, 4s, max 30s. |
+| FR-F19c | `<JobProgress>` and `<PersistentProcessingIndicator>` render a "Reconnecting…" badge when `useJobQueueStore.connectionState === 'reconnecting'`. Hidden in normal `'connected'` state. |
+| FR-F25 | Drag-reorder failure handling: per-row pending-move queue. If a `POST /move` is in flight and the user drags the same row again, the second drag is queued — first failure snaps to original position, then queued drag fires. Stale failure responses (whose `client_request_id` doesn't match the current head of the per-row queue) are dropped. |
+| FR-F26 | Inline rename validation: title trimmed of leading/trailing whitespace; rejects empty / whitespace-only ("Title cannot be empty" inline error); max 500 chars (frontend truncation + tooltip; backend `PATCH /sections/:id` enforces same limit and returns 400 with `{error: "title_too_long"}`). |
+| FR-F27 | EditStructure unsaved-state guard: when the StructureEditor has any pending deletes in its 5s undo window AND the user tries to navigate away (route change OR `beforeunload`), show a confirm "You have unsaved changes. Leave anyway?" dialog. |
+| FR-F28 | EditImpact GET timeout: confirm dialog shows a spinner while the request is in flight; cap the await at 10s with `AbortController` (after which the dialog shows "Couldn't compute impact — proceed anyway?" with the request still pending in background, OR a Cancel option). |
 
-### 6.8 Frontend — Settings → LLM
+### 6.9 Frontend — Settings → LLM
 
 | ID | Requirement |
 |----|-------------|
@@ -225,6 +314,7 @@ This grep is added to `/verify` as a hard regression gate.
 | FR-F21 | Adds new `<input type="text">` for `config_dir` with placeholder `~/.claude-personal` (when claude selected) or `~/.codex-personal` (when codex). Per-provider help text below. |
 | FR-F22 | Provider dropdown options each show a status badge `✓ detected` / `✗ not found` from `GET /api/v1/llm/status` (called on mount + after every save). Also shows version inline when detected: `claude (2.1.123) ✓`. The `auto` option shows the resolved provider in parens, e.g., `auto (→ claude 2.1.123) ✓`, or `auto (→ none detected) ✗` if neither is on PATH. |
 | FR-F23 | Persistent warning banner at top of Settings → LLM when `preflight.ok=false`. Banner clears immediately on successful save when the new config produces `ok=true`. |
+| FR-F23a | "Re-detect" button rendered next to the banner (and inline next to the provider dropdown when `preflight.binary_resolved=false`). Click → `POST /api/v1/llm/recheck` → store result in `useSettingsStore`; spinner during call. |
 | FR-F24 | "How to install" link below the banner, opens external docs URL (use `https://docs.anthropic.com/claude/cli` or equivalent — link is in the spec; final URL TBD by /plan). |
 
 ---
@@ -261,6 +351,14 @@ This grep is added to `/verify` as a hard regression gate.
 ```
 
 **Errors:** none — always 200, payload encodes the failure modes.
+
+### 8.1a `POST /api/v1/llm/recheck`
+
+Bypasses the 60s preflight cache and returns a fresh check.
+
+**Request:** empty body.
+
+**Response (200):** identical shape to §8.1.
 
 ### 8.2 `POST /api/v1/books/:book_id/summarize` (modified)
 
@@ -615,3 +713,13 @@ No rollback strategy beyond `git revert` — pre-release tool, single user.
 | 2 | F9: No way to seed Pinia store on app load — page-refresh leaves persistent indicator empty until next SSE event. | Disposition: Add GET listing endpoint. Added FR-B14a + §8.3a contract. Pinia store calls this in `connect()` before subscribing to SSE. |
 | 2 | F10: queue_position numbering convention was implicit. | Disposition: 1-indexed for display, 0 for RUNNING. Updated FR-B16 + §8.3a + FR-B14a. |
 | 2 (self-applied) | provider="auto" dropdown copy was undefined — what does the UI show when auto resolves to nothing? | Updated FR-F22 to enumerate `auto (→ claude 2.1.123) ✓` and `auto (→ none detected) ✗` cases. |
+| simulate-spec | G1 (S24.1): preflight 60s cache stale after install. | FR-B08a added (cache invalidation on PATCH /settings); FR-F23a added (Re-detect button); §8.1a `POST /llm/recheck` contract added. |
+| simulate-spec | G2 (S26.1 + S27.1): SSE seed/reconnect ordering had no spec'd guarantees. | FR-F19b added (5-step connect sequence); FR-B16/B17 + all SSE events extended with `last_event_at` for reconciliation. New Decision D19. |
+| simulate-spec | G3 (S28.2): cancel-vs-promotion race not race-safe. | FR-B14 rewritten with atomic `DELETE … WHERE status='PENDING'` + fall-through on rowcount=0 → SELECT + branch on RUNNING/done. |
+| simulate-spec | G4 (S33.1): SIGTERM→SIGKILL→cleanup cancel pseudocode missing. | New §6.4 Cancel-RUNNING flow with full pseudocode + DB calls / state transitions / error branches / concurrency notes. Sections renumbered 6.5–6.9. |
+| simulate-spec | G5 (S34.1): provider re-instantiation timing unspecified. | FR-B12 extended; new Decision D18 — per-job re-instantiation. |
+| simulate-spec | G6 (W-10): §8.5 split-preview contract had no FR. | FR-B18a added closing the orphan. |
+| simulate-spec | G7 (S25.1): cascade on missing-CLI mid-job. | FR-B15b added (2-consecutive abort threshold). |
+| simulate-spec | G8 (S30.1, B-2.2): SSE event ordering across coroutines. | FR-B11 + FR-B16 + FR-B17 pin emitter location (worker emits `job_promoted` + `processing_started` from same coroutine; API route emits `job_queued` post-commit). |
+| simulate-spec | G9 batch (8 minors): drag re-failure, rename input validation, config_dir auto-create, beforeunload guard, edit-impact timeout, SSE-disconnected UI, queue-worker observability. | FR-F25/F26/F27/F28 + FR-F19c + FR-B21/B22/B23 added. |
+| simulate-spec | G10: out-of-scope minors (duplicate-book, missed-completion notification, partial-upload cleanup). | Logged as accepted risks in simulation doc §8; no spec changes. |
