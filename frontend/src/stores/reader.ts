@@ -100,7 +100,27 @@ export const useReaderStore = defineStore('reader', () => {
     book.value = b
   }
 
+  // Dedupe in-flight loadSection calls so the BookDetailView route watcher
+  // and direct calls (navigateSection, programmatic) don't double-fetch the
+  // same section. Returns the in-flight promise when the (bookId, sectionId)
+  // matches an already-running call.
+  let _inFlight: { key: string; promise: Promise<void> } | null = null
+
   async function loadSection(bookId: number, sectionId: number) {
+    const key = `${bookId}:${sectionId}`
+    if (_inFlight && _inFlight.key === key) {
+      return _inFlight.promise
+    }
+    const promise = _loadSectionImpl(bookId, sectionId)
+    _inFlight = { key, promise }
+    try {
+      await promise
+    } finally {
+      if (_inFlight && _inFlight.key === key) _inFlight = null
+    }
+  }
+
+  async function _loadSectionImpl(bookId: number, sectionId: number) {
     loading.value = true
     try {
       currentSection.value = await getSection(bookId, sectionId)

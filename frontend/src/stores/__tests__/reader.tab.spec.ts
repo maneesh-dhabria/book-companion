@@ -141,6 +141,18 @@ describe('reader store tab URL sync', () => {
     expect(lastCall.query?.tab).toBe('summary')
   })
 
+  it('loadSection dedupes concurrent calls for the same (book, section)', async () => {
+    // Regression: BookDetailView's route watcher and navigateSection both
+    // call loadSection on every navigation. Without dedupe this resulted
+    // in two getSection() round-trips per navigation.
+    await router.push({ name: 'section-detail', params: { id: '1', sectionId: '10' } })
+    const store = useReaderStore()
+    const sections = await import('@/api/sections')
+    vi.mocked(sections.getSection).mockClear()
+    await Promise.all([store.loadSection(1, 10), store.loadSection(1, 10)])
+    expect(sections.getSection).toHaveBeenCalledTimes(1)
+  })
+
   it('navigateSection preserves tab in destination URL (no-summary rewrite)', async () => {
     await router.push({ name: 'section-detail', params: { id: '1', sectionId: '10' }, query: { tab: 'summary' } })
     const store = useReaderStore()
