@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reader Settings — Custom Editor Expanded</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --border: #e0e0e0;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --bg: #ffffff;
+    --page-bg: #f8fafc;
+    --editor-bg: #f8fafc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--page-bg);
+    margin: 0;
+    padding: 2rem;
+    color: var(--text);
+  }
+  .caption {
+    max-width: 600px;
+    margin: 0 auto 1.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .caption h1 {
+    font-size: 1.25rem;
+    color: var(--text);
+    margin: 0 0 0.5rem;
+  }
+  .frame {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #fafafa;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    position: relative;
+  }
+  .frame-label {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .popover {
+    width: 400px;
+    margin-left: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    padding: 1rem;
+  }
+  .popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .popover-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .close-btn {
+    background: none; border: none;
+    font-size: 1.25rem; cursor: pointer;
+    color: var(--text-secondary);
+    line-height: 1;
+  }
+
+  .setting-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0.5rem 0 0.4rem;
+  }
+
+  /* Theme grid */
+  .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .theme-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0.6rem 0.65rem;
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    text-align: left;
+    font-size: 0.8125rem;
+    height: 64px;
+    cursor: pointer;
+  }
+  .theme-card .label { font-weight: 600; font-size: 0.75rem; }
+  .theme-card .sample { font-size: 1.1rem; font-weight: 700; }
+  .theme-card.active {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .theme-card.active .check {
+    position: absolute;
+    top: 0.25rem; right: 0.4rem;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .theme-light    { background: #ffffff; color: #111827; }
+  .theme-dark     { background: #1e1e2e; color: #e5e7eb; }
+  .theme-sepia    { background: #f4ecd8; color: #3a2e1a; }
+  .theme-night    { background: #0f172a; color: #cbd5e1; }
+  .theme-paper    { background: #fafaf5; color: #1f2937; }
+  .theme-contrast { background: #ffffff; color: #000000; border-color: #000; }
+  .theme-custom-saved { background: #fef3c7; color: #1f2937; }
+  .grid-empty { pointer-events: none; visibility: hidden; }
+
+  /* Inline editor block */
+  .editor {
+    margin-top: 0.75rem;
+    background: var(--editor-bg);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Swatches */
+  .swatch-row {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px #d1d5db inset;
+  }
+  .swatch.active { border-color: var(--primary); }
+
+  /* Color input */
+  .color-input {
+    display: inline-block;
+    width: 4rem;
+    height: 1.6rem;
+    background: #2563eb;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  /* Font select */
+  .font-select {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    background: #fff;
+  }
+
+  /* Stepper */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .stepper button {
+    width: 1.75rem; height: 1.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .stepper span {
+    font-size: 0.8125rem;
+    min-width: 3rem;
+    text-align: center;
+  }
+
+  /* Contrast badge */
+  .contrast-badge {
+    display: inline-block;
+    margin-top: 0.4rem;
+    padding: 2px 8px;
+    background: #ecfdf5;
+    color: #065f46;
+    font-size: 0.7rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+  }
+
+  /* Live preview */
+  .preview {
+    margin-top: 0.5rem;
+    padding: 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: #fef3c7;
+    color: #1f2937;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Action row */
+  .editor-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #e5e7eb;
+  }
+  .dirty-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+  .actions {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .btn-revert, .btn-save {
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.35rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+  .btn-revert {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .btn-save {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-save:disabled, .btn-revert:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Chrome */
+  .chrome {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+  }
+  .toggle-row.between { justify-content: space-between; }
+  .toggle-row select {
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 0.3rem;
+    font-size: 0.8125rem;
+  }
+  .checkbox {
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--primary);
+    border-radius: 3px;
+    background: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* Editor sub-section spacing */
+  .row-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .annotations {
+    max-width: 600px;
+    margin: 1rem auto 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .annotations code {
+    background: #eef2ff;
+    color: var(--primary);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+  }
+</style>
+</head>
+<body>
+  <div class="caption">
+    <h1>Reader Settings — Custom Editor Expanded (Dirty)</h1>
+    <p>State after the user clicks the Custom card. The editor expands as a full-width block below the grid (FR-12, D5). All typography/colour controls live here. Save/Revert sit inside the editor block — no sticky bar. Shows the dirty (unsaved) state.</p>
+  </div>
+
+  <div class="frame">
+    <span class="frame-label">Reader page (background, recoloured by Custom)</span>
+
+    <div class="popover" role="dialog" aria-label="Reader settings">
+      <div class="popover-header">
+        <h2>Reader Settings</h2>
+        <button class="close-btn" aria-label="Close">×</button>
+      </div>
+
+      <span class="setting-label">Theme</span>
+      <div class="theme-grid" role="radiogroup" aria-label="Reader theme">
+        <button class="theme-card theme-light" role="radio" aria-pressed="false" aria-label="Light theme">
+          <span class="label">Light</span><span class="sample">Aa</span>
+        </button>
+        <button class="theme-card theme-dark" role="radio" aria-pressed="false" aria-label="Dark theme">
+          <span class="label">Dark</span><span class="sample">Aa</span>
+        </button>
+        <button class="theme-card theme-sepia" role="radio" aria-pressed="false" aria-label="Sepia theme">
+          <span class="label">Sepia</span><span class="sample">Aa</span>
+        </button>
+        <button class="theme-card theme-night" role="radio" aria-pressed="false" aria-label="Night theme">
+          <span class="label">Night</span><span class="sample">Aa</span>
+        </button>
+        <button class="theme-card theme-paper" role="radio" aria-pressed="false" aria-label="Paper theme">
+          <span class="label">Paper</span><span class="sample">Aa</span>
+        </button>
+        <button class="theme-card theme-contrast" role="radio" aria-pressed="false" aria-label="High Contrast theme">
+          <span class="label">High Contrast</span><span class="sample">Aa</span>
+        </button>
+        <button class="theme-card theme-custom-saved active" role="radio" aria-pressed="true" aria-label="Custom theme">
+          <span class="label">Custom</span>
+          <span class="sample">Aa</span>
+          <span class="check">✓</span>
+        </button>
+        <div class="grid-empty" aria-hidden="true"></div>
+        <div class="grid-empty" aria-hidden="true"></div>
+      </div>
+
+      <!-- INLINE EDITOR (visible only when Custom is active) -->
+      <div class="editor" role="region" aria-label="Custom theme editor">
+        <span class="setting-label">Background</span>
+        <div class="swatch-row">
+          <span class="swatch" style="background:#ffffff;"></span>
+          <span class="swatch" style="background:#f4ecd8;"></span>
+          <span class="swatch active" style="background:#fef3c7;"></span>
+          <span class="swatch" style="background:#fafaf6;"></span>
+          <span class="swatch" style="background:#0b1020;"></span>
+          <span class="swatch" style="background:#000000;"></span>
+          <span class="swatch" style="background:#ecfdf5;"></span>
+        </div>
+
+        <span class="setting-label">Foreground</span>
+        <div class="swatch-row">
+          <span class="swatch active" style="background:#1f2937;"></span>
+          <span class="swatch" style="background:#3a2e1a;"></span>
+          <span class="swatch" style="background:#e5e7eb;"></span>
+          <span class="swatch" style="background:#cbd5e1;"></span>
+          <span class="swatch" style="background:#111827;"></span>
+          <span class="swatch" style="background:#000000;"></span>
+          <span class="swatch" style="background:#f8fafc;"></span>
+        </div>
+
+        <span class="setting-label">Accent</span>
+        <div class="color-input" title="#2563eb"></div>
+        <div><span class="contrast-badge">14.6 : 1 · AAA</span></div>
+
+        <span class="setting-label" style="margin-top:0.7rem;">Font</span>
+        <select class="font-select">
+          <option>Georgia</option>
+          <option>Inter</option>
+          <option>Merriweather</option>
+        </select>
+
+        <div class="row-grid-2" style="margin-top:0.5rem;">
+          <div>
+            <span class="setting-label" style="margin-top:0;">Size</span>
+            <div class="stepper">
+              <button>−</button><span>15px</span><button>+</button>
+            </div>
+          </div>
+          <div>
+            <span class="setting-label" style="margin-top:0;">Line Spacing</span>
+            <div class="stepper">
+              <button>−</button><span>1.6</span><button>+</button>
+            </div>
+          </div>
+        </div>
+
+        <span class="setting-label" style="margin-top:0.6rem;">Content Width</span>
+        <div class="stepper">
+          <button>−</button><span>720px</span><button>+</button>
+        </div>
+
+        <span class="setting-label" style="margin-top:0.7rem;">Preview</span>
+        <div class="preview">
+          The quick brown fox jumps over the lazy dog. This is a preview of your reading settings.
+        </div>
+
+        <div class="editor-actions">
+          <span class="dirty-hint">Custom theme preview (not saved)</span>
+          <div class="actions">
+            <button class="btn-revert">Revert</button>
+            <button class="btn-save">Save &amp; apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chrome">
+        <div class="toggle-row">
+          <span class="checkbox">✓</span>
+          <span>Show highlights inline</span>
+        </div>
+        <div class="toggle-row between">
+          <span>Annotations scope</span>
+          <select>
+            <option>Current section</option>
+            <option>All sections</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annotations">
+    <strong>Notes:</strong>
+    <ul>
+      <li>Editor renders only when <code>editingCustom === true</code> (FR-12).</li>
+      <li>Save/Revert live inside the editor's bottom border — no sticky positioning (D5/FR-15..17).</li>
+      <li>Save enabled iff <code>dirty === true</code>; Revert clears <code>pendingCustom</code> (FR-16/17).</li>
+      <li>Preview block uses the pending values, not the saved slot — gives the user real-time feedback (D9).</li>
+      <li>On expand, focus moves to the first BACKGROUND swatch (FR-13b).</li>
+    </ul>
+  </div>
+</body>
+</html>

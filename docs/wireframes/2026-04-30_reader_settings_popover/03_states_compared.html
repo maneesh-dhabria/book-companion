@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reader Settings — State Comparison</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --border: #e0e0e0;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --bg: #ffffff;
+    --page-bg: #f8fafc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--page-bg);
+    margin: 0;
+    padding: 1.5rem;
+    color: var(--text);
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.25rem;
+    margin: 0 0 0.4rem;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .col {
+    background: #fafafa;
+    border: 1px dashed #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .col h3 {
+    font-size: 0.85rem;
+    margin: 0 0 0.4rem;
+    text-align: center;
+  }
+  .col .desc {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 0.75rem;
+    min-height: 2.5rem;
+  }
+
+  .popover {
+    width: 100%;
+    max-width: 360px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    padding: 0.75rem;
+  }
+  .popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .popover-header h2 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .close-btn {
+    background: none; border: none;
+    font-size: 1rem; cursor: pointer;
+    color: var(--text-secondary);
+    line-height: 1;
+  }
+  .setting-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0.4rem 0 0.3rem;
+  }
+
+  .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+  .theme-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 0.4rem 0.45rem;
+    border: 2px solid transparent;
+    border-radius: 0.35rem;
+    text-align: left;
+    height: 48px;
+    cursor: pointer;
+  }
+  .theme-card .label { font-weight: 600; font-size: 0.62rem; }
+  .theme-card .sample { font-size: 0.85rem; font-weight: 700; }
+  .theme-card.active {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+  .theme-card.active .check {
+    position: absolute;
+    top: 0.15rem; right: 0.25rem;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.7rem;
+  }
+  .theme-light    { background: #ffffff; color: #111827; }
+  .theme-dark     { background: #1e1e2e; color: #e5e7eb; }
+  .theme-sepia    { background: #f4ecd8; color: #3a2e1a; }
+  .theme-night    { background: #0f172a; color: #cbd5e1; }
+  .theme-paper    { background: #fafaf5; color: #1f2937; }
+  .theme-contrast { background: #ffffff; color: #000000; border-color: #000; }
+  .theme-custom-empty {
+    background: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%);
+    color: #4b5563;
+  }
+  .theme-custom-saved { background: #fef3c7; color: #1f2937; }
+  .grid-empty { pointer-events: none; visibility: hidden; }
+
+  .editor-mini {
+    margin-top: 0.5rem;
+    background: #f8fafc;
+    border-radius: 0.35rem;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+  }
+  .editor-mini .row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.2rem 0;
+  }
+  .editor-mini .swatches {
+    display: flex; gap: 3px; margin-top: 2px;
+  }
+  .editor-mini .sw {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1px solid #d1d5db;
+  }
+  .editor-mini .sw.active { border: 2px solid var(--primary); }
+  .editor-mini .actions-mini {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid #e5e7eb;
+  }
+  .editor-mini .actions-mini button {
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+  }
+  .editor-mini .actions-mini .save {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  .editor-mini .dirty {
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: 0.6rem;
+    margin-top: 0.4rem;
+  }
+
+  .chrome {
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .chrome .row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .chrome .between { justify-content: space-between; }
+  .check-box {
+    width: 11px; height: 11px;
+    background: var(--primary);
+    border-radius: 2px;
+    color: #fff;
+    font-size: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .footer-note {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+  }
+  .footer-note code {
+    background: #eef2ff;
+    color: var(--primary);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+  }
+</style>
+</head>
+<body>
+  <h1>Reader Settings — Three Key States</h1>
+  <p class="subtitle">Side-by-side comparison: default · Custom selected (clean) · Custom selected (dirty, editor open).</p>
+
+  <div class="grid">
+
+    <!-- STATE A: DEFAULT -->
+    <div class="col">
+      <h3>A — Default state</h3>
+      <p class="desc">Light is active. Editor collapsed. Compact ≤480px.</p>
+      <div class="popover">
+        <div class="popover-header"><h2>Reader Settings</h2><button class="close-btn">×</button></div>
+        <span class="setting-label">Theme</span>
+        <div class="theme-grid">
+          <button class="theme-card theme-light active"><span class="label">Light</span><span class="sample">Aa</span><span class="check">✓</span></button>
+          <button class="theme-card theme-dark"><span class="label">Dark</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-sepia"><span class="label">Sepia</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-night"><span class="label">Night</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-paper"><span class="label">Paper</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-contrast"><span class="label">High Contrast</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-custom-empty"><span class="label">Custom</span><span class="sample" style="font-size:0.55rem; font-weight:500;">Customise</span></button>
+          <div class="grid-empty"></div>
+          <div class="grid-empty"></div>
+        </div>
+        <div class="chrome">
+          <div class="row"><span class="check-box">✓</span><span>Show highlights inline</span></div>
+          <div class="row between"><span>Annotations scope</span><span>Current ▾</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE B: CUSTOM ACTIVE, EDITOR COLLAPSED (REOPEN AFTER SAVE) -->
+    <div class="col">
+      <h3>B — Custom active, editor collapsed</h3>
+      <p class="desc">User reopens popover after saving Custom. Editor stays collapsed (D7).</p>
+      <div class="popover">
+        <div class="popover-header"><h2>Reader Settings</h2><button class="close-btn">×</button></div>
+        <span class="setting-label">Theme</span>
+        <div class="theme-grid">
+          <button class="theme-card theme-light"><span class="label">Light</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-dark"><span class="label">Dark</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-sepia"><span class="label">Sepia</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-night"><span class="label">Night</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-paper"><span class="label">Paper</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-contrast"><span class="label">High Contrast</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-custom-saved active"><span class="label">Custom</span><span class="sample">Aa</span><span class="check">✓</span></button>
+          <div class="grid-empty"></div>
+          <div class="grid-empty"></div>
+        </div>
+        <div class="chrome">
+          <div class="row"><span class="check-box">✓</span><span>Show highlights inline</span></div>
+          <div class="row between"><span>Annotations scope</span><span>Current ▾</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE C: CUSTOM ACTIVE, EDITOR OPEN, DIRTY -->
+    <div class="col">
+      <h3>C — Custom active, editor open + dirty</h3>
+      <p class="desc">User clicks Custom card → editor expands. Pending edits, Save enabled.</p>
+      <div class="popover">
+        <div class="popover-header"><h2>Reader Settings</h2><button class="close-btn">×</button></div>
+        <span class="setting-label">Theme</span>
+        <div class="theme-grid">
+          <button class="theme-card theme-light"><span class="label">Light</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-dark"><span class="label">Dark</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-sepia"><span class="label">Sepia</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-night"><span class="label">Night</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-paper"><span class="label">Paper</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-contrast"><span class="label">High Contrast</span><span class="sample">Aa</span></button>
+          <button class="theme-card theme-custom-saved active"><span class="label">Custom</span><span class="sample">Aa</span><span class="check">✓</span></button>
+          <div class="grid-empty"></div>
+          <div class="grid-empty"></div>
+        </div>
+        <div class="editor-mini">
+          <div class="row"><span>BACKGROUND</span><span>FOREGROUND</span></div>
+          <div class="swatches" style="justify-content:flex-start;">
+            <span class="sw" style="background:#fff;"></span>
+            <span class="sw" style="background:#f4ecd8;"></span>
+            <span class="sw active" style="background:#fef3c7;"></span>
+            <span class="sw" style="background:#0b1020;"></span>
+          </div>
+          <div class="row" style="margin-top:0.4rem;"><span>FONT</span><span>Georgia ▾</span></div>
+          <div class="row"><span>SIZE</span><span>− 15px +</span></div>
+          <div class="row"><span>LINE SPACING</span><span>− 1.6 +</span></div>
+          <div class="row"><span>CONTENT WIDTH</span><span>− 720px +</span></div>
+          <div class="row" style="margin-top:0.4rem;"><span>PREVIEW</span></div>
+          <div style="background:#fef3c7; color:#1f2937; padding:4px 6px; border-radius:3px; font-family:Georgia, serif; font-size:0.65rem;">The quick brown fox…</div>
+          <p class="dirty">Custom theme preview (not saved)</p>
+          <div class="actions-mini">
+            <button>Revert</button>
+            <button class="save">Save &amp; apply</button>
+          </div>
+        </div>
+        <div class="chrome">
+          <div class="row"><span class="check-box">✓</span><span>Show highlights inline</span></div>
+          <div class="row between"><span>Annotations scope</span><span>Current ▾</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footer-note">
+    A and B share the same height (compact default). C is the only state where the popover grows. The editor mounts only when <code>editingCustom === true</code> (FR-12); switching between A→B requires no remount of the editor block. Switching from C to any non-Custom card collapses the editor and silently discards <code>pendingCustom</code> (E5).
+  </p>
+</body>
+</html>

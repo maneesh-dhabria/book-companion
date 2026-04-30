@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-30 — Reader Settings Popover Consolidation
+
+- The reader's gear popover is now a single, compact picker. Opens to seven theme cards (Light, Dark, Sepia, Night, Paper, High Contrast, Custom) plus the existing highlights / annotations-scope toggles — no more duplicate theme grids and no font/size/spacing controls cluttering the default view.
+- Customising a theme is opt-in: click the **Custom** card and the editor expands inline with background/foreground swatches, accent picker, font, size, line spacing, content width, contrast badge, live preview, and Save/Revert. Picking any preset card collapses the editor and applies the bundle as-is.
+- The sticky save bar is gone. Save/Revert sit inside the Custom editor where the dirty state lives, and never overlap content during scroll.
+- One active-state visual rule across every card (2px primary outline + corner ✓), so colour-blind users still get a non-colour cue.
+- Press **Esc** or click outside the popover to close it; focus returns to the gear button. Pending Custom edits are preserved across close/reopen.
+- Keyboard nav: tab into the grid, arrow keys (with wrap) move between cards, Home/End jump to first/last, Enter or Space activates. The grid exposes proper ARIA radiogroup semantics.
+- If `/api/v1/reading-presets` fails, the popover shows a one-line "Couldn't load themes." notice and renders only the Custom card so users can still customise locally.
+
+**References:** [requirements](requirements/2026-04-30-reader-settings-popover-consolidation.md), [spec](specs/2026-04-30-reader-settings-popover-consolidation-spec.md), [plan](plans/2026-04-30-reader-settings-popover-consolidation-implementation-plan.md)
+
 ## 2026-04-25 — Summary Markdown Export (v1.6)
 
 - New on the book detail page: **Export summary**, **Copy as Markdown**, and **Customize…** actions next to **Read**. One-click downloads a portable Markdown file (`<slug>-summary-YYYYMMDD.md`); Copy writes the same bytes to the clipboard. Customize opens a modal with toggles for Book summary, Table of contents, Highlights & notes, and per-section selection (tri-state master toggle, "N of M sections summarized" footer, sections without summaries hidden).
