@@ -95,6 +95,14 @@ describe('ReaderSettingsPopover (T7 smoke)', () => {
     w.unmount()
   })
 
+  it("shows preset-load-fail notice in popover when presets empty", () => {
+    const s = useReaderSettingsStore()
+    s.presets = [] as never
+    s.popoverOpen = true
+    const w = mount(ReaderSettingsPopover)
+    expect(w.text()).toMatch(/couldn't load themes/i)
+  })
+
   it('outside click preserves pendingCustom (E9)', async () => {
     const s = useReaderSettingsStore()
     s.presets = PRESETS as never
