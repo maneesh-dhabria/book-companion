@@ -103,6 +103,60 @@ describe('ReaderSettingsPopover (T7 smoke)', () => {
     expect(w.text()).toMatch(/couldn't load themes/i)
   })
 
+  it('switching from Custom to Sepia mid-edit collapses editor and clears pending state (E5)', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = [
+      { id: 1, name: 'Light', font_family: 'Georgia', font_size_px: 16, line_spacing: 1.6, content_width_px: 720, theme: 'light', created_at: '' },
+      { id: 3, name: 'Sepia', font_family: 'Georgia', font_size_px: 16, line_spacing: 1.6, content_width_px: 720, theme: 'sepia', created_at: '' },
+    ] as never
+    s.popoverOpen = true
+    await new Promise((r) => setTimeout(r, 0))
+    s.appliedPresetKey = 'custom'
+    s.editingCustom = true
+    s.pendingCustom = { name: 'Custom', bg: '#000', fg: '#fff', accent: '#abc' }
+    s.dirty = true
+    const w = mount(ReaderSettingsPopover)
+    expect(w.findComponent({ name: 'CustomEditor' }).exists()).toBe(true)
+    const sepia = w.findAllComponents({ name: 'ThemeCard' }).find((c) => c.props('label') === 'Sepia')!
+    await sepia.trigger('click')
+    expect(s.appliedPresetKey).toBe('system:3')
+    expect(s.editingCustom).toBe(false)
+    expect(s.pendingCustom).toBeNull()
+    expect(s.dirty).toBe(false)
+  })
+
+  it('toggling editor closed via second Custom click preserves pendingCustom (Q6/E6)', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = [{ id: 1, name: 'Light', font_family: 'Georgia', font_size_px: 16, line_spacing: 1.6, content_width_px: 720, theme: 'light', created_at: '' }] as never
+    s.popoverOpen = true
+    await new Promise((r) => setTimeout(r, 0))
+    s.appliedPresetKey = 'custom'
+    s.editingCustom = true
+    s.pendingCustom = { name: 'Custom', bg: '#222', fg: '#eee', accent: '#abc' }
+    s.dirty = true
+    const w = mount(ReaderSettingsPopover)
+    const customCard = w.findAllComponents({ name: 'ThemeCard' }).find((c) => c.props('label') === 'Custom')!
+    await customCard.trigger('click')
+    expect(s.editingCustom).toBe(false)
+    expect(s.pendingCustom).toEqual({ name: 'Custom', bg: '#222', fg: '#eee', accent: '#abc' })
+    expect(s.dirty).toBe(true)
+  })
+
+  it('reopening the popover with Custom active leaves editor collapsed (D7/D12)', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = [{ id: 1, name: 'Light', font_family: 'Georgia', font_size_px: 16, line_spacing: 1.6, content_width_px: 720, theme: 'light', created_at: '' }] as never
+    s.appliedPresetKey = 'custom'
+    s.editingCustom = true
+    s.popoverOpen = true
+    s.popoverOpen = false
+    await new Promise((r) => setTimeout(r, 0))
+    s.popoverOpen = true
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.editingCustom).toBe(false)
+    const w = mount(ReaderSettingsPopover)
+    expect(w.findComponent({ name: 'CustomEditor' }).exists()).toBe(false)
+  })
+
   it('outside click preserves pendingCustom (E9)', async () => {
     const s = useReaderSettingsStore()
     s.presets = PRESETS as never
