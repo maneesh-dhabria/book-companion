@@ -215,24 +215,40 @@ function disabledTooltip(): string {
 async function onExportClick() {
   if (exportDisabled.value) return
   exporting.value = true
+  // FR-25: floor the perceived export latency at 250 ms so the spinner
+  // is always visible long enough to read as honest feedback. The two
+  // promises run in parallel so we never block longer than the slowest.
+  const minDelay = new Promise<void>((res) => setTimeout(res, 250))
   try {
-    const r = await exportBookSummary(bookId.value)
-    const url = URL.createObjectURL(r.blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = r.filename
-    a.click()
-    URL.revokeObjectURL(url)
-    ui.showToast(
-      r.isEmpty ? 'Summary exported (empty)' : `Summary exported as ${r.filename}`,
-      'success',
-    )
-  } catch {
-    ui.showToast('Export failed -- check your connection.', 'error')
+    const [exportResult] = await Promise.allSettled([
+      exportBookSummary(bookId.value),
+      minDelay,
+    ])
+    if (exportResult.status === 'fulfilled') {
+      const r = exportResult.value
+      const url = URL.createObjectURL(r.blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = r.filename
+      a.click()
+      URL.revokeObjectURL(url)
+      ui.showToast(
+        r.isEmpty ? 'Summary exported (empty)' : `Summary exported as ${r.filename}`,
+        'success',
+      )
+    } else {
+      ui.showToast('Export failed -- check your connection.', 'error')
+    }
   } finally {
     exporting.value = false
   }
 }
+
+// FR-26 + §11.2a — strip Markdown image references for the text-only
+// clipboard fallback. Keeps the alt text and drops the URL. Designed
+// for the inner ![alt](url) form the export emits; nested brackets in
+// alt aren't realistic for our content.
+const STRIP_IMG_RE = /!\[([^\]]*)\]\([^)]*\)/g
 
 async function onCopyClick() {
   if (exportDisabled.value) return
@@ -244,6 +260,9 @@ async function onCopyClick() {
     navigator.clipboard as unknown as { write?: (items: ClipboardItem[]) => Promise<void> }
   ).write
   try {
+    // Primary path: write rich-content blob (Markdown text/plain) via
+    // navigator.clipboard.write, which preserves images for paste targets
+    // that fetch by URL.
     if (navClipboardWrite && winClipboardItem) {
       let isEmpty = false
       const fetchPromise = fetch(url).then((r) => {
@@ -259,14 +278,19 @@ async function onCopyClick() {
           isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
           'success',
         )
+        return
       } catch (err) {
         if (err instanceof Error && err.message === 'fetch failed') {
           ui.showToast('Export failed -- check your connection.', 'error')
-        } else {
-          ui.showToast("Couldn't copy -- try Export instead.", 'error')
+          return
         }
+        // fall through to text-only fallback (FR-26)
       }
-    } else {
+    }
+    // Text-only fallback (FR-26): strip image refs and writeText. Used
+    // when navigator.clipboard.write is unavailable or fails (e.g.
+    // non-HTTPS, permission denied, Safari without ClipboardItem).
+    try {
       const resp = await fetch(url)
       if (!resp.ok) {
         ui.showToast('Export failed -- check your connection.', 'error')
@@ -274,15 +298,14 @@ async function onCopyClick() {
       }
       const isEmpty = resp.headers.get('x-empty-export') === 'true'
       const text = await resp.text()
-      try {
-        await navigator.clipboard.writeText(text)
-        ui.showToast(
-          isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
-          'success',
-        )
-      } catch {
-        ui.showToast("Couldn't copy -- try Export instead.", 'error')
-      }
+      const stripped = text.replace(STRIP_IMG_RE, '$1')
+      await navigator.clipboard.writeText(stripped)
+      ui.showToast(
+        isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard (text only)',
+        'success',
+      )
+    } catch {
+      ui.showToast('Copy needs HTTPS or clipboard permission. Use Download instead.', 'error')
     }
   } finally {
     exporting.value = false
