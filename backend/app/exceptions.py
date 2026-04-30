@@ -68,9 +68,9 @@ class SubprocessNotFoundError(SummarizationError):
 
     failure_type = "cli_not_found"
 
-    def __init__(self, cli_command: str):
-        self.cli_command = cli_command
-        super().__init__(f"CLI binary not found on PATH: {cli_command!r}")
+    def __init__(self, binary: str):
+        self.binary = binary
+        super().__init__(f"CLI binary not found on PATH: {binary!r}")
 
 
 class SchemaParseError(SummarizationError):

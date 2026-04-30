@@ -6,6 +6,8 @@ import os
 import time
 from pathlib import Path
 
+import structlog
+
 from app.config import Settings
 from app.exceptions import (
     SubprocessNonZeroExitError,
@@ -16,12 +18,17 @@ from app.exceptions import (
 from app.services.summarizer.failure_log import log_failure
 from app.services.summarizer.llm_provider import LLMProvider, LLMResponse
 
+log = structlog.get_logger(__name__)
+
 STDERR_TRUNCATE = 500
+
+# Module-level guard so each unique config_dir is logged once per process (P12).
+_LOGGED_CONFIG_DIRS: set[str] = set()
 
 
 def _maybe_log(
     *,
-    cli_command: str,
+    binary: str,
     failure_type: str,
     section_id: int | None,
     book_id: int | None,
@@ -41,12 +48,12 @@ def _maybe_log(
         failure_type=failure_type,
         section_id=section_id,
         book_id=book_id,
-        message=f"cli={cli_command} | {stderr_full.strip()[:2000]}",
+        message=f"cli={binary} | {stderr_full.strip()[:2000]}",
     )
 
 
 def _maybe_force_test_failure(
-    cli_command: str,
+    binary: str,
     context: dict | None,
 ) -> None:
     """Raise a forced failure for the regression test suite (PD10).
@@ -73,18 +80,33 @@ def _maybe_force_test_failure(
         )
 
 
+def _build_env(config_dir: Path | None, env_var: str) -> dict[str, str]:
+    env = os.environ.copy()
+    if config_dir is not None:
+        cfg = Path(config_dir).expanduser()
+        cfg.mkdir(parents=True, exist_ok=True)
+        cfg_str = str(cfg)
+        if cfg_str not in _LOGGED_CONFIG_DIRS:
+            log.info("config_dir_initialized", path=cfg_str, env_var=env_var)
+            _LOGGED_CONFIG_DIRS.add(cfg_str)
+        env[env_var] = cfg_str
+    return env
+
+
 class ClaudeCodeCLIProvider(LLMProvider):
+    BINARY = "claude"
+
     def __init__(
         self,
-        cli_command: str = "claude",
         default_model: str = "sonnet",
         default_timeout: int = 300,
         max_budget_usd: float | None = None,
+        config_dir: Path | None = None,
     ):
-        self.cli_command = cli_command
         self.default_model = default_model
         self.default_timeout = default_timeout
         self.max_budget_usd = max_budget_usd
+        self.config_dir = config_dir
 
     async def generate(
         self,
@@ -95,12 +117,12 @@ class ClaudeCodeCLIProvider(LLMProvider):
         timeout: int | None = None,
         context: dict | None = None,
     ) -> LLMResponse:
-        _maybe_force_test_failure(self.cli_command, context)
+        _maybe_force_test_failure(self.BINARY, context)
         section_id = (context or {}).get("section_id")
         book_id = (context or {}).get("book_id")
 
         cmd = [
-            self.cli_command,
+            self.BINARY,
             "-p",
             "-",  # Read prompt from stdin
             "--output-format",
@@ -114,6 +136,8 @@ class ClaudeCodeCLIProvider(LLMProvider):
         if self.max_budget_usd:
             cmd.extend(["--max-budget-usd", str(self.max_budget_usd)])
 
+        env = _build_env(self.config_dir, "CLAUDE_CONFIG_DIR")
+
         start = time.monotonic()
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -121,17 +145,17 @@ class ClaudeCodeCLIProvider(LLMProvider):
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=os.environ.copy(),
+                env=env,
             )
         except FileNotFoundError as e:
             _maybe_log(
-                cli_command=self.cli_command,
+                binary=self.BINARY,
                 failure_type="cli_not_found",
                 section_id=section_id,
                 book_id=book_id,
                 stderr_full=str(e),
             )
-            raise SubprocessNotFoundError(self.cli_command) from e
+            raise SubprocessNotFoundError(binary=self.BINARY) from e
 
         effective_timeout = timeout or self.default_timeout
         try:
@@ -142,7 +166,7 @@ class ClaudeCodeCLIProvider(LLMProvider):
         except TimeoutError as e:
             proc.kill()
             _maybe_log(
-                cli_command=self.cli_command,
+                binary=self.BINARY,
                 failure_type="cli_timeout",
                 section_id=section_id,
                 book_id=book_id,
@@ -156,7 +180,7 @@ class ClaudeCodeCLIProvider(LLMProvider):
             stderr_text = stderr.decode(errors="replace") if stderr else ""
             truncated = stderr_text.strip()[:STDERR_TRUNCATE]
             _maybe_log(
-                cli_command=self.cli_command,
+                binary=self.BINARY,
                 failure_type="cli_nonzero_exit",
                 section_id=section_id,
                 book_id=book_id,
@@ -180,7 +204,7 @@ class ClaudeCodeCLIProvider(LLMProvider):
         image_dir = str(image_path.parent)
         full_prompt = f"Read the image at {image_path.name} and {prompt}"
         cmd = [
-            self.cli_command,
+            self.BINARY,
             "-p",
             full_prompt,
             "--add-dir",
@@ -194,11 +218,14 @@ class ClaudeCodeCLIProvider(LLMProvider):
             "--print",
         ]
 
+        env = _build_env(self.config_dir, "CLAUDE_CONFIG_DIR")
+
         start = time.monotonic()
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
         try:
             stdout, stderr = await asyncio.wait_for(

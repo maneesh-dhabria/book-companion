@@ -72,7 +72,7 @@ def _resolve_settings_yaml_path() -> Path:
 def _build_patch(key: str, value: str) -> dict:
     """Turn a dotted ``key`` into a nested dict patch.
 
-    ``llm.cli_command`` → ``{"llm": {"cli_command": value}}``.
+    ``llm.config_dir`` → ``{"llm": {"config_dir": value}}``.
     """
     parts = key.split(".")
     patch: dict = {}

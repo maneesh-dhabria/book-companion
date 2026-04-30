@@ -20,11 +20,11 @@ def test_cli_config_set_invalid_value_exits_nonzero(tmp_path, monkeypatch):
 def test_cli_config_set_valid_persists(tmp_path, monkeypatch):
     cfg = tmp_path / "settings.yaml"
     monkeypatch.setenv("BOOKCOMPANION_CONFIG", str(cfg))
-    result = runner.invoke(app, ["config", "set", "llm.cli_command", "claude-personal"])
+    result = runner.invoke(app, ["config", "set", "llm.config_dir", "/tmp/claude-personal"])
     assert result.exit_code == 0, result.output
     assert cfg.exists()
     data = yaml.safe_load(cfg.read_text())
-    assert data["llm"]["cli_command"] == "claude-personal"
+    assert data["llm"]["config_dir"] == "/tmp/claude-personal"
 
 
 def test_cli_config_set_unknown_key_rejected(tmp_path, monkeypatch):

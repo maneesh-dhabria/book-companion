@@ -166,7 +166,7 @@ async def send_message(
     from app.services.summarizer.claude_cli import ClaudeCodeCLIProvider
 
     llm = ClaudeCodeCLIProvider(
-        cli_command=settings.llm.cli_command,
+        config_dir=settings.llm.config_dir,
         default_model=settings.llm.model,
         default_timeout=settings.llm.timeout_seconds,
         max_budget_usd=settings.llm.max_budget_usd,
