@@ -1,67 +1,57 @@
-"""GET /api/v1/llm/status — LLM CLI availability probe.
+"""LLM preflight + recheck routes.
 
-Reports whether the first auto-detected CLI (``claude`` > ``codex``) is on
-PATH, plus a best-effort version string. Consumers use this to gate the
-upload wizard's Start button and the BookSummaryView's Generate button.
+``GET /api/v1/llm/status`` reads from the in-process preflight cache (60 s
+TTL) so polling is cheap. ``POST /api/v1/llm/recheck`` invalidates the
+cache and re-probes — used by the Settings page "Re-detect" button after
+the user installs/upgrades a CLI without changing config.
+
+Spec refs: FR-B09, FR-B08, FR-B08a, §8.1, §8.1a.
 """
 
 from __future__ import annotations
 
-import asyncio
-import re
-import shutil
+from fastapi import APIRouter, Depends
 
-import structlog
-from fastapi import APIRouter
-from pydantic import BaseModel
-
+from app.api.deps import get_settings
+from app.config import Settings
+from app.services.llm_preflight import PreflightResult, get_preflight_service
 from app.services.summarizer import detect_llm_provider
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
 
-logger = structlog.get_logger()
 
-_VERSION_RE = re.compile(r"\b(\d+\.\d+(?:\.\d+)?(?:[A-Za-z0-9.\-+]+)?)\b")
-_VERSION_TIMEOUT_SECONDS = 3.0
+def _resolve_provider(settings: Settings) -> str | None:
+    """Return the binary the system would actually invoke right now.
 
-
-class LLMStatusResponse(BaseModel):
-    available: bool
-    provider: str | None
-    version: str | None
-
-
-async def _probe_version(cli: str) -> str | None:
-    binary = shutil.which(cli)
-    if binary is None:
-        return None
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            binary,
-            "--version",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-    except (FileNotFoundError, PermissionError):
-        return None
-    try:
-        stdout, _ = await asyncio.wait_for(
-            proc.communicate(), timeout=_VERSION_TIMEOUT_SECONDS
-        )
-    except TimeoutError:
-        proc.kill()
-        return None
-    if proc.returncode != 0:
-        return None
-    text = stdout.decode(errors="replace").strip()
-    match = _VERSION_RE.search(text)
-    return match.group(1) if match else None
+    For ``provider="auto"``, this resolves via ``detect_llm_provider()`` so
+    the UI can render "auto (→ claude 2.1.123)" instead of just "auto".
+    """
+    if settings.llm.provider == "auto":
+        return detect_llm_provider()
+    return settings.llm.provider
 
 
-@router.get("/status", response_model=LLMStatusResponse)
-async def llm_status() -> LLMStatusResponse:
-    provider = detect_llm_provider()
-    if provider is None:
-        return LLMStatusResponse(available=False, provider=None, version=None)
-    version = await _probe_version(provider)
-    return LLMStatusResponse(available=True, provider=provider, version=version)
+def _build_response(settings: Settings, result: PreflightResult) -> dict:
+    resolved = _resolve_provider(settings)
+    return {
+        # configured value, e.g. "auto" / "claude" / "codex"
+        "configured_provider": settings.llm.provider,
+        # resolved binary; None if auto-detection found nothing
+        "provider": resolved or settings.llm.provider,
+        "preflight": result.model_dump(),
+    }
+
+
+@router.get("/status")
+async def llm_status(settings: Settings = Depends(get_settings)) -> dict:
+    svc = get_preflight_service()
+    result = await svc.check(settings.llm.provider)
+    return _build_response(settings, result)
+
+
+@router.post("/recheck")
+async def llm_recheck(settings: Settings = Depends(get_settings)) -> dict:
+    svc = get_preflight_service()
+    svc.invalidate_cache()
+    result = await svc.check(settings.llm.provider)
+    return _build_response(settings, result)
