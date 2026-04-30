@@ -1,6 +1,5 @@
 """CodexCLIProvider env injection + argv shape (T6, FR-B06, P15)."""
 
-import json
 import os
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -9,6 +8,15 @@ import pytest
 
 from app.services.summarizer.claude_cli import _LOGGED_CONFIG_DIRS
 from app.services.summarizer.codex_cli import CodexCLIProvider
+
+
+@pytest.fixture(autouse=True)
+def _isolate_failure_log(monkeypatch):
+    """Prevent these provider tests from writing to the dev's real data-dir
+    failure log. _maybe_log loads Settings() and binds the singleton failure
+    logger to the platformdirs path; later integration tests that swap the
+    log path via tmp_path then race against the stale handler."""
+    monkeypatch.setenv("BOOKCOMPANION_LLM__STDERR_LOG_ENABLED", "false")
 
 
 def _mock_proc(out_path_capture: list[str] | None = None, write_message: str = "hello world"):

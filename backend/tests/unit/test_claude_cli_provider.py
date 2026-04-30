@@ -11,6 +11,15 @@ from app.services.summarizer.claude_cli import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_failure_log(monkeypatch):
+    """Prevent these provider tests from writing to the dev's real data-dir
+    failure log; otherwise the singleton failure logger gets bound to the
+    platformdirs path and later integration tests using tmp_path race against
+    the stale handler."""
+    monkeypatch.setenv("BOOKCOMPANION_LLM__STDERR_LOG_ENABLED", "false")
+
+
 def _mock_proc(stdout_text: str = "{}"):
     proc = AsyncMock()
     proc.communicate.return_value = (stdout_text.encode(), b"")
