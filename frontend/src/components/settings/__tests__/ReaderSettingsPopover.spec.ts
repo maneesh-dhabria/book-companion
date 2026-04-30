@@ -58,4 +58,54 @@ describe('ReaderSettingsPopover (T7 smoke)', () => {
     const w = mount(ReaderSettingsPopover)
     expect(w.findComponent({ name: 'StickySaveBar' }).exists()).toBe(false)
   })
+
+  it('Escape key closes the popover', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
+    s.popoverOpen = true
+    mount(ReaderSettingsPopover, { attachTo: document.body })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.popoverOpen).toBe(false)
+  })
+
+  it('outside click closes the popover', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
+    s.popoverOpen = true
+    const w = mount(ReaderSettingsPopover, { attachTo: document.body })
+    const outside = document.createElement('div')
+    document.body.appendChild(outside)
+    outside.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.popoverOpen).toBe(false)
+    outside.remove()
+    w.unmount()
+  })
+
+  it('click inside popover does NOT close', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
+    s.popoverOpen = true
+    const w = mount(ReaderSettingsPopover, { attachTo: document.body })
+    const inside = w.find('.settings-popover').element
+    inside.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.popoverOpen).toBe(true)
+    w.unmount()
+  })
+
+  it('outside click preserves pendingCustom (E9)', async () => {
+    const s = useReaderSettingsStore()
+    s.presets = PRESETS as never
+    s.popoverOpen = true
+    s.pendingCustom = { name: 'Custom', bg: '#000', fg: '#fff', accent: '#abc' }
+    s.dirty = true
+    const w = mount(ReaderSettingsPopover, { attachTo: document.body })
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(s.pendingCustom).toEqual({ name: 'Custom', bg: '#000', fg: '#fff', accent: '#abc' })
+    expect(s.dirty).toBe(true)
+    w.unmount()
+  })
 })

@@ -212,8 +212,9 @@ function handleAskAi() {
             <div class="settings-wrapper">
               <button
                 class="action-btn"
-                @click="settings.popoverOpen = !settings.popoverOpen"
+                aria-label="Reader settings"
                 title="Reader settings"
+                @click="settings.popoverOpen = !settings.popoverOpen"
               >
                 ⚙
               </button>

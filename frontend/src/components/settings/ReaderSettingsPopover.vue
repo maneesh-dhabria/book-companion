@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import CustomEditor from './CustomEditor.vue'
 import ThemeGrid from './ThemeGrid.vue'
@@ -9,6 +9,35 @@ const store = useReaderSettingsStore()
 
 const popoverRef = ref<HTMLElement | null>(null)
 const gridRef = ref<InstanceType<typeof ThemeGrid> | null>(null)
+
+function findGearButton(): HTMLElement | null {
+  return document.querySelector('[aria-label="Reader settings"]') as HTMLElement | null
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && store.popoverOpen) {
+    store.popoverOpen = false
+    findGearButton()?.focus()
+  }
+}
+
+function onMousedown(e: MouseEvent) {
+  if (!store.popoverOpen) return
+  const target = e.target as Node | null
+  if (!target) return
+  if (popoverRef.value?.contains(target)) return
+  if (findGearButton()?.contains(target)) return
+  store.popoverOpen = false
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  document.addEventListener('mousedown', onMousedown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('mousedown', onMousedown)
+})
 
 watch(
   () => store.editingCustom,
