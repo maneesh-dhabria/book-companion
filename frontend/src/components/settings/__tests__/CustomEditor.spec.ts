@@ -76,13 +76,18 @@ describe('CustomEditor', () => {
     w.unmount()
   })
 
-  it('font select calls updateSetting on change', async () => {
+  it('font listbox calls updateSetting on selection', async () => {
     const s = useReaderSettingsStore()
     const updateSpy = vi.spyOn(s, 'updateSetting')
-    const w = mount(CustomEditor)
-    const fontSelect = w.find('select')
-    await fontSelect.setValue('Inter')
+    const w = mount(CustomEditor, { attachTo: document.body })
+    const trigger = w.find('button[aria-haspopup="listbox"]')
+    await trigger.trigger('click')
+    const interOption = w
+      .findAll('[role="option"]')
+      .find((o) => o.text() === 'Inter')!
+    await interOption.trigger('click')
     expect(updateSpy).toHaveBeenCalledWith('font_family', 'Inter')
+    w.unmount()
   })
 
   it('size stepper increments call updateSetting', async () => {
