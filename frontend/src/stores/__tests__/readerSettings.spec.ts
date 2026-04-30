@@ -191,15 +191,48 @@ describe('readerSettings store', () => {
     expect(s.editingCustom).toBe(false)
   })
 
-  it('openCustomPicker opens popover, sets editingCustom, and applies Custom', async () => {
+  it('toggleCustomEditor flips editingCustom', async () => {
+    mockListPresets()
+    mockHintNull()
+    const s = useReaderSettingsStore()
+    await s.loadPresets()
+    expect(s.editingCustom).toBe(false)
+    s.toggleCustomEditor()
+    expect(s.editingCustom).toBe(true)
+    s.toggleCustomEditor()
+    expect(s.editingCustom).toBe(false)
+  })
+
+  it('opening the popover resets editingCustom to false', async () => {
+    mockListPresets()
+    mockHintNull()
+    const s = useReaderSettingsStore()
+    await s.loadPresets()
+    s.editingCustom = true
+    s.popoverOpen = false
+    await Promise.resolve()
+    s.popoverOpen = true
+    await Promise.resolve()
+    expect(s.editingCustom).toBe(false)
+  })
+
+  it('applyCustom() does not mutate editingCustom (regression for D11/FR-24)', async () => {
     mockListPresets()
     mockHintNull()
     const s = useReaderSettingsStore()
     await s.loadPresets()
     s.applyPreset(1)
-    s.openCustomPicker()
-    expect(s.popoverOpen).toBe(true)
+    s.editingCustom = false
+    s.applyCustom()
+    expect(s.editingCustom).toBe(false)
+    s.editingCustom = true
+    s.applyCustom()
     expect(s.editingCustom).toBe(true)
-    expect(s.appliedPresetKey).toBe('custom')
+  })
+
+  it('openCustomPicker is no longer exported', async () => {
+    const s = useReaderSettingsStore()
+    // @ts-expect-error - removed API
+    expect(s.openCustomPicker).toBeUndefined()
   })
 })
