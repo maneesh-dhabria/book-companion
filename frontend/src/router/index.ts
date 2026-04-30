@@ -44,6 +44,12 @@ const router = createRouter({
       component: () => import('@/views/EvalDetailView.vue'),
     },
     {
+      path: '/books/:id/edit-structure',
+      name: 'book-edit-structure',
+      meta: { title: 'Edit Structure' },
+      component: () => import('@/views/EditStructureView.vue'),
+    },
+    {
       path: '/books/:id/summary',
       name: 'book-summary',
       meta: { title: 'Book Summary' },
