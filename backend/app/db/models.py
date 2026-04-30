@@ -295,6 +295,16 @@ class ProcessingJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("0")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_event_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    request_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     book: Mapped["Book"] = relationship(back_populates="processing_jobs")
 
@@ -306,6 +316,7 @@ class ProcessingJob(Base):
             unique=True,
             sqlite_where=text("status IN ('PENDING','RUNNING')"),
         ),
+        Index("ix_processing_jobs_status_created", "status", "created_at"),
     )
 
 
@@ -374,6 +385,9 @@ class Summary(Base):
         ForeignKey("summaries.id", ondelete="SET NULL"), nullable=True
     )
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_stale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("0")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
