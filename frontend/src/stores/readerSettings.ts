@@ -183,6 +183,14 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     { deep: true },
   )
 
+  watch(popoverOpen, (open, wasOpen) => {
+    if (open && !wasOpen) editingCustom.value = false
+  })
+
+  function toggleCustomEditor() {
+    editingCustom.value = !editingCustom.value
+  }
+
   function stageCustom(slot: CustomThemeSlot) {
     pendingCustom.value = slot
     dirty.value = true
@@ -297,13 +305,6 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     }
   }
 
-  /** FR-F4.13: PresetCards' pencil + first-click-on-Custom call this. */
-  function openCustomPicker() {
-    popoverOpen.value = true
-    editingCustom.value = true
-    applyCustom()
-  }
-
   /** FR-F4.7c: read the migration sidecar at most once per device. */
   async function consumeLegacyActiveHint() {
     if (appliedPresetKey.value !== null) return
@@ -394,7 +395,7 @@ export const useReaderSettingsStore = defineStore('readerSettings', () => {
     loadPresets,
     applyPreset,
     applyCustom,
-    openCustomPicker,
+    toggleCustomEditor,
     consumeLegacyActiveHint,
     updateSetting,
     detectSystemPreference,
