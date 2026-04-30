@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload + Summarize Flow UX Fixes — Wireframe Index</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; max-width: 1100px; }
+  .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    text-decoration: none; color: var(--text-primary);
+    box-shadow: var(--shadow);
+    display: block;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card .num {
+    font-size: 0.75rem; color: var(--text-secondary);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  .card .name { font-weight: 600; margin-bottom: 0.4rem; }
+  .card .desc { font-size: 0.85rem; color: var(--text-secondary); }
+  .card .issues { margin-top: 0.5rem; display: flex; gap: 0.3rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<h1>Upload + Summarize Flow — UX Fixes Wireframes</h1>
+<p class="page-meta">
+  2026-04-30 · 8 components · <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<div class="grid">
+  <a class="card" href="01-step1-upload.html">
+    <div class="num">01</div>
+    <div class="name">Step 1 — Upload</div>
+    <div class="desc">Per-file card replaces dropzone. Two-phase indicator (upload bar → parse spinner). Cancel rules.</div>
+    <div class="issues"><span class="tag">Issue #1</span><span class="tag">G1</span></div>
+  </a>
+  <a class="card" href="02-step2-structure-editor.html">
+    <div class="num">02</div>
+    <div class="name">Step 2 — Structure Editor</div>
+    <div class="desc">Per-row chars + actions (rename / split / delete / drag). Multi-select toolbar (merge / bulk delete / set-type). Undo toast.</div>
+    <div class="issues"><span class="tag">Issue #2</span><span class="tag">G2</span><span class="tag">D3</span><span class="tag">D13</span></div>
+  </a>
+  <a class="card" href="03-split-modal.html">
+    <div class="num">03</div>
+    <div class="name">Split Modal</div>
+    <div class="desc">3 tabs: auto-detect headings, at paragraph, at cursor. Candidate preview + char counts.</div>
+    <div class="issues"><span class="tag">Issue #2</span><span class="tag">D5</span></div>
+  </a>
+  <a class="card" href="04-step3-preset-with-cli-preflight.html">
+    <div class="num">04</div>
+    <div class="name">Step 3 — Preset + CLI Preflight</div>
+    <div class="desc">Preset cards + run-eval / auto-retry checkboxes. Blocked state when configured CLI not on PATH.</div>
+    <div class="issues"><span class="tag">Issue #4</span><span class="tag">G6</span><span class="tag">D9</span></div>
+  </a>
+  <a class="card" href="05-step4-live-progress.html">
+    <div class="num">05</div>
+    <div class="name">Step 4 — Live Progress</div>
+    <div class="desc">Inline SSE progress, mid-job dual CTAs (Open Book / Dismiss), success card with View Book CTA.</div>
+    <div class="issues"><span class="tag">Issue #3</span><span class="tag">G4</span><span class="tag">D7</span></div>
+  </a>
+  <a class="card" href="06-persistent-processing-indicator.html">
+    <div class="num">06</div>
+    <div class="name">Persistent Processing Indicator</div>
+    <div class="desc">Always-visible bottom bar. Queue badge + expandable queue with Cancel-per-queued-row. Toast on completion.</div>
+    <div class="issues"><span class="tag">Issue #3</span><span class="tag">Issue #5 multi-book</span><span class="tag">G5</span><span class="tag">D8</span></div>
+  </a>
+  <a class="card" href="07-settings-llm-validation.html">
+    <div class="num">07</div>
+    <div class="name">Settings → LLM (Validation)</div>
+    <div class="desc">Persistent warning banner when CLI is broken. Inline field error on save attempt. Healthy state for contrast.</div>
+    <div class="issues"><span class="tag">Issue #4</span><span class="tag">D9</span><span class="tag">E1a/b</span></div>
+  </a>
+  <a class="card" href="08-edit-structure-post-summary.html">
+    <div class="num">08</div>
+    <div class="name">Edit Structure on Book Detail</div>
+    <div class="desc">Same structure editor, post-summary surface. Pre-save confirm dialog with book-summary invalidation rule. Stale-summary state after edit.</div>
+    <div class="issues"><span class="tag">Issue #2</span><span class="tag">G3</span><span class="tag">D4</span><span class="tag">D6</span></div>
+  </a>
+</div>
+
+<div class="note" style="max-width: 1100px; margin-top: 2rem;">
+  <strong>Open Questions still pending /spec.</strong>
+  Several wireframe states reflect placeholder choices for OQ1 (settings save hard-block vs warn — wireframe 07 shows warn-with-escape-hatch),
+  OQ2 (cancel running job — wireframe 06 shows running-Cancel disabled),
+  OQ3 (browser refresh during Step 4 — not wireframed),
+  OQ4 (upload-progress accuracy — wireframe 01 shows determinate-during-upload + indeterminate-during-parse),
+  OQ5 (Edit Structure as tab/modal/route — wireframe 08 shows tab),
+  OQ6 (split preview depth — wireframe 03 shows light first-line + char count).
+</div>
+</body>
+</html>

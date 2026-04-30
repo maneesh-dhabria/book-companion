@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 — Edit Structure on Book Detail (post-summary) — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .book-shell { max-width: 1000px; }
+  .book-header {
+    display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;
+  }
+  .book-cover {
+    width: 80px; height: 110px; border-radius: 6px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 600; font-size: 0.85rem; text-align: center; padding: 0.5rem;
+    flex-shrink: 0;
+  }
+  .book-meta { flex: 1; }
+  .book-meta h2 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .book-meta .authors { color: var(--text-secondary); font-size: 0.9rem; }
+  .book-meta .stats { font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.4rem; }
+
+  .tab-row {
+    display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .tab {
+    padding: 0.6rem 1rem; font-size: 0.88rem;
+    color: var(--text-secondary); border-bottom: 2px solid transparent;
+    cursor: pointer; font-weight: 500;
+  }
+  .tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+  .scrim {
+    background: rgba(0,0,0,0.4);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-top: 1rem;
+  }
+  .modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    max-width: 540px; margin: 0 auto;
+    overflow: hidden;
+  }
+  .modal-header { padding: 1rem 1.25rem 0.5rem; }
+  .modal-body { padding: 0.5rem 1.25rem 1rem; font-size: 0.9rem; }
+  .modal-body ul { margin-left: 1.2rem; margin-top: 0.5rem; }
+  .modal-footer {
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 0.5rem;
+    background: var(--bg-quaternary);
+  }
+  .summary-stale-banner {
+    background: var(--warning-bg);
+    border-left: 3px solid var(--warning);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .table-mini {
+    width: 100%; border-collapse: collapse;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .table-mini th, .table-mini td { padding: 0.5rem 0.75rem; text-align: left; font-size: 0.85rem; border-top: 1px solid var(--border); }
+  .table-mini thead th { background: var(--bg-quaternary); border-top: 0; font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.04em; }
+  .pill-stale { display: inline-block; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.68rem; background: var(--warning-bg); color: #b45309; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1>08 — Edit Structure on Book Detail</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #2's reuse on the BookDetailView (D4) and the post-summary invalidation flow (D6). Same structure-editor surface as the upload wizard, with a confirm dialog before any destructive edit.
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Book detail view (Edit Structure tab visible)</div>
+<div class="frame book-shell">
+  <div class="book-header">
+    <div class="book-cover">Playing<br>to Win</div>
+    <div class="book-meta">
+      <h2>Playing to Win</h2>
+      <div class="authors">A.G. Lafley · Roger L. Martin</div>
+      <div class="stats">25 sections · summarized 2026-04-29 · preset <em>practitioner_bullets</em></div>
+    </div>
+    <div>
+      <button class="btn">Re-summarize</button>
+      <button class="btn">Export</button>
+    </div>
+  </div>
+
+  <div class="tab-row">
+    <div class="tab">Summary</div>
+    <div class="tab">Sections</div>
+    <div class="tab">Annotations</div>
+    <div class="tab active">Edit Structure</div>
+    <div class="tab">Settings</div>
+  </div>
+
+  <div class="banner banner-info">
+    <span class="banner-icon">ⓘ</span>
+    <div class="banner-body">
+      <div class="banner-title">Editing structure will invalidate affected summaries</div>
+      Sections you merge, split, or delete will lose their existing summaries. The book-level summary will also be invalidated if any of those sections contributed to it. You'll need to re-run summarization afterward.
+    </div>
+  </div>
+
+  <table class="table-mini">
+    <thead>
+      <tr>
+        <th style="width: 36px;">#</th>
+        <th>Title</th>
+        <th style="width: 110px;">Type</th>
+        <th style="width: 110px;">Summary</th>
+        <th style="width: 80px; text-align: right;">Chars</th>
+        <th style="width: 130px; text-align: right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>5</td>
+        <td>One — What Is Strategy?</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="muted">summarized</span></td>
+        <td style="text-align: right;">50,219</td>
+        <td style="text-align: right;">
+          <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">Rename</button>
+          <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">Split…</button>
+        </td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Two — The Choice Cascade</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="muted">summarized</span></td>
+        <td style="text-align: right;">38,712</td>
+        <td style="text-align: right;">
+          <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">Rename</button>
+          <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">Split…</button>
+        </td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Three — Where to Play</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="muted">summarized</span></td>
+        <td style="text-align: right;">42,108</td>
+        <td style="text-align: right;">
+          <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">Rename</button>
+          <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">Split…</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    During an active summarization for this book, the Edit Structure tab is hidden / disabled with the tooltip <em>"Wait for the current summarization to finish before editing structure."</em> (E4 in the requirements doc.)
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — Pre-save confirm dialog (book-summary invalidation visible)</div>
+<div class="frame">
+  <div class="scrim">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 style="margin: 0;">Apply structure changes?</h2>
+      </div>
+      <div class="modal-body">
+        <p>You're about to split <strong>"Three — Where to Play"</strong> into 4 sections.</p>
+        <p style="margin-top: 0.6rem;">This will invalidate:</p>
+        <ul>
+          <li><strong>1 section summary</strong> (Three — Where to Play)</li>
+          <li><strong>The book summary</strong>, because it was generated using this section</li>
+        </ul>
+        <p style="margin-top: 0.6rem;" class="muted">
+          Affected summaries will be marked stale; you'll see a "Re-summarize" CTA on the book page.
+          Other section summaries (Introduction, Two, Four…) are <strong>unchanged</strong>.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-primary">Apply changes</button>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>D6 — book-summary invalidation rule.</strong> Book summary is invalidated only if at least one affected section had previously been summarized. Merging two never-summarized sections (e.g., front-matter + glossary) leaves the book summary alone, and the dialog text adapts to say so.
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Post-edit state (Re-summarize CTA visible)</div>
+<div class="frame book-shell">
+  <div class="book-header">
+    <div class="book-cover">Playing<br>to Win</div>
+    <div class="book-meta">
+      <h2>Playing to Win</h2>
+      <div class="authors">A.G. Lafley · Roger L. Martin</div>
+      <div class="stats">28 sections · status <strong>PARSED</strong> · last edited 2026-04-30 10:45</div>
+    </div>
+    <div>
+      <button class="btn btn-primary">Re-summarize</button>
+    </div>
+  </div>
+
+  <div class="summary-stale-banner">
+    <strong>Some summaries are stale.</strong> The book summary and 1 section summary need to be regenerated after your structure edit. Click <em>Re-summarize</em> to refresh them.
+  </div>
+
+  <table class="table-mini">
+    <thead>
+      <tr>
+        <th style="width: 36px;">#</th>
+        <th>Title</th>
+        <th style="width: 110px;">Type</th>
+        <th style="width: 110px;">Summary</th>
+        <th style="width: 80px; text-align: right;">Chars</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>7</td>
+        <td>Where to Play (intro)</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="pill-stale">missing</span></td>
+        <td style="text-align: right;">8,142</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Geographies and Channels</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="pill-stale">missing</span></td>
+        <td style="text-align: right;">11,520</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Customer Segments</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="pill-stale">missing</span></td>
+        <td style="text-align: right;">14,330</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>Product Categories</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td><span class="pill-stale">missing</span></td>
+        <td style="text-align: right;">8,116</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

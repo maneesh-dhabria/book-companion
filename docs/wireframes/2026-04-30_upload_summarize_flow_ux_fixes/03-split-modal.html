@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 — Split Modal (3 modes) — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .scrim {
+    background: rgba(0,0,0,0.4);
+    border-radius: var(--radius);
+    padding: 2rem;
+    max-width: 1000px;
+  }
+  .modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    max-width: 720px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-header h2 { margin: 0; }
+  .modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-quaternary);
+  }
+  .modal-tab {
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem; font-weight: 500;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .modal-tab.active {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-bottom-color: var(--accent);
+  }
+  .modal-body { padding: 1.25rem; }
+  .modal-footer {
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 0.5rem;
+    background: var(--bg-quaternary);
+  }
+  .candidate-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.75rem; }
+  .candidate {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 0.6rem 0.8rem; background: var(--bg-secondary);
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .candidate-num {
+    width: 1.5rem; height: 1.5rem; border-radius: 999px;
+    background: var(--accent-bg); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600; flex-shrink: 0;
+  }
+  .candidate-meta { flex: 1; min-width: 0; }
+  .candidate-title { font-weight: 500; }
+  .candidate-sub { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .candidate-chars { font-size: 0.78rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  .content-preview {
+    max-height: 280px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg-quaternary);
+    padding: 0.85rem;
+    font-size: 0.83rem;
+    line-height: 1.6;
+  }
+  .content-preview p { margin-bottom: 0.7rem; }
+  .split-marker {
+    position: relative;
+    display: flex; align-items: center; gap: 0.4rem;
+    margin: 0.4rem 0; padding: 0.3rem 0;
+    color: var(--accent); font-size: 0.78rem; font-weight: 500;
+    border-top: 1px dashed var(--accent);
+    border-bottom: 1px dashed var(--accent);
+  }
+  .split-marker .x { cursor: pointer; color: var(--text-tertiary); margin-left: auto; }
+  .gap-target {
+    color: var(--text-tertiary);
+    font-size: 0.72rem; font-style: italic;
+    border-top: 1px dashed transparent;
+    padding: 0.15rem 0; cursor: pointer;
+  }
+  .gap-target:hover { border-top-color: var(--accent); color: var(--accent); }
+
+  .selection-band { background: rgba(0,113,227,0.18); border-radius: 2px; padding: 0 2px; }
+  .meta-line { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+
+<h1>03 — Split Modal (3 modes)</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #2 (D5: all three split modes exposed). Tabs: Auto-detect headings (default) · At paragraph · At cursor.
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">Tab A — Auto-detect headings (default)</div>
+<div class="frame">
+  <div class="scrim">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Split section: <em>Three — Where to Play</em></h2>
+        <button class="btn">✕</button>
+      </div>
+      <div class="modal-tabs">
+        <div class="modal-tab active">Auto-detect headings</div>
+        <div class="modal-tab">At paragraph</div>
+        <div class="modal-tab">At cursor</div>
+      </div>
+      <div class="modal-body">
+        <p>We found <strong>3</strong> level-2 (<code>##</code>) headings in this section. Splitting will create <strong>4 sections</strong> from the current 1.</p>
+        <div class="candidate-list">
+          <div class="candidate">
+            <span class="candidate-num">1</span>
+            <div class="candidate-meta">
+              <div class="candidate-title">Where to Play (intro)</div>
+              <div class="candidate-sub">Strategy starts with a clear definition of the playing field…</div>
+            </div>
+            <span class="candidate-chars">8,142 chars</span>
+          </div>
+          <div class="candidate">
+            <span class="candidate-num">2</span>
+            <div class="candidate-meta">
+              <div class="candidate-title">Geographies and Channels</div>
+              <div class="candidate-sub">Geographic choice is a primary axis of the where-to-play question…</div>
+            </div>
+            <span class="candidate-chars">11,520 chars</span>
+          </div>
+          <div class="candidate">
+            <span class="candidate-num">3</span>
+            <div class="candidate-meta">
+              <div class="candidate-title">Customer Segments</div>
+              <div class="candidate-sub">Within a chosen market, segmentation isolates the customers you can serve…</div>
+            </div>
+            <span class="candidate-chars">14,330 chars</span>
+          </div>
+          <div class="candidate">
+            <span class="candidate-num">4</span>
+            <div class="candidate-meta">
+              <div class="candidate-title">Product Categories</div>
+              <div class="candidate-sub">A coherent product mix lets you compete where you want without spreading thin…</div>
+            </div>
+            <span class="candidate-chars">8,116 chars</span>
+          </div>
+        </div>
+        <div class="meta-line">
+          Total: 42,108 chars → 4 sections (8,142 / 11,520 / 14,330 / 8,116). <a href="#" style="color: var(--accent);">Reset to defaults</a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-primary">Split into 4 sections</button>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>OQ6.</strong> Whether the candidate preview shows full body text or just title + first-line snippet is a /spec-time call. The wireframe shows the lighter "first-line snippet + char count" version.
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">Tab B — At paragraph (click between paragraphs to mark a split)</div>
+<div class="frame">
+  <div class="scrim">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Split section: <em>Three — Where to Play</em></h2>
+        <button class="btn">✕</button>
+      </div>
+      <div class="modal-tabs">
+        <div class="modal-tab">Auto-detect headings</div>
+        <div class="modal-tab active">At paragraph</div>
+        <div class="modal-tab">At cursor</div>
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Hover between paragraphs and click to mark a split point. We snap to the nearest paragraph boundary.</p>
+        <div class="content-preview">
+          <p>Strategy starts with a clear definition of the playing field. Without that clarity, organizations dissipate effort across too many fronts.</p>
+          <div class="gap-target">⤵ click to split here</div>
+          <p>Geographic choice is a primary axis of the where-to-play question. Some geographies are inherently more attractive than others.</p>
+          <div class="split-marker">
+            ✓ Split point 1 (after paragraph 2 · char 8,142)
+            <span class="x" title="Remove">✕</span>
+          </div>
+          <p>Within a chosen market, segmentation isolates the customers you can serve profitably and sustainably.</p>
+          <div class="gap-target">⤵ click to split here</div>
+          <p>A coherent product mix lets you compete where you want without spreading thin across categories that share little in common.</p>
+        </div>
+        <div class="meta-line">
+          1 split point set → will create <strong>2 sections</strong>. Click another gap to add more split points.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-primary">Split into 2 sections</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">Tab C — At cursor (precise split via text selection)</div>
+<div class="frame">
+  <div class="scrim">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Split section: <em>Three — Where to Play</em></h2>
+        <button class="btn">✕</button>
+      </div>
+      <div class="modal-tabs">
+        <div class="modal-tab">Auto-detect headings</div>
+        <div class="modal-tab">At paragraph</div>
+        <div class="modal-tab active">At cursor</div>
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Click anywhere in the text to place a precise split point at that exact character.</p>
+        <div class="content-preview">
+          <p>Strategy starts with a clear definition of the playing field. Without that clarity, organizations dissipate effort across too many fronts.</p>
+          <p>Geographic choice is a primary axis of the where-to-play question. Some geographies are inherently more <span class="selection-band">attractive than others</span>|<span style="color: var(--accent); font-weight: 600;">▌</span></p>
+          <p style="opacity: 0.55;">Within a chosen market, segmentation isolates the customers you can serve profitably and sustainably. A coherent product mix lets you compete where you want.</p>
+        </div>
+        <div class="meta-line">
+          Cursor at <strong>char 8,256</strong> (position 8,256 / 42,108) → split into <strong>2 sections</strong> of 8,256 and 33,852 chars.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-primary">Split at this position</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

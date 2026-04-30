@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 — Step 2: Structure Editor — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .wizard { max-width: 1000px; }
+  .editor-toolbar {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-quaternary);
+    border: 1px solid var(--border); border-bottom: 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+    flex-wrap: wrap;
+  }
+  .editor-toolbar .selection-count { font-size: 0.85rem; color: var(--text-secondary); margin-right: auto; }
+  .toolbar-divider { width: 1px; height: 1.2rem; background: var(--border); }
+
+  table.sections {
+    width: 100%; border-collapse: collapse;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+  table.sections th, table.sections td { padding: 0.65rem 0.75rem; text-align: left; font-size: 0.85rem; vertical-align: middle; }
+  table.sections thead { background: var(--bg-quaternary); }
+  table.sections th { font-weight: 600; font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.04em; }
+  table.sections tbody tr { border-top: 1px solid var(--border); }
+  table.sections tbody tr.selected { background: var(--accent-bg); }
+  table.sections tbody tr:hover { background: var(--bg-quaternary); }
+  table.sections tbody tr.selected:hover { background: var(--accent-bg); }
+
+  .col-drag { width: 24px; color: var(--text-tertiary); cursor: grab; user-select: none; }
+  .col-check { width: 24px; }
+  .col-num { width: 36px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .col-type { width: 110px; }
+  .col-chars { width: 90px; color: var(--text-secondary); text-align: right; font-variant-numeric: tabular-nums; }
+  .col-actions { width: 130px; text-align: right; }
+
+  .row-action {
+    width: 28px; height: 28px; padding: 0; border-radius: 6px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--text-secondary); cursor: pointer; font-size: 0.85rem;
+  }
+  .row-action:hover { background: var(--bg-quaternary); border-color: var(--border); color: var(--text-primary); }
+  .row-action.danger:hover { color: var(--error); }
+
+  .title-cell { display: flex; align-items: center; gap: 0.5rem; }
+  .title-cell input.rename {
+    width: 100%; padding: 0.25rem 0.4rem; border: 1px solid var(--accent); border-radius: 4px;
+    background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem;
+  }
+
+  .footer-row { display: flex; justify-content: space-between; margin-top: 1.25rem; }
+  .legend { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem; }
+
+  .undo-toast {
+    position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%);
+    background: var(--text-primary); color: var(--bg-secondary);
+    padding: 0.6rem 1rem; border-radius: 999px;
+    font-size: 0.85rem; box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .undo-toast button { background: transparent; border: 0; color: var(--accent); font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h1>02 — Step 2: Structure Editor</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #2. Per-row char count + per-row actions (rename, delete, split, drag-handle reorder); multi-select toolbar (merge, bulk delete, bulk set-type). Same component reused from BookDetailView (see wireframe 08).
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Default (no rows selected; per-row actions visible)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step done"><span class="num">✓</span> Upload</span>
+    <span class="step active"><span class="num">2</span> Review Structure</span>
+    <span class="step"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Review Structure — Playing to Win</h2>
+  <p class="muted" style="margin-bottom: 1rem;">25 sections detected (148,402 chars). Edit before running summarization.</p>
+
+  <div class="editor-toolbar">
+    <span class="selection-count">No rows selected</span>
+    <button class="btn" disabled>Merge</button>
+    <button class="btn" disabled>Set type…</button>
+    <button class="btn btn-danger" disabled>Delete</button>
+    <span class="toolbar-divider"></span>
+    <button class="btn">Auto-detect headings</button>
+    <button class="btn btn-ghost">Undo</button>
+  </div>
+
+  <table class="sections" role="table">
+    <thead>
+      <tr>
+        <th class="col-drag" aria-label="Reorder"></th>
+        <th class="col-check"><input type="checkbox" aria-label="Select all"></th>
+        <th class="col-num">#</th>
+        <th>Title</th>
+        <th class="col-type">Type</th>
+        <th class="col-chars">Chars</th>
+        <th class="col-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">1</td>
+        <td>Introduction</td>
+        <td><span class="tag tag-front">front-matter</span></td>
+        <td class="col-chars">20,414</td>
+        <td class="col-actions">
+          <button class="row-action" title="Rename">✎</button>
+          <button class="row-action" title="Split…">⫶</button>
+          <button class="row-action danger" title="Delete">🗑</button>
+        </td>
+      </tr>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">2</td>
+        <td>How Strategy Really Works</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">10,206</td>
+        <td class="col-actions">
+          <button class="row-action" title="Rename">✎</button>
+          <button class="row-action" title="Split…">⫶</button>
+          <button class="row-action danger" title="Delete">🗑</button>
+        </td>
+      </tr>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">3</td>
+        <td>One — What Is Strategy?</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">50,219</td>
+        <td class="col-actions">
+          <button class="row-action" title="Rename">✎</button>
+          <button class="row-action" title="Split…">⫶</button>
+          <button class="row-action danger" title="Delete">🗑</button>
+        </td>
+      </tr>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">4</td>
+        <td>Two — The Choice Cascade</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">38,712</td>
+        <td class="col-actions">
+          <button class="row-action" title="Rename">✎</button>
+          <button class="row-action" title="Split…">⫶</button>
+          <button class="row-action danger" title="Delete">🗑</button>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="7" class="muted" style="text-align:center; padding: 0.5rem;">… 21 more rows …</td>
+      </tr>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">25</td>
+        <td>About the Authors</td>
+        <td><span class="tag tag-back">back-matter</span></td>
+        <td class="col-chars">3,976</td>
+        <td class="col-actions">
+          <button class="row-action" title="Rename">✎</button>
+          <button class="row-action" title="Split…">⫶</button>
+          <button class="row-action danger" title="Delete">🗑</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="legend">
+    Per-row actions: ✎ rename · ⫶ split · 🗑 delete · ⋮⋮ drag to reorder. Multi-select toolbar handles cross-section ops.
+  </div>
+
+  <div class="footer-row">
+    <button class="btn">← Back</button>
+    <button class="btn btn-primary">Continue → Preset</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — 2 rows selected; toolbar actions enabled</div>
+<div class="frame wizard">
+  <h2 style="margin-top: 0;">Review Structure — Playing to Win</h2>
+  <p class="muted" style="margin-bottom: 1rem;">Toolbar activates when at least one row is selected.</p>
+
+  <div class="editor-toolbar">
+    <span class="selection-count" style="color: var(--text-primary); font-weight: 500;">2 rows selected</span>
+    <button class="btn">Merge</button>
+    <button class="btn">Set type…</button>
+    <button class="btn btn-danger">Delete</button>
+    <span class="toolbar-divider"></span>
+    <button class="btn">Auto-detect headings</button>
+    <button class="btn btn-ghost">Clear selection</button>
+  </div>
+
+  <table class="sections" role="table">
+    <thead>
+      <tr>
+        <th class="col-drag"></th>
+        <th class="col-check"><input type="checkbox" aria-label="Select all"></th>
+        <th class="col-num">#</th>
+        <th>Title</th>
+        <th class="col-type">Type</th>
+        <th class="col-chars">Chars</th>
+        <th class="col-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">3</td>
+        <td>One — What Is Strategy?</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">50,219</td>
+        <td class="col-actions">
+          <button class="row-action">✎</button>
+          <button class="row-action">⫶</button>
+          <button class="row-action danger">🗑</button>
+        </td>
+      </tr>
+      <tr class="selected">
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox" checked></td>
+        <td class="col-num">4</td>
+        <td>Two — The Choice Cascade</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">38,712</td>
+        <td class="col-actions">
+          <button class="row-action">✎</button>
+          <button class="row-action">⫶</button>
+          <button class="row-action danger">🗑</button>
+        </td>
+      </tr>
+      <tr class="selected">
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox" checked></td>
+        <td class="col-num">5</td>
+        <td>Three — Where to Play</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">42,108</td>
+        <td class="col-actions">
+          <button class="row-action">✎</button>
+          <button class="row-action">⫶</button>
+          <button class="row-action danger">🗑</button>
+        </td>
+      </tr>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">6</td>
+        <td>Four — How to Win</td>
+        <td><span class="tag tag-chapter">chapter</span></td>
+        <td class="col-chars">36,455</td>
+        <td class="col-actions">
+          <button class="row-action">✎</button>
+          <button class="row-action">⫶</button>
+          <button class="row-action danger">🗑</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Merge ordering (D14).</strong> Selected rows merge in <em>document order</em> (row 4 then row 5), regardless of the order checkboxes were ticked. Result takes the lowest-index slot (row 4); subsequent rows shift up. Non-contiguous selections are allowed (e.g., merge rows 4 + 9).
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Inline rename + Undo toast after delete</div>
+<div class="frame wizard" style="position: relative; min-height: 240px;">
+  <h2 style="margin-top: 0;">Review Structure — Playing to Win</h2>
+
+  <table class="sections" role="table" style="border-radius: var(--radius);">
+    <tbody>
+      <tr>
+        <td class="col-drag">⋮⋮</td>
+        <td><input type="checkbox"></td>
+        <td class="col-num">2</td>
+        <td>
+          <div class="title-cell">
+            <input class="rename" value="Foreword by A.G. Lafley" autofocus>
+          </div>
+        </td>
+        <td><span class="tag tag-front">front-matter</span></td>
+        <td class="col-chars">10,206</td>
+        <td class="col-actions">
+          <button class="btn btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">Save</button>
+          <button class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;">Cancel</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="undo-toast">
+    <span>Section "About the Authors" deleted</span>
+    <button>Undo</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State D — Disabled "delete all" guard</div>
+<div class="frame wizard" style="max-width: 700px;">
+  <div class="banner banner-info">
+    <span class="banner-icon">ⓘ</span>
+    <div class="banner-body">
+      <div class="banner-title">At least one section must remain</div>
+      Deselect a row to enable bulk delete. (Backend enforces a minimum of 1 section per book.)
+    </div>
+  </div>
+  <div class="editor-toolbar">
+    <span class="selection-count" style="color: var(--text-primary);">25 of 25 rows selected</span>
+    <button class="btn" disabled>Merge</button>
+    <button class="btn" disabled>Set type…</button>
+    <button class="btn btn-danger" disabled title="At least one section must remain">Delete</button>
+  </div>
+</div>
+
+</body>
+</html>

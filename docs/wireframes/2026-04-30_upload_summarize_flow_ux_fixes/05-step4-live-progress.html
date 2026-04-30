@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 — Step 4: Live Progress + Completion — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .wizard { max-width: 760px; }
+  .progress-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    background: var(--bg-secondary);
+  }
+  .progress-headline {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 0.4rem;
+  }
+  .progress-headline .now { font-size: 1.1rem; font-weight: 600; }
+  .progress-headline .count { color: var(--text-secondary); font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+  .progress-bar {
+    height: 8px; background: var(--bg-quaternary); border-radius: 8px; overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+  .progress-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 8px; transition: width 0.3s ease; }
+  .progress-meta {
+    display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-secondary);
+  }
+  .progress-meta strong { color: var(--text-primary); }
+  .stat-row { display: flex; gap: 1rem; margin-top: 1rem; }
+  .stat {
+    flex: 1; padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg-quaternary);
+  }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.2rem; }
+  .stat-value { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat.warn .stat-value { color: var(--warning); }
+  .stat.err .stat-value { color: var(--error); }
+  .cta-row { display: flex; gap: 0.6rem; margin-top: 1.25rem; }
+  .cta-row .btn { flex: 1; justify-content: center; padding: 0.65rem 1rem; }
+  .recent {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    font-size: 0.83rem;
+  }
+  .recent-row { display: flex; justify-content: space-between; padding: 0.25rem 0; color: var(--text-secondary); }
+  .recent-row .check { color: var(--success); }
+  .recent-row .skip { color: var(--warning); }
+  .recent-row .fail { color: var(--error); }
+  .success-card {
+    border: 1px solid var(--success);
+    background: var(--success-bg);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .success-card .icon {
+    width: 56px; height: 56px; border-radius: 999px;
+    background: var(--success); color: white;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 0.75rem; font-size: 1.5rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>05 — Step 4: Live Progress + Completion</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #3 (D7: inline live progress, mid-job dual CTAs, on-completion success card with manual View Book — no auto-redirect).
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Mid-job (live SSE-driven progress)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step done"><span class="num">✓</span> Upload</span>
+    <span class="step done"><span class="num">✓</span> Review Structure</span>
+    <span class="step done"><span class="num">✓</span> Preset</span>
+    <span class="step active"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Summarizing <em>Playing to Win</em></h2>
+  <p class="muted" style="margin-bottom: 1rem;">Live progress. You can stay here, jump to the book, or dismiss to library — the job continues either way.</p>
+
+  <div class="progress-card">
+    <div class="progress-headline">
+      <span class="now">Section 8 of 24 · "Four — How to Win"</span>
+      <span class="count">33%</span>
+    </div>
+    <div class="progress-bar"><span style="width: 33%"></span></div>
+    <div class="progress-meta">
+      <span>Elapsed <strong>2m 14s</strong></span>
+      <span>ETA <strong>~4m 30s</strong></span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-label">Completed</div><div class="stat-value">7</div></div>
+      <div class="stat warn"><div class="stat-label">Skipped</div><div class="stat-value">0</div></div>
+      <div class="stat err"><div class="stat-label">Failed</div><div class="stat-value">0</div></div>
+      <div class="stat"><div class="stat-label">Remaining</div><div class="stat-value">17</div></div>
+    </div>
+    <div class="recent">
+      <div class="recent-row"><span><span class="check">✓</span> §7 — Three: Where to Play</span><span>34s</span></div>
+      <div class="recent-row"><span><span class="check">✓</span> §6 — Two: The Choice Cascade</span><span>42s</span></div>
+      <div class="recent-row"><span><span class="check">✓</span> §5 — One: What Is Strategy?</span><span>1m 02s</span></div>
+      <div class="recent-row"><span><span class="check">✓</span> §4 — Foreword by A.G. Lafley</span><span>18s</span></div>
+    </div>
+  </div>
+
+  <div class="cta-row">
+    <button class="btn">Open Book Now</button>
+    <button class="btn">Dismiss → Library</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — Mid-job with one failure (eval-retry triggered)</div>
+<div class="frame wizard">
+  <h2 style="margin-top: 0;">Summarizing <em>Playing to Win</em></h2>
+
+  <div class="progress-card">
+    <div class="progress-headline">
+      <span class="now">Section 12 of 24 · "Six — Win With Strategy" <span class="tag" style="color: var(--warning); background: var(--warning-bg);">retrying…</span></span>
+      <span class="count">50%</span>
+    </div>
+    <div class="progress-bar"><span style="width: 50%; background: var(--warning);"></span></div>
+    <div class="progress-meta">
+      <span>Elapsed <strong>3m 48s</strong></span>
+      <span>ETA <strong>~3m 50s</strong></span>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-label">Completed</div><div class="stat-value">11</div></div>
+      <div class="stat warn"><div class="stat-label">Skipped</div><div class="stat-value">1</div></div>
+      <div class="stat err"><div class="stat-label">Failed</div><div class="stat-value">0</div></div>
+      <div class="stat"><div class="stat-label">Remaining</div><div class="stat-value">12</div></div>
+    </div>
+    <div class="recent">
+      <div class="recent-row"><span><span class="skip">⤳</span> §11 — Glossary (skipped: front-matter)</span><span>—</span></div>
+      <div class="recent-row"><span><span class="check">✓</span> §10 — Five: Manage What Matters</span><span>52s</span></div>
+    </div>
+  </div>
+  <div class="cta-row">
+    <button class="btn">Open Book Now</button>
+    <button class="btn">Dismiss → Library</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Completed (success card, manual View Book CTA)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step done"><span class="num">✓</span> Upload</span>
+    <span class="step done"><span class="num">✓</span> Review Structure</span>
+    <span class="step done"><span class="num">✓</span> Preset</span>
+    <span class="step done"><span class="num">✓</span> Processing</span>
+  </div>
+
+  <div class="success-card">
+    <div class="icon">✓</div>
+    <h2 style="margin-bottom: 0.4rem;"><em>Playing to Win</em> is ready</h2>
+    <p class="muted" style="margin-bottom: 1rem;">24 sections summarized · 1 skipped (front-matter) · 0 failures · 6m 18s</p>
+    <div style="display: inline-flex; gap: 0.5rem;">
+      <button class="btn btn-primary">View Book →</button>
+      <button class="btn">Add Another Book</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State D — Completed with errors (partial success)</div>
+<div class="frame wizard">
+  <div class="success-card" style="background: var(--warning-bg); border-color: var(--warning);">
+    <div class="icon" style="background: var(--warning);">!</div>
+    <h2 style="margin-bottom: 0.4rem;"><em>Playing to Win</em> finished with some errors</h2>
+    <p class="muted" style="margin-bottom: 1rem;">19 summarized · 1 skipped · <strong style="color: var(--error);">4 failed</strong> · 5m 02s</p>
+    <div style="display: inline-flex; gap: 0.5rem;">
+      <button class="btn btn-primary">View Book →</button>
+      <button class="btn">Retry Failed</button>
+    </div>
+  </div>
+</div>
+
+<div class="note" style="max-width: 760px;">
+  <strong>Mid-job CTAs (D7):</strong> "Open Book Now" navigates to the BookDetailView; the same SSE stream feeds the book page's progress UI so the user keeps watching from there. "Dismiss → Library" closes the wizard; the persistent indicator at the app bottom (wireframe 06) takes over. <strong>Completion behavior:</strong> if the user is still on Step 4, the card transforms in place into the success card with stats and a manual <em>View Book</em> CTA — no auto-redirect. If they've left, a one-shot toast announces completion (covered in wireframe 06).
+</div>
+
+</body>
+</html>

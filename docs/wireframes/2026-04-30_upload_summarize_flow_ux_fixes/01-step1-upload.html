@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 — Step 1: Upload (per-file card, two-phase) — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .wizard { max-width: 760px; }
+  .stepper { padding: 0.5rem 0; }
+  .dropzone {
+    border: 2px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    background: var(--bg-quaternary);
+  }
+  .dropzone.dim { opacity: 0.4; pointer-events: none; }
+  .dropzone .big { font-size: 1.05rem; color: var(--text-primary); font-weight: 500; margin-bottom: 0.4rem; }
+  .upload-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow);
+    display: flex; gap: 1rem; align-items: center;
+  }
+  .file-icon {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: var(--accent-bg); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 0.75rem; flex-shrink: 0;
+  }
+  .file-meta { flex: 1; min-width: 0; }
+  .file-name { font-weight: 500; }
+  .file-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem; }
+  .progress {
+    height: 4px; background: var(--bg-quaternary); border-radius: 4px; margin-top: 0.5rem; overflow: hidden;
+  }
+  .progress > span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+  .spinner-row { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-secondary); }
+  .spinner {
+    width: 12px; height: 12px; border-radius: 999px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .footer-row { display: flex; justify-content: space-between; margin-top: 1.25rem; }
+  .state-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; max-width: 760px; }
+  .state-grid > .frame { margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<h1>01 — Step 1: Upload</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #1 (silent upload). Per-file card replaces dropzone; two-phase indicator (determinate upload progress → indeterminate parse spinner). Cancel active during upload, disabled during parse.
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Empty (file not yet picked)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step active"><span class="num">1</span> Upload</span>
+    <span class="step"><span class="num">2</span> Review Structure</span>
+    <span class="step"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Add a Book</h2>
+  <p class="muted" style="margin-bottom: 1rem;">Drop an EPUB, MOBI, or PDF. We'll parse the structure on the next step.</p>
+
+  <div class="dropzone">
+    <div class="big">Drop a book file here</div>
+    <div>or <a href="#" style="color: var(--accent);">browse to select</a></div>
+    <div style="margin-top: 0.6rem; font-size: 0.78rem;">.epub · .mobi · .pdf · up to 100 MB</div>
+  </div>
+
+  <div class="footer-row">
+    <button class="btn">Cancel</button>
+    <button class="btn btn-primary disabled" disabled>Continue →</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — Uploading (determinate progress; Cancel active)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step active"><span class="num">1</span> Upload</span>
+    <span class="step"><span class="num">2</span> Review Structure</span>
+    <span class="step"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Add a Book</h2>
+  <p class="muted" style="margin-bottom: 1rem;">Drop an EPUB, MOBI, or PDF. We'll parse the structure on the next step.</p>
+
+  <div class="dropzone dim" aria-hidden="true">
+    <div class="big">Drop a book file here</div>
+    <div>or browse to select</div>
+  </div>
+
+  <div class="upload-card" style="margin-top: 1rem;">
+    <div class="file-icon">EPUB</div>
+    <div class="file-meta">
+      <div class="file-name">playing-to-win.epub</div>
+      <div class="file-sub">2.4 MB · uploading 62%</div>
+      <div class="progress" aria-label="Upload progress 62%"><span style="width:62%"></span></div>
+    </div>
+    <button class="btn btn-danger" aria-label="Cancel upload">Cancel</button>
+  </div>
+
+  <div class="footer-row">
+    <button class="btn" disabled>Cancel</button>
+    <button class="btn btn-primary disabled" disabled>Continue →</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Parsing (indeterminate spinner; Cancel disabled with tooltip)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step active"><span class="num">1</span> Upload</span>
+    <span class="step"><span class="num">2</span> Review Structure</span>
+    <span class="step"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Add a Book</h2>
+
+  <div class="upload-card">
+    <div class="file-icon">EPUB</div>
+    <div class="file-meta">
+      <div class="file-name">playing-to-win.epub</div>
+      <div class="file-sub">2.4 MB · uploaded</div>
+      <div class="spinner-row"><span class="spinner"></span> Parsing EPUB…</div>
+    </div>
+    <button class="btn" disabled title="Cannot cancel during parse">Cancel</button>
+  </div>
+
+  <div class="note">
+    During parse, the Cancel button is disabled with the tooltip <em>"Cannot cancel during parse"</em>.
+    Parse runs server-side, is typically &lt; 5 seconds, and on success the wizard auto-advances to Step 2.
+  </div>
+
+  <div class="footer-row">
+    <button class="btn" disabled>Cancel</button>
+    <button class="btn btn-primary disabled" disabled>Continue →</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State D — Error (upload or parse failed)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step active"><span class="num">1</span> Upload</span>
+    <span class="step"><span class="num">2</span> Review Structure</span>
+    <span class="step"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Add a Book</h2>
+
+  <div class="banner banner-error">
+    <span class="banner-icon">⚠</span>
+    <div class="banner-body">
+      <div class="banner-title">Couldn't parse this file</div>
+      No chapter structure detected. The file may be corrupted or use a non-standard EPUB layout. <a href="#" style="color: var(--accent);">Try another file</a>.
+    </div>
+  </div>
+
+  <div class="upload-card">
+    <div class="file-icon" style="background: var(--error-bg); color: var(--error);">EPUB</div>
+    <div class="file-meta">
+      <div class="file-name">playing-to-win.epub</div>
+      <div class="file-sub" style="color: var(--error);">Parse failed</div>
+    </div>
+    <button class="btn">Retry</button>
+    <button class="btn">Remove</button>
+  </div>
+</div>
+
+<div class="note" style="max-width: 760px;">
+  <strong>Behavior summary.</strong>
+  Empty state shows the dropzone alone. On file pick: dropzone dims and a per-file card appears with a determinate progress bar and live byte count; Cancel aborts the HTTP request. When upload reaches 100%, the bar is replaced by an indeterminate spinner with "Parsing EPUB…"; Cancel becomes disabled. On success the wizard auto-advances to Step 2; on failure the error banner appears with a Retry CTA.
+</div>
+
+</body>
+</html>

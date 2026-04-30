@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 — Settings → LLM (validation banner + inline error) — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .settings-shell { display: grid; grid-template-columns: 200px 1fr; gap: 1.5rem; max-width: 920px; }
+  .nav { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem; }
+  .nav-item { display: block; padding: 0.5rem 0.7rem; border-radius: var(--radius-sm); color: var(--text-primary); text-decoration: none; font-size: 0.88rem; }
+  .nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .nav-item:hover:not(.active) { background: var(--bg-quaternary); }
+
+  .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+
+  .field { margin-bottom: 1.25rem; }
+  .field label { display: block; font-weight: 500; font-size: 0.88rem; margin-bottom: 0.3rem; }
+  .field .hint { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.3rem; }
+  .field input, .field select {
+    width: 100%; padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg-secondary); color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+  .field input.error, .field select.error { border-color: var(--error); }
+  .field-error { color: var(--error); font-size: 0.8rem; margin-top: 0.3rem; }
+  .field-status { font-size: 0.78rem; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.3rem; }
+  .field-status.ok { color: var(--success); }
+  .field-status.bad { color: var(--error); }
+
+  .footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<h1>07 — Settings → LLM (CLI validation)</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #4 (D9, E1a, E1b). Persistent banner whenever the configured CLI doesn't resolve on PATH; inline validation error when the user tries to save an invalid value.
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Persistent warning banner (current saved value is broken)</div>
+<div class="frame">
+  <div class="settings-shell">
+    <div class="nav">
+      <a class="nav-item">General</a>
+      <a class="nav-item active">LLM Provider</a>
+      <a class="nav-item">Reading</a>
+      <a class="nav-item">Backup</a>
+      <a class="nav-item">Advanced</a>
+    </div>
+    <div class="panel">
+      <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
+      <p class="muted" style="margin-bottom: 1rem; font-size: 0.85rem;">Configure which CLI Book Companion uses to generate summaries.</p>
+
+      <div class="banner banner-warning">
+        <span class="banner-icon">⚠</span>
+        <div class="banner-body">
+          <div class="banner-title">Currently configured CLI <code>claude-personal</code> is not on PATH</div>
+          Summarization will fail until this is fixed. Either install <code>claude-personal</code> on your PATH, or change the command below to <code>claude</code> or <code>codex</code> (auto-detected on this machine).
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="provider">Provider</label>
+        <select id="provider">
+          <option>claude (recommended)</option>
+          <option>codex</option>
+          <option>auto-detect</option>
+        </select>
+        <div class="hint">Detected on this machine: <strong>claude</strong>, <strong>codex</strong></div>
+      </div>
+
+      <div class="field">
+        <label for="cli">CLI command</label>
+        <input id="cli" value="claude-personal" class="error">
+        <div class="field-status bad">⛔ Binary <code>claude-personal</code> not found on PATH</div>
+        <div class="hint">Override the CLI command path. Leave empty to use the default <code>claude</code>.</div>
+      </div>
+
+      <div class="field">
+        <label for="model">Model</label>
+        <select id="model">
+          <option>sonnet</option>
+          <option>opus</option>
+          <option>haiku</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="config-dir">Config directory (optional)</label>
+        <input id="config-dir" value="~/.claude-personal">
+        <div class="hint">Passed as <code>--config-dir</code> to the CLI. Useful if you maintain a separate Claude profile.</div>
+      </div>
+
+      <div class="footer">
+        <button class="btn">Cancel</button>
+        <button class="btn btn-primary" disabled title="Fix the CLI command before saving">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — Inline validation error on save attempt</div>
+<div class="frame">
+  <div class="settings-shell">
+    <div class="nav">
+      <a class="nav-item">General</a>
+      <a class="nav-item active">LLM Provider</a>
+      <a class="nav-item">Reading</a>
+      <a class="nav-item">Backup</a>
+      <a class="nav-item">Advanced</a>
+    </div>
+    <div class="panel">
+      <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
+      <p class="muted" style="margin-bottom: 1rem; font-size: 0.85rem;">Configure which CLI Book Companion uses to generate summaries.</p>
+
+      <div class="banner banner-error">
+        <span class="banner-icon">⛔</span>
+        <div class="banner-body">
+          <div class="banner-title">Cannot save: 1 field is invalid</div>
+          The CLI command must resolve to a binary on this machine's PATH. Fix the highlighted field, or click <em>Save anyway</em> if you'll install the binary later.
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="cli2">CLI command</label>
+        <input id="cli2" value="claude-personal-typo" class="error">
+        <div class="field-error">Binary not found on PATH. Try <code>claude</code> (detected) or install your custom CLI first.</div>
+      </div>
+
+      <div class="footer">
+        <button class="btn">Cancel</button>
+        <button class="btn">Save anyway</button>
+        <button class="btn btn-primary" disabled>Save</button>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>OQ1.</strong> Whether <em>Save anyway</em> is exposed (warn-and-let-save) or removed (hard-block) is the open question deferred to /spec. The wireframe shows the warn-with-escape-hatch variant for users who alias their CLI in shells the server can't see.
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Healthy state (validation green)</div>
+<div class="frame">
+  <div class="settings-shell">
+    <div class="nav">
+      <a class="nav-item">General</a>
+      <a class="nav-item active">LLM Provider</a>
+      <a class="nav-item">Reading</a>
+      <a class="nav-item">Backup</a>
+      <a class="nav-item">Advanced</a>
+    </div>
+    <div class="panel">
+      <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
+      <div class="field">
+        <label for="cli3">CLI command</label>
+        <input id="cli3" value="claude">
+        <div class="field-status ok">✓ Binary found at <code>/usr/local/bin/claude</code></div>
+      </div>
+      <div class="field">
+        <label>Last test</label>
+        <div class="muted" style="font-size: 0.85rem;">Successfully invoked <code>claude --version</code> · 2026-04-30 10:42</div>
+      </div>
+      <div class="footer">
+        <button class="btn">Test connection</button>
+        <button class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

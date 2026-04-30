@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 — Step 3: Preset Picker + CLI Preflight — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .wizard { max-width: 760px; }
+  .preset-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .preset-card {
+    border: 2px solid var(--border); border-radius: var(--radius);
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    background: var(--bg-secondary);
+  }
+  .preset-card.selected { border-color: var(--accent); background: var(--accent-bg); }
+  .preset-name { font-weight: 600; margin-bottom: 0.2rem; }
+  .preset-desc { font-size: 0.82rem; color: var(--text-secondary); }
+  .preset-facets { margin-top: 0.5rem; display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  .preset-facets .tag { font-size: 0.68rem; }
+  .footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; }
+  .checkbox-row { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .checkbox-row label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<h1>04 — Step 3: Preset Picker + CLI Preflight</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issue #4 (D9: preflight CLI validation at Step 3 + persistent banner on Settings). When configured CLI is missing on PATH, "Start Processing" is blocked; job is NOT queued.
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Default (CLI valid; ready to start)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step done"><span class="num">✓</span> Upload</span>
+    <span class="step done"><span class="num">✓</span> Review Structure</span>
+    <span class="step active"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Choose a Summarization Preset</h2>
+  <p class="muted" style="margin-bottom: 1rem;">24 sections will be summarized using the selected preset.</p>
+
+  <div class="preset-grid">
+    <div class="preset-card selected">
+      <div class="preset-name">Practitioner Bullets</div>
+      <div class="preset-desc">Action-oriented bullets for working professionals. Standard compression.</div>
+      <div class="preset-facets">
+        <span class="tag">style: bullets</span>
+        <span class="tag">audience: practitioner</span>
+        <span class="tag">compression: 20%</span>
+      </div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-name">Academic Prose</div>
+      <div class="preset-desc">Structured paragraphs with citations preserved. Detailed compression.</div>
+      <div class="preset-facets">
+        <span class="tag">style: prose</span>
+        <span class="tag">audience: academic</span>
+        <span class="tag">compression: 30%</span>
+      </div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-name">Quick Reference</div>
+      <div class="preset-desc">Tight key-takeaways list. Brief compression.</div>
+      <div class="preset-facets">
+        <span class="tag">style: list</span>
+        <span class="tag">compression: 10%</span>
+      </div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-name">Concept-First</div>
+      <div class="preset-desc">Surfaces frameworks and named concepts. Standard compression.</div>
+      <div class="preset-facets">
+        <span class="tag">content: concepts</span>
+        <span class="tag">compression: 20%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="checkbox-row">
+    <label><input type="checkbox" checked> Run quality eval (16 assertions)</label>
+    <label><input type="checkbox" checked> Auto-retry on critical failures</label>
+  </div>
+
+  <div class="banner banner-info">
+    <span class="banner-icon">⚙</span>
+    <div class="banner-body">
+      <span class="muted">LLM:</span> <strong>claude</strong> · model <strong>sonnet</strong> · <a href="#" style="color: var(--accent);">change in Settings</a>
+    </div>
+  </div>
+
+  <div class="footer-row">
+    <button class="btn">← Back</button>
+    <button class="btn btn-primary">Start Processing →</button>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — Preflight failed (CLI not on PATH; Start blocked)</div>
+<div class="frame wizard">
+  <div class="stepper">
+    <span class="step done"><span class="num">✓</span> Upload</span>
+    <span class="step done"><span class="num">✓</span> Review Structure</span>
+    <span class="step active"><span class="num">3</span> Preset</span>
+    <span class="step"><span class="num">4</span> Processing</span>
+  </div>
+  <h2>Choose a Summarization Preset</h2>
+
+  <div class="banner banner-error">
+    <span class="banner-icon">⛔</span>
+    <div class="banner-body">
+      <div class="banner-title">Configured CLI <code>claude-personal</code> isn't installed on this machine</div>
+      Summarization will fail until this is fixed. Either install <code>claude-personal</code> on your PATH, or change the configured command in Settings.
+      <div style="margin-top: 0.5rem;">
+        <a href="#" class="btn btn-primary" style="text-decoration: none; padding: 0.4rem 0.8rem;">Fix in Settings → LLM</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="preset-grid">
+    <div class="preset-card selected" style="opacity: 0.55;">
+      <div class="preset-name">Practitioner Bullets</div>
+      <div class="preset-desc">Action-oriented bullets for working professionals.</div>
+    </div>
+    <div class="preset-card" style="opacity: 0.55;">
+      <div class="preset-name">Academic Prose</div>
+      <div class="preset-desc">Structured paragraphs with citations preserved.</div>
+    </div>
+  </div>
+
+  <div class="checkbox-row" style="opacity: 0.55;">
+    <label><input type="checkbox" checked disabled> Run quality eval</label>
+    <label><input type="checkbox" checked disabled> Auto-retry on critical failures</label>
+  </div>
+
+  <div class="footer-row">
+    <button class="btn">← Back</button>
+    <button class="btn btn-primary disabled" disabled title="Fix the configured CLI before starting">Start Processing →</button>
+  </div>
+</div>
+
+<div class="note" style="max-width: 760px;">
+  <strong>Behavior summary.</strong>
+  When the user lands on Step 3, the frontend issues a server-side preflight that resolves the configured <code>cli_command</code> on the host's executable PATH. If the binary is missing, the error banner appears, the preset cards and Start button are disabled, and clicking <em>Fix in Settings → LLM</em> deep-links to the Settings page (see wireframe 07). No job is queued; this prevents the silent per-section failure pattern the user hit on the <em>Playing to Win</em> book.
+</div>
+
+</body>
+</html>

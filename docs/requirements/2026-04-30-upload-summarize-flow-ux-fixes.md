@@ -153,6 +153,23 @@ The same structure-editor surface is also rendered from the book-detail page und
 | OQ5 | Should the BookDetailView "Edit Structure" surface be a new tab on the existing book page, a modal, or a dedicated route? Tab is most consistent with current IA; modal is faster to build. | Maneesh | before /spec |
 | OQ6 | Does the "auto-detect headings" split-mode preview need to show full-text rendering of each candidate sub-section, or is a count + first-line preview enough? Affects modal complexity. | Maneesh | during /spec |
 
+## Wireframes
+
+Static HTML wireframes attached at [`docs/wireframes/2026-04-30_upload_summarize_flow_ux_fixes/`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/index.html). Open `index.html` in a browser, or click any file directly.
+
+| # | Component | File | Maps to |
+|---|-----------|------|---------|
+| 01 | Step 1 — Upload (per-file card, two-phase indicator, Cancel rules) | [`01-step1-upload.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/01-step1-upload.html) | Issue #1 · G1 · D2 |
+| 02 | Step 2 — Structure Editor (per-row + multi-select toolbar; rename / split / delete / drag / merge / bulk) | [`02-step2-structure-editor.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/02-step2-structure-editor.html) | Issue #2 · G2 · D3 · D13 · D14 |
+| 03 | Split Modal — three modes: heading-detect / paragraph / cursor | [`03-split-modal.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/03-split-modal.html) | Issue #2 · D5 · OQ6 |
+| 04 | Step 3 — Preset Picker + CLI Preflight Block | [`04-step3-preset-with-cli-preflight.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/04-step3-preset-with-cli-preflight.html) | Issue #4 · G6 · D9 |
+| 05 | Step 4 — Live Progress + Completion Success Card | [`05-step4-live-progress.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/05-step4-live-progress.html) | Issue #3 · G4 · D7 |
+| 06 | Persistent Processing Indicator (queue badge + expandable queue panel) | [`06-persistent-processing-indicator.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/06-persistent-processing-indicator.html) | Issue #3 + multi-book · G5 · D8 |
+| 07 | Settings → LLM (persistent warning banner + inline save validation) | [`07-settings-llm-validation.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/07-settings-llm-validation.html) | Issue #4 · D9 · E1a/b |
+| 08 | Edit Structure on Book Detail + invalidation confirm | [`08-edit-structure-post-summary.html`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/08-edit-structure-post-summary.html) | Issue #2 · G3 · D4 · D6 |
+
+The wireframes commit visually to a few open questions (OQ1, OQ2, OQ4, OQ5, OQ6) at the wireframe level only — the open questions in the requirements doc remain authoritative and /spec can revisit each before locking design. See the Notes section in [`README.md`](../wireframes/2026-04-30_upload_summarize_flow_ux_fixes/README.md) for the wireframe-level commitments.
+
 ## Review Log
 
 | Loop | Findings | Changes Made |

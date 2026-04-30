@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 — Persistent Processing Indicator (queue-aware) — Wireframe</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .app-stage {
+    background: var(--bg-quaternary);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.25rem;
+    position: relative;
+    min-height: 280px;
+  }
+  .fake-page {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 4rem 1rem;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    opacity: 0.6;
+  }
+
+  .indicator {
+    position: relative;
+    margin-top: 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+  .indicator-icon {
+    width: 22px; height: 22px; border-radius: 999px;
+    background: var(--accent-bg); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+  }
+  .indicator-progress {
+    flex: 1;
+    height: 5px;
+    background: var(--bg-quaternary);
+    border-radius: 5px;
+    overflow: hidden;
+    min-width: 120px;
+  }
+  .indicator-progress > span { display: block; height: 100%; background: var(--accent); }
+  .indicator-count { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .indicator-queue { color: var(--accent); font-weight: 500; cursor: pointer; }
+  .indicator-toggle {
+    border: 1px solid var(--border); border-radius: 999px;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-secondary);
+  }
+
+  .queue-panel {
+    position: relative;
+    margin-top: 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 0.85rem;
+  }
+  .queue-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+  }
+  .queue-row + .queue-row { border-top: 1px solid var(--border); }
+  .queue-row.running { background: var(--accent-bg); }
+  .queue-status {
+    width: 70px; flex-shrink: 0;
+    text-align: center;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .queue-row.running .queue-status { color: var(--accent); }
+  .queue-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queue-progress { color: var(--text-secondary); font-variant-numeric: tabular-nums; font-size: 0.8rem; min-width: 60px; text-align: right; }
+
+  .toast {
+    position: relative;
+    margin-top: 1rem;
+    background: var(--text-primary); color: var(--bg-secondary);
+    padding: 0.6rem 1rem; border-radius: 999px;
+    font-size: 0.85rem; box-shadow: var(--shadow-lg);
+    display: inline-flex; align-items: center; gap: 0.75rem;
+  }
+  .toast a { color: var(--accent); font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>06 — Persistent Processing Indicator</h1>
+<p class="page-meta">
+  Wireframe for FR addressing Issues #3 + #5 (Goals G4, G5; D8). Always-visible bar at app bottom; expandable queue with cancel-per-queued-row. Replaces today's static "View Progress" CTA pattern.
+  &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
+</p>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State A — Single job running, queue empty (collapsed)</div>
+<div class="frame">
+  <div class="app-stage">
+    <div class="fake-page">[ rest of the app — library, reader, settings, etc. ]</div>
+    <div class="indicator" style="margin: 1rem auto 0; max-width: 640px;">
+      <span class="indicator-icon">⏳</span>
+      <strong>Summarizing "Playing to Win"</strong>
+      <div class="indicator-progress"><span style="width: 33%"></span></div>
+      <span class="indicator-count">8 / 24</span>
+      <span class="indicator-toggle" title="Expand queue">▾</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State B — Job running + 2 queued (collapsed)</div>
+<div class="frame">
+  <div class="app-stage">
+    <div class="fake-page">[ rest of the app ]</div>
+    <div class="indicator" style="margin: 1rem auto 0; max-width: 640px;">
+      <span class="indicator-icon">⏳</span>
+      <strong>Summarizing "Playing to Win"</strong>
+      <div class="indicator-progress"><span style="width: 33%"></span></div>
+      <span class="indicator-count">8 / 24</span>
+      <span class="indicator-queue">+2 queued</span>
+      <span class="indicator-toggle" title="Expand queue">▾</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Expanded queue panel</div>
+<div class="frame">
+  <div class="app-stage">
+    <div class="fake-page">[ rest of the app ]</div>
+    <div class="indicator" style="margin: 1rem auto 0; max-width: 640px;">
+      <span class="indicator-icon">⏳</span>
+      <strong>Summarizing "Playing to Win"</strong>
+      <div class="indicator-progress"><span style="width: 33%"></span></div>
+      <span class="indicator-count">8 / 24</span>
+      <span class="indicator-queue">+2 queued</span>
+      <span class="indicator-toggle" title="Collapse">▴</span>
+    </div>
+    <div class="queue-panel" style="margin: 0.5rem auto 0; max-width: 640px;">
+      <div class="queue-row running">
+        <span class="queue-status">Running</span>
+        <span class="queue-title">Playing to Win — How Strategy Really Works</span>
+        <span class="queue-progress">8 / 24</span>
+        <button class="btn" disabled title="Running jobs cannot be cancelled in this iteration">Cancel</button>
+      </div>
+      <div class="queue-row">
+        <span class="queue-status">Queued</span>
+        <span class="queue-title">Understanding Michael Porter</span>
+        <span class="queue-progress">— / 18</span>
+        <button class="btn btn-danger">Cancel</button>
+      </div>
+      <div class="queue-row">
+        <span class="queue-status">Queued</span>
+        <span class="queue-title">The Art of War</span>
+        <span class="queue-progress">— / 13</span>
+        <button class="btn btn-danger">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>Cancel scope (OQ2).</strong> Queued jobs can be cancelled inline (removed from queue, no side effects). Cancelling a running job is deferred — needs a kill-subprocess code path. This wireframe shows running-Cancel as disabled with a tooltip.
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State D — Job finished while user is elsewhere (toast)</div>
+<div class="frame">
+  <div class="app-stage">
+    <div class="fake-page">[ rest of the app — library view ]</div>
+    <div class="toast" style="margin: 1rem auto 0; display: flex; max-width: 480px; justify-content: center;">
+      <span>✓ <em>"Playing to Win"</em> is ready · 24 summarized, 1 skipped</span>
+      <a href="#">Open</a>
+      <span style="opacity: 0.5; cursor: pointer;">✕</span>
+    </div>
+  </div>
+  <div class="note">
+    Toast surfaces only when the user has dismissed the wizard or moved away from Step 4. If they're still on Step 4, the wizard's success card (wireframe 05 State C) handles closure instead.
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State E — Failure surface in the indicator</div>
+<div class="frame">
+  <div class="app-stage">
+    <div class="fake-page">[ rest of the app ]</div>
+    <div class="indicator" style="margin: 1rem auto 0; max-width: 640px; border-color: var(--error); background: var(--error-bg);">
+      <span class="indicator-icon" style="background: var(--error); color: white;">!</span>
+      <strong>"Playing to Win" finished with 4 failures</strong>
+      <a href="#" style="color: var(--accent);">View errors</a>
+      <span class="indicator-toggle">✕</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
