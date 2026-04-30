@@ -36,6 +36,23 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
   const reconciledFailed = ref<number | null>(null)
   const reconciledSkipped = ref<number | null>(null)
 
+  // Generic last-event observation surface so child components (e.g.
+  // SectionListTable) can react to SSE without each opening their own
+  // EventSource. Set inside every on* handler below; consumers watch
+  // this ref by reference identity (we always assign a new object).
+  type LastJobEvent = {
+    event:
+      | 'section_started'
+      | 'section_completed'
+      | 'section_failed'
+      | 'section_skipped'
+      | 'section_retry'
+      | 'processing_completed'
+      | 'processing_failed'
+    data: { section_id?: number; error?: string }
+  }
+  const lastEvent = ref<LastJobEvent | null>(null)
+
   let graceTimer: ReturnType<typeof setTimeout> | null = null
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let sawAnyEvent = false
@@ -100,10 +117,12 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     sawAnyEvent = true
     cancelGrace()
     activeJobSectionId.value = d.section_id
+    lastEvent.value = { event: 'section_started', data: { section_id: d.section_id } }
   }
 
   async function onSectionCompleted(d: Pick<SectionEventPayload, 'section_id'>) {
     activeJobSectionId.value = null
+    lastEvent.value = { event: 'section_completed', data: { section_id: d.section_id } }
     if (_seenCompleted.value.has(d.section_id)) return
     _seenCompleted.value.add(d.section_id)
     if (!bookId.value) return
@@ -123,18 +142,21 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
 
   function onSectionFailed(d: SectionFailedPayload) {
     activeJobSectionId.value = null
+    lastEvent.value = { event: 'section_failed', data: { section_id: d.section_id, error: d.error } }
     if (_seenFailed.value.has(d.section_id)) return
     _seenFailed.value.add(d.section_id)
     failedSections.value.set(d.section_id, d.error)
   }
 
   function onSectionSkipped(d: SectionSkippedPayload) {
+    lastEvent.value = { event: 'section_skipped', data: { section_id: d.section_id } }
     if (_seenSkipped.value.has(d.section_id)) return
     _seenSkipped.value.add(d.section_id)
   }
 
   function onSectionRetrying(d: Pick<SectionEventPayload, 'section_id'>) {
     activeJobSectionId.value = d.section_id
+    lastEvent.value = { event: 'section_retry', data: { section_id: d.section_id } }
   }
 
   async function onSSEError() {
@@ -158,6 +180,7 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
   }
 
   function onCompleted() {
+    lastEvent.value = { event: 'processing_completed', data: {} }
     reset(false)
   }
 
@@ -165,7 +188,7 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     // Error is surfaced per-section via onSectionFailed; the job-level
     // handler just clears the active state. Kept as a named param for
     // callers that pass the SSE error payload.
-    void err
+    lastEvent.value = { event: 'processing_failed', data: { error: err } }
     reset(false)
   }
 
@@ -240,6 +263,7 @@ export const useSummarizationJobStore = defineStore('summarizationJob', () => {
     activeJobSectionId,
     scope,
     failedSections,
+    lastEvent,
     isActive,
     completedCount,
     failedCount,

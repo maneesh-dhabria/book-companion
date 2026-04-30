@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { FRONT_MATTER_TYPES, SUMMARIZABLE_TYPES } from '@/stores/reader'
 import type { Section } from '@/types'
 import { computed, ref } from 'vue'
+import SectionListTable from '@/components/book/SectionListTable.vue'
 
 const props = defineProps<{
   sections: Section[]
@@ -17,28 +17,13 @@ function toggle() {
   if (isOpen.value) searchQuery.value = ''
 }
 
-const firstSummarizableIndex = computed(() => {
-  const idx = props.sections.findIndex((s) => SUMMARIZABLE_TYPES.has(s.section_type))
-  return idx === -1 ? props.sections.length : idx
+// FR-33 / NFR-07 — TOC dropdown reuses the shared SectionListTable in
+// compact mode so book-detail and reader-TOC stay structurally aligned.
+const filteredSections = computed(() => {
+  if (!searchQuery.value) return props.sections
+  const q = searchQuery.value.toLowerCase()
+  return props.sections.filter((s) => s.title.toLowerCase().includes(q))
 })
-
-const frontMatter = computed(() =>
-  props.sections.filter(
-    (s, i) => FRONT_MATTER_TYPES.has(s.section_type) && i < firstSummarizableIndex.value,
-  ),
-)
-
-const body = computed(() =>
-  props.sections.filter(
-    (s, i) => !(FRONT_MATTER_TYPES.has(s.section_type) && i < firstSummarizableIndex.value),
-  ),
-)
-
-function match(s: Section) {
-  return (
-    !searchQuery.value || s.title.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-}
 </script>
 
 <template>
@@ -49,39 +34,13 @@ function match(s: Section) {
     </button>
     <div v-if="isOpen" class="toc-panel">
       <input v-model="searchQuery" placeholder="Search sections..." class="toc-search" />
-      <div class="toc-list">
-        <router-link
-          v-for="section in body.filter(match)"
-          :key="section.id"
-          :to="`/books/${bookId}/sections/${section.id}`"
-          class="toc-item"
-          :class="{ active: section.id === currentSectionId }"
-          @click="isOpen = false"
-        >
-          <span class="toc-index">{{ section.order_index + 1 }}</span>
-          <span class="toc-title">{{ section.title }}</span>
-          <span
-            v-if="section.has_summary"
-            class="toc-summarized"
-            aria-label="Summary available"
-            title="Summary available"
-            >✓</span
-          >
-        </router-link>
-        <details v-if="frontMatter.length" class="toc-frontmatter">
-          <summary>Front Matter ({{ frontMatter.length }})</summary>
-          <router-link
-            v-for="section in frontMatter.filter(match)"
-            :key="section.id"
-            :to="`/books/${bookId}/sections/${section.id}`"
-            class="toc-item"
-            :class="{ active: section.id === currentSectionId }"
-            @click="isOpen = false"
-          >
-            <span class="toc-index">{{ section.order_index + 1 }}</span>
-            <span class="toc-title">{{ section.title }}</span>
-          </router-link>
-        </details>
+      <div class="toc-list" @click="isOpen = false">
+        <SectionListTable
+          :sections="filteredSections"
+          :book-id="bookId"
+          :current-section-id="currentSectionId"
+          :compact="true"
+        />
       </div>
     </div>
   </div>
