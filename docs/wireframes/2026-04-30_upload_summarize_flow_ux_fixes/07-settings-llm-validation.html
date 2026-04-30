@@ -34,14 +34,14 @@
 </head>
 <body>
 
-<h1>07 — Settings → LLM (CLI validation)</h1>
+<h1>07 — Settings → LLM (Provider + Profile)</h1>
 <p class="page-meta">
-  Wireframe for FR addressing Issue #4 (D9, E1a, E1b). Persistent banner whenever the configured CLI doesn't resolve on PATH; inline validation error when the user tries to save an invalid value.
+  Wireframe for FR addressing Issue #4 (D9, E1a, E1b). Free-form CLI command input is removed entirely; provider is chosen from auto-detected binaries; profile directory is routed per-provider (<code>--config-dir</code> for claude, <code>CODEX_HOME</code> env var for codex).
   &nbsp;|&nbsp; <a href="../../requirements/2026-04-30-upload-summarize-flow-ux-fixes.md">Requirements doc</a>
 </p>
 
 <!-- ─────────────────────────────────────────────────────── -->
-<div class="frame-label">State A — Persistent warning banner (current saved value is broken)</div>
+<div class="frame-label">State A — Provider dropdown with detection status (claude detected; codex detected)</div>
 <div class="frame">
   <div class="settings-shell">
     <div class="nav">
@@ -53,31 +53,16 @@
     </div>
     <div class="panel">
       <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
-      <p class="muted" style="margin-bottom: 1rem; font-size: 0.85rem;">Configure which CLI Book Companion uses to generate summaries.</p>
-
-      <div class="banner banner-warning">
-        <span class="banner-icon">⚠</span>
-        <div class="banner-body">
-          <div class="banner-title">Currently configured CLI <code>claude-personal</code> is not on PATH</div>
-          Summarization will fail until this is fixed. Either install <code>claude-personal</code> on your PATH, or change the command below to <code>claude</code> or <code>codex</code> (auto-detected on this machine).
-        </div>
-      </div>
+      <p class="muted" style="margin-bottom: 1rem; font-size: 0.85rem;">Book Companion runs your local Claude Code or Codex CLI to generate summaries.</p>
 
       <div class="field">
         <label for="provider">Provider</label>
         <select id="provider">
-          <option>claude (recommended)</option>
-          <option>codex</option>
-          <option>auto-detect</option>
+          <option>✓ claude — detected at /usr/local/bin/claude</option>
+          <option>✓ codex — detected at /usr/local/bin/codex</option>
+          <option>auto-detect (claude preferred)</option>
         </select>
-        <div class="hint">Detected on this machine: <strong>claude</strong>, <strong>codex</strong></div>
-      </div>
-
-      <div class="field">
-        <label for="cli">CLI command</label>
-        <input id="cli" value="claude-personal" class="error">
-        <div class="field-status bad">⛔ Binary <code>claude-personal</code> not found on PATH</div>
-        <div class="hint">Override the CLI command path. Leave empty to use the default <code>claude</code>.</div>
+        <div class="hint">The dropdown only lists CLIs found on this machine's PATH. Install the binary first if you want a different option.</div>
       </div>
 
       <div class="field">
@@ -90,62 +75,103 @@
       </div>
 
       <div class="field">
-        <label for="config-dir">Config directory (optional)</label>
-        <input id="config-dir" value="~/.claude-personal">
-        <div class="hint">Passed as <code>--config-dir</code> to the CLI. Useful if you maintain a separate Claude profile.</div>
-      </div>
-
-      <div class="footer">
-        <button class="btn">Cancel</button>
-        <button class="btn btn-primary" disabled title="Fix the CLI command before saving">Save</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─────────────────────────────────────────────────────── -->
-<div class="frame-label">State B — Inline validation error on save attempt</div>
-<div class="frame">
-  <div class="settings-shell">
-    <div class="nav">
-      <a class="nav-item">General</a>
-      <a class="nav-item active">LLM Provider</a>
-      <a class="nav-item">Reading</a>
-      <a class="nav-item">Backup</a>
-      <a class="nav-item">Advanced</a>
-    </div>
-    <div class="panel">
-      <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
-      <p class="muted" style="margin-bottom: 1rem; font-size: 0.85rem;">Configure which CLI Book Companion uses to generate summaries.</p>
-
-      <div class="banner banner-error">
-        <span class="banner-icon">⛔</span>
-        <div class="banner-body">
-          <div class="banner-title">Cannot save: 1 field is invalid</div>
-          The CLI command must resolve to a binary on this machine's PATH. Fix the highlighted field, or click <em>Save anyway</em> if you'll install the binary later.
+        <label for="profile">Profile directory <span class="muted" style="font-weight: 400;">(optional)</span></label>
+        <input id="profile" value="~/.claude-personal" placeholder="~/.claude or leave blank for default">
+        <div class="hint">
+          Lets you isolate Book Companion's CLI usage from your other projects (separate token budget, history, settings).
+          <br>For <strong>claude</strong>: passed as <code>--config-dir</code>.
+          For <strong>codex</strong>: set as <code>CODEX_HOME</code> env var (codex CLI ≥ <code>0.x</code>).
         </div>
       </div>
 
-      <div class="field">
-        <label for="cli2">CLI command</label>
-        <input id="cli2" value="claude-personal-typo" class="error">
-        <div class="field-error">Binary not found on PATH. Try <code>claude</code> (detected) or install your custom CLI first.</div>
-      </div>
-
       <div class="footer">
         <button class="btn">Cancel</button>
-        <button class="btn">Save anyway</button>
-        <button class="btn btn-primary" disabled>Save</button>
+        <button class="btn btn-primary">Save</button>
       </div>
     </div>
   </div>
   <div class="note">
-    <strong>OQ1.</strong> Whether <em>Save anyway</em> is exposed (warn-and-let-save) or removed (hard-block) is the open question deferred to /spec. The wireframe shows the warn-with-escape-hatch variant for users who alias their CLI in shells the server can't see.
+    No free-form <code>cli_command</code> input exists anywhere on this page. The user cannot accidentally type a shell alias.
   </div>
 </div>
 
 <!-- ─────────────────────────────────────────────────────── -->
-<div class="frame-label">State C — Healthy state (validation green)</div>
+<div class="frame-label">State B — Selected provider not installed (persistent warning banner)</div>
+<div class="frame">
+  <div class="settings-shell">
+    <div class="nav">
+      <a class="nav-item">General</a>
+      <a class="nav-item active">LLM Provider</a>
+      <a class="nav-item">Reading</a>
+      <a class="nav-item">Backup</a>
+      <a class="nav-item">Advanced</a>
+    </div>
+    <div class="panel">
+      <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
+
+      <div class="banner banner-warning">
+        <span class="banner-icon">⚠</span>
+        <div class="banner-body">
+          <div class="banner-title">The <code>claude</code> CLI isn't on this machine's PATH</div>
+          Summarization will fail until you install it. <a href="https://docs.claude.com/claude-code" style="color: var(--accent);">How to install Claude Code →</a>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="provider2">Provider</label>
+        <select id="provider2" class="error">
+          <option>✗ claude — not found on PATH</option>
+          <option>✓ codex — detected at /usr/local/bin/codex</option>
+        </select>
+        <div class="field-status bad">⛔ Selected provider is not installed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State C — Migration toast (first launch after upgrade; legacy cli_command was dropped)</div>
+<div class="frame">
+  <div class="settings-shell">
+    <div class="nav">
+      <a class="nav-item">General</a>
+      <a class="nav-item active">LLM Provider</a>
+      <a class="nav-item">Reading</a>
+      <a class="nav-item">Backup</a>
+      <a class="nav-item">Advanced</a>
+    </div>
+    <div class="panel">
+      <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
+
+      <div class="banner banner-info">
+        <span class="banner-icon">ⓘ</span>
+        <div class="banner-body">
+          <div class="banner-title">We simplified your LLM settings</div>
+          Your previous <code>cli_command: claude-personal</code> was a shell alias that doesn't work outside an interactive shell — that's why summarization was failing. We've reset Provider to <strong>claude</strong> and pre-filled your Profile directory with <code>~/.claude-personal</code>. Please confirm and Save.
+          <div style="margin-top: 0.5rem;">
+            <button class="btn">Got it</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="provider3">Provider</label>
+        <select id="provider3"><option>✓ claude — detected at /usr/local/bin/claude</option></select>
+      </div>
+      <div class="field">
+        <label for="profile3">Profile directory</label>
+        <input id="profile3" value="~/.claude-personal">
+        <div class="hint">Pre-filled from your prior <code>config_dir</code> setting.</div>
+      </div>
+      <div class="footer">
+        <button class="btn btn-primary">Confirm and Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<div class="frame-label">State D — Codex selected (different help text since codex uses CODEX_HOME)</div>
 <div class="frame">
   <div class="settings-shell">
     <div class="nav">
@@ -158,19 +184,24 @@
     <div class="panel">
       <h2 style="margin-bottom: 0.25rem;">LLM Provider</h2>
       <div class="field">
-        <label for="cli3">CLI command</label>
-        <input id="cli3" value="claude">
-        <div class="field-status ok">✓ Binary found at <code>/usr/local/bin/claude</code></div>
+        <label for="provider4">Provider</label>
+        <select id="provider4"><option>✓ codex — detected at /usr/local/bin/codex</option></select>
       </div>
       <div class="field">
-        <label>Last test</label>
-        <div class="muted" style="font-size: 0.85rem;">Successfully invoked <code>claude --version</code> · 2026-04-30 10:42</div>
+        <label for="profile4">Profile directory <span class="muted" style="font-weight: 400;">(optional)</span></label>
+        <input id="profile4" placeholder="~/.codex or leave blank for default">
+        <div class="hint">
+          For <strong>codex</strong>, this is set as <code>CODEX_HOME</code> in the subprocess environment.
+          Requires codex CLI version that honors <code>CODEX_HOME</code>; see <a href="#" style="color: var(--accent);">version notes</a>.
+        </div>
       </div>
       <div class="footer">
-        <button class="btn">Test connection</button>
         <button class="btn btn-primary">Save</button>
       </div>
     </div>
+  </div>
+  <div class="note">
+    <strong>OQ1 / OQ1a.</strong> Whether the Profile field is shown for codex (and whether codex's <code>CODEX_HOME</code> support is reliable enough to expose) is parked for /spec. If codex profile support is dropped, this state hides the Profile field entirely when codex is selected.
   </div>
 </div>
 

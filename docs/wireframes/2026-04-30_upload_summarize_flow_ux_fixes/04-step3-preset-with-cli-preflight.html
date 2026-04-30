@@ -116,8 +116,8 @@
   <div class="banner banner-error">
     <span class="banner-icon">⛔</span>
     <div class="banner-body">
-      <div class="banner-title">Configured CLI <code>claude-personal</code> isn't installed on this machine</div>
-      Summarization will fail until this is fixed. Either install <code>claude-personal</code> on your PATH, or change the configured command in Settings.
+      <div class="banner-title">The <code>claude</code> CLI isn't installed on this machine</div>
+      Your selected provider isn't on PATH, so summarization can't run. Install Claude Code, or switch to <code>codex</code> if you have it.
       <div style="margin-top: 0.5rem;">
         <a href="#" class="btn btn-primary" style="text-decoration: none; padding: 0.4rem 0.8rem;">Fix in Settings → LLM</a>
       </div>
@@ -148,7 +148,7 @@
 
 <div class="note" style="max-width: 760px;">
   <strong>Behavior summary.</strong>
-  When the user lands on Step 3, the frontend issues a server-side preflight that resolves the configured <code>cli_command</code> on the host's executable PATH. If the binary is missing, the error banner appears, the preset cards and Start button are disabled, and clicking <em>Fix in Settings → LLM</em> deep-links to the Settings page (see wireframe 07). No job is queued; this prevents the silent per-section failure pattern the user hit on the <em>Playing to Win</em> book.
+  When the user lands on Step 3, the frontend issues a server-side preflight that resolves the selected <code>provider</code>'s binary on the host's executable PATH. If the binary is missing, the error banner appears, the preset cards and Start button are disabled, and clicking <em>Fix in Settings → LLM</em> deep-links to the Settings page (see wireframe 07). No job is queued. Note that since wireframe 07's revised Settings page only lists detected binaries in the Provider dropdown, this preflight failure now only happens if the binary was uninstalled <em>after</em> the provider was selected — a much rarer edge case than the original alias-typed-into-free-form-field bug.
 </div>
 
 </body>
