@@ -84,7 +84,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         except Exception:
             pass  # Scheduler is non-critical
 
+    # Start the global single-RUNNING queue worker (FR-B11, P13).
+    from app.services.job_queue_worker import JobQueueWorker
+
+    queue_worker = JobQueueWorker(
+        session_factory=app.state.session_factory,
+        event_bus=app.state.event_bus,
+        settings=settings,
+    )
+    await queue_worker.start()
+    app.state.job_queue_worker = queue_worker
+
     yield
+
+    await queue_worker.stop()
 
     if scheduler and scheduler.running:
         scheduler.shutdown(wait=False)
