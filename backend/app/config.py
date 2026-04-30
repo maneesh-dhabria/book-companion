@@ -95,6 +95,14 @@ class BackupConfig(BaseModel):
     max_backups: int = 5
 
 
+class ProcessingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Jobs older than this are treated as stale regardless of PID liveness.
+    # Defeats PID recycling on long-uptime hosts. 24h is well above the
+    # longest realistic summarize run.
+    stale_job_age_seconds: int = 86400
+
+
 def _load_yaml_config() -> dict[str, Any]:
     """Load config from YAML file if it exists. Priority: env var > XDG > fallback.
 
@@ -138,6 +146,7 @@ class Settings(BaseSettings):
     network: NetworkConfig = NetworkConfig()
     web: WebConfig = WebConfig()
     backup: BackupConfig = BackupConfig()
+    processing: ProcessingConfig = ProcessingConfig()
 
     def model_post_init(self, __context: Any) -> None:
         """Merge YAML config, compute data dir and DB URL defaults."""

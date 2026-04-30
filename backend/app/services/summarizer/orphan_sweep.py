@@ -43,7 +43,12 @@ def _pid_is_alive(pid: int | None) -> bool:
         return False
     try:
         os.kill(pid, 0)
-    except (OSError, ProcessLookupError):
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # Process exists but is owned by another user — treat as alive.
+        return True
+    except OSError:
         return False
     return True
 
@@ -56,6 +61,39 @@ def _job_is_too_old(job: ProcessingJob, now: datetime) -> bool:
     if started.tzinfo is None:
         started = started.replace(tzinfo=UTC)
     return (now - started) > _STALE_MAX_AGE
+
+
+def is_stale(job, *, now: datetime, max_age: timedelta) -> bool:
+    """Return True if the job should be considered abandoned.
+
+    A job is stale when:
+      - it has no PID recorded (legacy rows pre-dating the column), or
+      - its PID does not refer to a live process (caught via ``os.kill(pid, 0)``
+        raising ``ProcessLookupError``), or
+      - it has been running longer than ``max_age`` (defeats PID recycling).
+
+    ``PermissionError`` from ``os.kill`` means the PID exists but is owned by
+    another user; we treat that as alive (not stale).
+    """
+    if job.pid is None:
+        return True
+    try:
+        os.kill(job.pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        pass  # process exists but owned by other user; treat as alive
+    except OSError:
+        return True
+
+    started = job.started_at
+    if started is None:
+        return False
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    if (now - started) > max_age:
+        return True
+    return False
 
 
 async def orphan_sweep(db: AsyncSession) -> int:
