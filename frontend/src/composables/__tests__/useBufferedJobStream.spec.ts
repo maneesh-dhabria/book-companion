@@ -185,4 +185,40 @@ describe('useBufferedJobStream', () => {
     expect(error.value?.kind).toBe('404')
     expect(isLoading.value).toBe(false)
   })
+
+  it('normalizes lowercase status from API to uppercase contract', async () => {
+    // Backend ProcessingJobStatus enum serializes lowercase ("completed").
+    // Composable must normalize so JobProgressView's v-if branches match.
+    const es = new MockEventSource()
+    const d = deferred<JobState>()
+    const { state } = useBufferedJobStream(42, {
+      eventSourceFactory: () => es as unknown as EventSource,
+      fetcher: () => d.promise,
+    })
+    d.resolve({
+      ...baseSeed({
+        status: 'completed' as unknown as JobState['status'],
+        completed_at: '2026-04-30T10:01:00Z',
+      }),
+    })
+    await flushPromises()
+    expect(state.value?.status).toBe('COMPLETED')
+  })
+
+  it('tolerates null progress from the API', async () => {
+    const es = new MockEventSource()
+    const d = deferred<JobState>()
+    const { state } = useBufferedJobStream(42, {
+      eventSourceFactory: () => es as unknown as EventSource,
+      fetcher: () => d.promise,
+    })
+    d.resolve({ ...baseSeed({ progress: null as unknown as JobState['progress'] }) })
+    await flushPromises()
+    expect(state.value?.progress).toEqual({
+      current: 0,
+      total: 0,
+      current_section_title: '',
+      eta_seconds: null,
+    })
+  })
 })

@@ -164,6 +164,12 @@ export function useBufferedJobStream(
           ))
       fetcher2()
         .then((seed) => {
+          if (seed.status) {
+            seed.status = String(seed.status).toUpperCase() as JobState['status']
+          }
+          if (!seed.progress) {
+            seed.progress = { current: 0, total: 0, current_section_title: '', eta_seconds: null }
+          }
           state.value = seed
           lastAppliedAt = seed.last_event_at
           mode = 'live'
@@ -181,6 +187,17 @@ export function useBufferedJobStream(
         ))
     fetcher()
       .then((seed: JobState) => {
+        // Backend ProcessingJobStatus enum serializes lowercase ("running",
+        // "completed", ...). The view's v-if branches compare against the
+        // uppercase literals from the type contract, so normalize here.
+        if (seed.status) {
+          seed.status = String(seed.status).toUpperCase() as JobState['status']
+        }
+        // Likewise tolerate `progress: null` from the API (no progress yet
+        // recorded) — the view destructures `state.progress.current`.
+        if (!seed.progress) {
+          seed.progress = { current: 0, total: 0, current_section_title: '', eta_seconds: null }
+        }
         state.value = seed
         lastAppliedAt = seed.last_event_at
         // Drain buffer
