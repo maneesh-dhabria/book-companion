@@ -25,6 +25,8 @@ _PLACEHOLDER = re.compile(r"__IMG_PLACEHOLDER__:(.+?)__ENDIMG__")
 _MD_PLACEHOLDER_IMG = re.compile(
     r"!\[[^\]]*\]\(__IMG_PLACEHOLDER__:(.+?)__ENDIMG__\)"
 )
+# Legacy ![alt](image:NNN) — emitted by older summarizer prompts.
+_LEGACY_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(image:(\d+)\)")
 
 
 def _basename(path: str) -> str:
@@ -96,3 +98,41 @@ def from_placeholder(
         return f"/api/v1/images/{image_id}"
 
     return _PLACEHOLDER.sub(token_repl, md)
+
+
+def from_image_id_scheme(
+    md: str,
+    filename_to_image_id: dict[str, int],
+    on_missing: OnMissing = "strip",
+) -> str:
+    """Rewrite legacy ``![alt](image:NNN)`` markdown into ``![alt](/api/v1/images/NNN)``.
+
+    Pairs with :func:`from_placeholder`: where ``from_placeholder`` resolves
+    parser-emitted basename placeholders, this helper resolves the
+    summarizer-emitted ``image:NNN`` scheme that older prompts produced.
+
+    Behavior when ``image_id`` is not in the section's image map:
+
+    - ``on_missing='strip'`` (default) — replace the markdown image with
+      ``[alt](#)`` (a non-image link with the alt text) so the rendered
+      output stays readable. A structlog warning is emitted per orphan id.
+    - ``on_missing='keep'`` — leave the original ``![alt](image:NNN)``
+      token untouched so a later pass can resolve it.
+
+    Idempotent: rewritten output contains absolute URLs which the regex
+    does not match, so re-running is a no-op. Malformed tokens
+    (``image:abc``, ``image:``) are also left untouched.
+    """
+    known_ids = set(filename_to_image_id.values())
+
+    def _replace(m: re.Match) -> str:
+        alt, raw_id = m.group(1), m.group(2)
+        image_id = int(raw_id)
+        if image_id in known_ids:
+            return f"![{alt}](/api/v1/images/{image_id})"
+        if on_missing == "strip":
+            logger.warning("legacy_image_ref_orphan", image_id=image_id)
+            return f"[{alt}](#)"
+        return m.group(0)
+
+    return _LEGACY_IMAGE_RE.sub(_replace, md)
