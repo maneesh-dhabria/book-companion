@@ -218,6 +218,25 @@ class ProcessingCancelResponse(BaseModel):
     message: str
 
 
+class ProcessingJobDetailResponse(BaseModel):
+    """Spec §7.4 — full job state for the JobProgressView deep-link."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: int
+    book_id: int
+    book_title: str | None = None
+    status: str
+    scope: str | None = None
+    section_id: int | None = None
+    progress: dict[str, Any] | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    last_event_at: datetime | None = None
+    error_message: str | None = None
+    request_params: dict[str, Any] | None = None
+
+
 # --- Eval ---
 
 

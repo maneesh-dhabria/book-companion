@@ -12,11 +12,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
+from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
 from app.api.deps import get_db, get_settings
 from app.api.schemas import (
     ProcessingCancelResponse,
+    ProcessingJobDetailResponse,
     ProcessingStartRequest,
     ProcessingStartResponse,
     ProcessingStatusResponse,
@@ -382,3 +384,38 @@ async def list_processing_jobs(
             }
         )
     return {"jobs": jobs}
+
+
+# Registered last so the literal-prefix routes ("/jobs", "/{id}/stream", etc.)
+# match first. FastAPI matches routes in registration order; a leading
+# `/{job_id}` would otherwise shadow `/jobs` and cast "jobs" to int (→ 422).
+@router.get("/api/v1/processing/{job_id}", response_model=ProcessingJobDetailResponse)
+async def get_processing_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Full job state for JobProgressView deep-link (FR-10, FR-11, spec §7.4)."""
+    result = await db.execute(
+        select(ProcessingJob)
+        .options(selectinload(ProcessingJob.book))
+        .where(ProcessingJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Processing job not found")
+
+    params = job.request_params or {}
+    return ProcessingJobDetailResponse(
+        job_id=job.id,
+        book_id=job.book_id,
+        book_title=job.book.title if job.book else None,
+        status=job.status.value if hasattr(job.status, "value") else str(job.status),
+        scope=params.get("scope"),
+        section_id=params.get("section_id"),
+        progress=job.progress,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        last_event_at=job.last_event_at,
+        error_message=job.error_message,
+        request_params=params or None,
+    )
