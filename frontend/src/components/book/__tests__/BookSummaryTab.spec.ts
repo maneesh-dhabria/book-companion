@@ -12,7 +12,7 @@ function makeRouter() {
 
 const opts = () => ({ global: { plugins: [makeRouter()] } })
 
-const baseBook = (overrides: Partial<unknown> = {}) =>
+const baseBook = (overrides: Record<string, unknown> = {}): never =>
   ({
     id: 3,
     sections: [
@@ -21,8 +21,8 @@ const baseBook = (overrides: Partial<unknown> = {}) =>
     ],
     default_summary: null,
     last_summary_failure: null,
-    ...(overrides as object),
-  }) as Parameters<typeof BookSummaryTab>[0]['book']
+    ...overrides,
+  }) as never
 
 describe('BookSummaryTab', () => {
   it('Empty state with N>=1 sections summarized: enabled Generate CTA', () => {

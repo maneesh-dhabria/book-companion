@@ -67,8 +67,7 @@ async function saveReadingSettings() {
           :label="preset.name"
           bg="var(--color-bg, white)"
           fg="var(--color-text-primary, #111)"
-          :active="defaultPreset === preset.id"
-          @click="defaultPreset = preset.id"
+          :active="false"
         />
       </div>
     </div>
