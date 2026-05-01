@@ -15,6 +15,7 @@ import NoteCompositionPanel from '@/components/sidebar/NoteCompositionPanel.vue'
 import { useReadingState } from '@/composables/useReadingState'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAnnotationsStore } from '@/stores/annotations'
+import { annotationContentTypeFor } from '@/utils/annotationContentType'
 import { useReaderStore } from '@/stores/reader'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
@@ -44,7 +45,14 @@ const { selection, isSelecting, clear: clearSelection } = useTextSelection(readi
 const inlineAnnotations = computed(() => {
   const currentId = reader.currentSection?.id
   if (currentId == null) return []
-  return annotations.annotations.filter((a) => a.content_id === currentId)
+  // Each tab projects only the annotations that target its content_type so
+  // Summary-tab highlights don't bleed into the Original tab and vice versa.
+  const wantedType = annotationContentTypeFor(
+    reader.contentMode === 'summary' ? 'summary' : 'original',
+  )
+  return annotations.annotations.filter(
+    (a) => a.content_id === currentId && a.content_type === wantedType,
+  )
 })
 
 // T29 — NoteCompositionPanel replaces prompt(). Capture the selection
@@ -101,15 +109,11 @@ watch(
   () => {
     if (!reader.book) return
     if (settings.annotationsScope === 'all') {
-      annotations.loadAnnotations({
-        content_type: 'section_content',
-        book_id: reader.book.id,
-      })
+      // Load both section_content and section_summary annotations; the
+      // tab-level filter below picks the right subset for inline highlighting.
+      annotations.loadAnnotations({ book_id: reader.book.id })
     } else if (reader.currentSection) {
-      annotations.loadAnnotations({
-        content_type: 'section_content',
-        content_id: reader.currentSection.id,
-      })
+      annotations.loadAnnotations({ content_id: reader.currentSection.id })
     }
   },
   { immediate: true },
@@ -118,7 +122,9 @@ watch(
 function handleHighlight() {
   if (!reader.currentSection || !selection.text) return
   annotations.addAnnotation({
-    content_type: 'section_content',
+    content_type: annotationContentTypeFor(
+      reader.contentMode === 'summary' ? 'summary' : 'original',
+    ),
     content_id: reader.currentSection.id,
     type: 'highlight',
     selected_text: selection.text,
@@ -143,7 +149,9 @@ function handleNote() {
 function onNoteSave(note: string) {
   if (!reader.currentSection || !pendingSelection.value) return
   annotations.addAnnotation({
-    content_type: 'section_content',
+    content_type: annotationContentTypeFor(
+      reader.contentMode === 'summary' ? 'summary' : 'original',
+    ),
     content_id: reader.currentSection.id,
     type: 'note',
     selected_text: pendingSelection.value.text,
