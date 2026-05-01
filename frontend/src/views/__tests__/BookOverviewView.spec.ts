@@ -105,7 +105,7 @@ describe('BookOverviewView', () => {
       return new Response('{"tags":[],"summary_md":null}')
     })
     const router = makeRouter()
-    router.push('/1')
+    router.push('/1?tab=sections')
     await router.isReady()
     const w = mount(BookOverviewView, { global: { plugins: [router] } })
     await flushPromises()

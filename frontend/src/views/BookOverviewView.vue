@@ -109,13 +109,42 @@
         </div>
       </header>
 
-      <section v-if="defaultSummary" class="summary">
-        <h2>Summary</h2>
-        <MarkdownRenderer :content="defaultSummary" />
+      <nav class="book-tabs" role="tablist" aria-label="Book detail sections">
+        <button
+          v-for="t in ['overview', 'summary', 'sections']"
+          :key="t"
+          type="button"
+          role="tab"
+          class="book-tab"
+          :class="{ active: activeTab === t }"
+          :aria-selected="activeTab === t"
+          @click="setTab(t as 'overview' | 'summary' | 'sections')"
+        >
+          {{ tabLabel(t) }}
+        </button>
+      </nav>
+
+      <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel">
+        <div class="overview-meta">
+          <p v-if="(book.suggested_tags || []).length === 0 && !book.summary_progress" class="overview-empty">
+            No additional metadata yet.
+          </p>
+          <p v-else class="overview-hint">
+            Use the Summary tab to read or generate a book-level summary, or the Sections tab to browse chapters.
+          </p>
+        </div>
       </section>
 
-      <section class="sections-toc">
-        <h2>Sections</h2>
+      <section v-else-if="activeTab === 'summary'" class="tab-panel" role="tabpanel">
+        <div v-if="defaultSummary" class="summary">
+          <MarkdownRenderer :content="defaultSummary" />
+        </div>
+        <div v-else class="summary-placeholder" data-testid="summary-tab-placeholder">
+          <p>No book summary yet. Use the overflow menu to generate one once at least one section is summarized.</p>
+        </div>
+      </section>
+
+      <section v-else-if="activeTab === 'sections'" class="tab-panel" role="tabpanel">
         <SectionListTable
           :sections="(book.sections || []) as SectionRow[]"
           :book-id="book.id"
@@ -129,7 +158,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import CoverFallback from '@/components/common/CoverFallback.vue'
 import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
 import TagChip from '@/components/common/TagChip.vue'
@@ -163,6 +192,23 @@ interface BookTag {
 }
 
 const route = useRoute()
+const router = useRouter()
+
+type BookTab = 'overview' | 'summary' | 'sections'
+const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections']
+const activeTab = computed<BookTab>(() => {
+  const t = route.query.tab
+  return typeof t === 'string' && (TAB_VALUES as string[]).includes(t)
+    ? (t as BookTab)
+    : 'overview'
+})
+function tabLabel(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+function setTab(t: BookTab) {
+  router.replace({ query: { ...route.query, tab: t } })
+}
+
 const loading = ref(true)
 const book = ref<any>(null)
 const bookTags = ref<BookTag[]>([])
