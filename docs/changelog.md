@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-05-01 — Reader + Book Detail UX Fixes Bundle
+
+- The book-detail page's section list is now a sortable 6-column table (#, Title, Type, Chars, Summary, Compression). Each summarised section shows its real compression ratio (e.g., 18.2%) instead of a placeholder dash, and the same component renders in compact form inside the reader's TOC dropdown.
+- Action row above the section table is reorganised: **Read** and **Read Summary** lead, **Export Markdown** is a split-button (default click downloads, chevron opens a Copy-to-Clipboard menu), with secondary actions ("Edit Structure", "Customize Reader") moved into a `⋯` overflow menu. Export shows a 250 ms loader floor so a fast download doesn't flicker, and the clipboard fallback drops to a plain-text format when rich copy isn't available.
+- Six themes now actually theme. **Night**, **Paper**, and **High Contrast** previously left the page identical to Light; each one now has a distinct, fully-populated palette (Night `#0a0e1a`, Paper warm cream `#f7f1e3`, Contrast pure-black/white). Theme tiles in the gear popover render an `Aa` preview in each theme's actual font.
+- Font picker is keyboard-accessible: an ARIA listbox replaces the native `<select>`, with arrow-key navigation, per-option live previews, and bundled webfonts (Inter, Merriweather, Lora, Fira Code, Source Serif Pro) shipped via `@fontsource` so reader fonts work offline.
+- The reader's content tab choice is now reflected in the URL — `?tab=summary` or `?tab=original`. Refreshing, deep-linking, and the browser back button all preserve the tab. Inactive tabs are styled muted-but-clickable instead of disabled-looking.
+- New `/jobs/:id` deep-link view shows live progress for any summarisation job (PENDING / RUNNING / COMPLETED / FAILED), or a "Job not found" card on 404. The persistent processing indicator's running-job row links straight to it.
+- Stale summarisation jobs no longer block retries. If a previous server crash or kill left a `RUNNING` row behind, the next `POST /summarize` detects it (dead PID or older than 24h), marks it FAILED, and proceeds — no more `bookcompanion init` workaround. When a job *is* genuinely active, the 409 response now carries the active job's id, scope, and progress so the UI can deep-link to it.
+- Summary markdown no longer breaks images. The legacy `![alt](image:N)` scheme that older prompts emitted is now rewritten on-write to absolute `/api/v1/images/N` URLs, the prompt template instructs new generations to emit absolute URLs directly, and a one-shot data migration cleans up every existing summary in the library.
+- Section briefs now expose `content_char_count` and a small `default_summary` block so the table can compute compression without extra round-trips.
+
+### Fixed
+
+- Bug 1 — stale-job retry deadlock
+- Bug 5 — content tab styled as disabled
+- Bug 6 — broken images in summaries
+- Bug 7 — tab choice not surviving reload
+- Bug 8 — accidental button hierarchy in the action row
+- Bug 9 — copy-to-clipboard failure
+- Bug 10 — Night/Paper/Contrast themes were no-ops
+- Bug 11 — duplicate progress counter on book-detail
+
+### References
+
+- `docs/requirements/2026-04-30-reader-and-book-detail-ux-fixes.md`
+- `docs/specs/2026-04-30-reader-and-book-detail-ux-fixes-spec.md`
+- `docs/plans/2026-04-30-reader-and-book-detail-ux-fixes-implementation-plan.md`
+- `docs/simulations/2026-04-30-reader-and-book-detail-ux-fixes-trace.md`
+- `docs/2026-04-30-reader-and-book-detail-ux-fixes/verify/2026-05-01-review.md`
+
 ## 2026-04-30 — Reader Settings Popover Consolidation
 
 - The reader's gear popover is now a single, compact picker. Opens to seven theme cards (Light, Dark, Sepia, Night, Paper, High Contrast, Custom) plus the existing highlights / annotations-scope toggles — no more duplicate theme grids and no font/size/spacing controls cluttering the default view.
