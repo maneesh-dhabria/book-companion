@@ -5,6 +5,7 @@ import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import FloatingToolbar from '@/components/reader/FloatingToolbar.vue'
 import ReaderHeader from '@/components/reader/ReaderHeader.vue'
 import ReadingArea from '@/components/reader/ReadingArea.vue'
+import ReadingAreaFooterNav from '@/components/reader/ReadingAreaFooterNav.vue'
 import SummaryEmptyState from '@/components/reader/SummaryEmptyState.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import AIChatTab from '@/components/sidebar/AIChatTab.vue'
@@ -241,7 +242,17 @@ function handleAskAi() {
                 :has-prev="reader.hasPrev"
                 :has-next="reader.hasNext"
                 @navigate="reader.navigateSection($event)"
-              />
+              >
+                <template #footer>
+                  <ReadingAreaFooterNav
+                    v-if="reader.book"
+                    :book-id="reader.book.id"
+                    :prev="reader.prevSection ? { id: reader.prevSection.id, title: reader.prevSection.title } : null"
+                    :next="reader.nextSection ? { id: reader.nextSection.id, title: reader.nextSection.title } : null"
+                    current-tab="summary"
+                  />
+                </template>
+              </ReadingArea>
               <SummaryEmptyState
                 v-else
                 :section="reader.currentSection"
@@ -258,7 +269,17 @@ function handleAskAi() {
               :annotations="inlineAnnotations"
               :highlights-inline="settings.highlightsVisible"
               @navigate="reader.navigateSection($event)"
-            />
+            >
+              <template #footer>
+                <ReadingAreaFooterNav
+                  v-if="reader.book"
+                  :book-id="reader.book.id"
+                  :prev="reader.prevSection ? { id: reader.prevSection.id, title: reader.prevSection.title } : null"
+                  :next="reader.nextSection ? { id: reader.nextSection.id, title: reader.nextSection.title } : null"
+                  current-tab="original"
+                />
+              </template>
+            </ReadingArea>
           </template>
 
           <template v-else-if="reader.sections.length === 0">

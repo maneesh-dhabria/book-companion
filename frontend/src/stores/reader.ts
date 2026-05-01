@@ -59,6 +59,12 @@ export const useReaderStore = defineStore('reader', () => {
   })
   const hasNext = computed(() => currentIndex.value < sections.value.length - 1)
   const hasPrev = computed(() => currentIndex.value > 0)
+  const prevSection = computed(() =>
+    hasPrev.value ? sections.value[currentIndex.value - 1] : null,
+  )
+  const nextSection = computed(() =>
+    hasNext.value ? sections.value[currentIndex.value + 1] : null,
+  )
 
   async function loadBook(
     bookId: number,
@@ -197,6 +203,8 @@ export const useReaderStore = defineStore('reader', () => {
     currentIndex,
     hasNext,
     hasPrev,
+    prevSection,
+    nextSection,
     loadBook,
     loadSection,
     navigateSection,
