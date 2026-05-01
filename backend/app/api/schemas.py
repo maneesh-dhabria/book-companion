@@ -59,6 +59,17 @@ class BookListItem(BaseModel):
     updated_at: datetime
 
 
+class SectionDefaultSummaryBrief(BaseModel):
+    """Minimal default-summary metadata embedded in SectionBriefResponse so the
+    book-detail SectionListTable can compute the FR-31 compression ratio
+    without an extra round-trip per section."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    summary_char_count: int
+
+
 class SectionBriefResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +80,7 @@ class SectionBriefResponse(BaseModel):
     content_token_count: int | None = None
     content_char_count: int = 0
     has_summary: bool = False
+    default_summary: SectionDefaultSummaryBrief | None = None
 
 
 class SummaryBriefResponse(BaseModel):
