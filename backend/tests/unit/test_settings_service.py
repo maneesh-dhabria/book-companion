@@ -224,10 +224,8 @@ def test_load_shipped_models_yaml_from_package():
 
 # ---- T1: migration-status programmatic API ----
 
-import pytest as _pytest
 
-
-@_pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_get_migration_status_returns_revision_strings(engine, test_settings):
     svc = SettingsService(settings=test_settings, engine=engine)
     result = await svc.get_migration_status()
@@ -241,7 +239,7 @@ async def test_get_migration_status_returns_revision_strings(engine, test_settin
         assert value is None or not value.startswith("FAILED")
 
 
-@_pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_get_migration_status_failure_returns_structured_error(monkeypatch):
     """When Alembic config is broken, returns structured error (not subprocess output)."""
     # Construct a service with no engine and no settings → forces error path.

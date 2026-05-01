@@ -70,12 +70,12 @@ describe('SectionListTable', () => {
     expect(headers).toContain('Title')
   })
 
-  it('formats compression as percent to one decimal', () => {
+  it('formats compression as ~N% rounded to 5 (FR-05)', () => {
     const wrapper = mount(SectionListTable, {
       props: { sections, bookId: 1, compact: false },
       global: { plugins: [makeRouter()] },
     })
-    expect(wrapper.html()).toContain('16.0%')
+    expect(wrapper.html()).toContain('~15%')
   })
 
   it('shows em-dash when no summary', () => {
