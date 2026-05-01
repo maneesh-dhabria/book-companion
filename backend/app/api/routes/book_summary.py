@@ -7,6 +7,7 @@ import os
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -91,9 +92,12 @@ async def start_book_summary(
         )
     ).scalar_one_or_none()
     if in_flight is not None:
-        raise HTTPException(
+        return JSONResponse(
             status_code=409,
-            detail="A summarization job is already running for this book",
+            content={
+                "detail": "A summarization job is already in progress for this book",
+                "active_job_id": in_flight.id,
+            },
         )
 
     job = ProcessingJob(
@@ -105,12 +109,26 @@ async def start_book_summary(
     db.add(job)
     try:
         await db.commit()
-    except IntegrityError as e:
+    except IntegrityError:
         await db.rollback()
-        raise HTTPException(
+        # Re-query the active job so we can surface its id to the client.
+        active = (
+            await db.execute(
+                select(ProcessingJob).where(
+                    ProcessingJob.book_id == book_id,
+                    ProcessingJob.status.in_(
+                        [ProcessingJobStatus.PENDING, ProcessingJobStatus.RUNNING]
+                    ),
+                )
+            )
+        ).scalar_one_or_none()
+        return JSONResponse(
             status_code=409,
-            detail="A summarization job is already running for this book",
-        ) from e
+            content={
+                "detail": "A summarization job is already in progress for this book",
+                "active_job_id": active.id if active is not None else None,
+            },
+        )
     await db.refresh(job)
     job_id = job.id
 
