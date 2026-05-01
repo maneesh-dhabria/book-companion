@@ -160,8 +160,8 @@ onMounted(async () => {
 <template>
   <div class="space-y-6">
     <div>
-      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">LLM Provider</h3>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <h3 class="text-lg font-medium text-gray-900">LLM Provider</h3>
+      <p class="mt-1 text-sm text-gray-500">
         Configure which AI coding assistant CLI to use for summarization and evaluation.
       </p>
     </div>
@@ -171,8 +171,8 @@ onMounted(async () => {
       :class="[
         'rounded-md border p-3 text-sm',
         banner.tone === 'error'
-          ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200'
-          : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200',
+          ? 'border-red-300 bg-red-50 text-red-800'
+          : 'border-amber-300 bg-amber-50 text-amber-800',
       ]"
       data-testid="preflight-banner"
       role="alert"
@@ -193,14 +193,14 @@ onMounted(async () => {
 
     <div class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+        <label class="block text-sm font-medium text-gray-700"
           >Provider</label
         >
         <div class="mt-1 flex items-center gap-3">
           <select
             v-model="provider"
             data-testid="provider-select"
-            class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="auto">Auto-detect</option>
             <option value="claude">Claude CLI</option>
@@ -211,23 +211,23 @@ onMounted(async () => {
             :class="[
               'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
               detectedBadge.tone === 'ok'
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                ? 'bg-emerald-100 text-emerald-800'
                 : detectedBadge.tone === 'warning'
-                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-red-100 text-red-800',
             ]"
             data-testid="provider-badge"
           >
             {{ detectedBadge.label }}
           </span>
         </div>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p class="mt-1 text-xs text-gray-500">
           "Auto-detect" uses whichever CLI is found on your PATH (claude preferred over codex).
         </p>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+        <label class="block text-sm font-medium text-gray-700"
           >Config directory (optional)</label
         >
         <input
@@ -235,9 +235,9 @@ onMounted(async () => {
           type="text"
           placeholder="~/.claude-personal"
           data-testid="config-dir-input"
-          class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p class="mt-1 text-xs text-gray-500">
           Path passed to the CLI as <code>CLAUDE_CONFIG_DIR</code> /
           <code>CODEX_HOME</code>. Useful for sandboxed installs that share the
           binary but want a separate session/credential profile. Leave empty to
@@ -246,11 +246,11 @@ onMounted(async () => {
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+        <label class="block text-sm font-medium text-gray-700">Model</label>
         <select
           v-if="!useCustom"
           v-model="modelValue"
-          class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option v-for="opt in modelOptionsForProvider" :key="opt.id" :value="opt.id">
             {{ opt.label }}
@@ -262,17 +262,17 @@ onMounted(async () => {
             v-model="customModel"
             type="text"
             placeholder="model-id"
-            class="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            class="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <button
             type="button"
-            class="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600"
+            class="rounded-md border border-gray-300 px-3 py-2 text-sm"
             @click="useCustom = false"
           >
             Back to list
           </button>
         </div>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p class="mt-1 text-xs text-gray-500">
           Shipped candidates come from the packaged <code>models.yaml</code>.
         </p>
       </div>
