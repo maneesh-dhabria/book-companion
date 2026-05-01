@@ -111,12 +111,7 @@
       </section>
 
       <section v-else-if="activeTab === 'summary'" class="tab-panel" role="tabpanel">
-        <div v-if="defaultSummary" class="summary">
-          <MarkdownRenderer :content="defaultSummary" />
-        </div>
-        <div v-else class="summary-placeholder" data-testid="summary-tab-placeholder">
-          <p>No book summary yet. Use the overflow menu to generate one once at least one section is summarized.</p>
-        </div>
+        <BookSummaryTab :book="book" :default-preset="book.last_used_preset" @book-refetch="reloadBook" />
       </section>
 
       <section v-else-if="activeTab === 'sections'" class="tab-panel" role="tabpanel">
@@ -143,6 +138,7 @@ import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
 import SectionListTable from '@/components/book/SectionListTable.vue'
 import OverflowMenu from '@/components/book/OverflowMenu.vue'
+import BookSummaryTab from '@/components/book/BookSummaryTab.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
@@ -354,6 +350,10 @@ async function onCopyClick() {
   } finally {
     exporting.value = false
   }
+}
+
+function reloadBook() {
+  return load()
 }
 
 async function load() {
