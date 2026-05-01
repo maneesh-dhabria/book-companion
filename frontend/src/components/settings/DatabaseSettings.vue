@@ -4,6 +4,11 @@ import { useSettingsStore } from '@/stores/settings'
 
 const store = useSettingsStore()
 
+const isHexRevision = (v: unknown): v is string =>
+  typeof v === 'string' && /^[a-f0-9]{8,}$/.test(v)
+
+const display = (v: unknown): string => (isHexRevision(v) ? v : 'Unknown')
+
 onMounted(() => {
   store.fetchDatabaseStats()
   store.fetchMigrationStatus()
@@ -47,9 +52,21 @@ onMounted(() => {
             {{ store.migrationStatus.is_behind ? 'Behind' : 'Up to date' }}
           </span>
         </div>
-        <div v-if="store.migrationStatus.current" class="status-row">
+        <div class="status-row">
           <span class="status-label">Current revision</span>
-          <code class="status-value">{{ store.migrationStatus.current }}</code>
+          <code
+            class="status-value"
+            :class="{ 'is-unknown': !isHexRevision(store.migrationStatus.current) }"
+            :title="!isHexRevision(store.migrationStatus.current) && store.migrationStatus.error ? store.migrationStatus.error : ''"
+          >{{ display(store.migrationStatus.current) }}</code>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Latest revision</span>
+          <code
+            class="status-value"
+            :class="{ 'is-unknown': !isHexRevision(store.migrationStatus.latest) }"
+            :title="!isHexRevision(store.migrationStatus.latest) && store.migrationStatus.error ? store.migrationStatus.error : ''"
+          >{{ display(store.migrationStatus.latest) }}</code>
         </div>
         <button
           v-if="store.migrationStatus.is_behind"
@@ -185,8 +202,10 @@ function formatTableName(name: string): string {
   border-radius: 0.375rem;
 }
 
-.stat-row:nth-child(even) {
-  background: var(--color-bg-muted, #f9fafb);
+.status-value.is-unknown {
+  color: var(--color-text-muted, #888);
+  font-style: italic;
+  cursor: help;
 }
 
 .stat-table {
