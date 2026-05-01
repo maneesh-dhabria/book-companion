@@ -60,43 +60,18 @@
             >
               Read
             </router-link>
-            <router-link
-              class="btn-secondary"
-              data-action="read-summary"
-              :class="{ 'is-disabled': !hasBookSummary }"
-              :aria-disabled="!hasBookSummary || undefined"
-              :title="hasBookSummary ? '' : 'No book summary yet — summarize sections first.'"
-              :to="
-                hasBookSummary
-                  ? { name: 'book-summary', params: { id: String(book.id) } }
-                  : { name: 'book-overview', params: { id: String(book.id) } }
-              "
-              @click="(e: MouseEvent) => !hasBookSummary && e.preventDefault()"
-            >
-              Read Summary
-            </router-link>
-            <ExportSplitButton
-              data-action="export"
-              data-testid="export-summary-btn"
-              :disabled="exportDisabled"
-              :disabled-reason="disabledTooltip()"
-              :loading="exporting"
-              @download="onExportClick"
-              @copy="onCopyClick"
-            />
-            <a
-              class="customize-link"
-              data-testid="customize-export-link"
-              :class="{ disabled: customizeDisabled }"
-              :aria-disabled="customizeDisabled"
-              @click.prevent="customizeDisabled ? null : (showModal = true)"
-            >
-              Customize…
-            </a>
             <OverflowMenu
               data-action="overflow"
               :edit-route="{ name: 'book-edit-structure', params: { id: String(book.id) } }"
+              :has-book-summary="hasBookSummary"
+              :can-generate="!hasNoSummaries"
+              :can-export="!exportDisabled"
               @open-reader-settings="settings.popoverOpen = true"
+              @generate-book-summary="onGenerateBookSummary"
+              @read-book-summary="onReadBookSummary"
+              @re-import="onReimport"
+              @export-markdown="onExportClick"
+              @delete-book="onDeleteBook"
             />
             <ReaderSettingsPopover />
           </div>
@@ -167,7 +142,6 @@ import SuggestedTagsBar from '@/components/book/SuggestedTagsBar.vue'
 import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
 import SectionListTable from '@/components/book/SectionListTable.vue'
-import ExportSplitButton from '@/components/book/ExportSplitButton.vue'
 import OverflowMenu from '@/components/book/OverflowMenu.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
@@ -295,6 +269,30 @@ async function onExportClick() {
 // for the inner ![alt](url) form the export emits; nested brackets in
 // alt aren't realistic for our content.
 const STRIP_IMG_RE = /!\[([^\]]*)\]\([^)]*\)/g
+
+function onGenerateBookSummary() {
+  router.replace({ query: { ...route.query, tab: 'summary' } })
+  ui.showToast('Use the Summary tab to start generation.', 'info')
+}
+function onReadBookSummary() {
+  router.replace({ query: { ...route.query, tab: 'summary' } })
+}
+function onReimport() {
+  ui.showToast('Re-import is available from the CLI: bookcompanion add <path>', 'info')
+}
+async function onDeleteBook() {
+  if (!book.value) return
+  const ok = window.confirm(`Delete "${book.value.title}"? This cannot be undone.`)
+  if (!ok) return
+  try {
+    const r = await fetch(`/api/v1/books/${book.value.id}`, { method: 'DELETE' })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    ui.showToast('Book deleted.', 'success')
+    router.push('/')
+  } catch (e) {
+    ui.showToast(`Delete failed: ${(e as Error).message}`, 'error')
+  }
+}
 
 async function onCopyClick() {
   if (exportDisabled.value) return
