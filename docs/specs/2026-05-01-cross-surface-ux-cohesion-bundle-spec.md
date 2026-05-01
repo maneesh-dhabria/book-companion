@@ -60,6 +60,12 @@ Decisions D1–D12 from the requirements doc carry forward. Spec adds the follow
 | SD14 | Footer prev/next preserves the current `?tab` value | (a) preserve current tab, (b) always Summary, (c) Original on first visit | (a) — predictable; if the user is reading summaries they want the next summary. (User decision) |
 | SD15 | Preset facet validation source = filesystem-derived from `prompts/fragments/{dim}/*.txt` | (a) filesystem-derived (cache on init), (b) static enum, (c) keep current source | (a) — adding a new fragment file extends allowed values without code change; matches the same convention `PresetService` already uses to compose prompts. (User decision) |
 | SD16 | "Read Section Summaries" replaces "Read in reader" as the populated-state action label | (a) "Read Section Summaries" (clearer about destination — section-level summaries, not the book summary the user is already on), (b) "Read in reader" (generic) | (a) — disambiguates from the book-level summary already shown on the Summary tab. (User decision) |
+| SD17 | Generate book-summary idempotency = backend rejects duplicate active job with 409 | (a) backend 409 + return active job_id, (b) frontend disable only, (c) accept as risk | (a) — covers cross-tab races and double-clicks; the frontend then attaches to the existing job_id and renders the in-progress state. (Simulation gap G1) |
+| SD18 | Cancel button reuses existing processing-job cancel endpoint; cancellation leaves `summary_md` null | (a) reuse existing endpoint, (b) drop Cancel from FR-02, (c) defer to future bundle | (a) — minimal new surface; aligns with how section-summary jobs are cancelled today. (Simulation gap G2) |
+| SD19 | Add a **Failed** state to BookSummaryTab — shows last error + Retry CTA | (a) explicit failed state, (b) silent fall-back to empty, (c) defer | (a) — keeps the failure visible so the user can decide; reads `processing_jobs.error_message` from the last terminal job for this book. (Simulation gap G3) |
+| SD20 | BookSummaryTab subscribes to existing book-summary SSE channel for cross-tab freshness | (a) SSE subscribe, (b) manual refresh only, (c) accept staleness | (a) — reuses existing SSE infrastructure; covers the "regenerate in another tab" case at no new infra cost. (Simulation gap G7) |
+| SD21 | `GET /api/v1/summarize/presets` skips malformed user-preset YAML files with a structured warning | (a) skip-with-warning, (b) 500 the whole endpoint, (c) best-effort partial parse | (a) — single bad file shouldn't break the whole UI; warning surfaces in logs and optionally in a `warnings: [...]` array on the response. (Simulation gap G4) |
+| SD22 | `book_summary` is embedded in `GET /api/v1/books/{id}` response (not a separate endpoint) | (a) embed in book payload, (b) separate endpoint, (c) defer | (a) — one round-trip, matches how SectionBrief embeds default_summary; backend joins Book → default_summary (Summary table). (Simulation gap G5) |
 
 ---
 
@@ -78,7 +84,7 @@ FR-XX numbering matches AC #N from the requirements doc § Acceptance Criteria s
 | ID | Requirement | Files (primary) |
 |----|-------------|-----------------|
 | FR-01 | One primary `Read` CTA on Book Detail toolbar; no "Read Summary" button outside overflow; no disabled-link controls | `frontend/src/views/BookOverviewView.vue` |
-| FR-02 | New `Summary` tab on Book Detail. **Empty state** (no book summary yet): banner text `"X of Y sections summarized so far — the book summary will reflect those."` + `Generate book summary` CTA. CTA is **enabled when ≥1 section summary exists**, disabled otherwise. **In-progress state**: progress indicator + Cancel; CTA disabled. **Populated state**: rendered Markdown of the book summary + `Regenerate` + `Read Section Summaries` actions. The `Read Section Summaries` action routes to `/books/:id/sections/<first_section_id>?tab=summary` (first section in the book, summary tab). | `frontend/src/views/BookOverviewView.vue`, `frontend/src/components/book/BookSummaryTab.vue` (new) |
+| FR-02 | New `Summary` tab on Book Detail. **Empty state** (no book summary yet, no active job): banner text `"X of Y sections summarized so far — the book summary will reflect those."` + `Generate book summary` CTA. CTA is **enabled when ≥1 section summary exists**, disabled otherwise. **In-progress state**: progress indicator + Cancel button (Cancel calls the existing job-cancel endpoint per SD18; on success the tab returns to the Empty state, `book.summary_md` stays null). **Failed state** (last book-summary job ended with an error and no successful summary exists): error message from `processing_jobs.error_message` + `Retry` CTA (per SD19). **Populated state**: rendered Markdown of the book summary + `Regenerate` + `Read Section Summaries` actions. The `Read Section Summaries` action routes to `/books/:id/sections/<first_section_id>?tab=summary` (first section in the book, summary tab). The tab subscribes to the existing book-summary SSE channel so completions in another tab/session refresh the view automatically (per SD20); SSE reconnect uses the existing pattern. | `frontend/src/views/BookOverviewView.vue`, `frontend/src/components/book/BookSummaryTab.vue` (new) |
 | FR-03 | "Customize text" never appears as a floating control. The overflow menu's `Customize reader…` is the only customization entry point. | `frontend/src/views/BookOverviewView.vue`, `frontend/src/components/book/OverflowMenu.vue` |
 | FR-04 | Clicking `Customize reader…` opens the reader settings popover **anchored to the overflow menu trigger button** (no centered-modal fallback — SD11). Themes load successfully, Esc + outside-click both close. Settings affect **global reader defaults** (per SD4). | `frontend/src/components/book/OverflowMenu.vue`, `frontend/src/components/settings/ReaderSettingsPopover.vue` |
 | FR-05 | Compression renders as `~N%` where `N = Math.round(raw/5)*5`. Sortable. | `frontend/src/components/book/SectionListTable.vue:39` |
@@ -179,14 +185,14 @@ async def get_migration_status(self) -> dict:
 
 ### 7.2 Preset CRUD (new)
 
-The existing `GET /api/v1/summarize/presets` returns the list. Add:
+The existing `GET /api/v1/summarize/presets` returns the list. Per SD21, this endpoint must skip malformed user-preset YAML files (catch parse errors per file, log a structured warning, exclude from response, optionally surface in a `warnings: [{file, error}, ...]` field on the response). Add:
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/api/v1/summarize/presets` | Create user preset |
-| `PUT` | `/api/v1/summarize/presets/{name}` | Update user preset |
-| `DELETE` | `/api/v1/summarize/presets/{name}` | Delete user preset |
-| `GET` | `/api/v1/summarize/presets/{name}/template` | Return raw Jinja sources |
+| Method | Path | Purpose | Success response |
+|--------|------|---------|-----------------|
+| `POST` | `/api/v1/summarize/presets` | Create user preset | `201 Created` + the created preset object (same shape as a list-item) |
+| `PUT` | `/api/v1/summarize/presets/{name}` | Update user preset | `200 OK` + the updated preset object |
+| `DELETE` | `/api/v1/summarize/presets/{name}` | Delete user preset | `204 No Content` |
+| `GET` | `/api/v1/summarize/presets/{name}/template` | Return raw Jinja sources | `200 OK` + template payload (§ below). `404 Not Found` if `name` does not match any system or user preset. |
 
 **`POST` / `PUT` request body:**
 ```json
@@ -203,7 +209,9 @@ The existing `GET /api/v1/summarize/presets` returns the list. Add:
 }
 ```
 
-Validation: facet values are **filesystem-derived** (per SD15) — valid values for each dimension are the basenames (without `.txt`) of files in `backend/app/services/summarizer/prompts/fragments/{dimension}/`. `PresetService` caches this mapping on init; adding a new fragment file automatically extends the allowed values without code change. Invalid facet → `422 Unprocessable Entity` with the offending dimension/value in the error body. Name collision (system OR user) → `409 Conflict` with `{detail: "A preset with this name already exists"}`. Deleting a system preset → `403 Forbidden`. Updating/deleting a user preset that doesn't exist → `404`.
+Validation: facet values are **filesystem-derived** (per SD15) — valid values for each dimension are the basenames (without `.txt`) of files in `backend/app/services/summarizer/prompts/fragments/{dimension}/`. `PresetService` caches this mapping on init; **adding a new fragment file requires a process restart for the new value to be accepted** (acceptable for a single-user tool). Invalid facet → `422 Unprocessable Entity` with the offending dimension/value in the error body.
+
+Frontend form validation (FR-15): name MUST be non-empty and match `[a-z0-9_]+`; label MUST be non-empty. Empty fields render an inline error before submission; an invalid slug renders an inline error and disables Save. Name collision (system OR user) → `409 Conflict` with `{detail: "A preset with this name already exists"}`. Deleting a system preset → `403 Forbidden`. Updating/deleting a user preset that doesn't exist → `404`.
 
 **`GET /presets/{name}/template` response:**
 ```json
@@ -228,6 +236,45 @@ Validation: facet values are **filesystem-derived** (per SD15) — valid values 
 ### 7.3 Annotations (no contract change)
 
 `GET /api/v1/annotations` already supports both `content_type` values. Frontend loader must request both (or omit the filter and split client-side).
+
+### 7.4 `GET /api/v1/books/{id}` (modified — embed book_summary, per SD22)
+
+The existing book-detail endpoint MUST embed the current default book summary so BookSummaryTab renders in one round-trip.
+
+**Response (200) — added field:**
+```json
+{
+  "book": {
+    "...": "existing fields",
+    "book_summary": {
+      "summary_id": "int",
+      "markdown": "string — Summary.summary_md",
+      "generated_at": "ISO8601",
+      "preset_name": "string — preset used for this summary"
+    }
+  }
+}
+```
+- `book_summary` is `null` when the book has no `default_summary` row at the book level.
+- Backend resolves via `Book.default_summary` (Summary table relationship) using `selectinload()` to avoid lazy-load post-commit (CLAUDE.md gotcha 1).
+
+### 7.5 `POST /api/v1/books/{id}/book-summary` (modified — idempotency, per SD17)
+
+The existing endpoint queues the job. Add idempotency:
+
+**Error response (409 Conflict):**
+```json
+{
+  "detail": "A book-summary job is already in progress for this book",
+  "active_job_id": "int — the running processing_jobs.id"
+}
+```
+- Triggered when an active (non-terminal) `processing_jobs` row exists with this book_id and job_type='book_summary'.
+- Frontend treats 409 as a non-error: extracts `active_job_id`, attaches to the SSE channel, renders In-progress state.
+
+### 7.6 Cancel job (existing endpoint, no contract change)
+
+Cancel reuses the existing processing-job cancel endpoint. /plan task: confirm exact path (likely `DELETE /api/v1/processing/{job_id}` or `POST /api/v1/processing/{job_id}/cancel`) and pin in the plan doc.
 
 ---
 
@@ -273,7 +320,7 @@ User presets continue to persist as YAML files under the data directory's preset
 ```
 - Plain text links, underline on hover, `color: var(--reader-text)` muted at 0.7 opacity.
 - Both `prevHref` and `nextHref` preserve the current `?tab=` value (Summary→Summary, Original→Original; SD14).
-- Layout: flex `justify-content: space-between`. First section: empty `<span>` placeholder on left. Last section: empty `<span>` on right.
+- Layout: flex `justify-content: space-between`. First section: empty `<span>` placeholder on left. Last section: empty `<span>` on right. **Single-section book** (both `prev` and `next` are null): footer does not render at all.
 
 ### 9.5 Compression formatter (FR-05)
 
@@ -333,12 +380,19 @@ The 11 cases in the requirements doc § Edge / Error Cases are authoritative. Sp
 | E8 | TOC for very long books | List remains scrollable; char count rendered for every row. |
 | E9 | LlmSettings rendered in Dark theme | All controls visible with adequate contrast (matches sibling pages); no Tailwind `dark:` classes remain. |
 | E10 | Standalone `/books/:id/summary` route hit | If such a route currently exists in `frontend/src/router/`, replace it with a redirect to `/books/:id?tab=summary`. /plan task: `grep -rn "summary" frontend/src/router/` to confirm presence/absence; if absent, no work required. |
+| E11 | User clicks Generate book summary while a job is already active for that book (cross-tab or double-click) | Backend returns `409 Conflict` with `{detail: "A book-summary job is already in progress for this book", active_job_id: <int>}`. Frontend swallows the 409, attaches to the existing `active_job_id`, and renders the In-progress state. (SD17) |
+| E12 | User clicks Cancel during in-progress generation | Calls existing job-cancel endpoint with the active job_id. On `204`, tab returns to Empty state; `book.summary_md` and book Summary row stay null. (SD18) |
+| E13 | Last book-summary job ended in failure (terminal `error_message` non-null) and book has no summary yet | Tab renders Failed state: shows `processing_jobs.error_message` + Retry CTA. Retry calls the same POST endpoint as Generate. (SD19) |
+| E14 | Another browser tab regenerates the book summary while this tab is on the Summary tab | SSE event arrives; tab refetches `GET /api/v1/books/{id}` and re-renders the populated state. (SD20) |
+| E15 | A user-preset YAML file on disk is malformed (manual edit corrupted it) | `GET /presets` skips the bad file, logs a structured warning, optionally surfaces it in `warnings: [...]` on the response. UI renders the rest of the list. (SD21) |
 
 ---
 
 ## 11. Configuration & Feature Flags
 
 **No new configuration variables.** No feature flags required — these are bug fixes and presentation changes. Land per-PR per-workstream; each PR independently shippable.
+
+**Viewport scope:** desktop-web only. Tab strip and footer prev/next use flex/wrap so they degrade gracefully at narrow widths, but no responsive QA gate; iPad/mobile tuning is deferred to a separate bundle (per simulation gap G9 disposition).
 
 ---
 
@@ -471,3 +525,4 @@ None at spec time. All four open questions from the requirements doc were resolv
 |------|----------|--------------|
 | 1 | (a) FR-12 silent on how Summary-tab annotation-create knows to use `content_type='section_summary'`. (b) FR-04 carried forward AC's "or centered modal" alternative — needed a single canonical anchoring decision. (c) FR-11 handed off file location to /plan ("locate via grep"). (d) FR-15 said "4 facet pickers" without specifying the UX — wireframe shows card grids. (e) § 7.1 implementation block referenced `ALEMBIC_INI_PATH`/`MIGRATIONS_DIR` constants that don't exist. (f) E10 conditional ("if such a route exists") had no /plan task. | (a) Added SD12 + tightened FR-12 wiring (read active tab from reader state, pass as `content_type`). (b) Added SD11 (anchored only) + tightened FR-04 (no centered-modal fallback). (c) Pinned `TopBar.vue:36` as the title source after grep. (d) Added SD13 + tightened FR-15 (card grids per facet, plain-language subheads, ref wireframe 05). (e) Replaced placeholder constants with `Path(__file__).resolve().parent.parent / "migrations"` and confirmed `alembic.ini` exists; added two plan-time validation tasks. (f) Added explicit /plan grep task to E10. |
 | 2 | (a) FR-02 mentioned a `Read in reader` action without a destination route or label clarity (user noted "Read in reader" is confusing on a Summary tab). (b) Footer prev/next href construction said "preserve current `?tab`" without pinning the rule. (c) § 7.2 facet validation referenced `PresetService.FACET_DIMENSIONS` without specifying whether values are static-enum or filesystem-derived. | (a) Renamed action to `Read Section Summaries`; pinned destination `/books/:id/sections/<first_section_id>?tab=summary`; added SD16. (b) Added SD14 making preserve-current-tab explicit. (c) Added SD15 (filesystem-derived from `prompts/fragments/{dim}/*.txt`, cached on init); changed validation error to `422` with offending dimension/value in body. |
+| 3 (simulation) | 16 gaps surfaced from /simulate-spec: 5 significant (concurrent Generate idempotency, Cancel state machine, Failed UI state, malformed-YAML resilience, book_summary data-access path) + 11 minor (network drop, cross-tab freshness, footer fallback semantics, narrow-viewport scope, import-path migration, facet-cache restart semantics, active-tab state location, preset-CRUD response codes, template 404, form validation, single-section footer). | Added SD17–SD22 (idempotency 409, cancel reuse, failed state, SSE for cross-tab freshness, malformed-YAML skip, embed book_summary in `/books/{id}`). Added §§ 7.4–7.6 (book_summary embed, 409 idempotency contract, cancel-endpoint /plan task). Tightened FR-02 with explicit Failed state + SSE subscription. Added E11–E15 edge cases. Added desktop-first viewport scope note. Documented facet-cache restart semantics. Captured remaining minors in the simulation trace's Accepted Risks / Plan-time judgment sections. |
