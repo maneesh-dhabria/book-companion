@@ -1,0 +1,205 @@
+/*
+ * pmos-toolkit /wireframes — shared stylesheet
+ *
+ * Goal: every wireframe in a feature folder looks like part of one coherent set.
+ * Mid-fidelity, neutral, structural. NOT visual design. NOT brand.
+ *
+ * Borrows the mock-* primitive vocabulary from superpowers:brainstorming
+ * (visual-companion frame-template) and the CSS-variable theme discipline
+ * from claude-plugins-official:frontend-design.
+ *
+ * Authors of generated wireframes: prefer Tailwind utilities for layout and
+ * spacing, prefer the .wf-* / .mock-* classes here for primitives that should
+ * look identical across files. Do NOT redefine these in inline <style> blocks.
+ */
+
+/* ===== Theme tokens ===== */
+:root {
+  --wf-bg:        #f5f5f7;
+  --wf-surface:   #ffffff;
+  --wf-surface-2: #fafafa;
+  --wf-border:    #d4d4d8;
+  --wf-border-2:  #e4e4e7;
+  --wf-text:      #18181b;
+  --wf-muted:     #71717a;
+  --wf-faint:     #a1a1aa;
+  --wf-accent:    #2563eb;
+  --wf-accent-2:  #1d4ed8;
+  --wf-success:   #16a34a;
+  --wf-warning:   #d97706;
+  --wf-error:     #dc2626;
+  --wf-radius:    8px;
+  --wf-radius-lg: 14px;
+  --wf-shadow:    0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  --wf-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --wf-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wf-bg:        #0b0b0c;
+    --wf-surface:   #18181b;
+    --wf-surface-2: #1f1f22;
+    --wf-border:    #3f3f46;
+    --wf-border-2:  #27272a;
+    --wf-text:      #fafafa;
+    --wf-muted:     #a1a1aa;
+    --wf-faint:     #71717a;
+    --wf-accent:    #60a5fa;
+    --wf-accent-2:  #3b82f6;
+    --wf-shadow:    0 1px 2px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.3);
+  }
+}
+
+/* ===== Base ===== */
+html, body {
+  background: var(--wf-bg);
+  color: var(--wf-text);
+  font-family: var(--wf-font-sans);
+  line-height: 1.5;
+}
+body { margin: 0; }
+:focus-visible { outline: 2px solid var(--wf-accent); outline-offset: 2px; border-radius: 3px; }
+
+/* ===== Wireframe chrome (top toolbar, footer) ===== */
+.wf-chrome {
+  background: var(--wf-surface);
+  border-bottom: 1px solid var(--wf-border-2);
+  font-size: 13px;
+}
+.wf-chrome__inner { max-width: 72rem; margin: 0 auto; padding: .5rem 1rem; display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.wf-chrome__title { font-weight: 600; }
+.wf-chrome__device { padding: 2px 8px; border-radius: 999px; background: var(--wf-surface-2); border: 1px solid var(--wf-border-2); color: var(--wf-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+
+.wf-footer {
+  border-top: 1px solid var(--wf-border-2);
+  background: var(--wf-surface);
+  font-size: 12px;
+  color: var(--wf-muted);
+  margin-top: 2rem;
+}
+.wf-footer__inner { max-width: 72rem; margin: 0 auto; padding: .75rem 1rem; display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: center; }
+
+/* ===== State switcher ===== */
+.wf-tabs { display: flex; gap: .25rem; margin-left: auto; }
+.wf-tab {
+  padding: .25rem .65rem;
+  border: 1px solid var(--wf-border-2);
+  background: var(--wf-surface);
+  color: var(--wf-text);
+  border-radius: var(--wf-radius);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.wf-tab[aria-selected="true"] { background: var(--wf-text); color: var(--wf-surface); border-color: var(--wf-text); }
+.wf-state { display: none; }
+.wf-state.active { display: block; }
+
+/* ===== Annotations layer (reviewer notes) ===== */
+[data-annotations="off"] .wf-anno { outline: none !important; }
+[data-annotations="off"] .wf-anno::after { display: none !important; }
+.wf-anno { outline: 1px dashed var(--wf-accent); outline-offset: 3px; position: relative; }
+.wf-anno::after {
+  content: attr(data-note);
+  position: absolute; top: 100%; left: 0; margin-top: 6px;
+  background: var(--wf-accent); color: #fff; padding: 2px 6px;
+  border-radius: 3px; font-size: 11px; white-space: nowrap; z-index: 20;
+  pointer-events: none;
+}
+
+/* ===== Touch targets ===== */
+button, [role="button"], a.btn, input, select { font-family: inherit; }
+button, [role="button"], a.btn { min-height: 36px; }
+@media (max-width: 640px) {
+  button, [role="button"], a.btn { min-height: 44px; min-width: 44px; }
+}
+
+/* ===== Mock primitives (vocabulary borrowed from superpowers:brainstorming) ===== */
+.mock {
+  background: var(--wf-surface-2);
+  border: 1px dashed var(--wf-border);
+  color: var(--wf-muted);
+  border-radius: var(--wf-radius);
+  padding: .75rem;
+}
+.mock-nav,
+.mock-sidebar,
+.mock-content {
+  background: var(--wf-surface-2);
+  border: 1px dashed var(--wf-border);
+  color: var(--wf-muted);
+  border-radius: var(--wf-radius);
+}
+.mock-nav     { display: flex; gap: 1rem; align-items: center; padding: .65rem 1rem; }
+.mock-sidebar { min-height: 320px; width: 220px; padding: .75rem; }
+.mock-content { min-height: 320px; flex: 1; padding: .75rem; }
+.mock-card     { background: var(--wf-surface); border: 1px solid var(--wf-border-2); border-radius: var(--wf-radius); padding: 1rem; box-shadow: var(--wf-shadow); }
+.mock-button   { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-radius: var(--wf-radius); border: 1px solid var(--wf-border); background: var(--wf-surface); color: var(--wf-text); cursor: pointer; }
+.mock-button--primary { background: var(--wf-accent); color: #fff; border-color: var(--wf-accent); }
+.mock-button--danger  { background: var(--wf-error);  color: #fff; border-color: var(--wf-error); }
+.mock-input    { display: block; width: 100%; padding: .5rem .75rem; border: 1px solid var(--wf-border); border-radius: var(--wf-radius); background: var(--wf-surface); color: var(--wf-text); }
+.mock-input::placeholder { color: var(--wf-faint); }
+.mock-label    { display: block; font-size: 12px; color: var(--wf-muted); margin-bottom: .25rem; }
+.mock-pill     { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--wf-surface-2); border: 1px solid var(--wf-border-2); color: var(--wf-muted); font-size: 11px; }
+.mock-divider  { height: 1px; background: var(--wf-border-2); margin: .75rem 0; border: 0; }
+.mock-img      { background: linear-gradient(135deg, var(--wf-surface-2), var(--wf-border-2)); border: 1px solid var(--wf-border-2); border-radius: var(--wf-radius); display: flex; align-items: center; justify-content: center; color: var(--wf-faint); font-size: 11px; }
+.mock-img::before { content: "image"; }
+
+.placeholder {
+  background: repeating-linear-gradient(45deg, var(--wf-surface-2) 0 8px, var(--wf-border-2) 8px 16px);
+  border-radius: var(--wf-radius);
+  color: var(--wf-muted);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 80px;
+  font-size: 12px;
+}
+
+/* Skeleton lines for loading state */
+.skeleton { background: var(--wf-border-2); border-radius: 4px; height: 12px; animation: wf-pulse 1.4s ease-in-out infinite; }
+.skeleton--lg { height: 22px; }
+@keyframes wf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* ===== Status messages (success / error / empty) ===== */
+.wf-message { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 2rem; text-align: center; color: var(--wf-muted); }
+.wf-message--error   { color: var(--wf-error); }
+.wf-message--success { color: var(--wf-success); }
+.wf-message__title { font-size: 16px; font-weight: 600; color: var(--wf-text); }
+.wf-message__hint  { font-size: 13px; }
+
+/* ===== Device frames ===== */
+.wf-frame { margin: 1.5rem auto; }
+.wf-frame--desktop-web { max-width: 72rem; background: var(--wf-surface); border: 1px solid var(--wf-border-2); border-radius: var(--wf-radius-lg); box-shadow: var(--wf-shadow); padding: 2rem; }
+.wf-frame--desktop-app { max-width: 72rem; background: var(--wf-surface); border: 1px solid var(--wf-border); border-radius: var(--wf-radius-lg); box-shadow: var(--wf-shadow); overflow: hidden; }
+.wf-frame--desktop-app .wf-traffic { display: flex; gap: .4rem; padding: .65rem .9rem; border-bottom: 1px solid var(--wf-border-2); background: var(--wf-surface-2); }
+.wf-frame--desktop-app .wf-traffic span { width: 12px; height: 12px; border-radius: 50%; }
+.wf-frame--desktop-app .wf-traffic span:nth-child(1) { background: #ef4444; }
+.wf-frame--desktop-app .wf-traffic span:nth-child(2) { background: #f59e0b; }
+.wf-frame--desktop-app .wf-traffic span:nth-child(3) { background: #22c55e; }
+
+.wf-frame--mobile-web,
+.wf-frame--android-app,
+.wf-frame--ios-app {
+  width: 375px; min-height: 812px;
+  background: var(--wf-surface);
+  border: 8px solid #18181b;
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: var(--wf-shadow);
+  position: relative;
+}
+.wf-statusbar { height: 24px; padding: 0 1rem; display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
+.wf-frame--ios-app   .wf-statusbar { background: var(--wf-surface); color: var(--wf-text); }
+.wf-frame--android-app .wf-statusbar { background: var(--wf-text); color: var(--wf-surface); }
+.wf-tabbar { position: absolute; bottom: 0; left: 0; right: 0; height: 56px; background: var(--wf-surface); border-top: 1px solid var(--wf-border-2); display: flex; align-items: center; justify-content: space-around; }
+.wf-fab { position: absolute; right: 16px; bottom: 72px; width: 56px; height: 56px; border-radius: 50%; background: var(--wf-accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: var(--wf-shadow); }
+.wf-home-indicator { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 128px; height: 4px; border-radius: 999px; background: var(--wf-text); opacity: .85; }
+.wf-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 22px; background: #000; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; }
+
+/* ===== Utility helpers (kept narrow on purpose; prefer Tailwind) ===== */
+.wf-stack > * + * { margin-top: .75rem; }
+.wf-row { display: flex; gap: .75rem; align-items: center; }
+.wf-grow { flex: 1; }
+.wf-muted { color: var(--wf-muted); }
+.wf-mono { font-family: var(--wf-font-mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }

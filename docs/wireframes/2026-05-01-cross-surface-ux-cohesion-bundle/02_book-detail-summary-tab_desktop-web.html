@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Book Detail — Summary Tab — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: initial draft
+  -->
+
+  <!-- Wireframe chrome (NOT part of the design — meta toolbar for reviewers) -->
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Book Detail — Summary Tab</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="populated">Populated</button>
+        <button class="wf-tab" aria-selected="false" data-state="empty">Empty</button>
+        <button class="wf-tab" aria-selected="false" data-state="in-progress">In-progress</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Error</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- Shared chrome: left icon rail + top bar + book metadata header (mirrors wireframe 01) -->
+    <div class="flex min-h-[900px]">
+      <!-- Left icon rail -->
+      <aside class="w-14 bg-slate-900 text-slate-300 flex flex-col items-center py-4 gap-5 shrink-0">
+        <div class="w-8 h-8 rounded bg-indigo-500 text-white flex items-center justify-center font-bold text-sm">BC</div>
+        <button class="w-9 h-9 rounded hover:bg-slate-800 flex items-center justify-center" aria-label="Library" title="Library">📚</button>
+        <button class="w-9 h-9 rounded bg-slate-800 text-white flex items-center justify-center" aria-label="Books" title="Books">📖</button>
+        <button class="w-9 h-9 rounded hover:bg-slate-800 flex items-center justify-center" aria-label="Search" title="Search">🔍</button>
+        <button class="w-9 h-9 rounded hover:bg-slate-800 flex items-center justify-center" aria-label="Annotations" title="Annotations">✎</button>
+        <button class="w-9 h-9 rounded hover:bg-slate-800 flex items-center justify-center" aria-label="Concepts" title="Concepts">◇</button>
+        <div class="flex-grow"></div>
+        <button class="w-9 h-9 rounded hover:bg-slate-800 flex items-center justify-center" aria-label="Settings" title="Settings">⚙</button>
+      </aside>
+
+      <!-- Right column: top bar + content -->
+      <div class="flex-1 flex flex-col bg-slate-50">
+        <!-- Top bar -->
+        <header class="h-12 bg-white border-b border-slate-200 px-5 flex items-center gap-4">
+          <nav class="text-xs text-slate-500 flex items-center gap-1">
+            <a href="#" class="hover:text-indigo-600">Library</a>
+            <span>/</span>
+            <a href="#" class="hover:text-indigo-600">Playing to Win</a>
+          </nav>
+          <div class="flex-grow"></div>
+          <div class="text-xs text-slate-500">Claude Code CLI · connected</div>
+          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">M</div>
+        </header>
+
+        <!-- Book metadata header -->
+        <section class="bg-white border-b border-slate-200 px-8 py-5">
+          <div class="flex gap-5">
+            <div class="w-20 h-28 bg-gradient-to-br from-amber-200 to-rose-300 rounded shadow-sm flex items-center justify-center text-[10px] text-slate-700 text-center px-1">Playing<br>to Win</div>
+            <div class="flex-1">
+              <h1 class="text-xl font-semibold text-slate-900">Playing to Win — How Strategy Really Works</h1>
+              <div class="text-sm text-slate-600 mt-0.5">A.G. Lafley &amp; Roger L. Martin · 21 sections · added 2026-04-22</div>
+              <div class="flex gap-2 mt-2">
+                <span class="mock-pill">strategy</span>
+                <span class="mock-pill">business</span>
+                <span class="mock-pill">non-fiction</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <nav class="mt-5 border-b border-slate-200 -mb-5 flex gap-6 wf-anno"
+               data-note="Decision D2 — Overview keeps current content (cover/metadata/quality), Summary is new, Sections unchanged">
+            <a href="#" class="px-1 pb-3 text-sm text-slate-500 hover:text-slate-800 border-b-2 border-transparent">Overview</a>
+            <a href="#" class="px-1 pb-3 text-sm font-semibold text-indigo-700 border-b-2 border-indigo-600">Summary <span class="ml-1 text-indigo-500">●</span></a>
+            <a href="#" class="px-1 pb-3 text-sm text-slate-500 hover:text-slate-800 border-b-2 border-transparent">Sections</a>
+          </nav>
+        </section>
+
+        <!-- ===== State: Populated (default-active) ===== -->
+        <section class="wf-state active" data-state="populated" aria-labelledby="state-populated-h">
+          <h2 id="state-populated-h" class="sr-only">Populated state</h2>
+          <div class="px-8 py-6 max-w-4xl">
+            <div class="mock-card bg-white p-7">
+              <!-- Action bar -->
+              <div class="flex items-center justify-between mb-5">
+                <div>
+                  <div class="text-xs uppercase tracking-wider text-slate-400">Book summary</div>
+                  <div class="text-sm text-slate-500 mt-0.5">Synthesized from 21 of 21 section summaries</div>
+                </div>
+                <div class="flex gap-2">
+                  <button class="mock-button">↻ Regenerate</button>
+                  <button class="mock-button mock-button--primary wf-anno"
+                          data-note="Opens /books/3/sections/<first> with summary tab — the book summary itself isn't section-bound">
+                    Read in reader →
+                  </button>
+                </div>
+              </div>
+
+              <div class="mock-divider"></div>
+
+              <!-- Rendered Markdown summary -->
+              <article class="prose prose-slate max-w-none mt-5 text-[15px] leading-relaxed">
+                <h2 class="text-lg font-semibold text-slate-900 mt-1 mb-2">Core thesis</h2>
+                <p class="text-slate-700">
+                  Strategy is not a vision statement, a plan, or operational excellence — it is an
+                  <em>integrated set of choices</em> that uniquely positions a firm to create sustainable
+                  advantage and superior value. Lafley and Martin argue that most organizations avoid
+                  strategy because making real choices is hard; the alternative — doing a bit of
+                  everything — guarantees mediocrity. Winning requires clarity about <em>where to play</em>
+                  and <em>how to win</em>, reinforced by the right capabilities and management systems.
+                </p>
+
+                <h2 class="text-lg font-semibold text-slate-900 mt-5 mb-2">Five strategic choices</h2>
+                <ul class="list-disc pl-6 text-slate-700 space-y-1">
+                  <li><strong>Winning aspiration</strong> — define what winning looks like in concrete, customer-facing terms, not internal milestones.</li>
+                  <li><strong>Where to play</strong> — choose the geographies, segments, channels, and product categories you will and will not compete in.</li>
+                  <li><strong>How to win</strong> — pick a value proposition (cost leadership or differentiation) that wins in those chosen arenas.</li>
+                  <li><strong>Capabilities</strong> — identify the small set of reinforcing activities the organization must do uniquely well.</li>
+                  <li><strong>Management systems</strong> — install the structures, measures, and norms that sustain the choices day-to-day.</li>
+                </ul>
+
+                <h2 class="text-lg font-semibold text-slate-900 mt-5 mb-2">Practitioner takeaways</h2>
+                <ul class="list-disc pl-6 text-slate-700 space-y-1">
+                  <li>Treat strategy as a cascade — each choice constrains and informs the next; inconsistency breaks the system.</li>
+                  <li>Test choices against the "logic flow" framework before committing: what would have to be true for this to win?</li>
+                  <li>Beware the comfort traps: doing nothing, doing everything, playing only to play, or chasing best practice.</li>
+                </ul>
+              </article>
+
+              <div class="mock-divider mt-6"></div>
+
+              <div class="text-xs text-slate-500 mt-3 flex items-center gap-2 flex-wrap">
+                <span>Generated 2026-04-29 with preset</span>
+                <code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px]">practitioner_bullets</code>
+                <span>·</span>
+                <span>1,847 chars</span>
+                <span>·</span>
+                <span>≈ ~10% compression of section summaries</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== State: Empty ===== -->
+        <section class="wf-state" data-state="empty" aria-labelledby="state-empty-h">
+          <h2 id="state-empty-h" class="sr-only">Empty state</h2>
+          <div class="px-8 py-10 max-w-3xl">
+            <div class="mock-card bg-white p-10 text-center">
+              <div class="text-5xl mb-4">📝</div>
+              <div class="text-lg font-semibold text-slate-900">No book summary yet</div>
+              <p class="text-sm text-slate-600 mt-2 max-w-xl mx-auto">
+                <span class="font-medium text-slate-800">9 of 21 sections summarized so far</span>
+                — the book summary will reflect those.
+              </p>
+              <div class="mt-5 flex items-center justify-center gap-2">
+                <button class="mock-button mock-button--primary wf-anno"
+                        data-note="Item 2 AC — enabled because ≥1 section summary exists. Disabled if 0.">
+                  Generate book summary
+                </button>
+                <button class="mock-button">Choose preset…</button>
+              </div>
+              <div class="text-xs text-slate-400 mt-4">
+                Default preset: <code class="px-1 py-0.5 rounded bg-slate-100">practitioner_bullets</code>
+              </div>
+            </div>
+
+            <!-- Coverage hint -->
+            <div class="mt-4 text-xs text-slate-500 flex items-center gap-2">
+              <span class="inline-block w-40 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <span class="block h-full bg-indigo-400" style="width:43%"></span>
+              </span>
+              <span>Section coverage 9 / 21 (43%)</span>
+              <a href="#" class="text-indigo-600 hover:underline ml-2">Summarize remaining sections →</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== State: In-progress ===== -->
+        <section class="wf-state" data-state="in-progress" aria-labelledby="state-progress-h">
+          <h2 id="state-progress-h" class="sr-only">In-progress state</h2>
+          <div class="px-8 py-8 max-w-3xl">
+            <div class="mock-card bg-white p-7">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-xs uppercase tracking-wider text-indigo-600">Generating book summary</div>
+                  <div class="text-sm text-slate-700 mt-1">Processing section <strong>14: Where to Play</strong>…</div>
+                </div>
+                <div class="flex gap-2">
+                  <button class="mock-button mock-button--primary opacity-50 cursor-not-allowed" disabled>Generate book summary</button>
+                  <button class="mock-button mock-button--danger">Cancel</button>
+                </div>
+              </div>
+
+              <!-- Determinate progress bar -->
+              <div class="mt-5 wf-anno" data-note="Determinate (per user choice in /wireframes Phase 2)">
+                <div class="flex items-center justify-between text-xs text-slate-600 mb-1.5">
+                  <span><strong class="text-slate-800">14 of 21</strong> sections processed</span>
+                  <span>66%</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-indigo-500 transition-all" style="width:66%"></div>
+                </div>
+              </div>
+
+              <div class="mock-divider mt-5"></div>
+
+              <!-- Live log preview -->
+              <div class="mt-4 text-xs text-slate-500 space-y-1 wf-mono">
+                <div>✓ Section 12: How to Win — summarized (1.4s)</div>
+                <div>✓ Section 13: The Cascade of Choices — summarized (1.7s)</div>
+                <div class="text-indigo-600">▸ Section 14: Where to Play — in progress…</div>
+                <div class="text-slate-400">⋯ Section 15: Capabilities — queued</div>
+                <div class="text-slate-400">⋯ Section 16: Management Systems — queued</div>
+              </div>
+
+              <div class="text-xs text-slate-400 mt-4">
+                Estimated time remaining: ~1 min 40 sec · preset <code class="px-1 py-0.5 rounded bg-slate-100">practitioner_bullets</code>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== State: Error ===== -->
+        <section class="wf-state" data-state="error" aria-labelledby="state-error-h">
+          <h2 id="state-error-h" class="sr-only">Error state</h2>
+          <div class="px-8 py-8 max-w-3xl">
+            <div class="mock-card bg-white p-7 border-l-4 border-rose-500">
+              <div class="flex items-start gap-3">
+                <div class="text-2xl">⚠️</div>
+                <div class="flex-1">
+                  <div class="text-base font-semibold text-slate-900">Book summary generation failed</div>
+                  <p class="text-sm text-slate-600 mt-1">
+                    The Claude Code CLI returned a non-zero exit code while synthesizing the book summary.
+                    Section summaries are intact and unchanged.
+                  </p>
+                  <div class="mt-3 text-xs text-slate-500">
+                    Failed at: 2026-05-01 14:32 · 14 of 21 sections processed before failure
+                  </div>
+                  <div class="mt-4 flex items-center gap-3">
+                    <button class="mock-button mock-button--primary">↻ Retry</button>
+                    <a href="#" class="text-sm text-indigo-600 hover:underline">View error details →</a>
+                    <a href="#" class="text-sm text-slate-500 hover:text-slate-800 ml-auto">Dismiss</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Book Detail — Summary Tab</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 02 of 6</span>
+      <span>Generated 2026-05-01</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

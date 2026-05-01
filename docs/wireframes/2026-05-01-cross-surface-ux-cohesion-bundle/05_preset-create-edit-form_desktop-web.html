@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Preset create/edit form — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    .bg-page {
+      filter: blur(1px) saturate(0.85);
+      opacity: 0.55;
+      pointer-events: none;
+      user-select: none;
+    }
+    .modal-shell {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.35);
+    }
+    .modal-card {
+      width: 640px;
+      max-height: 640px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .facet-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .facet-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fafbfc;
+    }
+    .facet-card__title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .chip {
+      display: inline-block;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: #334155;
+      cursor: pointer;
+      margin: 2px 4px 2px 0;
+    }
+    .chip--selected {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: white;
+    }
+    .chip__hint {
+      font-size: 10px;
+      opacity: 0.7;
+      margin-left: 4px;
+    }
+    .form-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 13px;
+      background: white;
+    }
+    .form-input--error { border-color: #dc2626; }
+    .form-input--mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .form-input:disabled { background: #f1f5f9; color: #64748b; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+    .form-error {
+      color: #dc2626;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .modal-footer {
+      border-top: 1px solid #e2e8f0;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fafbfc;
+    }
+    .btn {
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .btn--text { background: transparent; color: #475569; }
+    .btn--primary { background: #4f46e5; color: white; }
+    .btn--primary:disabled { background: #c7d2fe; cursor: not-allowed; }
+    .btn--danger { background: white; color: #dc2626; border-color: #fca5a5; }
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 6px;
+      vertical-align: -2px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .preset-rail-item {
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      color: #334155;
+    }
+    .preset-rail-item--active { background: #eef2ff; color: #4338ca; font-weight: 600; }
+    .preset-rail-item__badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #475569;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body data-annotations="on">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Preset create/edit form</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="new-empty">New (empty)</button>
+        <button class="wf-tab" aria-selected="false" data-state="new-validating">New (name conflict)</button>
+        <button class="wf-tab" aria-selected="false" data-state="editing">Editing</button>
+        <button class="wf-tab" aria-selected="false" data-state="saving">Saving</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="position:relative;">
+
+    <!-- Faded background page (shared across states) -->
+    <div class="bg-page" aria-hidden="true">
+      <div class="mock-nav" style="display:flex;align-items:center;gap:16px;padding:10px 20px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-weight:700;color:#4f46e5;">Book Companion</span>
+        <span style="color:#64748b;font-size:13px;">Library</span>
+        <span style="color:#64748b;font-size:13px;">Search</span>
+        <span style="color:#0f172a;font-size:13px;font-weight:600;">Settings</span>
+      </div>
+      <div style="display:flex;height:560px;">
+        <aside style="width:240px;border-right:1px solid #e2e8f0;padding:16px;">
+          <div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:600;margin-bottom:8px;">Settings</div>
+          <div class="preset-rail-item">General</div>
+          <div class="preset-rail-item">LLM provider</div>
+          <div class="preset-rail-item preset-rail-item--active">Presets</div>
+          <div class="preset-rail-item">Backups</div>
+          <div class="preset-rail-item">Appearance</div>
+        </aside>
+        <section style="width:280px;border-right:1px solid #e2e8f0;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-weight:600;font-size:14px;">Presets</div>
+            <button class="btn btn--primary" style="font-size:11px;padding:4px 8px;">+ New</button>
+          </div>
+          <div class="preset-rail-item">practitioner_bullets <span class="preset-rail-item__badge">system</span></div>
+          <div class="preset-rail-item">academic_detailed <span class="preset-rail-item__badge">system</span></div>
+          <div class="preset-rail-item">executive_brief <span class="preset-rail-item__badge">system</span></div>
+          <div class="preset-rail-item">qa_study_guide <span class="preset-rail-item__badge">system</span></div>
+          <div class="preset-rail-item preset-rail-item--active">my_practitioner_v2 <span class="preset-rail-item__badge" style="background:#dbeafe;color:#1d4ed8;">user</span></div>
+          <div class="preset-rail-item">arguments_only_brief <span class="preset-rail-item__badge" style="background:#dbeafe;color:#1d4ed8;">user</span></div>
+        </section>
+        <section style="flex:1;padding:20px;">
+          <div style="font-weight:600;font-size:16px;margin-bottom:6px;">my_practitioner_v2</div>
+          <div style="color:#64748b;font-size:12px;margin-bottom:16px;">My tweaked practitioner preset · 4 facets</div>
+          <div class="placeholder" style="height:120px;"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ============ STATE: NEW EMPTY ============ -->
+    <section class="wf-state active" data-state="new-empty" aria-labelledby="state-new-empty-h">
+      <h1 id="state-new-empty-h" class="sr-only">New preset (empty)</h1>
+      <div class="modal-shell">
+        <div class="modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:16px;color:#0f172a;">New preset</div>
+            <button aria-label="Close" style="font-size:18px;color:#64748b;background:transparent;border:none;cursor:pointer;">×</button>
+          </div>
+
+          <div style="padding:20px;overflow-y:auto;">
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Name</label>
+              <input class="form-input form-input--mono wf-anno"
+                     type="text"
+                     placeholder="my_preset_name"
+                     data-note="Used as the preset slug; lowercase + underscores. Validated server-side against existing names." />
+            </div>
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Label</label>
+              <input class="form-input" type="text" placeholder="My preset" />
+            </div>
+            <div style="margin-bottom:16px;">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" rows="2" placeholder="A short description of when to use this preset."></textarea>
+            </div>
+
+            <div style="font-size:13px;font-weight:600;color:#0f172a;margin:8px 0;">Facets</div>
+            <div class="facet-grid wf-anno"
+                 data-note="Item 15 / D6 — user chose 4-card grid over stacked dropdowns (Phase 2 question 3). Each card composes one of 4 facet dimensions.">
+              <div class="facet-card">
+                <div class="facet-card__title">Style</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">How the summary reads — paragraphs, bullets, outline, or Q&A</div>
+                <span class="chip">narrative</span>
+                <span class="chip">bullets</span>
+                <span class="chip">outline</span>
+                <span class="chip">qa</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Audience</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Who this summary is written for — vocabulary and depth</div>
+                <span class="chip">general</span>
+                <span class="chip">practitioner</span>
+                <span class="chip">academic</span>
+                <span class="chip">executive</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Compression</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Roughly how much shorter the summary is than the source</div>
+                <span class="chip">brief<span class="chip__hint">~10%</span></span>
+                <span class="chip">standard<span class="chip__hint">~20%</span></span>
+                <span class="chip">detailed<span class="chip__hint">~30%</span></span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Content focus</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">What gets prioritized — full coverage, key concepts, actionable points, or arguments</div>
+                <span class="chip">full_coverage</span>
+                <span class="chip">key_concepts</span>
+                <span class="chip">actionable</span>
+                <span class="chip">arguments_only</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <span class="wf-grow"></span>
+            <button class="btn btn--text">Cancel</button>
+            <button class="btn btn--primary" disabled>Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATE: NEW VALIDATING ============ -->
+    <section class="wf-state" data-state="new-validating" aria-labelledby="state-new-validating-h">
+      <h1 id="state-new-validating-h" class="sr-only">New preset (name conflict)</h1>
+      <div class="modal-shell">
+        <div class="modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:16px;color:#0f172a;">New preset</div>
+            <button aria-label="Close" style="font-size:18px;color:#64748b;background:transparent;border:none;cursor:pointer;">×</button>
+          </div>
+
+          <div style="padding:20px;overflow-y:auto;">
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Name</label>
+              <input class="form-input form-input--mono form-input--error wf-anno"
+                     type="text"
+                     value="academic_detailed"
+                     data-note="Used as the preset slug; lowercase + underscores. Validated server-side against existing names." />
+              <div class="form-error">A preset with this name already exists.</div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Label</label>
+              <input class="form-input" type="text" value="Academic detailed (mine)" />
+            </div>
+            <div style="margin-bottom:16px;">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" rows="2">My take on the academic preset, with longer summaries and more direct quotations.</textarea>
+            </div>
+
+            <div style="font-size:13px;font-weight:600;color:#0f172a;margin:8px 0;">Facets</div>
+            <div class="facet-grid">
+              <div class="facet-card">
+                <div class="facet-card__title">Style</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">How the summary reads — paragraphs, bullets, outline, or Q&A</div>
+                <span class="chip">narrative</span>
+                <span class="chip">bullets</span>
+                <span class="chip chip--selected">outline</span>
+                <span class="chip">qa</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Audience</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Who this summary is written for — vocabulary and depth</div>
+                <span class="chip">general</span>
+                <span class="chip">practitioner</span>
+                <span class="chip chip--selected">academic</span>
+                <span class="chip">executive</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Compression</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Roughly how much shorter the summary is than the source</div>
+                <span class="chip">brief<span class="chip__hint">~10%</span></span>
+                <span class="chip">standard<span class="chip__hint">~20%</span></span>
+                <span class="chip chip--selected">detailed<span class="chip__hint">~30%</span></span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Content focus</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">What gets prioritized — full coverage, key concepts, actionable points, or arguments</div>
+                <span class="chip chip--selected">full_coverage</span>
+                <span class="chip">key_concepts</span>
+                <span class="chip">actionable</span>
+                <span class="chip">arguments_only</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <span class="wf-grow"></span>
+            <button class="btn btn--text">Cancel</button>
+            <button class="btn btn--primary">Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATE: EDITING ============ -->
+    <section class="wf-state" data-state="editing" aria-labelledby="state-editing-h">
+      <h1 id="state-editing-h" class="sr-only">Editing preset</h1>
+      <div class="modal-shell">
+        <div class="modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:16px;color:#0f172a;">
+              Edit preset · <span class="wf-mono" style="color:#4f46e5;">my_practitioner_v2</span>
+            </div>
+            <button aria-label="Close" style="font-size:18px;color:#64748b;background:transparent;border:none;cursor:pointer;">×</button>
+          </div>
+
+          <div style="padding:20px;overflow-y:auto;">
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Name</label>
+              <input class="form-input form-input--mono" type="text" value="my_practitioner_v2" />
+            </div>
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Label</label>
+              <input class="form-input" type="text" value="My practitioner v2" />
+            </div>
+            <div style="margin-bottom:16px;">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" rows="2">Practitioner-focused bullet summaries with a slight academic lean. Tuned for technique-heavy non-fiction.</textarea>
+            </div>
+
+            <div style="font-size:13px;font-weight:600;color:#0f172a;margin:8px 0;">Facets</div>
+            <div class="facet-grid">
+              <div class="facet-card">
+                <div class="facet-card__title">Style</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">How the summary reads — paragraphs, bullets, outline, or Q&A</div>
+                <span class="chip">narrative</span>
+                <span class="chip chip--selected">bullets</span>
+                <span class="chip">outline</span>
+                <span class="chip">qa</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Audience</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Who this summary is written for — vocabulary and depth</div>
+                <span class="chip">general</span>
+                <span class="chip chip--selected">practitioner</span>
+                <span class="chip">academic</span>
+                <span class="chip">executive</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Compression</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Roughly how much shorter the summary is than the source</div>
+                <span class="chip">brief<span class="chip__hint">~10%</span></span>
+                <span class="chip chip--selected">standard<span class="chip__hint">~20%</span></span>
+                <span class="chip">detailed<span class="chip__hint">~30%</span></span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Content focus</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">What gets prioritized — full coverage, key concepts, actionable points, or arguments</div>
+                <span class="chip">full_coverage</span>
+                <span class="chip">key_concepts</span>
+                <span class="chip chip--selected">actionable</span>
+                <span class="chip">arguments_only</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn--danger wf-anno"
+                    data-note="Item 15 AC — only shown for user presets, never system presets">Delete</button>
+            <span class="wf-grow"></span>
+            <button class="btn btn--text">Cancel</button>
+            <button class="btn btn--primary">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATE: SAVING ============ -->
+    <section class="wf-state" data-state="saving" aria-labelledby="state-saving-h">
+      <h1 id="state-saving-h" class="sr-only">Saving preset</h1>
+      <div class="modal-shell">
+        <div class="modal-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:16px;color:#0f172a;">
+              Edit preset · <span class="wf-mono" style="color:#4f46e5;">my_practitioner_v2</span>
+            </div>
+            <button aria-label="Close" disabled style="font-size:18px;color:#cbd5e1;background:transparent;border:none;cursor:not-allowed;">×</button>
+          </div>
+
+          <div style="padding:20px;overflow-y:auto;">
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Name</label>
+              <input class="form-input form-input--mono" type="text" value="my_practitioner_v2" disabled />
+            </div>
+            <div style="margin-bottom:12px;">
+              <label class="form-label">Label</label>
+              <input class="form-input" type="text" value="My practitioner v2" disabled />
+            </div>
+            <div style="margin-bottom:16px;">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" rows="2" disabled>Practitioner-focused bullet summaries with a slight academic lean. Tuned for technique-heavy non-fiction.</textarea>
+            </div>
+
+            <div style="font-size:13px;font-weight:600;color:#94a3b8;margin:8px 0;">Facets</div>
+            <div class="facet-grid" style="opacity:0.6;pointer-events:none;">
+              <div class="facet-card">
+                <div class="facet-card__title">Style</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">How the summary reads — paragraphs, bullets, outline, or Q&A</div>
+                <span class="chip">narrative</span>
+                <span class="chip chip--selected">bullets</span>
+                <span class="chip">outline</span>
+                <span class="chip">qa</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Audience</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Who this summary is written for — vocabulary and depth</div>
+                <span class="chip">general</span>
+                <span class="chip chip--selected">practitioner</span>
+                <span class="chip">academic</span>
+                <span class="chip">executive</span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Compression</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">Roughly how much shorter the summary is than the source</div>
+                <span class="chip">brief<span class="chip__hint">~10%</span></span>
+                <span class="chip chip--selected">standard<span class="chip__hint">~20%</span></span>
+                <span class="chip">detailed<span class="chip__hint">~30%</span></span>
+              </div>
+              <div class="facet-card">
+                <div class="facet-card__title">Content focus</div>
+                <div class="facet-card__hint" style="font-size:12px;color:var(--wf-muted);margin:-4px 0 8px;">What gets prioritized — full coverage, key concepts, actionable points, or arguments</div>
+                <span class="chip">full_coverage</span>
+                <span class="chip">key_concepts</span>
+                <span class="chip chip--selected">actionable</span>
+                <span class="chip">arguments_only</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn--danger" disabled style="opacity:0.5;cursor:not-allowed;">Delete</button>
+            <span class="wf-grow"></span>
+            <button class="btn btn--text" disabled style="opacity:0.5;cursor:not-allowed;">Cancel</button>
+            <button class="btn btn--primary" disabled><span class="spinner"></span>Saving…</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Preset create/edit form</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 05 of 6 · Generated 2026-05-01</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

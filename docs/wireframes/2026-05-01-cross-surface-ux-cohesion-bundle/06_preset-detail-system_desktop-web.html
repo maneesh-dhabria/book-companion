@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Preset detail panel — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Local layout helpers — keep small, compose with Tailwind. */
+    .app-shell { display:grid; grid-template-columns: 64px 200px 1fr; min-height: 760px; }
+    .icon-rail { background:#0f172a; color:#cbd5e1; display:flex; flex-direction:column; align-items:center; padding:14px 0; gap:14px; }
+    .icon-rail__btn { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; color:#94a3b8; }
+    .icon-rail__btn--active { background:#312e81; color:#e0e7ff; box-shadow: inset 2px 0 0 #818cf8; }
+    .settings-nav { background:#f8fafc; border-right:1px solid #e2e8f0; padding:18px 10px; }
+    .settings-nav__h { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#64748b; padding:0 10px 8px; }
+    .settings-nav__item { display:block; padding:8px 12px; border-radius:8px; font-size:13px; color:#334155; }
+    .settings-nav__item--active { background:#eef2ff; color:#3730a3; font-weight:600; }
+    .preset-pane { display:grid; grid-template-columns: 280px 1fr; min-height: 760px; }
+    .preset-list { border-right:1px solid #e2e8f0; background:#fff; }
+    .preset-list__head { padding:14px 16px 10px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; }
+    .preset-row { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-left:3px solid transparent; cursor:pointer; font-size:13px; color:#334155; }
+    .preset-row:hover { background:#f8fafc; }
+    .preset-row--active { background:#eef2ff; border-left-color:#6366f1; color:#1e1b4b; font-weight:600; }
+    .badge-sys { font-size:10px; padding:2px 6px; border-radius:999px; background:#e2e8f0; color:#475569; text-transform:uppercase; letter-spacing:.04em; }
+    .badge-user { font-size:10px; padding:2px 6px; border-radius:999px; background:#dcfce7; color:#166534; text-transform:uppercase; letter-spacing:.04em; }
+    .detail-pane { padding:24px 28px; background:#ffffff; overflow:auto; }
+    .facet-table { width:100%; border-collapse: collapse; font-size:13px; }
+    .facet-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; }
+    .facet-table td:first-child { color:#64748b; width:160px; }
+    .facet-table td:last-child { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#0f172a; }
+    .code-block { background:#0f172a; color:#e2e8f0; border-radius:10px; padding:14px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; line-height:1.55; max-height: 360px; overflow:auto; white-space: pre; }
+    .code-block .jinja-tag { color:#fcd34d; }
+    .code-block .jinja-var { color:#93c5fd; }
+    .code-block .comment { color:#64748b; }
+    .frag-row { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:#334155; background:#f8fafc; }
+    .file-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:#475569; background:#f1f5f9; padding:4px 8px; border-radius:6px; display:inline-block; }
+    .section-h { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:#64748b; font-weight:600; margin: 20px 0 10px; }
+    .empty-pane { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#94a3b8; gap:10px; }
+    .empty-pane__icon { width:48px; height:48px; border-radius:12px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:22px; color:#94a3b8; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1: initial draft for cross-surface UX cohesion bundle, file 06.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Preset detail panel — /settings/presets</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="system-selected">System selected</button>
+        <button class="wf-tab" aria-selected="false" data-state="user-selected">User selected</button>
+        <button class="wf-tab" aria-selected="false" data-state="none-selected">None selected</button>
+        <button class="wf-tab" aria-selected="false" data-state="template-loading">Template loading</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- ========================== STATE: system-selected (default) ========================== -->
+    <section class="wf-state active" data-state="system-selected" aria-labelledby="state-sys-h">
+      <h1 id="state-sys-h" class="sr-only">System preset selected</h1>
+
+      <div class="app-shell">
+        <!-- Icon rail -->
+        <aside class="icon-rail" aria-label="Primary navigation">
+          <div class="icon-rail__btn" title="Library">📚</div>
+          <div class="icon-rail__btn" title="Search">🔍</div>
+          <div class="icon-rail__btn" title="Annotations">📝</div>
+          <div class="icon-rail__btn" title="Activity">📊</div>
+          <div class="wf-grow" style="flex:1"></div>
+          <div class="icon-rail__btn icon-rail__btn--active" title="Settings">⚙️</div>
+        </aside>
+
+        <!-- Settings sub-nav -->
+        <aside class="settings-nav" aria-label="Settings sections">
+          <div class="settings-nav__h">Settings</div>
+          <a class="settings-nav__item" href="#">General</a>
+          <a class="settings-nav__item settings-nav__item--active" href="#">Presets</a>
+          <a class="settings-nav__item" href="#">Reading</a>
+          <a class="settings-nav__item" href="#">LLM</a>
+          <a class="settings-nav__item" href="#">Database</a>
+          <a class="settings-nav__item" href="#">Storage</a>
+        </aside>
+
+        <!-- Preset content -->
+        <div class="preset-pane">
+          <!-- Preset list -->
+          <aside class="preset-list" aria-label="Preset list">
+            <div class="preset-list__head">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">Presets</div>
+                <div class="text-[11px] text-slate-500">7 total · 4 system, 3 user</div>
+              </div>
+              <button class="wf-anno mock-button mock-button--primary" style="padding:6px 10px;font-size:12px;"
+                      data-note="Item 15 entry point — opens wireframe 05 (preset-create-edit-form)">+ New preset</button>
+            </div>
+
+            <div class="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wide text-slate-400">System</div>
+            <div class="preset-row preset-row--active">
+              <span>Academic Detailed</span>
+              <span class="wf-anno badge-sys" data-note="Read-only — no Edit/Delete in detail pane">system</span>
+            </div>
+            <div class="preset-row">
+              <span>Executive Brief</span><span class="badge-sys">system</span>
+            </div>
+            <div class="preset-row">
+              <span>Practitioner Bullets</span><span class="badge-sys">system</span>
+            </div>
+            <div class="preset-row">
+              <span>QA Outline</span><span class="badge-sys">system</span>
+            </div>
+
+            <div class="px-3 pt-4 pb-1 text-[11px] uppercase tracking-wide text-slate-400">User</div>
+            <div class="preset-row">
+              <span>my_practitioner_v2</span><span class="badge-user">user</span>
+            </div>
+            <div class="preset-row">
+              <span>compressed_5pct</span><span class="badge-user">user</span>
+            </div>
+            <div class="preset-row">
+              <span>narrative_long</span><span class="badge-user">user</span>
+            </div>
+          </aside>
+
+          <!-- Detail pane -->
+          <section class="detail-pane" aria-label="Preset detail">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <h2 class="text-xl font-semibold text-slate-900">Academic Detailed</h2>
+                <span class="badge-sys">system</span>
+              </div>
+              <div class="text-xs text-slate-500">Built-in · cannot be modified</div>
+            </div>
+
+            <div class="section-h">Description</div>
+            <p class="text-sm text-slate-700 leading-relaxed">
+              Comprehensive academic analysis with full coverage. Preserves nuance, named entities,
+              and methodological detail; suitable for research notes, literature reviews, and citation
+              workflows where omissions are costly.
+            </p>
+
+            <div class="section-h">Facets</div>
+            <table class="facet-table">
+              <tbody>
+                <tr><td>style</td><td>narrative</td></tr>
+                <tr><td>audience</td><td>academic</td></tr>
+                <tr><td>compression</td><td>detailed (~30%)</td></tr>
+                <tr><td>content_focus</td><td>full_coverage</td></tr>
+              </tbody>
+            </table>
+
+            <div class="section-h">Prompt template</div>
+            <div class="mb-2"><span class="file-path">prompts/summarize_section_v3.txt</span></div>
+            <pre class="wf-anno code-block"
+                 data-note="Item 16 AC — raw Jinja template source (D6 sub-decision: NOT rendered with sample data)"><span class="comment">{# summarize_section_v3 — composes 4 facet fragments #}</span>
+You are summarizing a section of a non-fiction book.
+Read the source text carefully and produce a faithful summary
+that meets the constraints below.
+
+<span class="jinja-tag">{% include "fragments/style/narrative.txt" %}</span>
+<span class="jinja-tag">{% include "fragments/audience/academic.txt" %}</span>
+<span class="jinja-tag">{% include "fragments/compression/detailed.txt" %}</span>
+<span class="jinja-tag">{% include "fragments/content_focus/full_coverage.txt" %}</span>
+
+## Source
+Book:    <span class="jinja-var">{{ book_title }}</span>
+Section: <span class="jinja-var">{{ section_title }}</span> (<span class="jinja-var">{{ section_type }}</span>)
+
+Cumulative context (prior section summaries):
+<span class="jinja-var">{{ cumulative_context }}</span>
+
+Source text (~<span class="jinja-var">{{ source_char_count }}</span> chars):
+---
+<span class="jinja-var">{{ source_text }}</span>
+---
+
+## Constraints
+- Target length: ~<span class="jinja-var">{{ target_chars }}</span> characters
+  (≈<span class="jinja-var">{{ compression_pct }}</span>% of source).
+- Preserve all factual claims, names, and numbers verbatim.
+- Do not add information not present in the source.
+- Inline image references must be retained as <span class="jinja-var">{{ image_marker }}</span>.
+- Output Markdown only; no preamble, no closing remarks.
+
+<span class="comment">{# end template #}</span></pre>
+
+            <div class="section-h">Composed fragments</div>
+            <div class="wf-anno wf-stack" style="gap:6px;"
+                 data-note="Each facet dimension contributes one fragment file; this is the fragment-resolution machinery exposed for transparency">
+              <div class="frag-row"><span>fragments/style/narrative.txt</span><span class="text-[11px] text-slate-500">style</span></div>
+              <div class="frag-row"><span>fragments/audience/academic.txt</span><span class="text-[11px] text-slate-500">audience</span></div>
+              <div class="frag-row"><span>fragments/compression/detailed.txt</span><span class="text-[11px] text-slate-500">compression</span></div>
+              <div class="frag-row"><span>fragments/content_focus/full_coverage.txt</span><span class="text-[11px] text-slate-500">content_focus</span></div>
+            </div>
+
+            <p class="mt-4 text-[12px] text-slate-500 italic">
+              Sample-data rendering is intentionally out of scope — this viewer shows the Jinja source verbatim.
+            </p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================== STATE: user-selected ========================== -->
+    <section class="wf-state" data-state="user-selected" aria-labelledby="state-user-h">
+      <h1 id="state-user-h" class="sr-only">User preset selected</h1>
+
+      <div class="app-shell">
+        <aside class="icon-rail">
+          <div class="icon-rail__btn">📚</div>
+          <div class="icon-rail__btn">🔍</div>
+          <div class="icon-rail__btn">📝</div>
+          <div class="icon-rail__btn">📊</div>
+          <div style="flex:1"></div>
+          <div class="icon-rail__btn icon-rail__btn--active">⚙️</div>
+        </aside>
+        <aside class="settings-nav">
+          <div class="settings-nav__h">Settings</div>
+          <a class="settings-nav__item" href="#">General</a>
+          <a class="settings-nav__item settings-nav__item--active" href="#">Presets</a>
+          <a class="settings-nav__item" href="#">Reading</a>
+          <a class="settings-nav__item" href="#">LLM</a>
+          <a class="settings-nav__item" href="#">Database</a>
+          <a class="settings-nav__item" href="#">Storage</a>
+        </aside>
+
+        <div class="preset-pane">
+          <aside class="preset-list">
+            <div class="preset-list__head">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">Presets</div>
+                <div class="text-[11px] text-slate-500">7 total · 4 system, 3 user</div>
+              </div>
+              <button class="mock-button mock-button--primary" style="padding:6px 10px;font-size:12px;">+ New preset</button>
+            </div>
+            <div class="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wide text-slate-400">System</div>
+            <div class="preset-row"><span>Academic Detailed</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>Executive Brief</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>Practitioner Bullets</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>QA Outline</span><span class="badge-sys">system</span></div>
+            <div class="px-3 pt-4 pb-1 text-[11px] uppercase tracking-wide text-slate-400">User</div>
+            <div class="preset-row preset-row--active"><span>my_practitioner_v2</span><span class="badge-user">user</span></div>
+            <div class="preset-row"><span>compressed_5pct</span><span class="badge-user">user</span></div>
+            <div class="preset-row"><span>narrative_long</span><span class="badge-user">user</span></div>
+          </aside>
+
+          <section class="detail-pane">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <h2 class="text-xl font-semibold text-slate-900">my_practitioner_v2</h2>
+                <span class="badge-user">user</span>
+              </div>
+              <div class="flex gap-2">
+                <button class="mock-button">Edit</button>
+                <button class="mock-button mock-button--danger">Delete</button>
+              </div>
+            </div>
+
+            <div class="section-h">Description</div>
+            <p class="text-sm text-slate-700 leading-relaxed">
+              My tuned variant of practitioner_bullets — tighter compression, biased toward action items
+              and decision criteria. Used for product strategy reading list.
+            </p>
+
+            <div class="section-h">Facets</div>
+            <table class="facet-table">
+              <tbody>
+                <tr><td>style</td><td>bullets</td></tr>
+                <tr><td>audience</td><td>practitioner</td></tr>
+                <tr><td>compression</td><td>brief (~10%)</td></tr>
+                <tr><td>content_focus</td><td>action_items</td></tr>
+              </tbody>
+            </table>
+
+            <div class="section-h">Prompt template</div>
+            <div class="mb-2"><span class="file-path">prompts/summarize_section_v3.txt</span></div>
+            <pre class="code-block"><span class="comment">{# summarize_section_v3 — composes 4 facet fragments #}</span>
+You are summarizing a section of a non-fiction book.
+
+<span class="jinja-tag">{% include "fragments/style/bullets.txt" %}</span>
+<span class="jinja-tag">{% include "fragments/audience/practitioner.txt" %}</span>
+<span class="jinja-tag">{% include "fragments/compression/brief.txt" %}</span>
+<span class="jinja-tag">{% include "fragments/content_focus/action_items.txt" %}</span>
+
+## Source
+Book:    <span class="jinja-var">{{ book_title }}</span>
+Section: <span class="jinja-var">{{ section_title }}</span>
+
+Source text (~<span class="jinja-var">{{ source_char_count }}</span> chars):
+---
+<span class="jinja-var">{{ source_text }}</span>
+---
+
+## Constraints
+- Target length: ~<span class="jinja-var">{{ target_chars }}</span> characters.
+- Lead with action items the reader can apply this week.
+- Preserve named entities and quantitative claims verbatim.</pre>
+
+            <div class="section-h">Composed fragments</div>
+            <div class="wf-stack" style="gap:6px;">
+              <div class="frag-row"><span>fragments/style/bullets.txt</span><span class="text-[11px] text-slate-500">style</span></div>
+              <div class="frag-row"><span>fragments/audience/practitioner.txt</span><span class="text-[11px] text-slate-500">audience</span></div>
+              <div class="frag-row"><span>fragments/compression/brief.txt</span><span class="text-[11px] text-slate-500">compression</span></div>
+              <div class="frag-row"><span>fragments/content_focus/action_items.txt</span><span class="text-[11px] text-slate-500">content_focus</span></div>
+            </div>
+
+            <p class="mt-4 text-[12px] text-slate-500 italic">
+              Edit opens wireframe 05 (preset-create-edit-form) pre-populated with these values.
+            </p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================== STATE: none-selected ========================== -->
+    <section class="wf-state" data-state="none-selected" aria-labelledby="state-none-h">
+      <h1 id="state-none-h" class="sr-only">No preset selected</h1>
+
+      <div class="app-shell">
+        <aside class="icon-rail">
+          <div class="icon-rail__btn">📚</div>
+          <div class="icon-rail__btn">🔍</div>
+          <div class="icon-rail__btn">📝</div>
+          <div class="icon-rail__btn">📊</div>
+          <div style="flex:1"></div>
+          <div class="icon-rail__btn icon-rail__btn--active">⚙️</div>
+        </aside>
+        <aside class="settings-nav">
+          <div class="settings-nav__h">Settings</div>
+          <a class="settings-nav__item" href="#">General</a>
+          <a class="settings-nav__item settings-nav__item--active" href="#">Presets</a>
+          <a class="settings-nav__item" href="#">Reading</a>
+          <a class="settings-nav__item" href="#">LLM</a>
+          <a class="settings-nav__item" href="#">Database</a>
+          <a class="settings-nav__item" href="#">Storage</a>
+        </aside>
+
+        <div class="preset-pane">
+          <aside class="preset-list">
+            <div class="preset-list__head">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">Presets</div>
+                <div class="text-[11px] text-slate-500">7 total · 4 system, 3 user</div>
+              </div>
+              <button class="mock-button mock-button--primary" style="padding:6px 10px;font-size:12px;">+ New preset</button>
+            </div>
+            <div class="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wide text-slate-400">System</div>
+            <div class="preset-row"><span>Academic Detailed</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>Executive Brief</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>Practitioner Bullets</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>QA Outline</span><span class="badge-sys">system</span></div>
+            <div class="px-3 pt-4 pb-1 text-[11px] uppercase tracking-wide text-slate-400">User</div>
+            <div class="preset-row"><span>my_practitioner_v2</span><span class="badge-user">user</span></div>
+            <div class="preset-row"><span>compressed_5pct</span><span class="badge-user">user</span></div>
+            <div class="preset-row"><span>narrative_long</span><span class="badge-user">user</span></div>
+          </aside>
+
+          <section class="detail-pane">
+            <div class="empty-pane">
+              <div class="empty-pane__icon">📄</div>
+              <div class="text-sm font-medium text-slate-700">Select a preset to view details</div>
+              <div class="text-xs text-slate-500 max-w-xs text-center">
+                Preset details show description, facets, and the raw Jinja prompt template that will be sent to the LLM.
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================== STATE: template-loading ========================== -->
+    <section class="wf-state" data-state="template-loading" aria-labelledby="state-loading-h">
+      <h1 id="state-loading-h" class="sr-only">Prompt template loading</h1>
+
+      <div class="app-shell">
+        <aside class="icon-rail">
+          <div class="icon-rail__btn">📚</div>
+          <div class="icon-rail__btn">🔍</div>
+          <div class="icon-rail__btn">📝</div>
+          <div class="icon-rail__btn">📊</div>
+          <div style="flex:1"></div>
+          <div class="icon-rail__btn icon-rail__btn--active">⚙️</div>
+        </aside>
+        <aside class="settings-nav">
+          <div class="settings-nav__h">Settings</div>
+          <a class="settings-nav__item" href="#">General</a>
+          <a class="settings-nav__item settings-nav__item--active" href="#">Presets</a>
+          <a class="settings-nav__item" href="#">Reading</a>
+          <a class="settings-nav__item" href="#">LLM</a>
+          <a class="settings-nav__item" href="#">Database</a>
+          <a class="settings-nav__item" href="#">Storage</a>
+        </aside>
+
+        <div class="preset-pane">
+          <aside class="preset-list">
+            <div class="preset-list__head">
+              <div>
+                <div class="text-sm font-semibold text-slate-900">Presets</div>
+                <div class="text-[11px] text-slate-500">7 total · 4 system, 3 user</div>
+              </div>
+              <button class="mock-button mock-button--primary" style="padding:6px 10px;font-size:12px;">+ New preset</button>
+            </div>
+            <div class="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wide text-slate-400">System</div>
+            <div class="preset-row preset-row--active"><span>Academic Detailed</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>Executive Brief</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>Practitioner Bullets</span><span class="badge-sys">system</span></div>
+            <div class="preset-row"><span>QA Outline</span><span class="badge-sys">system</span></div>
+            <div class="px-3 pt-4 pb-1 text-[11px] uppercase tracking-wide text-slate-400">User</div>
+            <div class="preset-row"><span>my_practitioner_v2</span><span class="badge-user">user</span></div>
+            <div class="preset-row"><span>compressed_5pct</span><span class="badge-user">user</span></div>
+            <div class="preset-row"><span>narrative_long</span><span class="badge-user">user</span></div>
+          </aside>
+
+          <section class="detail-pane">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <h2 class="text-xl font-semibold text-slate-900">Academic Detailed</h2>
+                <span class="badge-sys">system</span>
+              </div>
+            </div>
+
+            <div class="section-h">Description</div>
+            <p class="text-sm text-slate-700 leading-relaxed">
+              Comprehensive academic analysis with full coverage.
+            </p>
+
+            <div class="section-h">Facets</div>
+            <table class="facet-table">
+              <tbody>
+                <tr><td>style</td><td>narrative</td></tr>
+                <tr><td>audience</td><td>academic</td></tr>
+                <tr><td>compression</td><td>detailed (~30%)</td></tr>
+                <tr><td>content_focus</td><td>full_coverage</td></tr>
+              </tbody>
+            </table>
+
+            <div class="section-h">Prompt template</div>
+            <div class="mb-2"><span class="file-path">prompts/summarize_section_v3.txt</span></div>
+            <div class="wf-stack" style="gap:8px; padding:14px 16px; background:#f8fafc; border-radius:10px;">
+              <div class="skeleton" style="width:78%"></div>
+              <div class="skeleton" style="width:62%"></div>
+              <div class="skeleton" style="width:90%"></div>
+              <div class="skeleton" style="width:54%"></div>
+              <div class="skeleton" style="width:84%"></div>
+              <div class="skeleton" style="width:70%"></div>
+              <div class="skeleton" style="width:48%"></div>
+              <div class="skeleton" style="width:88%"></div>
+            </div>
+
+            <div class="section-h">Composed fragments</div>
+            <div class="wf-stack" style="gap:6px;">
+              <div class="skeleton" style="width:60%; height:28px;"></div>
+              <div class="skeleton" style="width:60%; height:28px;"></div>
+              <div class="skeleton" style="width:60%; height:28px;"></div>
+              <div class="skeleton" style="width:60%; height:28px;"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Preset detail panel — /settings/presets</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 06 of 6 · Generated 2026-05-01</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

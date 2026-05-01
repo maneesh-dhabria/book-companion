@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reader Settings popover — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Local-only helpers for the faded book-detail backdrop + popover anchor connector.
+       Keep these scoped to this file — shared primitives live in wireframe.css. */
+    .bg-page { filter: blur(2px) saturate(0.85) opacity(0.55); pointer-events: none; }
+    .anchor-connector {
+      position: absolute;
+      border-top: 2px dashed #6366f1;
+      height: 0;
+      z-index: 5;
+    }
+    .anchor-dot {
+      position: absolute;
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #6366f1; border: 2px solid #fff;
+      box-shadow: 0 0 0 1px #6366f1;
+      z-index: 6;
+    }
+    .popover-card {
+      width: 400px;
+      min-height: 480px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px -12px rgba(15,23,42,0.25), 0 4px 12px -4px rgba(15,23,42,0.15);
+      position: absolute;
+      z-index: 10;
+    }
+    .theme-card {
+      width: 64px; height: 64px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+      font-size: 10px;
+      color: #475569;
+    }
+    .theme-card .swatch { font-size: 16px; font-weight: 600; line-height: 1; }
+    .theme-card.is-selected {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.18);
+    }
+    .theme-card.t-light { background: #fafaf9; color: #1e293b; }
+    .theme-card.t-sepia { background: #f4ecd8; color: #3b2e1e; }
+    .theme-card.t-dark  { background: #1f2937; color: #f1f5f9; border-color: #334155; }
+    .theme-card.t-amber { background: #fef3c7; color: #78350f; }
+    .theme-card.t-solar { background: #fdf6e3; color: #586e75; }
+    .slider-track {
+      height: 4px; background: #e5e7eb; border-radius: 999px; position: relative;
+    }
+    .slider-fill { height: 100%; background: #6366f1; border-radius: 999px; }
+    .slider-thumb {
+      width: 14px; height: 14px; border-radius: 999px; background: #fff;
+      border: 2px solid #6366f1; position: absolute; top: -5px;
+    }
+    .seg-btn {
+      flex: 1; padding: 6px 10px; font-size: 12px;
+      border: 1px solid #e5e7eb; background: #fff; color: #475569;
+    }
+    .seg-btn.is-active { background: #eef2ff; border-color: #6366f1; color: #4338ca; }
+    .seg-btn:first-child { border-radius: 6px 0 0 6px; }
+    .seg-btn:last-child  { border-radius: 0 6px 6px 0; }
+    .seg-btn + .seg-btn  { border-left: none; }
+    /* Open overflow menu on the backdrop */
+    .overflow-menu {
+      position: absolute;
+      width: 200px; background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 8px; box-shadow: 0 10px 20px -8px rgba(15,23,42,0.18);
+      padding: 4px; font-size: 12px;
+    }
+    .overflow-menu .item {
+      padding: 6px 10px; border-radius: 4px; color: #334155;
+    }
+    .overflow-menu .item.is-highlight {
+      background: #eef2ff; color: #4338ca; font-weight: 500;
+    }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: initial generation 2026-05-01 — anchor-fix wireframe for item 4 of cohesion bundle
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Reader Settings popover</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default-themes-loaded">Default · Themes loaded</button>
+        <button class="wf-tab" aria-selected="false" data-state="themes-loading">Themes loading</button>
+        <button class="wf-tab" aria-selected="false" data-state="themes-error">Themes error (BUG)</button>
+        <button class="wf-tab" aria-selected="false" data-state="default-active-empty">Default · No selection</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- ============================================================
+         STATE 1 — DEFAULT, THEMES LOADED (anchored, Light selected)
+         ============================================================ -->
+    <section class="wf-state active" data-state="default-themes-loaded" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default — themes loaded, Light selected</h1>
+
+      <!-- Faded Book Detail backdrop -->
+      <div class="bg-page absolute inset-0">
+        <!-- Left icon rail -->
+        <div class="absolute top-0 left-0 bottom-0 w-14 bg-slate-900 text-slate-400 flex flex-col items-center py-4 gap-4">
+          <div class="w-8 h-8 rounded bg-indigo-500"></div>
+          <div class="w-6 h-6 rounded bg-slate-700"></div>
+          <div class="w-6 h-6 rounded bg-slate-700"></div>
+          <div class="w-6 h-6 rounded bg-slate-700"></div>
+        </div>
+        <!-- Topbar -->
+        <div class="absolute top-0 left-14 right-0 h-12 bg-white border-b border-slate-200 flex items-center px-4 gap-3">
+          <div class="text-xs text-slate-500">Library / Books / Thinking, Fast and Slow</div>
+          <div class="ml-auto flex gap-2">
+            <div class="w-20 h-7 rounded bg-slate-100"></div>
+            <div class="w-7 h-7 rounded bg-slate-100"></div>
+          </div>
+        </div>
+        <!-- Book metadata block -->
+        <div class="absolute top-16 left-20 right-8 flex gap-4">
+          <div class="w-24 h-32 rounded bg-slate-200"></div>
+          <div class="flex-1">
+            <div class="h-5 w-2/3 bg-slate-300 rounded"></div>
+            <div class="h-3 w-1/3 bg-slate-200 rounded mt-2"></div>
+            <div class="h-3 w-1/4 bg-slate-200 rounded mt-2"></div>
+            <div class="flex gap-2 mt-3">
+              <div class="h-7 w-24 rounded bg-indigo-500"></div>
+              <div class="h-7 w-24 rounded bg-slate-100 border border-slate-200"></div>
+              <div class="h-7 w-9 rounded bg-slate-100 border border-slate-200" id="overflow-trigger-pos"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Tabs -->
+        <div class="absolute top-56 left-20 right-8 border-b border-slate-200 flex gap-6 text-xs text-slate-500 pb-2">
+          <span class="text-indigo-600 border-b-2 border-indigo-600 pb-2 -mb-2">Sections</span>
+          <span>Summary</span>
+          <span>Concepts</span>
+          <span>Annotations</span>
+        </div>
+        <!-- Section list rows -->
+        <div class="absolute top-64 left-20 right-8 space-y-2">
+          <div class="h-10 bg-white border border-slate-200 rounded"></div>
+          <div class="h-10 bg-white border border-slate-200 rounded"></div>
+          <div class="h-10 bg-white border border-slate-200 rounded"></div>
+          <div class="h-10 bg-white border border-slate-200 rounded"></div>
+        </div>
+      </div>
+
+      <!-- Open overflow menu (anchor source) -->
+      <div class="overflow-menu" style="top: 96px; left: 348px;">
+        <div class="item">Re-import book</div>
+        <div class="item">Edit metadata</div>
+        <div class="item">Manage sections</div>
+        <div class="item is-highlight wf-anno"
+             data-note="Item 4 fix: anchored to the Customize Reader trigger; before, popover opened at fixed top:682,left:800 detached from the click point">
+          Customize Reader ›
+        </div>
+        <div class="item">Export as Markdown</div>
+        <div class="item" style="color:#dc2626">Delete book</div>
+      </div>
+
+      <!-- Anchor connector dot + dashed line from menu item to popover -->
+      <div class="anchor-dot" style="top: 156px; left: 540px;"></div>
+      <div class="anchor-connector" style="top: 161px; left: 548px; width: 24px;"></div>
+
+      <!-- Popover -->
+      <div class="popover-card" style="top: 90px; left: 572px;">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+          <div class="text-sm font-semibold text-slate-800">Reader Settings</div>
+          <button class="wf-anno text-slate-400 hover:text-slate-600 text-lg leading-none"
+                  data-note="Close affordance — also closes on Escape and on outside click. Verified working in this state.">×</button>
+        </div>
+
+        <div class="p-5 space-y-5">
+          <!-- Theme grid -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-slate-700">Theme</div>
+              <div class="text-[10px] text-slate-400">Selected: Light</div>
+            </div>
+            <div class="grid grid-cols-5 gap-2 wf-anno"
+                 data-note="Per D11 + AC #17, this is being extracted to frontend/src/components/shared/ThemeCard.vue and reused by Settings → Reading">
+              <button class="theme-card t-light is-selected">
+                <span class="swatch">Aa</span><span>Light</span>
+              </button>
+              <button class="theme-card t-sepia">
+                <span class="swatch">Aa</span><span>Sepia</span>
+              </button>
+              <button class="theme-card t-dark">
+                <span class="swatch">Aa</span><span>Dark</span>
+              </button>
+              <button class="theme-card t-amber">
+                <span class="swatch">Aa</span><span>Amber</span>
+              </button>
+              <button class="theme-card t-solar">
+                <span class="swatch">Aa</span><span>Solarized</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Font size -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-slate-700">Font size</div>
+              <div class="text-[11px] text-slate-500">17 px</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width: 42%"></div>
+              <div class="slider-thumb" style="left: calc(42% - 7px)"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>12 px</span><span>24 px</span>
+            </div>
+          </div>
+
+          <!-- Line height -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-slate-700">Line height</div>
+              <div class="text-[11px] text-slate-500">1.6</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width: 50%"></div>
+              <div class="slider-thumb" style="left: calc(50% - 7px)"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>1.2</span><span>2.0</span>
+            </div>
+          </div>
+
+          <!-- Page width -->
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Page width</div>
+            <div class="flex">
+              <button class="seg-btn">Narrow</button>
+              <button class="seg-btn is-active">Medium</button>
+              <button class="seg-btn">Wide</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200">
+          <a class="text-xs text-indigo-600 hover:underline" href="#">Reset to defaults</a>
+          <button class="mock-button mock-button--primary">Done</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         STATE 2 — THEMES LOADING (skeleton tiles)
+         ============================================================ -->
+    <section class="wf-state" data-state="themes-loading" aria-labelledby="state-loading-h">
+      <h1 id="state-loading-h" class="sr-only">Themes loading</h1>
+
+      <div class="bg-page absolute inset-0">
+        <div class="absolute top-0 left-0 bottom-0 w-14 bg-slate-900"></div>
+        <div class="absolute top-0 left-14 right-0 h-12 bg-white border-b border-slate-200"></div>
+        <div class="absolute top-16 left-20 right-8 h-32 bg-slate-100 rounded"></div>
+        <div class="absolute top-56 left-20 right-8 border-b border-slate-200"></div>
+      </div>
+
+      <div class="overflow-menu" style="top: 96px; left: 348px;">
+        <div class="item">Re-import book</div>
+        <div class="item is-highlight">Customize Reader ›</div>
+        <div class="item">Export as Markdown</div>
+      </div>
+      <div class="anchor-dot" style="top: 116px; left: 540px;"></div>
+      <div class="anchor-connector" style="top: 121px; left: 548px; width: 24px;"></div>
+
+      <div class="popover-card" style="top: 90px; left: 572px;">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+          <div class="text-sm font-semibold text-slate-800">Reader Settings</div>
+          <button class="text-slate-400 text-lg leading-none">×</button>
+        </div>
+        <div class="p-5 space-y-5">
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Theme</div>
+            <div class="grid grid-cols-5 gap-2">
+              <div class="skeleton" style="width:64px;height:64px;border-radius:8px"></div>
+              <div class="skeleton" style="width:64px;height:64px;border-radius:8px"></div>
+              <div class="skeleton" style="width:64px;height:64px;border-radius:8px"></div>
+              <div class="skeleton" style="width:64px;height:64px;border-radius:8px"></div>
+              <div class="skeleton" style="width:64px;height:64px;border-radius:8px"></div>
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Font size</div>
+            <div class="slider-track"><div class="slider-fill" style="width:42%"></div><div class="slider-thumb" style="left:calc(42% - 7px)"></div></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Line height</div>
+            <div class="slider-track"><div class="slider-fill" style="width:50%"></div><div class="slider-thumb" style="left:calc(50% - 7px)"></div></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Page width</div>
+            <div class="flex">
+              <button class="seg-btn">Narrow</button>
+              <button class="seg-btn is-active">Medium</button>
+              <button class="seg-btn">Wide</button>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200">
+          <a class="text-xs text-indigo-600" href="#">Reset to defaults</a>
+          <button class="mock-button mock-button--primary">Done</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         STATE 3 — THEMES ERROR (BUG being fixed)
+         ============================================================ -->
+    <section class="wf-state" data-state="themes-error" aria-labelledby="state-error-h">
+      <h1 id="state-error-h" class="sr-only">Themes failed to load — bug being fixed</h1>
+
+      <div class="bg-page absolute inset-0">
+        <div class="absolute top-0 left-0 bottom-0 w-14 bg-slate-900"></div>
+        <div class="absolute top-0 left-14 right-0 h-12 bg-white border-b border-slate-200"></div>
+        <div class="absolute top-16 left-20 right-8 h-32 bg-slate-100 rounded"></div>
+      </div>
+
+      <div class="overflow-menu" style="top: 96px; left: 348px;">
+        <div class="item">Re-import book</div>
+        <div class="item is-highlight">Customize Reader ›</div>
+        <div class="item">Export as Markdown</div>
+      </div>
+      <div class="anchor-dot" style="top: 116px; left: 540px;"></div>
+      <div class="anchor-connector" style="top: 121px; left: 548px; width: 24px;"></div>
+
+      <div class="popover-card" style="top: 90px; left: 572px;">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+          <div class="text-sm font-semibold text-slate-800 wf-anno"
+               data-note="This state is the BUG being fixed (verified in browser 2026-05-01). Prevent by handling theme-load failure gracefully OR fixing the underlying API call">
+            Reader Settings
+          </div>
+          <button class="text-slate-400 text-lg leading-none">×</button>
+        </div>
+        <div class="p-5 space-y-5">
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Theme</div>
+            <div class="wf-message wf-message--error" style="margin:0;padding:16px;text-align:center">
+              <div class="wf-message__title" style="font-size:13px">Couldn't load themes</div>
+              <div class="wf-message__hint" style="font-size:11px">GET /api/v1/reader/themes returned 500. Check server logs and try again.</div>
+              <button class="mock-button" style="margin-top:8px">Retry</button>
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Font size</div>
+            <div class="slider-track"><div class="slider-fill" style="width:42%"></div><div class="slider-thumb" style="left:calc(42% - 7px)"></div></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Line height</div>
+            <div class="slider-track"><div class="slider-fill" style="width:50%"></div><div class="slider-thumb" style="left:calc(50% - 7px)"></div></div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Page width</div>
+            <div class="flex">
+              <button class="seg-btn">Narrow</button>
+              <button class="seg-btn is-active">Medium</button>
+              <button class="seg-btn">Wide</button>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200">
+          <a class="text-xs text-indigo-600" href="#">Reset to defaults</a>
+          <button class="mock-button mock-button--primary">Done</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         STATE 4 — DEFAULT, NO SELECTION (first-time use)
+         ============================================================ -->
+    <section class="wf-state" data-state="default-active-empty" aria-labelledby="state-empty-h">
+      <h1 id="state-empty-h" class="sr-only">Default — no theme or width selected</h1>
+
+      <div class="bg-page absolute inset-0">
+        <div class="absolute top-0 left-0 bottom-0 w-14 bg-slate-900"></div>
+        <div class="absolute top-0 left-14 right-0 h-12 bg-white border-b border-slate-200"></div>
+        <div class="absolute top-16 left-20 right-8 h-32 bg-slate-100 rounded"></div>
+      </div>
+
+      <div class="overflow-menu" style="top: 96px; left: 348px;">
+        <div class="item">Re-import book</div>
+        <div class="item is-highlight">Customize Reader ›</div>
+        <div class="item">Export as Markdown</div>
+      </div>
+      <div class="anchor-dot" style="top: 116px; left: 540px;"></div>
+      <div class="anchor-connector" style="top: 121px; left: 548px; width: 24px;"></div>
+
+      <div class="popover-card" style="top: 90px; left: 572px;">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+          <div class="text-sm font-semibold text-slate-800">Reader Settings</div>
+          <button class="text-slate-400 text-lg leading-none">×</button>
+        </div>
+        <div class="p-5 space-y-5">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-slate-700">Theme</div>
+              <div class="text-[10px] text-slate-400">No selection — pick one</div>
+            </div>
+            <div class="grid grid-cols-5 gap-2">
+              <button class="theme-card t-light"><span class="swatch">Aa</span><span>Light</span></button>
+              <button class="theme-card t-sepia"><span class="swatch">Aa</span><span>Sepia</span></button>
+              <button class="theme-card t-dark"><span class="swatch">Aa</span><span>Dark</span></button>
+              <button class="theme-card t-amber"><span class="swatch">Aa</span><span>Amber</span></button>
+              <button class="theme-card t-solar"><span class="swatch">Aa</span><span>Solarized</span></button>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-slate-700">Font size</div>
+              <div class="text-[11px] text-slate-400">— px</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width:0%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>12 px</span><span>24 px</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium text-slate-700">Line height</div>
+              <div class="text-[11px] text-slate-400">—</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" style="width:0%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>1.2</span><span>2.0</span>
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-700 mb-2">Page width</div>
+            <div class="flex">
+              <button class="seg-btn">Narrow</button>
+              <button class="seg-btn">Medium</button>
+              <button class="seg-btn">Wide</button>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-200">
+          <a class="text-xs text-indigo-600" href="#">Reset to defaults</a>
+          <button class="mock-button mock-button--primary">Done</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Reader Settings popover</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 03 of 6 · Generated 2026-05-01</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

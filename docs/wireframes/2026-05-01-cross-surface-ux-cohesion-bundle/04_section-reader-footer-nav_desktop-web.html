@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Section Reader — Footer Prev/Next Nav — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    /* Local-only tweaks for this file (do not duplicate global tokens) */
+    .reader-shell { display: grid; grid-template-columns: 56px 1fr; min-height: 760px; background: var(--wf-surface, #fff); }
+    .icon-rail { background: #0f172a; color: #cbd5e1; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 14px 0; }
+    .icon-rail .rail-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; font-size: 16px; }
+    .icon-rail .rail-btn.active { background: #1e293b; color: #fff; }
+    .topbar { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid #e5e7eb; background: #fafafa; flex-wrap: wrap; }
+    .topbar .crumb-link { color: #2563eb; font-size: 13px; }
+    .topbar .toc-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: #fff; max-width: 360px; }
+    .topbar .toc-trigger .chev { color: #6b7280; }
+    .topbar .kbd-btn { width: 30px; height: 28px; display: grid; place-items: center; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 13px; }
+    .seg { display: inline-flex; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+    .seg button { padding: 6px 12px; font-size: 13px; background: #fff; }
+    .seg button.on { background: #111827; color: #fff; }
+    .icon-btn { width: 32px; height: 28px; display: grid; place-items: center; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 13px; }
+    .reader-main { padding: 28px 56px 40px; max-width: 880px; margin: 0 auto; }
+    .reader-main h2.section-h { font-size: 26px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+    .reader-main .section-meta { color: #6b7280; font-size: 13px; margin-bottom: 22px; }
+    .reader-main p { color: #1f2937; line-height: 1.7; margin-bottom: 14px; font-size: 15px; }
+    /* item 6 — bullets restored: discs visible */
+    .reader-main ul.bullets { list-style: disc; padding-left: 22px; margin: 6px 0 18px; }
+    .reader-main ul.bullets li { color: #1f2937; line-height: 1.65; margin-bottom: 6px; font-size: 15px; }
+    .footer-nav { display: flex; justify-content: space-between; align-items: stretch; gap: 16px; margin-top: 36px; padding-top: 22px; border-top: 1px solid #e5e7eb; }
+    .footer-nav .nav-card { width: 280px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; cursor: pointer; transition: background .12s; }
+    .footer-nav .nav-card:hover { background: #f9fafb; }
+    .footer-nav .nav-card .nav-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; letter-spacing: .02em; }
+    .footer-nav .nav-card .nav-title { font-size: 15px; font-weight: 600; color: #0f172a; line-height: 1.35; }
+    .footer-nav .nav-card.next { text-align: right; }
+    .empty-summary { padding: 30px; border: 1px dashed #d1d5db; border-radius: 10px; text-align: center; background: #fafafa; }
+    .empty-summary .es-title { font-size: 15px; color: #374151; margin-bottom: 12px; }
+    .gen-btn { display: inline-block; padding: 8px 14px; border-radius: 6px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 500; }
+  </style>
+</head>
+<body data-annotations="on">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Section Reader — Footer Prev/Next Nav</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="summary-mid">Summary (mid)</button>
+        <button class="wf-tab" aria-selected="false" data-state="original-mid">Original (mid)</button>
+        <button class="wf-tab" aria-selected="false" data-state="first-section">First section</button>
+        <button class="wf-tab" aria-selected="false" data-state="last-section">Last section</button>
+        <button class="wf-tab" aria-selected="false" data-state="summary-no-content">Summary — no content</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- ============================ STATE: summary-mid ============================ -->
+    <section class="wf-state active" data-state="summary-mid" aria-labelledby="state-summary-mid-h">
+      <h1 id="state-summary-mid-h" class="sr-only">Summary tab — middle section</h1>
+      <div class="reader-shell">
+        <aside class="icon-rail" aria-label="Primary nav">
+          <div class="rail-btn" title="Library">📚</div>
+          <div class="rail-btn active" title="Reader">📖</div>
+          <div class="rail-btn" title="Search">🔍</div>
+          <div class="rail-btn" title="Concepts">🧠</div>
+          <div class="rail-btn" title="Settings" style="margin-top:auto">⚙</div>
+        </aside>
+        <div>
+          <div class="topbar">
+            <a class="crumb-link" href="#">Playing to Win</a>
+            <span class="text-gray-400">/</span>
+            <button class="wf-anno toc-trigger"
+                    data-note="Item 8 fix: this dropdown shows real char counts for each section after fix (currently shows 0)">
+              <span>4. Strategy Is Choice</span>
+              <span class="chev">▾</span>
+              <span class="text-xs text-gray-500">· 12,840 chars</span>
+            </button>
+            <div class="flex items-center gap-1 ml-2">
+              <button class="kbd-btn" aria-label="Previous (←)" title="Previous (←)">←</button>
+              <button class="kbd-btn" aria-label="Next (→)" title="Next (→)">→</button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="wf-anno seg" data-note="Existing toggle; footer renders in both">
+                <button>Original</button>
+                <button class="on">Summary</button>
+              </div>
+              <button class="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
+              <button class="icon-btn" aria-label="Reader settings" title="Reader settings">⚙</button>
+            </div>
+          </div>
+
+          <article class="reader-main">
+            <h2 class="section-h">4. Strategy Is Choice</h2>
+            <div class="section-meta">Practitioner bullets · ~2,560 chars · Updated Apr 28, 2026</div>
+
+            <p>Strategy is, at its core, an integrated set of choices that uniquely positions a firm in its industry to create sustainable advantage and superior value relative to the competition. Anything less is just planning.</p>
+
+            <p>The temptation to substitute completeness for clarity is everywhere. Long lists of "strategic priorities" feel safe — they let everyone see their pet project on the page — but they leave the hard trade-offs unmade and quietly push them down to the front line, where the resources to make them wisely don't exist.</p>
+
+            <p>The five-question cascade — winning aspiration, where to play, how to win, capabilities required, and management systems — is not a template to fill in. It is a forcing function that makes a leadership team confront the choices it would rather defer.</p>
+
+            <ul class="wf-anno bullets" data-note="Item 6 — bullet markers (disc) restored after fix; today list-style: none hides them">
+              <li><strong>Strategy is a choice</strong>, not a wish list — saying yes to one position requires saying no to others.</li>
+              <li><strong>"Where to play" beats "do everything well"</strong> — a defined arena makes capabilities and systems coherent.</li>
+              <li><strong>Capabilities and management systems</strong> are not afterthoughts; they are how the choice gets executed.</li>
+              <li><strong>Avoiding strategy</strong> (operational excellence as a substitute, vision as a substitute, best-practice as a substitute) is the most common failure mode.</li>
+            </ul>
+
+            <nav class="wf-anno footer-nav" aria-label="Section navigation"
+                 data-note="Item 7 — Decision D5. Inline footer at end of content. Keyboard arrows already work; this is for discoverability.">
+              <a class="nav-card prev" href="#">
+                <div class="nav-label">← Previous</div>
+                <div class="nav-title">3. How Strategy Really Works</div>
+              </a>
+              <a class="nav-card next" href="#">
+                <div class="nav-label">Next →</div>
+                <div class="nav-title">5. Where to Play</div>
+              </a>
+            </nav>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: original-mid ============================ -->
+    <section class="wf-state" data-state="original-mid" aria-labelledby="state-original-mid-h">
+      <h1 id="state-original-mid-h" class="sr-only">Original tab — middle section</h1>
+      <div class="reader-shell">
+        <aside class="icon-rail" aria-label="Primary nav">
+          <div class="rail-btn" title="Library">📚</div>
+          <div class="rail-btn active" title="Reader">📖</div>
+          <div class="rail-btn" title="Search">🔍</div>
+          <div class="rail-btn" title="Concepts">🧠</div>
+          <div class="rail-btn" title="Settings" style="margin-top:auto">⚙</div>
+        </aside>
+        <div>
+          <div class="topbar">
+            <a class="crumb-link" href="#">Playing to Win</a>
+            <span class="text-gray-400">/</span>
+            <button class="wf-anno toc-trigger"
+                    data-note="Item 8 fix: this dropdown shows real char counts for each section after fix (currently shows 0)">
+              <span>4. Strategy Is Choice</span>
+              <span class="chev">▾</span>
+              <span class="text-xs text-gray-500">· 12,840 chars</span>
+            </button>
+            <div class="flex items-center gap-1 ml-2">
+              <button class="kbd-btn" aria-label="Previous (←)" title="Previous (←)">←</button>
+              <button class="kbd-btn" aria-label="Next (→)" title="Next (→)">→</button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="wf-anno seg" data-note="Existing toggle; footer renders in both">
+                <button class="on">Original</button>
+                <button>Summary</button>
+              </div>
+              <button class="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
+              <button class="icon-btn" aria-label="Reader settings" title="Reader settings">⚙</button>
+            </div>
+          </div>
+
+          <article class="reader-main">
+            <h2 class="section-h">4. Strategy Is Choice</h2>
+            <div class="section-meta">Original content · 12,840 chars</div>
+
+            <p>To choose is to leave behind. Every strategist who ever made a real difference understood this in their bones, and yet most management teams arrive at the strategy offsite carrying a quiet hope that this year, somehow, they will not have to choose at all.</p>
+
+            <p>The discipline of strategy is the discipline of saying no to attractive options so that yes can mean something. A "where to play" that includes every adjacent market is not a where-to-play; it is an abdication dressed up as ambition.</p>
+
+            <p>What we have learned, watching dozens of teams attempt this work, is that the cascade only succeeds when leaders treat its five questions as one coherent decision, not five sequential exercises. Capabilities that don't reinforce the where-to-play are theatre; management systems that don't reinforce capabilities are noise.</p>
+
+            <nav class="wf-anno footer-nav" aria-label="Section navigation"
+                 data-note="Item 7 — Decision D5. Inline footer at end of content. Keyboard arrows already work; this is for discoverability.">
+              <a class="nav-card prev" href="#">
+                <div class="nav-label">← Previous</div>
+                <div class="nav-title">3. How Strategy Really Works</div>
+              </a>
+              <a class="nav-card next" href="#">
+                <div class="nav-label">Next →</div>
+                <div class="nav-title">5. Where to Play</div>
+              </a>
+            </nav>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: first-section ============================ -->
+    <section class="wf-state" data-state="first-section" aria-labelledby="state-first-h">
+      <h1 id="state-first-h" class="sr-only">First section</h1>
+      <div class="reader-shell">
+        <aside class="icon-rail" aria-label="Primary nav">
+          <div class="rail-btn" title="Library">📚</div>
+          <div class="rail-btn active" title="Reader">📖</div>
+          <div class="rail-btn" title="Search">🔍</div>
+          <div class="rail-btn" title="Concepts">🧠</div>
+          <div class="rail-btn" title="Settings" style="margin-top:auto">⚙</div>
+        </aside>
+        <div>
+          <div class="topbar">
+            <a class="crumb-link" href="#">Playing to Win</a>
+            <span class="text-gray-400">/</span>
+            <button class="wf-anno toc-trigger"
+                    data-note="Item 8 fix: this dropdown shows real char counts for each section after fix (currently shows 0)">
+              <span>1. Introduction</span>
+              <span class="chev">▾</span>
+              <span class="text-xs text-gray-500">· 4,210 chars</span>
+            </button>
+            <div class="flex items-center gap-1 ml-2">
+              <button class="kbd-btn" aria-label="Previous (disabled)" title="Previous (disabled)" style="opacity:.4">←</button>
+              <button class="kbd-btn" aria-label="Next (→)" title="Next (→)">→</button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="wf-anno seg" data-note="Existing toggle; footer renders in both">
+                <button>Original</button>
+                <button class="on">Summary</button>
+              </div>
+              <button class="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
+              <button class="icon-btn" aria-label="Reader settings" title="Reader settings">⚙</button>
+            </div>
+          </div>
+
+          <article class="reader-main">
+            <h2 class="section-h">1. Introduction</h2>
+            <div class="section-meta">Practitioner bullets · ~860 chars · Updated Apr 28, 2026</div>
+
+            <p>This book exists because too many leaders mistake activity for strategy. The authors — drawing on a decade reshaping Procter &amp; Gamble — argue that strategy is the answer to five interlocking questions, and that ducking any one of them dooms the rest.</p>
+
+            <p>The introduction sets the stakes: in a world that rewards the appearance of progress, the discipline of choice is rare. It is also the only thing that compounds.</p>
+
+            <ul class="wf-anno bullets" data-note="Item 6 — bullet markers (disc) restored after fix; today list-style: none hides them">
+              <li><strong>Strategy = a coordinated set of choices</strong>, not a long list of priorities.</li>
+              <li><strong>The five-question cascade</strong> will be the spine of the book.</li>
+              <li><strong>Procter &amp; Gamble's turnaround</strong> is the running case study.</li>
+            </ul>
+
+            <nav class="wf-anno footer-nav" aria-label="Section navigation"
+                 data-note="Item 7 — Decision D5. Inline footer at end of content. Keyboard arrows already work; this is for discoverability.">
+              <span></span>
+              <a class="nav-card next" href="#">
+                <div class="nav-label">Next →</div>
+                <div class="nav-title">2. How Strategy Really Works</div>
+              </a>
+            </nav>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: last-section ============================ -->
+    <section class="wf-state" data-state="last-section" aria-labelledby="state-last-h">
+      <h1 id="state-last-h" class="sr-only">Last section</h1>
+      <div class="reader-shell">
+        <aside class="icon-rail" aria-label="Primary nav">
+          <div class="rail-btn" title="Library">📚</div>
+          <div class="rail-btn active" title="Reader">📖</div>
+          <div class="rail-btn" title="Search">🔍</div>
+          <div class="rail-btn" title="Concepts">🧠</div>
+          <div class="rail-btn" title="Settings" style="margin-top:auto">⚙</div>
+        </aside>
+        <div>
+          <div class="topbar">
+            <a class="crumb-link" href="#">Playing to Win</a>
+            <span class="text-gray-400">/</span>
+            <button class="wf-anno toc-trigger"
+                    data-note="Item 8 fix: this dropdown shows real char counts for each section after fix (currently shows 0)">
+              <span>21. About the Authors</span>
+              <span class="chev">▾</span>
+              <span class="text-xs text-gray-500">· 1,380 chars</span>
+            </button>
+            <div class="flex items-center gap-1 ml-2">
+              <button class="kbd-btn" aria-label="Previous (←)" title="Previous (←)">←</button>
+              <button class="kbd-btn" aria-label="Next (disabled)" title="Next (disabled)" style="opacity:.4">→</button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="wf-anno seg" data-note="Existing toggle; footer renders in both">
+                <button>Original</button>
+                <button class="on">Summary</button>
+              </div>
+              <button class="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
+              <button class="icon-btn" aria-label="Reader settings" title="Reader settings">⚙</button>
+            </div>
+          </div>
+
+          <article class="reader-main">
+            <h2 class="section-h">21. About the Authors</h2>
+            <div class="section-meta">Practitioner bullets · ~640 chars · Updated Apr 28, 2026</div>
+
+            <p>A. G. Lafley served two terms as CEO of Procter &amp; Gamble, leading the company through a period of substantial growth and the acquisition of Gillette. He is widely credited with reorienting P&amp;G around consumer-led innovation.</p>
+
+            <p>Roger L. Martin is a Professor of Strategic Management at the Rotman School of Management, University of Toronto, where he served as Dean for fourteen years. His work focuses on integrative thinking, design, and corporate strategy.</p>
+
+            <p>Together they have spent more than a decade refining the cascade described in this book — first in P&amp;G's boardroom, then in classrooms, and finally in workshops with leadership teams across industries.</p>
+
+            <nav class="wf-anno footer-nav" aria-label="Section navigation"
+                 data-note="Item 7 — Decision D5. Inline footer at end of content. Keyboard arrows already work; this is for discoverability.">
+              <a class="nav-card prev" href="#">
+                <div class="nav-label">← Previous</div>
+                <div class="nav-title">20. The Endless Pursuit of Winning</div>
+              </a>
+              <span></span>
+            </nav>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: summary-no-content ============================ -->
+    <section class="wf-state" data-state="summary-no-content" aria-labelledby="state-empty-summary-h">
+      <h1 id="state-empty-summary-h" class="sr-only">Summary tab — no content yet</h1>
+      <div class="reader-shell">
+        <aside class="icon-rail" aria-label="Primary nav">
+          <div class="rail-btn" title="Library">📚</div>
+          <div class="rail-btn active" title="Reader">📖</div>
+          <div class="rail-btn" title="Search">🔍</div>
+          <div class="rail-btn" title="Concepts">🧠</div>
+          <div class="rail-btn" title="Settings" style="margin-top:auto">⚙</div>
+        </aside>
+        <div>
+          <div class="topbar">
+            <a class="crumb-link" href="#">Playing to Win</a>
+            <span class="text-gray-400">/</span>
+            <button class="wf-anno toc-trigger"
+                    data-note="Item 8 fix: this dropdown shows real char counts for each section after fix (currently shows 0)">
+              <span>18. Notes</span>
+              <span class="chev">▾</span>
+              <span class="text-xs text-gray-500">· 3,420 chars</span>
+            </button>
+            <div class="flex items-center gap-1 ml-2">
+              <button class="kbd-btn" aria-label="Previous (←)" title="Previous (←)">←</button>
+              <button class="kbd-btn" aria-label="Next (→)" title="Next (→)">→</button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="wf-anno seg" data-note="Existing toggle; footer renders in both">
+                <button>Original</button>
+                <button class="on">Summary</button>
+              </div>
+              <button class="icon-btn" aria-label="Toggle sidebar" title="Toggle sidebar">☰</button>
+              <button class="icon-btn" aria-label="Reader settings" title="Reader settings">⚙</button>
+            </div>
+          </div>
+
+          <article class="reader-main">
+            <h2 class="section-h">18. Notes</h2>
+            <div class="section-meta">No summary yet</div>
+
+            <div class="empty-summary">
+              <div class="es-title">This section hasn't been summarized yet.</div>
+              <a class="gen-btn" href="#">Generate summary</a>
+              <div class="text-xs text-gray-500 mt-3">Uses the book's default preset (Practitioner Bullets).</div>
+            </div>
+
+            <nav class="wf-anno footer-nav" aria-label="Section navigation"
+                 data-note="Item 7 — Decision D5. Inline footer at end of content. Keyboard arrows already work; this is for discoverability.">
+              <a class="nav-card prev" href="#">
+                <div class="nav-label">← Previous</div>
+                <div class="nav-title">17. Acknowledgments</div>
+              </a>
+              <a class="nav-card next" href="#">
+                <div class="nav-label">Next →</div>
+                <div class="nav-title">19. Bibliography</div>
+              </a>
+            </nav>
+          </article>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Section Reader — Footer Prev/Next Nav</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 04 of 6 · Generated 2026-05-01</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

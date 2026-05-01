@@ -1,0 +1,29 @@
+/* House-style overrides for Book Companion — extracted from frontend/src/assets/theme.css.
+   Maps wireframe.css tokens to the app's actual indigo + Catppuccin-derived palette
+   so wireframes look like they belong inside the running product.
+*/
+:root {
+  --wf-bg:        #f8f9fa;
+  --wf-surface:   #ffffff;
+  --wf-surface-2: #f1f3f5;
+  --wf-border:    #e5e7eb;
+  --wf-border-2:  #d1d5db;
+  --wf-text:      #1a1a2e;
+  --wf-muted:     #6b7280;
+  --wf-faint:     #9ca3af;
+  --wf-accent:    #4f46e5;        /* indigo-600 — app's primary accent */
+  --wf-accent-2:  #4338ca;        /* indigo-700 — hover */
+  --wf-success:   #16a34a;
+  --wf-warning:   #d97706;
+  --wf-error:     #dc2626;
+  --wf-radius:    8px;
+  --wf-radius-lg: 12px;
+  --wf-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --wf-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* App-specific extras the wireframes reference */
+  --bc-sidebar-bg:     #1e1e2e;
+  --bc-sidebar-text:   #cdd6f4;
+  --bc-sidebar-active: #4f46e5;
+  --bc-highlight:      #fef9c3;   /* saved-highlight color */
+}

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Wireframes — Cross-Surface UX Cohesion Bundle (2026-05-01)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    .card {
+      background: var(--wf-surface);
+      border: 1px solid var(--wf-border);
+      border-radius: var(--wf-radius-lg);
+      padding: 16px;
+      transition: border-color .15s, transform .15s;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .card:hover { border-color: var(--wf-accent); transform: translateY(-1px); }
+    .card a.thumb { display:block; border:1px solid var(--wf-border-2); border-radius:var(--wf-radius); overflow:hidden; background:var(--wf-bg); height:160px; position:relative; }
+    .card a.thumb iframe { width:1280px; height:1024px; transform:scale(0.225); transform-origin:top left; border:0; pointer-events:none; }
+    .card .meta { display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:13px; color:var(--wf-muted); }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--wf-surface-2); border:1px solid var(--wf-border); font-size:11px; color:var(--wf-text); }
+    .badge--accent { background: color-mix(in srgb, var(--wf-accent) 12%, transparent); color: var(--wf-accent-2); border-color: color-mix(in srgb, var(--wf-accent) 30%, transparent); }
+  </style>
+</head>
+<body style="background:var(--wf-bg); color:var(--wf-text); font-family:var(--wf-font-sans); margin:0;">
+  <header style="background:var(--wf-surface); border-bottom:1px solid var(--wf-border); padding:24px 32px;">
+    <div style="max-width:1200px; margin:0 auto;">
+      <div style="font-size:13px; color:var(--wf-muted);">Wireframes · Tier 2 · desktop-web</div>
+      <h1 style="font-size:24px; font-weight:600; margin:6px 0 8px;">Cross-Surface UX Cohesion Bundle</h1>
+      <div style="display:flex; gap:18px; flex-wrap:wrap; font-size:13px; color:var(--wf-muted);">
+        <span>Generated 2026-05-01</span>
+        <span>·</span>
+        <span>6 components, all desktop-web</span>
+        <span>·</span>
+        <a href="../../requirements/2026-05-01-cross-surface-ux-cohesion-bundle.md" style="color:var(--wf-accent);">Requirements doc ↗</a>
+      </div>
+      <p style="margin-top:14px; font-size:14px; color:var(--wf-muted); max-width:760px;">
+        Visualizes the 6 IA/flow items from the bundle. The other 12 items (visual tweaks, data fixes, refactors)
+        skip wireframes — they're trivially specifiable directly from the requirements doc.
+      </p>
+    </div>
+  </header>
+
+  <main style="max-width:1200px; margin:32px auto; padding:0 32px;">
+    <input id="filter" type="search" placeholder="Filter components by name…"
+           style="width:100%; max-width:480px; padding:10px 14px; border:1px solid var(--wf-border); border-radius:var(--wf-radius); background:var(--wf-surface); margin-bottom:24px; font-size:14px;">
+
+    <div id="grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:20px;">
+
+      <article class="card" data-name="Book Detail Overview toolbar">
+        <a class="thumb" href="./01_book-detail-overview_desktop-web.html" target="_blank">
+          <iframe src="./01_book-detail-overview_desktop-web.html" loading="lazy" tabindex="-1"></iframe>
+        </a>
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="badge">01</span>
+            <h3 style="font-size:15px; font-weight:600; margin:0;">Book Detail — Overview + reshaped toolbar</h3>
+          </div>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--wf-muted);">Items 1, 3, 5, 11 — single primary CTA, overflow menu, compression as ~N%</p>
+        </div>
+        <div class="meta">
+          <span class="badge badge--accent">3 states</span>
+          <span class="badge">desktop-web</span>
+          <span style="margin-left:auto;"><a href="./01_book-detail-overview_desktop-web.html" target="_blank" style="color:var(--wf-accent); font-size:13px;">Open ↗</a></span>
+        </div>
+      </article>
+
+      <article class="card" data-name="Book Detail Summary tab">
+        <a class="thumb" href="./02_book-detail-summary-tab_desktop-web.html" target="_blank">
+          <iframe src="./02_book-detail-summary-tab_desktop-web.html" loading="lazy" tabindex="-1"></iframe>
+        </a>
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="badge">02</span>
+            <h3 style="font-size:15px; font-weight:600; margin:0;">Book Detail — Summary tab</h3>
+          </div>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--wf-muted);">Item 2 — new tab with empty / in-progress / populated / error states</p>
+        </div>
+        <div class="meta">
+          <span class="badge badge--accent">4 states</span>
+          <span class="badge">desktop-web</span>
+          <span style="margin-left:auto;"><a href="./02_book-detail-summary-tab_desktop-web.html" target="_blank" style="color:var(--wf-accent); font-size:13px;">Open ↗</a></span>
+        </div>
+      </article>
+
+      <article class="card" data-name="Reader Settings popover">
+        <a class="thumb" href="./03_reader-settings-popover_desktop-web.html" target="_blank">
+          <iframe src="./03_reader-settings-popover_desktop-web.html" loading="lazy" tabindex="-1"></iframe>
+        </a>
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="badge">03</span>
+            <h3 style="font-size:15px; font-weight:600; margin:0;">Reader Settings popover (anchored)</h3>
+          </div>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--wf-muted);">Item 4 — anchored to overflow trigger; themes-loaded / loading / error / empty</p>
+        </div>
+        <div class="meta">
+          <span class="badge badge--accent">4 states</span>
+          <span class="badge">desktop-web</span>
+          <span style="margin-left:auto;"><a href="./03_reader-settings-popover_desktop-web.html" target="_blank" style="color:var(--wf-accent); font-size:13px;">Open ↗</a></span>
+        </div>
+      </article>
+
+      <article class="card" data-name="Section Reader footer nav">
+        <a class="thumb" href="./04_section-reader-footer-nav_desktop-web.html" target="_blank">
+          <iframe src="./04_section-reader-footer-nav_desktop-web.html" loading="lazy" tabindex="-1"></iframe>
+        </a>
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="badge">04</span>
+            <h3 style="font-size:15px; font-weight:600; margin:0;">Section Reader — footer prev/next nav</h3>
+          </div>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--wf-muted);">Item 7 — inline footer; mid / first / last / no-content states; both tabs</p>
+        </div>
+        <div class="meta">
+          <span class="badge badge--accent">5 states</span>
+          <span class="badge">desktop-web</span>
+          <span style="margin-left:auto;"><a href="./04_section-reader-footer-nav_desktop-web.html" target="_blank" style="color:var(--wf-accent); font-size:13px;">Open ↗</a></span>
+        </div>
+      </article>
+
+      <article class="card" data-name="Preset create edit form">
+        <a class="thumb" href="./05_preset-create-edit-form_desktop-web.html" target="_blank">
+          <iframe src="./05_preset-create-edit-form_desktop-web.html" loading="lazy" tabindex="-1"></iframe>
+        </a>
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="badge">05</span>
+            <h3 style="font-size:15px; font-weight:600; margin:0;">Preset — New / Edit form (4-card facets)</h3>
+          </div>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--wf-muted);">Item 15 — new / validating / editing / saving</p>
+        </div>
+        <div class="meta">
+          <span class="badge badge--accent">4 states</span>
+          <span class="badge">desktop-web</span>
+          <span style="margin-left:auto;"><a href="./05_preset-create-edit-form_desktop-web.html" target="_blank" style="color:var(--wf-accent); font-size:13px;">Open ↗</a></span>
+        </div>
+      </article>
+
+      <article class="card" data-name="Preset detail system viewer">
+        <a class="thumb" href="./06_preset-detail-system_desktop-web.html" target="_blank">
+          <iframe src="./06_preset-detail-system_desktop-web.html" loading="lazy" tabindex="-1"></iframe>
+        </a>
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="badge">06</span>
+            <h3 style="font-size:15px; font-weight:600; margin:0;">Preset detail — system + user + raw Jinja viewer</h3>
+          </div>
+          <p style="margin:6px 0 0; font-size:13px; color:var(--wf-muted);">Item 16 — full /settings/presets page; system / user / none / loading</p>
+        </div>
+        <div class="meta">
+          <span class="badge badge--accent">4 states</span>
+          <span class="badge">desktop-web</span>
+          <span style="margin-left:auto;"><a href="./06_preset-detail-system_desktop-web.html" target="_blank" style="color:var(--wf-accent); font-size:13px;">Open ↗</a></span>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <footer style="padding:32px; text-align:center; color:var(--wf-muted); font-size:13px;">
+    6 wireframe files · <code style="background:var(--wf-surface-2); padding:2px 6px; border-radius:4px;">docs/wireframes/2026-05-01-cross-surface-ux-cohesion-bundle/</code>
+  </footer>
+
+  <script>
+    const filter = document.getElementById('filter');
+    const cards = document.querySelectorAll('[data-name]');
+    filter.addEventListener('input', () => {
+      const q = filter.value.toLowerCase();
+      cards.forEach(c => c.style.display = c.dataset.name.toLowerCase().includes(q) ? '' : 'none');
+    });
+  </script>
+</body>
+</html>
