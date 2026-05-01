@@ -113,6 +113,22 @@ describe('ThemeGrid', () => {
     })
   })
 
+  it('renders typography preview Aa in preset font (FR-36)', () => {
+    const s = useReaderSettingsStore()
+    s.presets = [
+      { ...PRESETS[0], font_family: 'Inter', font_size_px: 18 },
+      ...PRESETS.slice(1),
+    ] as never
+    const w = mount(ThemeGrid)
+    const lightCard = w
+      .findAll('[data-preset-name="Light"]')[0]
+    const sample = lightCard.find('.preview-sample')
+    expect(sample.text()).toBe('Aa')
+    const style = (sample.element as HTMLElement).style
+    expect(style.fontFamily.toLowerCase()).toContain('inter')
+    expect(style.fontSize).toBe('18px')
+  })
+
   it('shows error notice when presets is empty (E1 / Q5)', () => {
     const s = useReaderSettingsStore()
     s.presets = [] as never

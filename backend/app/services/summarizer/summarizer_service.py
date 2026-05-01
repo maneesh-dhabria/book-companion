@@ -18,7 +18,10 @@ from app.db.repositories.book_repo import BookRepository
 from app.db.repositories.section_repo import SectionRepository
 from app.db.repositories.summary_repo import SummaryRepository
 from app.exceptions import EmptySummaryError, SummarizationError
-from app.services.parser.image_url_rewrite import from_placeholder
+from app.services.parser.image_url_rewrite import (
+    from_image_id_scheme,
+    from_placeholder,
+)
 from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 from app.services.summarizer.llm_provider import LLMProvider
 from app.services.summary_service import SummaryService
@@ -482,6 +485,8 @@ class SummarizerService:
         # image filenames are stripped with a warning.
         image_map = await self._image_map_for_section(section.id)
         summary_text = from_placeholder(summary_text, image_map, on_missing="strip")
+        # FR-06: rewrite legacy ![alt](image:NNN) emitted by older prompts.
+        summary_text = from_image_id_scheme(summary_text, image_map, on_missing="strip")
 
         summary = Summary(
             content_type=SummaryContentType.SECTION,
@@ -582,6 +587,8 @@ class SummarizerService:
         # FR-A1.1 — rewrite book-wide image placeholders before persist.
         book_image_map = await self._image_map_for_book(book_id)
         summary_text = from_placeholder(summary_text, book_image_map, on_missing="strip")
+        # FR-06: rewrite legacy image:N scheme on book-level summaries too.
+        summary_text = from_image_id_scheme(summary_text, book_image_map, on_missing="strip")
 
         summary = Summary(
             content_type=SummaryContentType.BOOK,
@@ -644,6 +651,10 @@ class SummarizerService:
                     retry_text = self._extract_summary_text(retry_response)
                     # FR-A1.1: rewrite placeholders on retry path too.
                     retry_text = from_placeholder(retry_text, book_image_map, on_missing="strip")
+                    # FR-06: legacy image:N rewrite on retry too.
+                    retry_text = from_image_id_scheme(
+                        retry_text, book_image_map, on_missing="strip"
+                    )
 
                     retry_summary = Summary(
                         content_type=SummaryContentType.BOOK,

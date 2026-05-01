@@ -56,6 +56,13 @@ const router = createRouter({
       component: () => import('@/views/BookSummaryView.vue'),
     },
     {
+      path: '/jobs/:id',
+      name: 'job-detail',
+      meta: { title: 'Job Progress' },
+      component: () => import('@/views/JobProgressView.vue'),
+      props: true,
+    },
+    {
       path: '/search',
       name: 'search',
       meta: { title: 'Search' },

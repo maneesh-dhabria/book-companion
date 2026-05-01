@@ -59,6 +59,17 @@ class BookListItem(BaseModel):
     updated_at: datetime
 
 
+class SectionDefaultSummaryBrief(BaseModel):
+    """Minimal default-summary metadata embedded in SectionBriefResponse so the
+    book-detail SectionListTable can compute the FR-31 compression ratio
+    without an extra round-trip per section."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    summary_char_count: int
+
+
 class SectionBriefResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -67,7 +78,9 @@ class SectionBriefResponse(BaseModel):
     order_index: int
     section_type: str
     content_token_count: int | None = None
+    content_char_count: int = 0
     has_summary: bool = False
+    default_summary: SectionDefaultSummaryBrief | None = None
 
 
 class SummaryBriefResponse(BaseModel):
@@ -216,6 +229,25 @@ class ProcessingCancelResponse(BaseModel):
     job_id: int
     status: str
     message: str
+
+
+class ProcessingJobDetailResponse(BaseModel):
+    """Spec §7.4 — full job state for the JobProgressView deep-link."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    job_id: int
+    book_id: int
+    book_title: str | None = None
+    status: str
+    scope: str | None = None
+    section_id: int | None = None
+    progress: dict[str, Any] | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    last_event_at: datetime | None = None
+    error_message: str | None = None
+    request_params: dict[str, Any] | None = None
 
 
 # --- Eval ---

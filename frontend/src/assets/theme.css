@@ -46,6 +46,8 @@
   --color-sidebar-bg: #11111b;
   --color-sidebar-text: #cdd6f4;
   --color-sidebar-active: #89b4fa;
+  --highlight-saved-bg: #5c4f1f;
+  --highlight-saved-fg: inherit;
 }
 
 [data-theme='sepia'] {
@@ -67,4 +69,79 @@
   --color-sidebar-bg: #3d3225;
   --color-sidebar-text: #e8dfc9;
   --color-sidebar-active: #8b6914;
+  --highlight-saved-bg: #f5d97f80;
+  --highlight-saved-fg: inherit;
+}
+
+/* Night — deep navy, low-saturation; designed for OLED + late-night reading
+   (FR-35; palette derived from spec §11.4 Decision Log P5). */
+[data-theme='night'] {
+  --color-bg-primary: #0a0e1a;
+  --color-bg-secondary: #111827;
+  --color-bg-tertiary: #1f2937;
+  --color-bg-elevated: #1f2937;
+  --color-text-primary: #e5e7eb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+  --color-text-accent: #818cf8;
+  --color-border: #374151;
+  --color-border-strong: #4b5563;
+  --color-accent: #818cf8;
+  --color-accent-hover: #6366f1;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-sidebar-bg: #0a0e1a;
+  --color-sidebar-text: #e5e7eb;
+  --color-sidebar-active: #818cf8;
+  --highlight-saved-bg: #fde68a40;
+  --highlight-saved-fg: inherit;
+}
+
+/* Paper — warm cream + soft serif feel (FR-35; locked per Decision Log P5). */
+[data-theme='paper'] {
+  --color-bg-primary: #f7f1e3;
+  --color-bg-secondary: #efe6d2;
+  --color-bg-tertiary: #e8ddc6;
+  --color-bg-elevated: #fbf6e8;
+  --color-text-primary: #2d2417;
+  --color-text-secondary: #5e5340;
+  --color-text-muted: #8a7d65;
+  --color-text-accent: #8b6f3c;
+  --color-border: #d6c9aa;
+  --color-border-strong: #b8a884;
+  --color-accent: #8b6f3c;
+  --color-accent-hover: #6f5830;
+  --color-success: #5a7a3a;
+  --color-warning: #b07a26;
+  --color-error: #a14a3a;
+  --color-sidebar-bg: #efe6d2;
+  --color-sidebar-text: #2d2417;
+  --color-sidebar-active: #8b6f3c;
+  --highlight-saved-bg: #f5d97f60;
+  --highlight-saved-fg: inherit;
+}
+
+/* Contrast — pure black/white, blue accent; AA+ everywhere (FR-35). */
+[data-theme='contrast'] {
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #0a0a0a;
+  --color-bg-tertiary: #1a1a1a;
+  --color-bg-elevated: #1a1a1a;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #e0e0e0;
+  --color-text-muted: #b0b0b0;
+  --color-text-accent: #4da3ff;
+  --color-border: #ffffff;
+  --color-border-strong: #ffffff;
+  --color-accent: #4da3ff;
+  --color-accent-hover: #1a8cff;
+  --color-success: #00e676;
+  --color-warning: #ffd600;
+  --color-error: #ff5252;
+  --color-sidebar-bg: #000000;
+  --color-sidebar-text: #ffffff;
+  --color-sidebar-active: #4da3ff;
+  --highlight-saved-bg: #ffd60080;
+  --highlight-saved-fg: inherit;
 }

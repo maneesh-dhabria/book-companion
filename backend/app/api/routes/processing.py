@@ -7,16 +7,19 @@ import contextlib
 import json
 import os
 from collections.abc import AsyncGenerator  # noqa: TC003
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
+from sqlalchemy.orm import selectinload
 from sse_starlette.sse import EventSourceResponse
 
 from app.api.deps import get_db, get_settings
 from app.api.schemas import (
     ProcessingCancelResponse,
+    ProcessingJobDetailResponse,
     ProcessingStartRequest,
     ProcessingStartResponse,
     ProcessingStatusResponse,
@@ -107,9 +110,18 @@ async def start_processing(
                 detail="No failed sections to retry",
             )
 
-    # FR-A7.3 — reject concurrent jobs for the same book (application-level
-    # check; the partial UNIQUE index in migration v1_4a is the DB-level
-    # belt-and-suspenders).
+    # FR-01/FR-02/FR-03 — on-demand stale-job sweep. Wrap the active-job
+    # guard in BEGIN IMMEDIATE so concurrent retries serialize. If we find
+    # a PENDING/RUNNING row that is_stale(), mark it FAILED in-place and
+    # fall through to INSERT (recovers from server-killed-mid-job state
+    # without requiring `bookcompanion init`). If the row is fresh, return
+    # an enriched 409 body with the active_job payload so the UI can deep-
+    # link the user to /jobs/{id}.
+    from datetime import datetime, timedelta
+
+    from app.services.summarizer.orphan_sweep import is_stale
+
+    await db.execute(text("BEGIN IMMEDIATE"))
     existing = (
         await db.execute(
             select(ProcessingJob).where(
@@ -121,10 +133,30 @@ async def start_processing(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise HTTPException(
-            status_code=409,
-            detail="A summarization job is already running for this book",
-        )
+        now = datetime.now(UTC)
+        max_age = timedelta(seconds=settings.processing.stale_job_age_seconds)
+        if is_stale(existing, now=now, max_age=max_age):
+            existing.status = ProcessingJobStatus.FAILED
+            existing.error_message = "Marked stale by on-demand sweep"
+            existing.completed_at = now
+            # Fall through to INSERT a fresh job; the same transaction will
+            # commit both writes atomically.
+        else:
+            await db.commit()  # release the BEGIN IMMEDIATE write lock
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "detail": "A summarization job is already running for this book",
+                    "active_job": {
+                        "id": existing.id,
+                        "scope": (existing.request_params or {}).get("scope"),
+                        "started_at": existing.started_at.isoformat()
+                        if existing.started_at
+                        else None,
+                        "progress": existing.progress or {},
+                    },
+                },
+            )
 
     # Create processing job
     from app.services.job_queue_worker import serialize_request_params
@@ -160,7 +192,6 @@ async def start_processing(
         )
 
     return ProcessingStartResponse(job_id=job_id)
-
 
 
 @router.get("/api/v1/processing/{job_id}/stream")
@@ -353,3 +384,38 @@ async def list_processing_jobs(
             }
         )
     return {"jobs": jobs}
+
+
+# Registered last so the literal-prefix routes ("/jobs", "/{id}/stream", etc.)
+# match first. FastAPI matches routes in registration order; a leading
+# `/{job_id}` would otherwise shadow `/jobs` and cast "jobs" to int (→ 422).
+@router.get("/api/v1/processing/{job_id}", response_model=ProcessingJobDetailResponse)
+async def get_processing_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Full job state for JobProgressView deep-link (FR-10, FR-11, spec §7.4)."""
+    result = await db.execute(
+        select(ProcessingJob)
+        .options(selectinload(ProcessingJob.book))
+        .where(ProcessingJob.id == job_id)
+    )
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Processing job not found")
+
+    params = job.request_params or {}
+    return ProcessingJobDetailResponse(
+        job_id=job.id,
+        book_id=job.book_id,
+        book_title=job.book.title if job.book else None,
+        status=job.status.value if hasattr(job.status, "value") else str(job.status),
+        scope=params.get("scope"),
+        section_id=params.get("section_id"),
+        progress=job.progress,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        last_event_at=job.last_event_at,
+        error_message=job.error_message,
+        request_params=params or None,
+    )

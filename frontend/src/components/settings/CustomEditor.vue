@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 
 import ColorSwatchRow from './ColorSwatchRow.vue'
+import FontListbox from './FontListbox.vue'
 import Stepper from './ValueStepper.vue'
 import ContrastBadge from '@/components/common/ContrastBadge.vue'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
@@ -81,13 +82,11 @@ onMounted(async () => {
     />
 
     <label class="setting-label">Font</label>
-    <select
-      class="setting-select"
-      :value="store.currentSettings.font_family"
-      @change="store.updateSetting('font_family', ($event.target as HTMLSelectElement).value)"
-    >
-      <option v-for="f in FONTS" :key="f" :value="f">{{ f }}</option>
-    </select>
+    <FontListbox
+      :model-value="store.currentSettings.font_family"
+      :options="FONTS"
+      @update:model-value="(v: string) => store.updateSetting('font_family', v)"
+    />
 
     <label class="setting-label">Size</label>
     <Stepper

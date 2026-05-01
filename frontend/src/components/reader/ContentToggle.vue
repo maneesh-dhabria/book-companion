@@ -15,7 +15,6 @@ defineEmits<{
       class="toggle-btn"
       :class="{ active: mode === 'original' }"
       @click="$emit('toggle')"
-      :disabled="mode === 'original'"
     >
       Original
     </button>
@@ -23,7 +22,6 @@ defineEmits<{
       class="toggle-btn"
       :class="{ active: mode === 'summary' }"
       @click="$emit('toggle')"
-      :disabled="mode === 'summary'"
     >
       Summary
     </button>
@@ -48,9 +46,15 @@ defineEmits<{
   transition: all 0.1s;
 }
 
-.toggle-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+/* FR-18 / FR-19: inactive tab reads as available, not disabled. */
+.toggle-btn:not(.active) {
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.toggle-btn:not(.active):hover {
+  background: var(--color-bg-tertiary);
 }
 
 .toggle-btn.active {

@@ -41,17 +41,18 @@
             @accept="acceptSuggestion"
             @reject="rejectSuggestion"
           />
-          <div class="progress" v-if="book.summary_progress">
-            <strong>Summaries:</strong>
-            {{ book.summary_progress.summarized }} of
-            {{ book.summary_progress.summarizable }}
-            ({{ book.summary_progress.pending }} pending,
-            {{ book.summary_progress.failed_and_pending }} failed)
-          </div>
-          <div class="actions">
+          <SummarizationProgress
+            v-if="book.summary_progress && book.summary_progress.summarizable > 0"
+            :book-id="book.id"
+            :summarized="book.summary_progress.summarized"
+            :total="book.summary_progress.summarizable"
+            :failed-and-pending="book.summary_progress.failed_and_pending"
+          />
+          <div class="action-row">
             <router-link
               v-if="firstSection"
-              class="cta resume"
+              class="btn-primary"
+              data-action="read"
               :to="{
                 name: 'section-detail',
                 params: { id: String(book.id), sectionId: String(firstSection.id) },
@@ -59,26 +60,30 @@
             >
               Read
             </router-link>
-            <button
-              class="cta primary"
+            <router-link
+              class="btn-secondary"
+              data-action="read-summary"
+              :class="{ 'is-disabled': !hasBookSummary }"
+              :aria-disabled="!hasBookSummary || undefined"
+              :title="hasBookSummary ? '' : 'No book summary yet — summarize sections first.'"
+              :to="
+                hasBookSummary
+                  ? { name: 'book-summary', params: { id: String(book.id) } }
+                  : { name: 'book-overview', params: { id: String(book.id) } }
+              "
+              @click="(e: MouseEvent) => !hasBookSummary && e.preventDefault()"
+            >
+              Read Summary
+            </router-link>
+            <ExportSplitButton
+              data-action="export"
               data-testid="export-summary-btn"
               :disabled="exportDisabled"
-              :title="disabledTooltip()"
-              :aria-disabled="exportDisabled"
-              @click="onExportClick"
-            >
-              {{ exporting ? 'Exporting…' : 'Export summary' }}
-            </button>
-            <button
-              class="cta primary"
-              data-testid="copy-markdown-btn"
-              :disabled="exportDisabled"
-              :title="disabledTooltip()"
-              :aria-disabled="exportDisabled"
-              @click="onCopyClick"
-            >
-              {{ exporting ? 'Copying…' : 'Copy as Markdown' }}
-            </button>
+              :disabled-reason="disabledTooltip()"
+              :loading="exporting"
+              @download="onExportClick"
+              @copy="onCopyClick"
+            />
             <a
               class="customize-link"
               data-testid="customize-export-link"
@@ -88,20 +93,12 @@
             >
               Customize…
             </a>
-            <router-link
-              class="customize-link"
-              data-testid="edit-structure-link"
-              :to="`/books/${book.id}/edit-structure`"
-            >
-              Edit structure
-            </router-link>
-            <SummarizationProgress
-              v-if="book.summary_progress && book.summary_progress.summarizable > 0"
-              :book-id="book.id"
-              :summarized="book.summary_progress.summarized"
-              :total="book.summary_progress.summarizable"
-              :failed-and-pending="book.summary_progress.failed_and_pending"
+            <OverflowMenu
+              data-action="overflow"
+              :edit-route="{ name: 'book-edit-structure', params: { id: String(book.id) } }"
+              @open-reader-settings="settings.popoverOpen = true"
             />
+            <ReaderSettingsPopover />
           </div>
           <ExportCustomizeModal
             v-if="showModal && book"
@@ -119,20 +116,11 @@
 
       <section class="sections-toc">
         <h2>Sections</h2>
-        <ol>
-          <li v-for="s in book.sections || []" :key="s.id">
-            <router-link
-              :to="{
-                name: 'section-detail',
-                params: { id: String(book.id), sectionId: String(s.id) },
-              }"
-            >
-              {{ s.title }}
-            </router-link>
-            <span class="section-type">{{ s.section_type }}</span>
-            <span v-if="s.has_summary" class="summarized">✓</span>
-          </li>
-        </ol>
+        <SectionListTable
+          :sections="(book.sections || []) as SectionRow[]"
+          :book-id="book.id"
+          :compact="false"
+        />
       </section>
     </template>
     <div v-else class="error">Book not found.</div>
@@ -149,8 +137,24 @@ import TagChipInput from '@/components/common/TagChipInput.vue'
 import SuggestedTagsBar from '@/components/book/SuggestedTagsBar.vue'
 import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
+import SectionListTable from '@/components/book/SectionListTable.vue'
+import ExportSplitButton from '@/components/book/ExportSplitButton.vue'
+import OverflowMenu from '@/components/book/OverflowMenu.vue'
+import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
+import { useReaderSettingsStore } from '@/stores/readerSettings'
+
+interface SectionRow {
+  id: number
+  title: string
+  order_index: number
+  section_type: string
+  content_char_count?: number | null
+  has_summary: boolean
+  default_summary?: { summary_char_count: number } | null
+  last_failure_type?: string | null
+}
 
 interface BookTag {
   id: number
@@ -171,6 +175,11 @@ const suggestedTags = computed<string[]>(() => book.value?.suggested_tags || [])
 const showModal = ref(false)
 const exporting = ref(false)
 const ui = useUiStore()
+const settings = useReaderSettingsStore()
+
+const hasBookSummary = computed(
+  () => !!book.value?.default_summary || !!book.value?.default_summary_id,
+)
 
 const isProcessingStatus = computed(
   () =>
@@ -206,24 +215,40 @@ function disabledTooltip(): string {
 async function onExportClick() {
   if (exportDisabled.value) return
   exporting.value = true
+  // FR-25: floor the perceived export latency at 250 ms so the spinner
+  // is always visible long enough to read as honest feedback. The two
+  // promises run in parallel so we never block longer than the slowest.
+  const minDelay = new Promise<void>((res) => setTimeout(res, 250))
   try {
-    const r = await exportBookSummary(bookId.value)
-    const url = URL.createObjectURL(r.blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = r.filename
-    a.click()
-    URL.revokeObjectURL(url)
-    ui.showToast(
-      r.isEmpty ? 'Summary exported (empty)' : `Summary exported as ${r.filename}`,
-      'success',
-    )
-  } catch {
-    ui.showToast('Export failed -- check your connection.', 'error')
+    const [exportResult] = await Promise.allSettled([
+      exportBookSummary(bookId.value),
+      minDelay,
+    ])
+    if (exportResult.status === 'fulfilled') {
+      const r = exportResult.value
+      const url = URL.createObjectURL(r.blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = r.filename
+      a.click()
+      URL.revokeObjectURL(url)
+      ui.showToast(
+        r.isEmpty ? 'Summary exported (empty)' : `Summary exported as ${r.filename}`,
+        'success',
+      )
+    } else {
+      ui.showToast('Export failed -- check your connection.', 'error')
+    }
   } finally {
     exporting.value = false
   }
 }
+
+// FR-26 + §11.2a — strip Markdown image references for the text-only
+// clipboard fallback. Keeps the alt text and drops the URL. Designed
+// for the inner ![alt](url) form the export emits; nested brackets in
+// alt aren't realistic for our content.
+const STRIP_IMG_RE = /!\[([^\]]*)\]\([^)]*\)/g
 
 async function onCopyClick() {
   if (exportDisabled.value) return
@@ -235,6 +260,9 @@ async function onCopyClick() {
     navigator.clipboard as unknown as { write?: (items: ClipboardItem[]) => Promise<void> }
   ).write
   try {
+    // Primary path: write rich-content blob (Markdown text/plain) via
+    // navigator.clipboard.write, which preserves images for paste targets
+    // that fetch by URL.
     if (navClipboardWrite && winClipboardItem) {
       let isEmpty = false
       const fetchPromise = fetch(url).then((r) => {
@@ -250,14 +278,19 @@ async function onCopyClick() {
           isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
           'success',
         )
+        return
       } catch (err) {
         if (err instanceof Error && err.message === 'fetch failed') {
           ui.showToast('Export failed -- check your connection.', 'error')
-        } else {
-          ui.showToast("Couldn't copy -- try Export instead.", 'error')
+          return
         }
+        // fall through to text-only fallback (FR-26)
       }
-    } else {
+    }
+    // Text-only fallback (FR-26): strip image refs and writeText. Used
+    // when navigator.clipboard.write is unavailable or fails (e.g.
+    // non-HTTPS, permission denied, Safari without ClipboardItem).
+    try {
       const resp = await fetch(url)
       if (!resp.ok) {
         ui.showToast('Export failed -- check your connection.', 'error')
@@ -265,15 +298,14 @@ async function onCopyClick() {
       }
       const isEmpty = resp.headers.get('x-empty-export') === 'true'
       const text = await resp.text()
-      try {
-        await navigator.clipboard.writeText(text)
-        ui.showToast(
-          isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard',
-          'success',
-        )
-      } catch {
-        ui.showToast("Couldn't copy -- try Export instead.", 'error')
-      }
+      const stripped = text.replace(STRIP_IMG_RE, '$1')
+      await navigator.clipboard.writeText(stripped)
+      ui.showToast(
+        isEmpty ? 'Summary copied (empty)' : 'Summary copied to clipboard (text only)',
+        'success',
+      )
+    } catch {
+      ui.showToast('Copy needs HTTPS or clipboard permission. Use Download instead.', 'error')
     }
   } finally {
     exporting.value = false

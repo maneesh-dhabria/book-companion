@@ -47,7 +47,11 @@ async def test_second_summarize_gets_409(app, client: AsyncClient):
 
     r = await client.post("/api/v1/books/1/summarize", json={})
     assert r.status_code == 409, r.text
-    assert "already running" in r.json()["detail"].lower()
+    # FR-02: 409 body is now a structured dict so the UI can deep-link to the
+    # active job. The legacy "already running" string lives at .detail.detail.
+    payload = r.json()["detail"]
+    assert "already running" in payload["detail"].lower()
+    assert "active_job" in payload
 
 
 @pytest.mark.asyncio
@@ -89,9 +93,13 @@ async def test_completed_jobs_do_not_block_new_requests(app, client: AsyncClient
 
 @pytest.mark.asyncio
 async def test_orphan_sweep_unblocks_new_job(app, client: AsyncClient):
-    """Sweep clears a dead orphan; the follow-up POST is no longer 409."""
-    from app.services.summarizer.orphan_sweep import orphan_sweep
+    """Dead-PID orphan rows no longer block a new POST.
 
+    FR-01 changed the semantics: the POST /summarize route runs an
+    on-demand stale-job sweep before deciding 409. A dead-PID orphan
+    is treated as stale, marked FAILED in-place, and the new job is
+    queued — without needing the offline ``orphan_sweep()`` first.
+    """
     await _seed_book(app, book_id=42)
     factory = app.state.session_factory
     async with factory() as session:
@@ -102,12 +110,6 @@ async def test_orphan_sweep_unblocks_new_job(app, client: AsyncClient):
             )
         )
         await session.commit()
-
-    r_blocked = await client.post("/api/v1/books/42/summarize", json={})
-    assert r_blocked.status_code == 409
-
-    async with factory() as session:
-        await orphan_sweep(session)
 
     r_unblocked = await client.post("/api/v1/books/42/summarize", json={})
     assert r_unblocked.status_code != 409, r_unblocked.text

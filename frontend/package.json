@@ -15,6 +15,11 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@fontsource/fira-code": "^5.2.7",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/lora": "^5.2.8",
+    "@fontsource/merriweather": "^5.2.11",
+    "@fontsource/source-serif-pro": "^5.2.5",
     "dompurify": "^3.3.3",
     "markdown-it": "^14.1.1",
     "pinia": "^2.2.6",

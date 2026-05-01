@@ -13,10 +13,10 @@ Section: "{{ section_title }}"
 
 {% if image_captions %}
 ## Visual Content
-The section contains the following images/diagrams. Integrate key images into your summary. When referencing an image, use: ![brief description](image:ID).
+The section contains the following images/diagrams. Integrate key images into your summary. When referencing an image, use the absolute URL form: ![brief description](/api/v1/images/ID), where ID is the image_id shown below.
 
 {% for img in image_captions %}
-- [{{ img.relevance }}] (image:{{ img.image_id }}) {{ img.caption }}
+- [{{ img.relevance }}] (/api/v1/images/{{ img.image_id }}) {{ img.caption }}
 {% endfor %}
 {% endif %}
 

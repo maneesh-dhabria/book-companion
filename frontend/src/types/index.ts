@@ -28,7 +28,10 @@ export interface SectionBrief {
   order_index: number
   section_type: string
   content_token_count: number | null
+  content_char_count: number | null
   has_summary: boolean
+  default_summary?: SummaryBrief | null
+  last_failure_type?: string | null
 }
 
 export interface SummaryProgress {

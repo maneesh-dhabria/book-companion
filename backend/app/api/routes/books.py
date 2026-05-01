@@ -58,20 +58,35 @@ def _book_to_list_item(book: Book) -> dict:
     }
 
 
-def _book_to_response(book: Book) -> dict:
-    """Convert a Book ORM instance to BookResponse dict."""
+def _book_to_response(book: Book, summary_char_counts: dict[int, int] | None = None) -> dict:
+    """Convert a Book ORM instance to BookResponse dict.
+
+    ``summary_char_counts`` maps default_summary_id → summary_char_count so
+    the SectionListTable's FR-31 Compression column can be computed on the
+    client without an extra round-trip per section.
+    """
+    summary_char_counts = summary_char_counts or {}
     authors = [{"id": a.id, "name": a.name, "role": "author"} for a in (book.authors or [])]
-    sections = [
-        SectionBriefResponse(
-            id=s.id,
-            title=s.title,
-            order_index=s.order_index,
-            section_type=s.section_type,
-            content_token_count=s.content_token_count,
-            has_summary=s.default_summary_id is not None,
+    sections = []
+    for s in book.sections or []:
+        default_summary = None
+        if s.default_summary_id and s.default_summary_id in summary_char_counts:
+            default_summary = {
+                "id": s.default_summary_id,
+                "summary_char_count": summary_char_counts[s.default_summary_id],
+            }
+        sections.append(
+            SectionBriefResponse(
+                id=s.id,
+                title=s.title,
+                order_index=s.order_index,
+                section_type=s.section_type,
+                content_token_count=s.content_token_count,
+                content_char_count=s.content_char_count or 0,
+                has_summary=s.default_summary_id is not None,
+                default_summary=default_summary,
+            )
         )
-        for s in (book.sections or [])
-    ]
 
     # FR-F3.1 / §9.1 extended response fields: tags, suggested_tags,
     # summary_progress snapshot, last_summary_failure block. Tags come from
@@ -81,17 +96,12 @@ def _book_to_response(book: Book) -> dict:
     try:
         from app.services.parser.section_classifier import SUMMARIZABLE_TYPES
 
-        summarizable = [
-            s for s in (book.sections or []) if s.section_type in SUMMARIZABLE_TYPES
-        ]
-        summarized_count = sum(
-            1 for s in summarizable if s.default_summary_id is not None
-        )
+        summarizable = [s for s in (book.sections or []) if s.section_type in SUMMARIZABLE_TYPES]
+        summarized_count = sum(1 for s in summarizable if s.default_summary_id is not None)
         failed_count = sum(
             1
             for s in summarizable
-            if s.default_summary_id is None
-            and getattr(s, "last_failure_type", None) is not None
+            if s.default_summary_id is None and getattr(s, "last_failure_type", None) is not None
         )
     except Exception:
         summarizable = []
@@ -273,7 +283,24 @@ async def get_book(
     book = result.scalar_one_or_none()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    book_dict = _book_to_response(book)
+
+    # FR-31: batch-fetch default summary char counts so SectionListTable can
+    # compute the Compression column without per-row round-trips.
+    from app.db.models import Summary
+
+    default_summary_ids = [s.default_summary_id for s in (book.sections or []) if s.default_summary_id]
+    summary_char_counts: dict[int, int] = {}
+    if default_summary_ids:
+        rows = (
+            await db.execute(
+                select(Summary.id, Summary.summary_char_count).where(
+                    Summary.id.in_(default_summary_ids)
+                )
+            )
+        ).all()
+        summary_char_counts = {row[0]: row[1] for row in rows}
+
+    book_dict = _book_to_response(book, summary_char_counts=summary_char_counts)
     book_dict["summary_progress"] = await _summary_progress(db, book_id)
 
     # Resolve the book-level Summary (if any) so the frontend can render
@@ -282,9 +309,7 @@ async def get_book(
         from app.db.models import Summary
 
         default_summary = (
-            await db.execute(
-                select(Summary).where(Summary.id == book.default_summary_id)
-            )
+            await db.execute(select(Summary).where(Summary.id == book.default_summary_id))
         ).scalar_one_or_none()
         if default_summary is not None:
             book_dict["default_summary"] = {
@@ -313,10 +338,7 @@ async def get_book(
     ).scalar()
     if latest_preset:
         book_dict["last_used_preset"] = latest_preset
-    elif (
-        book_dict.get("default_summary")
-        and book_dict["default_summary"].get("preset_name")
-    ):
+    elif book_dict.get("default_summary") and book_dict["default_summary"].get("preset_name"):
         book_dict["last_used_preset"] = book_dict["default_summary"]["preset_name"]
 
     return BookResponse(**book_dict)
