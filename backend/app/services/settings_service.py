@@ -17,7 +17,7 @@ import structlog
 import yaml
 from platformdirs import user_config_dir
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.config import Settings
 
@@ -60,6 +60,7 @@ class SettingsService:
         *,
         models_yaml_path: Path | None = None,
         user_config_path: Path | None = None,
+        engine: AsyncEngine | None = None,
     ):
         # ``settings`` is optional so unit tests can instantiate with just
         # path kwargs; existing callers pass a Settings as positional arg.
@@ -67,6 +68,7 @@ class SettingsService:
         self.config_path = config_path or DEFAULT_CONFIG_PATH
         self.models_yaml_path = models_yaml_path or default_models_yaml_path()
         self.user_config_path = user_config_path or default_user_settings_path()
+        self.engine = engine
 
     # --- models.yaml (T8) ---
 
@@ -251,37 +253,59 @@ class SettingsService:
         return stats
 
     async def get_migration_status(self) -> dict:
-        """Check current vs latest Alembic revision."""
-        import asyncio
+        """Check current vs latest Alembic revision via programmatic API.
+
+        Uses ``ScriptDirectory`` for the head revision (filesystem read) and
+        ``MigrationContext`` against the live engine for the current revision.
+        Never invokes a subprocess. On any error, returns
+        ``{current: None, latest: None, is_behind: False, error: <str>}``.
+        """
+        from alembic.config import Config
+        from alembic.runtime.migration import MigrationContext
+        from alembic.script import ScriptDirectory
 
         try:
-            proc = await asyncio.create_subprocess_exec(
-                "uv",
-                "run",
-                "alembic",
-                "heads",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, _ = await proc.communicate()
-            latest = stdout.decode().strip().split("\n")[0].split(" ")[0] if stdout else None
+            migrations_dir = Path(__file__).resolve().parent.parent / "migrations"
+            ini_path = migrations_dir / "alembic.ini"
+            if not ini_path.exists():
+                raise FileNotFoundError(f"alembic.ini not found at {ini_path}")
 
-            proc2 = await asyncio.create_subprocess_exec(
-                "uv",
-                "run",
-                "alembic",
-                "current",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout2, _ = await proc2.communicate()
-            current_line = stdout2.decode().strip().split("\n")[0] if stdout2 else ""
-            current = current_line.split(" ")[0] if current_line else None
+            cfg = Config(str(ini_path))
+            cfg.set_main_option("script_location", str(migrations_dir))
+            script_dir = ScriptDirectory.from_config(cfg)
+            latest = script_dir.get_current_head()
+
+            engine = self.engine
+            if engine is None:
+                if self.settings is None:
+                    raise RuntimeError("no engine and no settings — cannot read current revision")
+                from sqlalchemy.ext.asyncio import create_async_engine
+
+                engine = create_async_engine(self.settings.database.url)
+
+            try:
+                async with engine.connect() as conn:
+                    current = await conn.run_sync(
+                        lambda sc: MigrationContext.configure(sc).get_current_revision()
+                    )
+            finally:
+                # Only dispose if we created the engine here.
+                if self.engine is None:
+                    await engine.dispose()
 
             return {
                 "current": current,
                 "latest": latest,
-                "is_behind": current != latest if (current and latest) else False,
+                "is_behind": (
+                    current != latest if (current is not None and latest is not None) else False
+                ),
+                "error": None,
             }
-        except Exception:
-            return {"current": None, "latest": None, "is_behind": False}
+        except Exception as exc:
+            logger.exception("migration_status_failed")
+            return {
+                "current": None,
+                "latest": None,
+                "is_behind": False,
+                "error": str(exc),
+            }
