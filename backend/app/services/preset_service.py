@@ -76,14 +76,20 @@ class PresetService:
         return self._parse_file(path)
 
     def list_all(self) -> list[Preset]:
-        presets = []
+        presets, _ = self.list_all_with_warnings()
+        return presets
+
+    def list_all_with_warnings(self) -> tuple[list[Preset], list[dict]]:
+        presets: list[Preset] = []
+        warnings: list[dict] = []
         for path in sorted(self.presets_dir.glob("*.yaml")):
             try:
                 presets.append(self._parse_file(path))
             except Exception as e:
-                logger.warning("preset_load_failed", path=str(path), error=str(e))
+                logger.warning("preset_skipped", file=path.name, error=str(e))
+                warnings.append({"file": path.name, "error": str(e)})
         presets.sort(key=lambda p: (not p.system, p.name))
-        return presets
+        return presets, warnings
 
     def list_names(self) -> list[str]:
         return [p.stem for p in sorted(self.presets_dir.glob("*.yaml"))]
@@ -108,6 +114,71 @@ class PresetService:
         }
         path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
         return self._parse_file(path)
+
+    def update(
+        self,
+        name: str,
+        description: str | None = None,
+        label: str | None = None,
+        facets: dict[str, str] | None = None,
+    ) -> Preset:
+        """Update an existing user preset. System presets are read-only."""
+        import os
+
+        path = self.presets_dir / f"{name}.yaml"
+        if not path.exists():
+            raise PresetError(f'Preset "{name}" not found.')
+        existing = self._parse_file(path)
+        if existing.system:
+            raise PresetError(f'Cannot update system preset "{name}".')
+
+        new_facets = facets if facets is not None else dict(existing.facets)
+        self._validate_facets(new_facets)
+        new_label = label if label is not None else existing.name
+        new_desc = description if description is not None else existing.description
+
+        data = {
+            "name": new_label,
+            "description": new_desc,
+            "system": False,
+            "facets": new_facets,
+        }
+        tmp_path = path.with_suffix(".yaml.tmp")
+        tmp_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+        os.replace(tmp_path, path)
+        return self._parse_file(path)
+
+    def get_template_source(self, name: str) -> dict:
+        """Return raw base template + per-facet fragment sources for a preset."""
+        preset = self.load(name)
+
+        base_filename = "summarize_section.txt"
+        base_path = PROMPTS_DIR / "base" / base_filename
+        base_source = base_path.read_text() if base_path.exists() else ""
+
+        fragments: list[dict] = []
+        for dim in ("style", "audience", "compression", "content_focus"):
+            value = preset.facets.get(dim, "")
+            frag_path = self.fragments_dir / dim / f"{value}.txt"
+            frag_source = frag_path.read_text() if frag_path.exists() else ""
+            fragments.append(
+                {
+                    "dimension": dim,
+                    "value": value,
+                    "path": f"fragments/{dim}/{value}.txt",
+                    "source": frag_source,
+                }
+            )
+
+        return {
+            "name": name,
+            "is_system": preset.system,
+            "base_template": {
+                "path": f"base/{base_filename}",
+                "source": base_source,
+            },
+            "fragments": fragments,
+        }
 
     def delete(self, name: str) -> None:
         preset = self.load(name)
