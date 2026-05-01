@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import * as readingPresetsApi from '@/api/readingPresets'
 import type { ReadingPreset } from '@/types'
+import ThemeCard from '@/components/shared/ThemeCard.vue'
 
 const settingsStore = useSettingsStore()
 const presets = ref<ReadingPreset[]>([])
@@ -60,13 +61,15 @@ async function saveReadingSettings() {
     <div v-if="presets.length > 0" class="setting-group">
       <h3 class="group-title">Reading Presets</h3>
       <div class="presets-list">
-        <div
+        <ThemeCard
           v-for="preset in presets"
           :key="preset.id"
-          class="preset-chip"
-        >
-          {{ preset.name }}
-        </div>
+          :label="preset.name"
+          bg="var(--color-bg, white)"
+          fg="var(--color-text-primary, #111)"
+          :active="defaultPreset === preset.id"
+          @click="defaultPreset = preset.id"
+        />
       </div>
     </div>
 
@@ -138,20 +141,6 @@ async function saveReadingSettings() {
   gap: 0.5rem;
 }
 
-.preset-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 1rem;
-  font-size: 0.8125rem;
-}
-
-.preset-chip.active {
-  border-color: var(--color-accent, #2563eb);
-  background: rgba(37, 99, 235, 0.05);
-}
 
 .active-badge {
   font-size: 0.6875rem;
