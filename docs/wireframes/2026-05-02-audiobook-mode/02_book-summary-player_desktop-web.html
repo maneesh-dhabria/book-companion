@@ -7,22 +7,76 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/wireframe.css">
   <link rel="stylesheet" href="./assets/house-style.css">
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
-    .prose-body p { margin-bottom: 1rem; line-height: 1.7; color: #1f2937; }
-    .prose-body h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.75rem; color: #111827; }
-    .prose-body ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 1rem; }
-    .prose-body ul li { margin-bottom: 0.5rem; line-height: 1.6; color: #1f2937; }
-    .toc-link { display: block; padding: 6px 10px; border-radius: 6px; color: #cbd5e1; font-size: 13px; line-height: 1.4; cursor: pointer; }
-    .toc-link:hover { background: rgba(255,255,255,0.06); color: #fff; }
-    .toc-link.is-active { background: rgba(79,70,229,0.25); color: #fff; }
-    .toc-audio-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; margin-right: 6px; vertical-align: middle; }
+
+    /* Real reader chrome — horizontal header on top, no dark sidebar */
+    .reader-shell { display: grid; grid-template-columns: 1fr 60px; grid-template-rows: auto 1fr auto; min-height: 100%; background: var(--wf-surface, #fff); }
+    .reader-header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--wf-border, #e2e8f0); background: var(--wf-surface, #fff); position: sticky; top: 0; z-index: 5; }
+    .reader-breadcrumb { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+    .breadcrumb-link { color: var(--wf-muted, #64748b); font-size: 13px; text-decoration: none; }
+    .breadcrumb-link:hover { color: var(--wf-text, #111827); }
+    .breadcrumb-link.is-current { color: var(--wf-text, #111827); font-weight: 500; }
+    .breadcrumb-sep { color: var(--wf-muted, #cbd5e1); font-size: 13px; }
+    .reader-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .nav-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--wf-border, #e2e8f0); background: #fff; color: var(--wf-text, #111827); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; }
+    .nav-btn:hover { background: #f8fafc; }
+    .nav-btn[disabled], .nav-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .nav-btn.play-action { background: var(--wf-accent, #4f46e5); color: #fff; border-color: var(--wf-accent, #4f46e5); width: auto; padding: 0 12px; gap: 6px; font-weight: 500; }
+    .content-toggle { display: inline-flex; border: 1px solid var(--wf-border, #e2e8f0); border-radius: 8px; overflow: hidden; }
+    .content-toggle button { background: #fff; border: none; padding: 6px 12px; font-size: 13px; color: var(--wf-muted, #64748b); cursor: pointer; }
+    .content-toggle button.active { background: var(--wf-accent, #4f46e5); color: #fff; }
+
+    /* Body */
+    .reader-body { grid-column: 1 / 2; padding: 32px 40px; min-width: 0; }
+    .reader-body__inner { max-width: 56rem; margin: 0 auto; }
+    .summary-prose p { margin-bottom: 1rem; line-height: 1.7; color: #1f2937; }
+    .summary-prose h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.75rem; color: #111827; }
+    .summary-prose ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 1rem; }
+    .summary-prose ul li { margin-bottom: 0.5rem; line-height: 1.6; color: #1f2937; }
+
+    /* Right context sidebar — collapsed icon strip */
+    .context-strip { grid-column: 2 / 3; grid-row: 2 / 3; border-left: 1px solid var(--wf-border, #e2e8f0); background: #fafafa; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0; }
+    .context-strip__btn { width: 36px; height: 36px; border-radius: 8px; background: #fff; border: 1px solid var(--wf-border, #e2e8f0); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--wf-text, #111827); }
+    .context-strip__btn:hover { background: #f1f5f9; }
+
+    /* Playbar — unified contract */
+    .bc-playbar { grid-column: 1 / -1; background: #0f172a; color: #f8fafc; border-radius: 0; padding: 12px 20px; display: flex; gap: 12px; align-items: center; border-top: 1px solid #1e293b; }
+    .icon-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; border: none; cursor: pointer; flex-shrink: 0; }
+    .icon-btn--primary { background: var(--wf-accent, #4f46e5); width: 44px; height: 44px; }
+    .icon-btn[disabled], .icon-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .speed-select { background: rgba(255,255,255,0.08); color:#fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
+    .bc-engine-chip { display:inline-flex; align-items:center; gap:6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: #ede9fe; color: #4338ca; border: 1px solid #c7d2fe; }
+    .bc-engine-chip--web { background: #e0f2fe; color: #075985; border-color:#bae6fd; }
+    .bc-sentence-active { background: linear-gradient(transparent 60%, #fde68a 60%); border-radius: 2px; }
+
+    /* Pre-play CTA — plain button, no inline speed */
+    .play-trigger { display:inline-flex; align-items:center; gap:10px; padding: 8px 14px; border-radius: 999px; background: var(--wf-accent, #4f46e5); color: #fff; font-weight: 500; font-size: 14px; border: none; cursor: pointer; }
+    .play-trigger[disabled] { opacity: 0.5; cursor: not-allowed; background: #cbd5e1; color: #475569; }
+
+    /* Collapsible book ToC at bottom of body */
+    details.book-toc { margin-top: 36px; border-top: 1px solid var(--wf-border, #e2e8f0); padding-top: 16px; }
+    details.book-toc > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: #111827; list-style: none; display: flex; align-items: center; gap: 8px; }
+    details.book-toc > summary::-webkit-details-marker { display: none; }
+    details.book-toc > summary::before { content: "▸"; color: var(--wf-muted, #64748b); transition: transform 0.15s; }
+    details.book-toc[open] > summary::before { transform: rotate(90deg); }
+    .book-toc__list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; margin-top: 12px; }
+    .book-toc__link { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; color: #334155; text-decoration: none; line-height: 1.4; }
+    .book-toc__link:hover { background: #f1f5f9; color: #111827; }
+    .book-toc__link.is-active { background: #eef2ff; color: #4338ca; font-weight: 500; }
+    .audio-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
   </style>
 </head>
 <body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1: initial generation — desktop book summary player (with dark sidebar)
+    Loop 2: rework — replaced bc-sidebar with horizontal reader-header matching file 01; removed prev/next nav buttons (book summary has no prev/next); breadcrumb ends at "Book summary" (no TOC dropdown); ToC moved to collapsible <details> at body bottom; right ContextSidebar icon strip retained; unified playbar contract from _rework-brief §4
+  -->
+
   <header class="wf-chrome">
     <div class="wf-chrome__inner">
       <span class="wf-chrome__title">Book Summary Player</span>
@@ -40,218 +94,213 @@
 
     <!-- ============= STATE: default ============= -->
     <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
-      <h1 id="state-default-h" class="sr-only">Default state — book summary loaded</h1>
+      <h1 id="state-default-h" class="sr-only">Default state — book summary loaded, audio not started</h1>
 
-      <div class="flex" style="min-height: 720px; background: #f8fafc;">
-
-        <!-- Sidebar: section ToC -->
-        <aside class="bc-sidebar" style="width: 240px; flex-shrink: 0; padding: 16px 12px; display: flex; flex-direction: column; gap: 12px;">
-          <div style="padding: 4px 8px;">
-            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 4px;">Now reading</div>
-            <div style="color: #fff; font-weight: 600; font-size: 14px; line-height: 1.3;">Atomic Habits</div>
-            <div style="color: #94a3b8; font-size: 12px;">James Clear</div>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Atomic Habits</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-link is-current wf-anno" data-note="Book summary is the current view — no TOC dropdown here because this is the book-level summary, not a section.">Book summary</span>
           </div>
-
-          <div class="wf-anno" data-note="Audio coverage indicator: Kokoro pre-gen status for all sections in this book"
-               style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px;">
-            <div style="display:flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-              <span style="font-size: 11px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.05em;">Audio</span>
-              <span style="font-size: 12px; color: #fff; font-weight: 600;">24 of 24</span>
+          <div class="reader-controls">
+            <div class="content-toggle wf-anno" data-note="ContentToggle — switches between original book text and generated summary. Audio is summary-only in v1.">
+              <button>Original</button>
+              <button class="active">Summary</button>
             </div>
-            <div class="bc-coverage-bar" style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
-              <div style="width: 100%; height: 100%; background: #4f46e5;"></div>
+            <button class="nav-btn play-action wf-anno" aria-label="Listen to book summary" data-note="Play action — canonical CTA. Streams the pre-generated Kokoro book-summary MP3 (~18 min).">▶ Listen</button>
+          </div>
+        </header>
+
+        <div class="reader-body">
+          <div class="reader-body__inner">
+
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+              <span class="mock-pill">Book summary</span>
+              <span class="mock-pill">practitioner_bullets</span>
+              <span class="mock-pill">Generated May 1, 2026</span>
             </div>
-            <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Kokoro · 100% pre-generated</div>
-          </div>
 
-          <div style="padding: 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8;">Sections</div>
+            <h1 class="text-3xl font-semibold text-slate-900 mb-1">Atomic Habits</h1>
+            <div class="text-slate-500 text-sm mb-5">James Clear · 24 sections · ~18 min listen</div>
 
-          <nav style="display: flex; flex-direction: column; gap: 2px; overflow-y: auto;">
-            <a class="toc-link is-active"><span class="toc-audio-dot"></span>Book summary</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>1. The Surprising Power of Atomic Habits</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>2. How Your Habits Shape Your Identity</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>3. How to Build Better Habits in 4 Steps</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>4. The Man Who Didn't Look Right</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>5. The Best Way to Start a New Habit</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>6. Motivation Is Overrated; Environment Matters More</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>7. The Secret to Self-Control</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>8. How to Make a Habit Irresistible</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>9. The Role of Family and Friends</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>10. How to Find and Fix the Causes</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>11. Walk Slowly, but Never Backward</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>12. The Law of Least Effort</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>13. How to Stop Procrastinating</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>14. How to Make Good Habits Inevitable</a>
-            <a class="toc-link"><span class="toc-audio-dot"></span>15. The Cardinal Rule of Behavior Change</a>
-            <a class="toc-link" style="opacity:0.7">…9 more sections</a>
-          </nav>
-        </aside>
+            <!-- Pre-play band: Listen CTA + engine chip + download. NO inline speed. -->
+            <div class="flex items-center gap-3 flex-wrap mb-6">
+              <button class="play-trigger" aria-label="Listen to book summary">
+                <span aria-hidden="true">▶</span> Listen
+              </button>
+              <span class="bc-engine-chip wf-anno" data-note="Kokoro voice af_bella · pre-generated · 3.2 MB MP3. Speed control lives on the playbar — pre-play CTA stays minimal.">
+                <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
+                Kokoro · af_bella
+              </span>
+              <a href="#" class="text-sm font-medium" style="color: var(--wf-accent, #4f46e5)">Download MP3 (3.2 MB)</a>
+              <span class="mock-pill wf-anno" data-note="Audio coverage indicator: every section in this book has a pre-generated Kokoro MP3.">Audio: 24 of 24 sections</span>
+            </div>
 
-        <!-- Main content -->
-        <div class="flex-1 flex flex-col" style="min-width: 0;">
-          <!-- top bar -->
-          <div style="background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 32px; display: flex; align-items: center; gap: 16px;">
-            <div style="font-size: 13px; color: #6b7280;">Library / Atomic Habits / <span style="color:#111827;font-weight:500">Book summary</span></div>
-            <div class="wf-grow"></div>
-            <button class="mock-button" aria-label="Close player">Close</button>
-          </div>
+            <article class="summary-prose">
+              <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year, while 1% decline collapses to nothing. The book is a practical manual for engineering that compounding in your favor.</p>
 
-          <!-- content -->
-          <div class="flex-1 overflow-auto" style="padding: 32px 48px;">
-            <div style="max-width: 768px; margin: 0 auto;">
+              <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong> — adapted from earlier work in behavioral psychology. Every habit you have, good or bad, runs this loop. Clear's contribution is to map each stage to a design lever, giving the reader four "laws" to make good habits stick and four inverses to dismantle bad ones.</p>
 
-              <div style="margin-bottom: 12px;">
-                <span class="mock-pill">Book summary</span>
-                <span class="mock-pill">practitioner_bullets</span>
-                <span class="mock-pill">Generated May 1, 2026</span>
+              <p>The deeper move is the shift from outcome-based goals to identity-based habits. Rather than "I want to run a marathon," the durable framing is "I am a runner" — and then proving it with small, repeatable votes. Identity change is what makes habits self-reinforcing, because each small action becomes evidence for who you already are.</p>
+
+              <h2>Six key ideas</h2>
+              <ul>
+                <li><strong>The 1% rule.</strong> Small improvements look invisible day-to-day but compound dramatically over time. Focus on the trajectory, not the result.</li>
+                <li><strong>Systems over goals.</strong> Goals set direction; systems produce progress. Winners and losers often share the same goals — what differs is the process.</li>
+                <li><strong>The Four Laws of Behavior Change.</strong> Make it obvious, make it attractive, make it easy, make it satisfying. Invert each to break a bad habit.</li>
+                <li><strong>Identity-based habits.</strong> Ask "Who is the type of person who could achieve this?" and then cast votes for that identity through small repeated actions.</li>
+                <li><strong>Environment beats motivation.</strong> Restructure your physical and social environment so the desired behavior is the path of least resistance — willpower is a finite tax.</li>
+                <li><strong>The two-minute rule.</strong> Scale any new habit down until it takes less than two minutes to start. Mastery follows from showing up; showing up follows from low friction.</li>
+              </ul>
+
+              <h2>Takeaways for practice</h2>
+              <p>The most actionable habits in the book are not the "big" ones but the design tactics: implementation intentions ("I will [behavior] at [time] in [location]"), habit stacking ("after [current habit] I will [new habit]"), and visible cue design (place the floss on the toothbrush). Each is a small environmental edit that removes a decision from your day.</p>
+
+              <p>For knowledge work, the highest-leverage takeaway is to build a measurement loop. What gets tracked gets repeated; what gets repeated compounds. Pair a daily 2-minute identity vote with a weekly review, and the system runs itself. The book's promise is not transformation through effort, but transformation through architecture — and the architecture is small enough to start today.</p>
+            </article>
+
+            <!-- Per-section ToC, secondary nav -->
+            <details class="book-toc wf-anno" data-note="Per-section ToC was previously in a dark sidebar. It's secondary nav — collapsible at the bottom of the body. Green dots = pre-generated Kokoro audio available.">
+              <summary>Sections in this book (24)</summary>
+              <div class="book-toc__list">
+                <a class="book-toc__link is-active" href="#"><span class="audio-dot"></span>Book summary</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>1. The Surprising Power of Atomic Habits</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>2. How Your Habits Shape Your Identity</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>3. How to Build Better Habits in 4 Steps</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>4. The Man Who Didn't Look Right</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>5. The Best Way to Start a New Habit</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>6. Motivation Is Overrated; Environment Matters More</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>7. The Secret to Self-Control</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>8. How to Make a Habit Irresistible</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>9. The Role of Family and Friends</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>10. How to Find and Fix the Causes</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>11. Walk Slowly, but Never Backward</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>12. The Law of Least Effort</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>13. How to Stop Procrastinating</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>14. How to Make Good Habits Inevitable</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>15. The Cardinal Rule of Behavior Change</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>16. The Goldilocks Rule</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>17. The Downside of Creating Good Habits</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>18. The Truth About Talent</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>19. How to Stay Motivated</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>20. The Downside of Tracking</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>21. Habits + Deliberate Practice</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>22. Conclusion: The Secret to Results</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>23. Appendix · Little Lessons</a>
               </div>
-
-              <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin-bottom: 4px;">Atomic Habits</h1>
-              <div style="color: #6b7280; font-size: 15px; margin-bottom: 20px;">James Clear · 24 sections · ~18 min listen</div>
-
-              <!-- Player controls bar -->
-              <div class="mock-card" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 28px; background: #fff;">
-                <button class="wf-anno mock-button mock-button--primary" aria-label="Play book summary"
-                        data-note="Plays the cohesive book-level summary (single MP3, ~18 min). Speed control lives on the playbar — pre-play CTA stays minimal.">
-                  ▶ Listen
-                </button>
-                <span class="bc-engine-chip wf-anno"
-                      data-note="Kokoro voice af_bella · pre-generated · 3.2 MB MP3"
-                      style="display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-size: 12px; font-weight: 500; border: 1px solid #c7d2fe;">
-                  <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
-                  Kokoro · af_bella voice
-                </span>
-                <div class="wf-grow"></div>
-                <a href="#" style="font-size: 13px; color: #4f46e5; font-weight: 500;">Download MP3 (3.2 MB)</a>
-              </div>
-
-              <!-- Markdown body -->
-              <article class="prose-body">
-                <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year, while 1% decline collapses to nothing. The book is a practical manual for engineering that compounding in your favor.</p>
-
-                <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong> — adapted from earlier work in behavioral psychology. Every habit you have, good or bad, runs this loop. Clear's contribution is to map each stage to a design lever, giving the reader four "laws" to make good habits stick and four inverses to dismantle bad ones.</p>
-
-                <p>The deeper move is the shift from outcome-based goals to identity-based habits. Rather than "I want to run a marathon," the durable framing is "I am a runner" — and then proving it with small, repeatable votes. Identity change is what makes habits self-reinforcing, because each small action becomes evidence for who you already are.</p>
-
-                <h2>Six key ideas</h2>
-                <ul>
-                  <li><strong>The 1% rule.</strong> Small improvements look invisible day-to-day but compound dramatically over time. Focus on the trajectory, not the result.</li>
-                  <li><strong>Systems over goals.</strong> Goals set direction; systems produce progress. Winners and losers often share the same goals — what differs is the process.</li>
-                  <li><strong>The Four Laws of Behavior Change.</strong> Make it obvious, make it attractive, make it easy, make it satisfying. Invert each to break a bad habit.</li>
-                  <li><strong>Identity-based habits.</strong> Ask "Who is the type of person who could achieve this?" and then cast votes for that identity through small repeated actions.</li>
-                  <li><strong>Environment beats motivation.</strong> Restructure your physical and social environment so the desired behavior is the path of least resistance — willpower is a finite tax.</li>
-                  <li><strong>The two-minute rule.</strong> Scale any new habit down until it takes less than two minutes to start. Mastery follows from showing up; showing up follows from low friction.</li>
-                </ul>
-
-                <h2>Takeaways for practice</h2>
-                <p>The most actionable habits in the book are not the "big" ones but the design tactics: implementation intentions ("I will [behavior] at [time] in [location]"), habit stacking ("after [current habit] I will [new habit]"), and visible cue design (place the floss on the toothbrush). Each is a small environmental edit that removes a decision from your day.</p>
-
-                <p>For knowledge work, the highest-leverage takeaway is to build a measurement loop. What gets tracked gets repeated; what gets repeated compounds. Pair a daily 2-minute identity vote with a weekly review, and the system runs itself. The book's promise is not transformation through effort, but transformation through architecture — and the architecture is small enough to start today.</p>
-              </article>
-            </div>
+            </details>
           </div>
         </div>
+
+        <aside class="context-strip wf-anno" data-note="ContextSidebar — click to expand annotations or AI chat (existing reader feature)">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
       </div>
     </section>
 
     <!-- ============= STATE: playing-with-highlight ============= -->
     <section class="wf-state" data-state="playing-with-highlight" aria-labelledby="state-playing-h">
-      <h1 id="state-playing-h" class="sr-only">Playing with sentence highlight</h1>
+      <h1 id="state-playing-h" class="sr-only">Playing with active sentence highlight</h1>
 
-      <div class="flex flex-col" style="min-height: 720px; background: #f8fafc;">
-        <div class="flex flex-1" style="min-height: 0;">
-
-          <!-- Sidebar -->
-          <aside class="bc-sidebar" style="width: 240px; flex-shrink: 0; padding: 16px 12px; display: flex; flex-direction: column; gap: 12px;">
-            <div style="padding: 4px 8px;">
-              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8;">Playing</div>
-              <div style="color: #fff; font-weight: 600; font-size: 14px;">Atomic Habits</div>
-              <div style="color: #94a3b8; font-size: 12px;">Book summary · 11:42 / 18:30</div>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Atomic Habits</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-link is-current">Book summary</span>
+          </div>
+          <div class="reader-controls">
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
             </div>
-            <div style="background: rgba(79,70,229,0.15); border: 1px solid rgba(79,70,229,0.3); border-radius: 8px; padding: 10px;">
-              <div style="display:flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-                <span style="font-size: 11px; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.05em;">Audio</span>
-                <span style="font-size: 12px; color: #fff; font-weight: 600;">24 of 24</span>
-              </div>
-              <div class="bc-coverage-bar" style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
-                <div style="width: 100%; height: 100%; background: #4f46e5;"></div>
-              </div>
-            </div>
-            <div style="padding: 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8;">Sections</div>
-            <nav style="display: flex; flex-direction: column; gap: 2px;">
-              <a class="toc-link is-active"><span class="toc-audio-dot"></span>Book summary</a>
-              <a class="toc-link"><span class="toc-audio-dot"></span>1. The Surprising Power of Atomic Habits</a>
-              <a class="toc-link"><span class="toc-audio-dot"></span>2. How Your Habits Shape Your Identity</a>
-              <a class="toc-link"><span class="toc-audio-dot"></span>3. How to Build Better Habits in 4 Steps</a>
-              <a class="toc-link"><span class="toc-audio-dot"></span>4. The Man Who Didn't Look Right</a>
-              <a class="toc-link" style="opacity:0.7">…20 more sections</a>
-            </nav>
-          </aside>
+            <button class="nav-btn play-action" aria-label="Pause" style="background:#1e293b;border-color:#1e293b">⏸ Pause</button>
+          </div>
+        </header>
 
-          <!-- Content -->
-          <div class="flex-1 flex flex-col" style="min-width: 0;">
-            <div style="background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 32px; display: flex; align-items: center; gap: 16px;">
-              <div style="font-size: 13px; color: #6b7280;">Library / Atomic Habits / Book summary</div>
-              <div class="wf-grow"></div>
-              <span class="bc-engine-chip" style="display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-size: 12px; font-weight: 500; border: 1px solid #c7d2fe;">
+        <div class="reader-body" aria-live="polite">
+          <div class="reader-body__inner">
+
+            <h1 class="text-3xl font-semibold text-slate-900 mb-1">Atomic Habits</h1>
+            <div class="text-slate-500 text-sm mb-5">James Clear · 24 sections · 11:42 / 18:30</div>
+
+            <div class="flex items-center gap-3 flex-wrap mb-6">
+              <span class="bc-engine-chip">
                 <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
                 Kokoro · af_bella
               </span>
+              <span class="mock-pill">Audio: 24 of 24 sections</span>
+              <span class="text-xs text-slate-500 wf-anno" data-note="aria-live='polite' region announces each sentence change for screen readers.">live region active</span>
             </div>
 
-            <div class="flex-1 overflow-auto wf-anno" data-note="Auto-scroll: viewport follows the active sentence with smooth scroll" aria-live="polite" style="padding: 32px 48px;">
-              <div style="max-width: 768px; margin: 0 auto;">
-                <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin-bottom: 20px;">Atomic Habits</h1>
-                <article class="prose-body">
-                  <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year, while 1% decline collapses to nothing.</p>
+            <article class="summary-prose">
+              <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year, while 1% decline collapses to nothing.</p>
 
-                  <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong> — adapted from earlier work in behavioral psychology. <span class="bc-sentence-active" style="background: #fef3c7; box-shadow: 0 0 0 4px #fef3c7; border-radius: 2px;">Every habit you have, good or bad, runs this loop.</span> Clear's contribution is to map each stage to a design lever, giving the reader four "laws" to make good habits stick.</p>
+              <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong> — adapted from earlier work in behavioral psychology.
+                <span class="bc-sentence-active wf-anno" data-note="Sentence-level highlight (not word-level). Reader auto-scrolls to keep it centered.">Every habit you have, good or bad, runs this loop.</span>
+                Clear's contribution is to map each stage to a design lever, giving the reader four "laws" to make good habits stick.</p>
 
-                  <p>The deeper move is the shift from outcome-based goals to identity-based habits. Rather than "I want to run a marathon," the durable framing is "I am a runner" — and then proving it with small, repeatable votes.</p>
+              <p>The deeper move is the shift from outcome-based goals to identity-based habits. Rather than "I want to run a marathon," the durable framing is "I am a runner" — and then proving it with small, repeatable votes.</p>
 
-                  <h2>Six key ideas</h2>
-                  <ul>
-                    <li><strong>The 1% rule.</strong> Small improvements look invisible day-to-day but compound dramatically over time.</li>
-                    <li><strong>Systems over goals.</strong> Goals set direction; systems produce progress.</li>
-                    <li><strong>The Four Laws of Behavior Change.</strong> Make it obvious, attractive, easy, and satisfying.</li>
-                    <li><strong>Identity-based habits.</strong> Cast small votes for the type of person you want to become.</li>
-                    <li><strong>Environment beats motivation.</strong> Make the desired behavior the path of least resistance.</li>
-                    <li><strong>The two-minute rule.</strong> Scale any new habit down until it takes less than two minutes to start.</li>
-                  </ul>
-                </article>
+              <h2>Six key ideas</h2>
+              <ul>
+                <li><strong>The 1% rule.</strong> Small improvements look invisible day-to-day but compound dramatically over time.</li>
+                <li><strong>Systems over goals.</strong> Goals set direction; systems produce progress.</li>
+                <li><strong>The Four Laws of Behavior Change.</strong> Make it obvious, attractive, easy, and satisfying.</li>
+                <li><strong>Identity-based habits.</strong> Cast small votes for the type of person you want to become.</li>
+                <li><strong>Environment beats motivation.</strong> Make the desired behavior the path of least resistance.</li>
+                <li><strong>The two-minute rule.</strong> Scale any new habit down until it takes less than two minutes to start.</li>
+              </ul>
+
+              <h2>Takeaways for practice</h2>
+              <p>The most actionable habits in the book are not the "big" ones but the design tactics: implementation intentions, habit stacking, and visible cue design.</p>
+
+              <p>Pair a daily 2-minute identity vote with a weekly review, and the system runs itself. The book's promise is transformation through architecture — and the architecture is small enough to start today.</p>
+            </article>
+
+            <details class="book-toc">
+              <summary>Sections in this book (24)</summary>
+              <div class="book-toc__list">
+                <a class="book-toc__link is-active" href="#"><span class="audio-dot"></span>Book summary</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>1. The Surprising Power of Atomic Habits</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>2. How Your Habits Shape Your Identity</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>3. How to Build Better Habits in 4 Steps</a>
+                <a class="book-toc__link" href="#"><span class="audio-dot"></span>…20 more sections</a>
               </div>
-            </div>
+            </details>
           </div>
         </div>
 
-        <!-- Playbar -->
-        <div class="bc-playbar" style="background: #111827; color: #fff; padding: 12px 32px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #1f2937;">
-          <button class="mock-button" aria-label="Previous sentence" style="background:#1f2937;color:#fff;border-color:#374151;">⏮ Prev sentence</button>
-          <button class="mock-button mock-button--primary" aria-label="Pause">⏸ Pause</button>
-          <button class="mock-button" aria-label="Next sentence" style="background:#1f2937;color:#fff;border-color:#374151;">⏭ Next sentence</button>
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
 
-          <button class="wf-anno mock-button" data-note="Skip to next section's summary chunk in the book-level summary"
-                  aria-label="Skip section" style="background:#1f2937;color:#fff;border-color:#374151;">⏩ Skip section</button>
+        <!-- Unified playbar -->
+        <div class="bc-playbar">
+          <button class="icon-btn wf-anno" aria-label="Previous sentence" title="Prev sentence" data-note="Skips backward one sentence boundary, not 15 seconds.">⏮</button>
+          <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
+          <button class="icon-btn" aria-label="Next sentence" title="Next sentence">⏭</button>
 
-          <div style="flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0;">
-            <span style="font-size: 12px; color: #9ca3af; font-variant-numeric: tabular-nums;">11:42</span>
-            <div style="flex:1; height: 4px; background: #374151; border-radius: 2px; position: relative;">
-              <div style="position:absolute; left:0; top:0; bottom:0; width: 63%; background: #4f46e5; border-radius: 2px;"></div>
-              <div style="position:absolute; left:63%; top:50%; width:10px; height:10px; background:#fff; border-radius:50%; transform:translate(-50%,-50%);"></div>
+          <div class="flex-1 px-3 min-w-0">
+            <div class="text-sm font-medium truncate">Atomic Habits — Book summary</div>
+            <div class="text-xs opacity-70 truncate wf-anno" data-note="Book summary elapsed / total + sentence position.">Atomic Habits · 11:42 / 18:30 · sentence 84 of 142</div>
+            <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+              <div class="h-1 rounded" style="background:var(--wf-accent);width:63%"></div>
             </div>
-            <span style="font-size: 12px; color: #9ca3af; font-variant-numeric: tabular-nums;">18:30</span>
           </div>
 
-          <select class="mock-input" style="background:#1f2937; color:#fff; border-color:#374151; width: 70px; padding: 4px 8px;">
-            <option>0.75x</option><option selected>1x</option><option>1.25x</option><option>1.5x</option><option>2x</option>
+          <select class="speed-select wf-anno" aria-label="Playback speed" data-note="0.75x / 1x / 1.25x / 1.5x / 2x — speed lives on the playbar only, post-press.">
+            <option>1x</option><option selected>1.25x</option><option>1.5x</option>
           </select>
-
-          <span class="bc-engine-chip" style="display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; background: rgba(79,70,229,0.15); color: #c7d2fe; font-size: 12px; font-weight: 500; border: 1px solid rgba(79,70,229,0.4);">
-            <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
-            Kokoro
-          </span>
-
-          <button class="mock-button" aria-label="Close player" style="background:transparent; color:#9ca3af; border-color:#374151;">✕</button>
+          <span class="bc-engine-chip">Kokoro · af_bella</span>
+          <button class="icon-btn" aria-label="Close player">✕</button>
         </div>
       </div>
     </section>
@@ -260,28 +309,42 @@
     <section class="wf-state" data-state="ended-auto-advance" aria-labelledby="state-ended-h">
       <h1 id="state-ended-h" class="sr-only">Ended — auto-advance prompt</h1>
 
-      <div class="flex flex-col" style="min-height: 720px; background: #f8fafc; position: relative;">
-        <div class="flex flex-1" style="min-height: 0;">
-          <aside class="bc-sidebar" style="width: 240px; flex-shrink: 0; padding: 16px 12px;">
-            <div style="padding: 4px 8px;">
-              <div style="color: #fff; font-weight: 600; font-size: 14px;">Atomic Habits</div>
-              <div style="color: #94a3b8; font-size: 12px;">Book summary · 18:30 / 18:30</div>
+      <div class="reader-shell" style="position: relative;">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Atomic Habits</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-link is-current">Book summary</span>
+          </div>
+          <div class="reader-controls">
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
             </div>
-          </aside>
+            <button class="nav-btn play-action" aria-label="Replay book summary">↻ Replay</button>
+          </div>
+        </header>
 
-          <div class="flex-1 overflow-auto" style="padding: 32px 48px; opacity: 0.4; pointer-events: none;">
-            <div style="max-width: 768px; margin: 0 auto;">
-              <h1 style="font-size: 28px; font-weight: 700; color: #111827; margin-bottom: 20px;">Atomic Habits</h1>
-              <article class="prose-body">
-                <p>…the architecture is small enough to start today.</p>
-                <p style="color:#6b7280; font-style: italic;">— end of book summary —</p>
-              </article>
-            </div>
+        <div class="reader-body" style="opacity: 0.4; pointer-events: none;">
+          <div class="reader-body__inner">
+            <h1 class="text-3xl font-semibold text-slate-900 mb-1">Atomic Habits</h1>
+            <div class="text-slate-500 text-sm mb-5">James Clear · 24 sections · 18:30 / 18:30</div>
+            <article class="summary-prose">
+              <p>…the architecture is small enough to start today.</p>
+              <p style="color:#6b7280; font-style: italic;">— end of book summary —</p>
+            </article>
           </div>
         </div>
 
-        <!-- Overlay -->
-        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(15, 23, 42, 0.55);">
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
+
+        <!-- Auto-advance overlay card -->
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(15, 23, 42, 0.55); z-index: 20;">
           <div class="mock-card wf-anno" data-note="Auto-advance default ON, configurable in settings"
                style="max-width: 460px; padding: 28px; background: #fff; box-shadow: 0 20px 50px rgba(0,0,0,0.25); text-align: center;">
             <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
@@ -302,19 +365,20 @@
         </div>
 
         <!-- Playbar (paused at end) -->
-        <div class="bc-playbar" style="background: #111827; color: #fff; padding: 12px 32px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #1f2937;">
-          <button class="mock-button mock-button--primary" aria-label="Replay">↻ Replay</button>
-          <div style="flex:1; display:flex; align-items:center; gap:12px;">
-            <span style="font-size:12px; color:#9ca3af;">18:30</span>
-            <div style="flex:1; height:4px; background:#374151; border-radius:2px;">
-              <div style="width:100%; height:100%; background:#4f46e5; border-radius:2px;"></div>
+        <div class="bc-playbar">
+          <button class="icon-btn icon-btn--primary" aria-label="Replay">↻</button>
+          <div class="flex-1 px-3 min-w-0">
+            <div class="text-sm font-medium truncate">Atomic Habits — Book summary</div>
+            <div class="text-xs opacity-70 truncate">Atomic Habits · 18:30 / 18:30 · finished</div>
+            <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+              <div class="h-1 rounded" style="background:var(--wf-accent);width:100%"></div>
             </div>
-            <span style="font-size:12px; color:#9ca3af;">18:30</span>
           </div>
-          <span class="bc-engine-chip" style="display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; background: rgba(79,70,229,0.15); color: #c7d2fe; font-size: 12px; border: 1px solid rgba(79,70,229,0.4);">
-            <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
-            Kokoro
-          </span>
+          <select class="speed-select" aria-label="Playback speed">
+            <option>1x</option><option selected>1.25x</option><option>1.5x</option>
+          </select>
+          <span class="bc-engine-chip">Kokoro · af_bella</span>
+          <button class="icon-btn" aria-label="Close player">✕</button>
         </div>
       </div>
     </section>
