@@ -2,11 +2,11 @@
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import platformdirs
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -95,6 +95,16 @@ class BackupConfig(BaseModel):
     max_backups: int = 5
 
 
+class TTSConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    engine: Literal["web-speech", "kokoro"] = "web-speech"
+    voice: str = ""
+    default_speed: float = Field(1.0, ge=0.5, le=2.0)
+    auto_advance: bool = True
+    prewarm_on_startup: bool = True
+    annotation_context: Literal["span"] = "span"
+
+
 class ProcessingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # Jobs older than this are treated as stale regardless of PID liveness.
@@ -147,6 +157,7 @@ class Settings(BaseSettings):
     web: WebConfig = WebConfig()
     backup: BackupConfig = BackupConfig()
     processing: ProcessingConfig = ProcessingConfig()
+    tts: TTSConfig = TTSConfig()
 
     def model_post_init(self, __context: Any) -> None:
         """Merge YAML config, compute data dir and DB URL defaults."""
