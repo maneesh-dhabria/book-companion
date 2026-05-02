@@ -2,18 +2,33 @@
 import type { AnnotationLike } from '@/utils/highlightInjector'
 import { applyHighlights } from '@/utils/highlightInjector'
 import { classifyLink } from '@/utils/link-policy'
+import { wrapSentences } from '@/utils/sentenceWrap'
 import DOMPurify from 'dompurify'
 import MarkdownIt from 'markdown-it'
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+
+import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 const props = withDefaults(
   defineProps<{
     content: string
     annotations?: AnnotationLike[]
     highlightsInline?: boolean
+    sentenceOffsetsChars?: number[]
   }>(),
-  { annotations: () => [], highlightsInline: true },
+  { annotations: () => [], highlightsInline: true, sentenceOffsetsChars: () => [] },
 )
+
+// Tolerate test environments without an active Pinia: when no store is
+// available we simply skip the active-sentence highlight pass.
+const ttsPlayer = (() => {
+  try {
+    return useTtsPlayerStore()
+  } catch {
+    return null
+  }
+})()
+const containerRef = ref<HTMLElement | null>(null)
 
 const md = new MarkdownIt({
   html: false,
@@ -52,14 +67,43 @@ const renderedHtml = computed(() => {
   const raw = md.render(props.content || '')
   const sanitized = DOMPurify.sanitize(raw)
   const linkSafe = applyLinkPolicy(sanitized)
-  return applyHighlights(linkSafe, props.annotations || [], {
+  const withHighlights = applyHighlights(linkSafe, props.annotations || [], {
     showInline: props.highlightsInline,
   })
+  if (props.sentenceOffsetsChars && props.sentenceOffsetsChars.length > 0) {
+    return wrapSentences(withHighlights, props.sentenceOffsetsChars)
+  }
+  return withHighlights
 })
+
+function applyActiveSentence(): void {
+  if (!ttsPlayer) return
+  const root = containerRef.value
+  if (!root) return
+  const idx = ttsPlayer.sentenceIndex
+  for (const el of Array.from(root.querySelectorAll('.bc-sentence-active'))) {
+    el.classList.remove('bc-sentence-active')
+  }
+  const target = root.querySelector(`.bc-sentence[data-sentence-index="${idx}"]`)
+  if (target) target.classList.add('bc-sentence-active')
+}
+
+onMounted(() => {
+  void nextTick(applyActiveSentence)
+})
+
+if (ttsPlayer) {
+  watch(
+    () => [renderedHtml.value, ttsPlayer.sentenceIndex],
+    () => {
+      void nextTick(applyActiveSentence)
+    },
+  )
+}
 </script>
 
 <template>
-  <div class="md-content markdown-body" v-html="renderedHtml" />
+  <div ref="containerRef" class="md-content markdown-body" v-html="renderedHtml" />
 </template>
 
 <style scoped>
