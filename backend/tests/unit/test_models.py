@@ -26,6 +26,7 @@ def test_book_status_enum():
 def test_processing_step_enum():
     assert ProcessingStep.PARSE == "parse"
     assert ProcessingStep.QUICK_SUMMARY == "quick_summary"
+    assert ProcessingStep.AUDIO == "audio"
 
 
 def test_source_type_enum():
@@ -68,6 +69,7 @@ def test_content_type_enum():
     assert ContentType.SECTION_CONTENT == "section_content"
     assert ContentType.SECTION_SUMMARY == "section_summary"
     assert ContentType.BOOK_SUMMARY == "book_summary"
+    assert ContentType.ANNOTATIONS_PLAYLIST == "annotations_playlist"
 
 
 def test_phase2_tablenames():

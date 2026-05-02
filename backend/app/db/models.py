@@ -53,6 +53,7 @@ class ProcessingStep(str, enum.Enum):
     CAPTION = "caption"
     QUICK_SUMMARY = "quick_summary"
     EXTERNAL_REFS = "external_refs"
+    AUDIO = "audio"
 
 
 class ProcessingJobStatus(str, enum.Enum):
@@ -82,6 +83,7 @@ class ContentType(str, enum.Enum):
     SECTION_CONTENT = "section_content"
     SECTION_SUMMARY = "section_summary"
     BOOK_SUMMARY = "book_summary"
+    ANNOTATIONS_PLAYLIST = "annotations_playlist"
 
 
 class AnnotationType(str, enum.Enum):
