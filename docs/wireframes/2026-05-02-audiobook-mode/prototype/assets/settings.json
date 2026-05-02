@@ -1,0 +1,15 @@
+[
+  {
+    "id": "tts-settings",
+    "default_engine": "kokoro",
+    "default_voice_kokoro": "af_bella",
+    "default_voice_webspeech": "webspeech_samantha",
+    "default_speed": 1.0,
+    "auto_advance": true,
+    "kokoro_model_downloaded": true,
+    "kokoro_warm_state": "warm",
+    "kokoro_install_size_mb": 102,
+    "spike_summary": "Kokoro-82M sounds noticeably more natural than browser-native voices on dense expository prose. Web Speech is fine for short excerpts but introduces a flat affect that becomes tiring over a 6-minute section. Default to Kokoro for pre-generated audio; keep Web Speech as the instant click-to-play fallback.",
+    "spike_doc_path": "docs/spikes/2026-05-02-tts-engine-spike.md"
+  }
+]

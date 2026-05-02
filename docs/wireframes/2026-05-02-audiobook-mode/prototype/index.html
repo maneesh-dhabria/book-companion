@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audiobook Mode — Prototype Index</title>
+  <link rel="stylesheet" href="./assets/prototype.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    body { padding: 32px; max-width: 1100px; margin: 0 auto; }
+    header { margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border); }
+    h1 { font-size: var(--fs-xl); margin: 0 0 4px; }
+    .meta { color: var(--color-text-secondary); font-size: var(--fs-sm); }
+    .meta a { color: var(--color-accent); }
+    .device-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+    .device-card { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-large); padding: 20px; box-shadow: var(--shadow-default); }
+    .device-card h3 { margin: 0 0 8px; font-size: var(--fs-md); }
+    .device-card p { margin: 4px 0; color: var(--color-text-secondary); font-size: var(--fs-sm); }
+    .device-card .stat { font-variant-numeric: tabular-nums; color: var(--color-text-primary); font-weight: 500; }
+    .open-btn { display: inline-block; margin-top: 12px; padding: 8px 16px; background: var(--color-accent); color: #fff; border-radius: var(--radius-default); text-decoration: none; font-weight: 500; font-size: var(--fs-sm); }
+    .open-btn:hover { background: var(--color-accent-hover); }
+    section { margin-top: 32px; }
+    section h2 { font-size: var(--fs-lg); margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-default); overflow: hidden; font-size: var(--fs-sm); }
+    th, td { padding: 10px 12px; text-align: left; }
+    th { background: var(--color-bg-tertiary); color: var(--color-text-secondary); font-weight: 500; }
+    tr + tr td { border-top: 1px solid var(--color-border); }
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: var(--fs-xs); }
+    code { background: var(--color-bg-tertiary); padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Audiobook Mode — Interactive Prototype</h1>
+    <p class="meta">Generated 2026-05-02 · Anchored on <a href="../../requirements/2026-05-02-audiobook-mode-requirements.md">requirements doc</a> + <a href="./../index.html">wireframes</a></p>
+  </header>
+
+  <div class="device-grid">
+    <div class="device-card">
+      <h3>Desktop Web · 1280×800</h3>
+      <p><span class="stat">7</span> screens · <span class="stat">8</span> routes · sidebar shell</p>
+      <p>Library · Reader · Book Summary · Audio Tab · Sections · Annotations · Settings TTS</p>
+      <a class="open-btn" href="./index.desktop-web.html">Open desktop prototype →</a>
+    </div>
+    <div class="device-card">
+      <h3>Mobile Web · 375×812</h3>
+      <p><span class="stat">7</span> screens · <span class="stat">8</span> routes · bottom-tab shell</p>
+      <p>Same screens; modal stays centered (no sheets); safe-area-aware Playbar</p>
+      <a class="open-btn" href="./index.mobile-web.html">Open mobile prototype →</a>
+    </div>
+  </div>
+
+  <section>
+    <h2>Mock data</h2>
+    <table>
+      <thead><tr><th>Entity</th><th>Records</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>books</td><td>5</td><td>Thinking Fast and Slow, Deep Work, Atomic Habits, Sapiens, The Art of War</td></tr>
+        <tr><td>sections</td><td>9</td><td>Mixed audio_status: complete / stale / none; real summary sentences</td></tr>
+        <tr><td>voices</td><td>6</td><td>4 Kokoro + 2 Web Speech</td></tr>
+        <tr><td>annotations</td><td>5</td><td>2 with notes, 3 highlights only — used by Annotations playlist</td></tr>
+        <tr><td>audio_jobs</td><td>1</td><td>One in-flight RUNNING job for Deep Work</td></tr>
+        <tr><td>settings</td><td>1</td><td>TTS prefs incl. spike summary copy</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Screens covered</h2>
+    <table>
+      <thead><tr><th>#</th><th>Slug</th><th>Route</th><th>Devices</th><th>States</th></tr></thead>
+      <tbody>
+        <tr><td>01</td><td>reader-section</td><td><code>#/books/:id/section/:sec</code></td><td>desktop, mobile</td><td>7 (default · playing · paused-resume · loading-voice · no-summary · stale · regen)</td></tr>
+        <tr><td>02</td><td>book-summary-player</td><td><code>#/books/:id/summary</code></td><td>desktop, mobile</td><td>3 (default · playing · ended-auto-advance)</td></tr>
+        <tr><td>03</td><td>book-audio-tab</td><td><code>#/books/:id/audio</code></td><td>desktop, mobile</td><td>4 (no-audio · partial · full · generating)</td></tr>
+        <tr><td>04</td><td>generate-audio-modal</td><td>(modal)</td><td>desktop, mobile</td><td>3 (default · model-download · error)</td></tr>
+        <tr><td>06</td><td>annotations-player</td><td><code>#/books/:id/annotations</code></td><td>desktop, mobile</td><td>3 (default-list · playing · empty)</td></tr>
+        <tr><td>07</td><td>settings-tts</td><td><code>#/settings/tts</code></td><td>desktop, mobile</td><td>4 (default · sample-loading · model-not-downloaded · no-voices)</td></tr>
+        <tr><td>08</td><td>sections-audio-tab</td><td><code>#/books/:id/sections</code></td><td>desktop, mobile</td><td>3 (default · bulk · stale-only)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Try these journeys</h2>
+    <ol>
+      <li>Open the desktop prototype, click <em>Thinking, Fast and Slow</em> in the sidebar, navigate to a section, press Play. Hit <kbd>Space</kbd> to pause. Watch the sentence highlight advance.</li>
+      <li>Go to the Audio tab on <em>Atomic Habits</em>, click <strong>Generate audio</strong>. Confirm the modal — watch the job animate through the in-memory store.</li>
+      <li>Open <em>Thinking, Fast and Slow</em> → Annotations tab → <strong>Play as audio</strong>. Notice the cue divider between highlight and note.</li>
+      <li>On <em>Deep Work</em>, click the stale-source banner's <strong>Regenerate</strong> CTA to clear stale audio.</li>
+      <li>Settings → TTS: sample both Kokoro and Web Speech voices. Read the spike summary.</li>
+      <li>From any audio-rich book, hit the <strong>Delete audio</strong> button on the Audio tab — note the type-to-confirm gate.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Findings & friction</h2>
+    <p class="meta">
+      Reviewer pass: <a href="./prototype-findings.md">prototype-findings.md</a> ·
+      Friction pass: <a href="./interactive-friction.md">interactive-friction.md</a>
+    </p>
+  </section>
+
+  <p class="footer">
+    Files: <code>index.desktop-web.html</code> (1366 lines) · <code>index.mobile-web.html</code> (1591 lines) · <code>assets/</code> (prototype.css, design-overlay.css, design-tokens.js, runtime.js, components.js, styles.css, 6 mock JSON files).
+    Folder: <code>docs/wireframes/2026-05-02-audiobook-mode/prototype/</code>
+  </p>
+</body>
+</html>

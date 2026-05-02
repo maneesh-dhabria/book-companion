@@ -1,0 +1,52 @@
+[
+  {
+    "id": "ann-tfs-1",
+    "book_id": "bk-thinking-fast-slow",
+    "section_id": "sec-tfs-2",
+    "section_title": "The Characters of the Story",
+    "highlighted_text": "Although System 2 believes itself to be where the action is, the automatic System 1 is the hero of the book.",
+    "note": "Reframe my mental model — most of my decisions aren't deliberate; they're System 1.",
+    "has_note": true,
+    "created_at": "2026-04-12"
+  },
+  {
+    "id": "ann-tfs-2",
+    "book_id": "bk-thinking-fast-slow",
+    "section_id": "sec-tfs-3",
+    "section_title": "Attention and Effort",
+    "highlighted_text": "When you concentrate, your pupils dilate; when the task is finished, they contract back to their resting state.",
+    "note": "",
+    "has_note": false,
+    "created_at": "2026-04-13"
+  },
+  {
+    "id": "ann-tfs-3",
+    "book_id": "bk-thinking-fast-slow",
+    "section_id": "sec-tfs-3",
+    "section_title": "Attention and Effort",
+    "highlighted_text": "We found that people who were given a difficult mental task could not see things that were perfectly visible just outside their focus of attention.",
+    "note": "Inattentional blindness — the gorilla experiment. Use this when explaining why context-switching is so costly.",
+    "has_note": true,
+    "created_at": "2026-04-13"
+  },
+  {
+    "id": "ann-tfs-4",
+    "book_id": "bk-thinking-fast-slow",
+    "section_id": "sec-tfs-4",
+    "section_title": "The Lazy Controller",
+    "highlighted_text": "Activities that impose high demands on System 2 require self-control, and the exertion of self-control is depleting and unpleasant.",
+    "note": "Decision fatigue is real and measurable.",
+    "has_note": true,
+    "created_at": "2026-04-15"
+  },
+  {
+    "id": "ann-tfs-5",
+    "book_id": "bk-thinking-fast-slow",
+    "section_id": "sec-tfs-5",
+    "section_title": "The Associative Machine",
+    "highlighted_text": "Our minds are constantly making associations between words, ideas, and experiences.",
+    "note": "",
+    "has_note": false,
+    "created_at": "2026-04-18"
+  }
+]

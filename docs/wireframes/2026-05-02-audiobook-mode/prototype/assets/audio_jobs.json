@@ -1,0 +1,16 @@
+[
+  {
+    "id": "job-1",
+    "book_id": "bk-deep-work",
+    "status": "RUNNING",
+    "progress": 0.36,
+    "sections_total": 11,
+    "sections_completed": 4,
+    "sections_failed": 0,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "started_at": "2026-05-02T14:02:00Z",
+    "eta_seconds": 480,
+    "error_message": null
+  }
+]

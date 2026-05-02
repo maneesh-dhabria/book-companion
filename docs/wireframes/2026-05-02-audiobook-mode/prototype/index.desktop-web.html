@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Book Companion · Audiobook Mode · Desktop prototype</title>
+  <meta name="mock-entities" content="books,sections,voices,annotations,audio_jobs,settings">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/prototype.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <link rel="stylesheet" href="./assets/styles.css">
+  <style>
+    /* Desktop shell — sidebar + main column */
+    body { font-family: var(--font-sans, "Inter", system-ui, sans-serif); }
+    .bc-app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .bc-sidebar {
+      background: #1e1e2e; color: #cdd6f4; padding: 20px 14px;
+      display: flex; flex-direction: column; gap: 18px;
+      position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    }
+    .bc-sidebar__brand { font-weight: 700; font-size: 16px; color: #fff; padding: 0 6px; }
+    .bc-sidebar__section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #7f849c; padding: 0 6px; margin-top: 8px; }
+    .bc-sidebar a { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px;
+      color: #cdd6f4; font-size: 14px; text-decoration: none; }
+    .bc-sidebar a:hover { background: #313244; text-decoration: none; }
+    .bc-sidebar a.is-active { background: #4f46e5; color: #fff; }
+    .bc-main { display: flex; flex-direction: column; min-width: 0; }
+    .bc-topbar { display: flex; align-items: center; gap: 16px; padding: 12px 24px;
+      border-bottom: 1px solid var(--border); background: #fff; position: sticky; top: 0; z-index: 5; }
+    .bc-topbar__crumbs { color: var(--text-muted); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bc-topbar__crumbs strong { color: var(--text); }
+    .bc-topbar__search { width: 280px; }
+    .bc-tabstrip { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--border); background: #fff; }
+    .bc-tab { padding: 10px 14px; font-size: 14px; color: var(--text-muted); border: 0;
+      background: transparent; border-bottom: 2px solid transparent; cursor: pointer; }
+    .bc-tab:hover { color: var(--text); }
+    .bc-tab.is-active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+    .bc-content { padding: 24px; padding-bottom: 120px; min-width: 0; }
+    .bc-book-header { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 18px; }
+    .bc-cover { display: inline-flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; font-weight: 700;
+      border-radius: 8px; flex-shrink: 0; }
+    .bc-cover--sm { width: 36px; height: 48px; font-size: 11px; }
+    .bc-cover--md { width: 56px; height: 76px; font-size: 14px; }
+    .bc-cover--lg { width: 96px; height: 132px; font-size: 22px; }
+    .bc-engine-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+      border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 500;
+      border: 1px solid #c7d2fe; }
+    .bc-engine-chip--web { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+    .bc-coverage-bar { width: 100%; max-width: 240px; height: 6px; background: var(--surface-3);
+      border-radius: 999px; overflow: hidden; }
+    .bc-coverage-bar__fill { display: block; height: 100%; background: var(--primary); }
+    .bc-banner { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px;
+      border-radius: var(--radius-md); border: 1px solid #fde68a; background: #fffbeb;
+      color: #78350f; margin-bottom: 16px; }
+    .bc-banner--info { border-color: #c7d2fe; background: #eef2ff; color: #3730a3; }
+    .bc-banner--success { border-color: #bbf7d0; background: #f0fdf4; color: #14532d; }
+    .bc-banner__icon { font-size: 16px; line-height: 1.4; }
+    .bc-banner__body { flex: 1; font-size: 13px; line-height: 1.5; }
+    .bc-banner__action { margin-left: 12px; }
+    .bc-playbar { position: fixed; bottom: 0; left: 240px; right: 0; z-index: 30;
+      display: flex; align-items: center; gap: 10px; padding: 10px 24px;
+      background: #fff; border-top: 1px solid var(--border); box-shadow: var(--shadow-md); }
+    .bc-playbar__play { width: 40px; height: 40px; border-radius: 999px; border: 0;
+      background: var(--primary); color: #fff; font-size: 14px; cursor: pointer; }
+    .bc-playbar__play:hover { background: var(--primary-hover); }
+    .bc-playbar__control { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border-strong);
+      background: #fff; cursor: pointer; }
+    .bc-playbar__control:hover { background: var(--surface-3); }
+    .bc-playbar__time { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .bc-speed-select select { border: 1px solid var(--border-strong); border-radius: 6px;
+      padding: 4px 8px; font: inherit; background: #fff; }
+    .btn--icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    .bc-state-switcher { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+      background: #f8fafc; border: 1px dashed var(--border-strong); border-radius: 8px;
+      margin-bottom: 16px; font-size: 12px; align-items: center; }
+    .bc-state-switcher__label { color: var(--text-muted); margin-right: 4px; font-weight: 500; }
+    .bc-state-switcher button { font-size: 12px; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid var(--border-strong); background: #fff; cursor: pointer; }
+    .bc-state-switcher button.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .bc-summary-prose { max-width: 720px; line-height: 1.8; font-size: 17px; color: var(--text); }
+    .bc-summary-prose .bc-sentence { padding: 2px 4px; border-radius: 4px; cursor: pointer; }
+    .bc-summary-prose .bc-sentence:hover { background: #f1f5f9; }
+    .bc-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .bc-stat { display: flex; flex-direction: column; gap: 2px; }
+    .bc-stat__label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .bc-stat__value { font-size: 18px; font-weight: 600; }
+    .bc-row-actions { display: flex; gap: 4px; }
+    .bc-checkbox { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+    .bc-checkbox input { margin-top: 3px; }
+    .bc-checkbox + .bc-checkbox { margin-top: 8px; }
+    .bc-checkbox__title { font-weight: 500; }
+    .bc-checkbox__hint { font-size: 13px; color: var(--text-muted); }
+    .bc-pill-recommended { font-size: 11px; padding: 2px 6px; border-radius: 999px;
+      background: #eef2ff; color: #4338ca; margin-left: 6px; font-weight: 500; }
+    .bc-voice-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 8px; }
+    .bc-voice-row + .bc-voice-row { margin-top: 8px; }
+    .bc-voice-row.is-selected { border-color: var(--primary); background: #f5f3ff; }
+    .bc-divider-cue { color: var(--text-subtle); margin: 0 8px; }
+    .bc-settings-shell { display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
+    .bc-settings-nav { display: flex; flex-direction: column; gap: 4px; }
+    .bc-settings-nav button { text-align: left; padding: 8px 12px; border-radius: 6px;
+      border: 0; background: transparent; cursor: pointer; font-size: 14px; color: var(--text); }
+    .bc-settings-nav button.is-active { background: var(--surface-3); font-weight: 500; }
+    .bc-tip { font-size: 12px; color: var(--text-muted); }
+    .bc-status-pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+    .bc-status-pill--complete { background: #dcfce7; color: #166534; }
+    .bc-status-pill--stale { background: #fef3c7; color: #854d0e; }
+    .bc-status-pill--none { background: var(--surface-3); color: var(--text-muted); }
+    .bc-status-pill--running { background: var(--surface-3); color: var(--text-muted); }
+    .bc-progress-card { padding: 16px; background: #f8fafc; border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 16px; }
+    .bc-cost-line { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+    .bc-listen-cta { display: inline-flex; align-items: center; gap: 8px; }
+    .bc-modal-section { margin-bottom: 18px; }
+    .bc-modal-section h4 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-muted); margin: 0 0 8px; }
+    .bc-confirm-input { font-family: var(--font-mono); }
+    .bc-resume-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      background: #f5f3ff; border: 1px solid #c7d2fe; border-radius: 8px; margin-bottom: 16px;
+      font-size: 14px; }
+    .bc-tablebox { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .bc-tablebox table { margin: 0; }
+  </style>
+</head>
+<body class="device-desktop-web">
+
+  <!-- Inline JSON fallbacks for file:// portability -->
+  <script type="application/json" id="mock-books">[
+  {
+    "id": "bk-thinking-fast-slow",
+    "title": "Thinking, Fast and Slow",
+    "author": "Daniel Kahneman",
+    "cover_initials": "TFS",
+    "sections_count": 38,
+    "audio_sections_count": 38,
+    "audio_total_min": 412,
+    "audio_size_mb": 178,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-deep-work",
+    "title": "Deep Work",
+    "author": "Cal Newport",
+    "cover_initials": "DW",
+    "sections_count": 11,
+    "audio_sections_count": 8,
+    "audio_total_min": 96,
+    "audio_size_mb": 41,
+    "has_stale_audio": true,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-atomic-habits",
+    "title": "Atomic Habits",
+    "author": "James Clear",
+    "cover_initials": "AH",
+    "sections_count": 22,
+    "audio_sections_count": 0,
+    "audio_total_min": 0,
+    "audio_size_mb": 0,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-sapiens",
+    "title": "Sapiens",
+    "author": "Yuval Noah Harari",
+    "cover_initials": "SP",
+    "sections_count": 47,
+    "audio_sections_count": 47,
+    "audio_total_min": 528,
+    "audio_size_mb": 236,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-art-of-war",
+    "title": "The Art of War",
+    "author": "Sun Tzu",
+    "cover_initials": "AW",
+    "sections_count": 13,
+    "audio_sections_count": 0,
+    "audio_total_min": 0,
+    "audio_size_mb": 0,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  }
+]</script>
+
+  <script type="application/json" id="mock-sections">[
+  {"id":"sec-tfs-1","book_id":"bk-thinking-fast-slow","order_index":1,"title":"Introduction","audio_status":"complete","audio_duration_sec":348,"audio_size_mb":4.2,"sentence_count":38,"engine":"kokoro","voice":"af_bella","is_stale":false,"summary_sentences":["Most of us see the world as more benign than it really is, our own attributes as more favorable than they truly are, and the goals we adopt as more achievable than they are likely to be.","We also tend to exaggerate our ability to forecast the future, which fosters optimistic overconfidence.","In terms of its consequences for decisions, the optimistic bias may well be the most significant of the cognitive biases.","Because optimistic bias can be both a blessing and a risk, you should be both happy and wary if you are temperamentally optimistic.","The premise of this book is that it is easier to recognize other people's mistakes than our own."]},
+  {"id":"sec-tfs-2","book_id":"bk-thinking-fast-slow","order_index":2,"title":"The Characters of the Story","audio_status":"complete","audio_duration_sec":412,"audio_size_mb":4.9,"sentence_count":47,"engine":"kokoro","voice":"af_bella","is_stale":false,"summary_sentences":["System 1 operates automatically and quickly, with little or no effort and no sense of voluntary control.","System 2 allocates attention to the effortful mental activities that demand it, including complex computations.","The operations of System 2 are often associated with the subjective experience of agency, choice, and concentration.","When we think of ourselves, we identify with System 2, the conscious, reasoning self that has beliefs, makes choices, and decides what to think about and what to do.","Although System 2 believes itself to be where the action is, the automatic System 1 is the hero of the book."]},
+  {"id":"sec-tfs-3","book_id":"bk-thinking-fast-slow","order_index":3,"title":"Attention and Effort","audio_status":"complete","audio_duration_sec":506,"audio_size_mb":5.8,"sentence_count":52,"engine":"kokoro","voice":"af_bella","is_stale":false,"summary_sentences":["The pupils of the eyes are sensitive indicators of mental effort.","When you concentrate, your pupils dilate; when the task is finished, they contract back to their resting state.","Many of the most important findings about System 2 came from a series of experiments using the pupil as a window into mental effort.","We found that people who were given a difficult mental task could not see things that were perfectly visible just outside their focus of attention."]},
+  {"id":"sec-tfs-4","book_id":"bk-thinking-fast-slow","order_index":4,"title":"The Lazy Controller","audio_status":"stale","audio_duration_sec":290,"audio_size_mb":3.4,"sentence_count":31,"engine":"kokoro","voice":"af_bella","is_stale":true,"summary_sentences":["Self-control requires attention and effort.","When people are forced to override an impulse, the control of attention is taxed.","The evidence is persuasive: activities that impose high demands on System 2 require self-control, and the exertion of self-control is depleting and unpleasant."]},
+  {"id":"sec-tfs-5","book_id":"bk-thinking-fast-slow","order_index":5,"title":"The Associative Machine","audio_status":"complete","audio_duration_sec":376,"audio_size_mb":4.4,"sentence_count":41,"engine":"kokoro","voice":"af_bella","is_stale":false,"summary_sentences":["Our minds are constantly making associations between words, ideas, and experiences.","These associations happen automatically and shape our thinking in ways we rarely notice."]},
+  {"id":"sec-tfs-6","book_id":"bk-thinking-fast-slow","order_index":6,"title":"Cognitive Ease","audio_status":"none","audio_duration_sec":0,"audio_size_mb":0,"sentence_count":36,"engine":null,"voice":null,"is_stale":false,"summary_sentences":["Cognitive ease is a sign that things are going well—no threats, no major news, no need to redirect attention or mobilize effort.","Cognitive strain, by contrast, indicates a problem requiring increased mobilization of System 2."]},
+  {"id":"sec-tfs-7","book_id":"bk-thinking-fast-slow","order_index":7,"title":"Norms, Surprises, and Causes","audio_status":"none","audio_duration_sec":0,"audio_size_mb":0,"sentence_count":44,"engine":null,"voice":null,"is_stale":false,"summary_sentences":["Surprise is one of the most sensitive indications of how we understand our world."]},
+  {"id":"sec-dw-1","book_id":"bk-deep-work","order_index":1,"title":"Deep Work Is Valuable","audio_status":"complete","audio_duration_sec":612,"audio_size_mb":7.1,"sentence_count":58,"engine":"kokoro","voice":"af_bella","is_stale":false,"summary_sentences":["Deep work is the ability to focus without distraction on a cognitively demanding task.","It's a skill that allows you to quickly master complicated information and produce better results in less time.","Deep work will make you better at what you do and provide the sense of true fulfillment that comes from craftsmanship."]},
+  {"id":"sec-dw-2","book_id":"bk-deep-work","order_index":2,"title":"Deep Work Is Rare","audio_status":"complete","audio_duration_sec":478,"audio_size_mb":5.6,"sentence_count":49,"engine":"kokoro","voice":"af_bella","is_stale":true,"summary_sentences":["Deep work is becoming rarer in the knowledge economy at the same time it's becoming more valuable.","Most knowledge workers are losing their ability to do deep work."]}
+]</script>
+
+  <script type="application/json" id="mock-voices">[
+  { "id": "kokoro_af_bella",   "engine": "kokoro",     "name": "Bella",   "locale": "en-US", "gender": "female", "is_default": true,  "sample_text": "When you concentrate, your pupils dilate; when the task is finished, they contract." },
+  { "id": "kokoro_af_sarah",   "engine": "kokoro",     "name": "Sarah",   "locale": "en-US", "gender": "female", "is_default": false, "sample_text": "Deep work is the ability to focus without distraction on a cognitively demanding task." },
+  { "id": "kokoro_am_michael", "engine": "kokoro",     "name": "Michael", "locale": "en-US", "gender": "male",   "is_default": false, "sample_text": "System 1 operates automatically and quickly, with little or no effort." },
+  { "id": "kokoro_bf_emma",    "engine": "kokoro",     "name": "Emma",    "locale": "en-GB", "gender": "female", "is_default": false, "sample_text": "Surprise is one of the most sensitive indications of how we understand our world." },
+  { "id": "webspeech_samantha","engine": "web-speech", "name": "Samantha","locale": "en-US", "gender": "female", "is_default": false, "sample_text": "When you concentrate, your pupils dilate; when the task is finished, they contract." },
+  { "id": "webspeech_alex",    "engine": "web-speech", "name": "Alex",    "locale": "en-US", "gender": "male",   "is_default": false, "sample_text": "Deep work is the ability to focus without distraction on a cognitively demanding task." }
+]</script>
+
+  <script type="application/json" id="mock-annotations">[
+  {"id":"ann-tfs-1","book_id":"bk-thinking-fast-slow","section_id":"sec-tfs-2","section_title":"The Characters of the Story","highlighted_text":"Although System 2 believes itself to be where the action is, the automatic System 1 is the hero of the book.","note":"Reframe my mental model — most of my decisions aren't deliberate; they're System 1.","has_note":true,"created_at":"2026-04-12"},
+  {"id":"ann-tfs-2","book_id":"bk-thinking-fast-slow","section_id":"sec-tfs-3","section_title":"Attention and Effort","highlighted_text":"When you concentrate, your pupils dilate; when the task is finished, they contract back to their resting state.","note":"","has_note":false,"created_at":"2026-04-13"},
+  {"id":"ann-tfs-3","book_id":"bk-thinking-fast-slow","section_id":"sec-tfs-3","section_title":"Attention and Effort","highlighted_text":"We found that people who were given a difficult mental task could not see things that were perfectly visible just outside their focus of attention.","note":"Inattentional blindness — the gorilla experiment. Use this when explaining why context-switching is so costly.","has_note":true,"created_at":"2026-04-13"},
+  {"id":"ann-tfs-4","book_id":"bk-thinking-fast-slow","section_id":"sec-tfs-4","section_title":"The Lazy Controller","highlighted_text":"Activities that impose high demands on System 2 require self-control, and the exertion of self-control is depleting and unpleasant.","note":"Decision fatigue is real and measurable.","has_note":true,"created_at":"2026-04-15"},
+  {"id":"ann-tfs-5","book_id":"bk-thinking-fast-slow","section_id":"sec-tfs-5","section_title":"The Associative Machine","highlighted_text":"Our minds are constantly making associations between words, ideas, and experiences.","note":"","has_note":false,"created_at":"2026-04-18"}
+]</script>
+
+  <script type="application/json" id="mock-audio_jobs">[
+  {"id":"job-1","book_id":"bk-deep-work","status":"RUNNING","progress":0.36,"sections_total":11,"sections_completed":4,"sections_failed":0,"engine":"kokoro","voice":"af_bella","started_at":"2026-05-02T14:02:00Z","eta_seconds":480,"error_message":null}
+]</script>
+
+  <script type="application/json" id="mock-settings">[
+  {"id":"tts-settings","default_engine":"kokoro","default_voice_kokoro":"af_bella","default_voice_webspeech":"webspeech_samantha","default_speed":1.0,"auto_advance":true,"kokoro_model_downloaded":true,"kokoro_warm_state":"warm","kokoro_install_size_mb":102,"spike_summary":"Kokoro-82M sounds noticeably more natural than browser-native voices on dense expository prose. Web Speech is fine for short excerpts but introduces a flat affect that becomes tiring over a 6-minute section. Default to Kokoro for pre-generated audio; keep Web Speech as the instant click-to-play fallback.","spike_doc_path":"docs/spikes/2026-05-02-tts-engine-spike.md"}
+]</script>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="./assets/design-tokens.js"></script>
+  <script src="./assets/runtime.js"></script>
+  <script type="text/babel" src="./assets/components.js" data-presets="react"></script>
+
+  <script type="text/babel" data-presets="react">
+    /* ============== Screens ============== */
+    window.__screens = window.__screens || {};
+    const {
+      Button, IconButton, Input, Modal, Card, Table, EmptyState, Spinner, Badge,
+      BookCover, EngineChip, CoverageBar, Banner, SpeedSelect, Playbar, KbdShortcutsModal, GlobalToasts
+    } = window.__protoComponents;
+    const fmt = window.__proto.fmt;
+
+    const formatRelative = (iso) => {
+      try {
+        const then = new Date(iso).getTime();
+        const diff = Math.max(0, Date.now() - then);
+        const m = Math.floor(diff / 60000);
+        if (m < 1) return "just now";
+        if (m < 60) return `${m}m ago`;
+        const h = Math.floor(m / 60);
+        if (h < 24) return `${h}h ago`;
+        const d = Math.floor(h / 24);
+        return `${d}d ago`;
+      } catch { return "recently"; }
+    };
+
+    const formatDate = (iso) => {
+      try {
+        const d = new Date(iso);
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+      } catch { return iso; }
+    };
+
+    /* ----------- Library ----------- */
+    function LibraryScreen() {
+      const books = window.__proto.useStore("books");
+      return (
+        <div className="bc-content">
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
+            <h1 style={{ margin: 0 }}>Library</h1>
+            <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{books.length} books</span>
+          </div>
+          <div className="bc-card-grid">
+            {books.map((b) => (
+              <Card key={b.id} onClick={() => window.__proto.navigate(`/books/${b.id}/audio`)} ariaLabel={`Open ${b.title}`}>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <BookCover initials={b.cover_initials} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }}>{b.title}</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{b.author}</div>
+                    <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-muted)" }}>
+                      Audio coverage: {b.audio_sections_count} / {b.sections_count}{" "}
+                      {b.has_stale_audio && <Badge tone="warning">stale</Badge>}
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <CoverageBar done={b.audio_sections_count} total={b.sections_count} ariaLabel={`Audio coverage for ${b.title}`} />
+                    </div>
+                    {b.audio_total_min > 0 && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>
+                        ~{b.audio_total_min} min · {fmt.size(b.audio_size_mb)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    window.__screens.LibraryScreen = LibraryScreen;
+
+    /* ----------- Reader · Section player (file 01) ----------- */
+    const READER_STATES = [
+      { id: "default", label: "Default" },
+      { id: "playing", label: "Playing" },
+      { id: "paused", label: "Paused — resume" },
+      { id: "loading", label: "Loading voice" },
+      { id: "no-summary", label: "No summary" },
+      { id: "stale", label: "Stale source" },
+      { id: "regen", label: "Mid-listen regen" }
+    ];
+
+    function ReaderSectionScreen({ params }) {
+      const [stateId, setStateId] = React.useState("default");
+      const sections = window.__proto.useStore("sections");
+      const books = window.__proto.useStore("books");
+      const player = window.__proto.usePlayer();
+
+      const book = books.find((b) => b.id === params.id);
+      const section = sections.find((s) => s.id === params.sec) || sections.find((s) => s.book_id === params.id);
+
+      if (!book || !section) {
+        return <div className="bc-content"><EmptyState title="Section not found" description="Pick a book from the library." /></div>;
+      }
+
+      const isThisSectionPlaying = player.book_id === book.id && player.section_id === section.id && player.is_playing;
+      const sentences = section.summary_sentences || [];
+
+      // Effective state: external player overrides switcher in some cases.
+      const effective = stateId;
+
+      const handleListen = () => {
+        window.__proto.player.load({
+          book_id: book.id,
+          section_id: section.id,
+          sentence_index: 0,
+          sentence_count: sentences.length,
+          duration_sec: section.audio_duration_sec || sentences.length * 8,
+          engine: section.engine || "kokoro",
+          voice: section.voice || "Bella"
+        });
+        window.__proto.player.play();
+        setStateId("playing");
+      };
+
+      const handleResume = () => {
+        window.__proto.player.load({
+          book_id: book.id,
+          section_id: section.id,
+          sentence_index: Math.max(0, sentences.length - 2),
+          sentence_count: sentences.length,
+          duration_sec: section.audio_duration_sec || sentences.length * 8,
+          engine: section.engine || "kokoro",
+          voice: section.voice || "Bella"
+        });
+        window.__proto.player.play();
+        setStateId("playing");
+      };
+
+      const handleRegen = async () => {
+        await window.__proto.mockApi.post("/audio/regenerate-stale", { book_id: book.id });
+        window.__proto.toast.push({ type: "success", message: "Regenerated audio for stale sections." });
+        setStateId("default");
+      };
+
+      const showStaleBanner = effective === "stale" || (section.is_stale && effective !== "regen");
+      const showRegenBanner = effective === "regen";
+      const showLoading = effective === "loading";
+      const showNoSummary = effective === "no-summary";
+      // Resume is shown on default load when this section already has audio
+      // (per DESIGN.md x-interaction.audio.rememberPosition: true), AND on the
+      // explicit paused state-tab.
+      const showResume =
+        effective === "paused" ||
+        (effective === "default" && section.audio_status === "complete" && !isThisSectionPlaying);
+      const showPlayingPulse = effective === "playing" || isThisSectionPlaying;
+      // When actually playing, follow the player's live index; in the preview
+      // "playing" state-tab cycle indices over time so the karaoke effect is
+      // visible without loading the audio player.
+      const [previewIdx, setPreviewIdx] = React.useState(0);
+      React.useEffect(() => {
+        if (effective !== "playing" || isThisSectionPlaying || sentences.length === 0) return;
+        const t = setInterval(() => setPreviewIdx((i) => (i + 1) % sentences.length), 1800);
+        return () => clearInterval(t);
+      }, [effective, isThisSectionPlaying, sentences.length]);
+      const playingSentenceIdx = isThisSectionPlaying
+        ? (player.sentence_index % Math.max(1, sentences.length))
+        : (showPlayingPulse ? previewIdx : -1);
+
+      return (
+        <div className="bc-content">
+          <div className="bc-state-switcher" role="tablist" aria-label="Reader state preview">
+            <span className="bc-state-switcher__label">State</span>
+            {READER_STATES.map((s) => (
+              <button key={s.id} role="tab" aria-selected={effective === s.id}
+                className={effective === s.id ? "is-active" : ""} onClick={() => setStateId(s.id)}>{s.label}</button>
+            ))}
+          </div>
+
+          <div style={{ marginBottom: 8, fontSize: 13, color: "var(--text-muted)" }}>
+            {book.title} · Section {section.order_index} of {book.sections_count}
+          </div>
+          <h1 style={{ marginBottom: 12 }}>{section.title}</h1>
+
+          {showStaleBanner && (
+            <Banner
+              tone="warning"
+              title="Audio is out of date"
+              body={<span>The summary for this section was edited after audio was generated. Regenerate to hear the latest version.</span>}
+              action={<Button variant="primary" size="md" onClick={handleRegen}>Regenerate audio</Button>}
+            />
+          )}
+
+          {showRegenBanner && (
+            <Banner
+              tone="info"
+              title="Regenerating audio while you listen"
+              body={<span>You'll keep hearing the previous take until the new file is ready. We'll switch to the fresh audio at the next sentence boundary.</span>}
+            />
+          )}
+
+          {showResume && (
+            <div className="bc-resume-card">
+              <span aria-hidden="true">↻</span>
+              <span style={{ flex: 1 }}>
+                Resume from sentence {Math.max(1, sentences.length - 1)} (last listened from this browser, 12m ago).
+              </span>
+              <Button variant="primary" size="md" onClick={handleResume}>Resume</Button>
+            </div>
+          )}
+
+          {showNoSummary ? (
+            <EmptyState
+              icon="✎"
+              title="No summary yet"
+              description="Generate a summary for this section before listening."
+              cta={<Button variant="primary" onClick={() => window.__proto.toast.push({ type: "info", message: "Summary generation queued." })}>Generate summary</Button>}
+            />
+          ) : showLoading ? (
+            <div className="bc-summary-prose" aria-busy="true">
+              {[1,2,3,4,5].map((i) => (
+                <p key={i}><span className="skeleton skeleton--text" style={{ width: `${60 + (i*5)%30}%`, height: 18 }} /></p>
+              ))}
+              <p style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14 }}>
+                <Spinner size="sm" /> Loading voice (Kokoro · Bella)…
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center" }}>
+                <Button variant="primary" onClick={handleListen}>
+                  <span aria-hidden="true">▶</span> Listen
+                </Button>
+                <span className="bc-tip">~{fmt.minutes(section.audio_duration_sec || sentences.length * 8)} min</span>
+                <span style={{ marginLeft: "auto" }}>
+                  <EngineChip engine={section.engine || "kokoro"} voice={section.voice ? "Bella" : "Bella"} />
+                </span>
+              </div>
+
+              <div className="bc-summary-prose">
+                {sentences.map((s, i) => (
+                  <span
+                    key={i}
+                    className={"bc-sentence " + (i === playingSentenceIdx ? "bc-sentence--playing" : "")}
+                    onClick={() => {
+                      if (player.book_id === book.id && player.section_id === section.id) {
+                        window.__proto.player.skipSentence(i - player.sentence_index);
+                      } else {
+                        handleListen();
+                      }
+                    }}
+                  >
+                    {s}{" "}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+    window.__screens.ReaderSectionScreen = ReaderSectionScreen;
+
+    /* ----------- Book summary player (file 02) ----------- */
+    function BookSummaryPlayerScreen({ params }) {
+      const [hasEnded, setHasEnded] = React.useState(false);
+      const books = window.__proto.useStore("books");
+      const player = window.__proto.usePlayer();
+      const book = books.find((b) => b.id === params.id);
+      if (!book) return <div className="bc-content"><EmptyState title="Book not found" /></div>;
+
+      // 8 fake "book-level" sentences for prose
+      const bookSentences = [
+        `${book.title}, by ${book.author}, in summary form.`,
+        "The book argues that two systems shape almost every judgment we make: a fast intuitive system and a slow deliberate one.",
+        "The fast system is efficient but prone to predictable errors, especially when stakes are high or context is unfamiliar.",
+        "The slow system can correct those errors, but only when it notices them, and noticing is itself effortful.",
+        "Across decades of experiments, the same biases — anchoring, availability, framing — appear in students, experts, and policymakers.",
+        "The practical lesson is to design environments and decisions so that the slow system is engaged exactly when its judgment matters most.",
+        "For everyday choices, trusting the fast system is fine and often optimal; for consequential ones, deliberate friction is a feature.",
+        "Read together, the chapters argue for humility about our own minds and curiosity about other people's reasoning."
+      ];
+
+      const handleListen = () => {
+        setHasEnded(false);
+        window.__proto.player.load({
+          book_id: book.id,
+          section_id: "book-summary",
+          sentence_index: 0,
+          sentence_count: bookSentences.length,
+          duration_sec: bookSentences.length * 8,
+          engine: book.default_engine,
+          voice: "Bella"
+        });
+        window.__proto.player.play();
+      };
+
+      const isPlayingHere = player.book_id === book.id && player.section_id === "book-summary";
+      const ended = isPlayingHere && player.elapsed_sec >= player.duration_sec && player.duration_sec > 0;
+
+      return (
+        <div className="bc-content">
+          <div className="bc-book-header">
+            <BookCover initials={book.cover_initials} size="lg" />
+            <div style={{ flex: 1 }}>
+              <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Book summary</div>
+              <h1 style={{ margin: "4px 0" }}>{book.title}</h1>
+              <div style={{ color: "var(--text-muted)" }}>{book.author}</div>
+              <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+                <Button variant="primary" onClick={handleListen}>
+                  <span aria-hidden="true">▶</span> Listen to book summary
+                </Button>
+                <span className="bc-tip">~{fmt.minutes(bookSentences.length * 8)} min · {book.sections_count} sections summarized</span>
+              </div>
+            </div>
+          </div>
+
+          {ended && (
+            <Banner
+              tone="success"
+              title="Finished the book summary"
+              body="Auto-advance is on. The first section player will start in a moment, or pick a section yourself."
+              action={<Button variant="secondary" size="md" onClick={() => window.__proto.navigate(`/books/${book.id}/section/sec-tfs-1`)}>Open first section</Button>}
+            />
+          )}
+
+          <h3 style={{ marginTop: 16 }}>Summary</h3>
+          <div className="bc-summary-prose">
+            {bookSentences.map((s, i) => (
+              <span key={i} className={"bc-sentence " + (isPlayingHere && player.sentence_index === i ? "bc-sentence--playing" : "")}>
+                {s}{" "}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    window.__screens.BookSummaryPlayerScreen = BookSummaryPlayerScreen;
+
+    /* ----------- Book detail · Audio tab (file 03) ----------- */
+    function BookAudioTabScreen({ params }) {
+      const books = window.__proto.useStore("books");
+      const sections = window.__proto.useStore("sections");
+      const jobs = window.__proto.useStore("audio_jobs");
+      const [genOpen, setGenOpen] = React.useState(false);
+      const [delOpen, setDelOpen] = React.useState(false);
+
+      const book = books.find((b) => b.id === params.id);
+      if (!book) return <div className="bc-content"><EmptyState title="Book not found" /></div>;
+
+      const bookSections = sections.filter((s) => s.book_id === book.id);
+      const totalSections = book.sections_count;
+      const completed = bookSections.filter((s) => s.audio_status === "complete").length;
+      const stale = bookSections.filter((s) => s.is_stale).length;
+      const runningJob = jobs.find((j) => j.book_id === book.id && j.status === "RUNNING");
+
+      const coverageState =
+        runningJob ? "generating" :
+        completed === 0 ? "none" :
+        completed < totalSections ? "partial" :
+        "full";
+
+      const estMinutes = Math.round((totalSections - completed) * 1.4);
+      const estSizeMb = Math.round((totalSections - completed) * 4.5);
+
+      const handleListenBookSummary = () => window.__proto.navigate(`/books/${book.id}/summary`);
+
+      return (
+        <div className="bc-content">
+          <BookSubHeader book={book} />
+
+          {coverageState === "generating" && (
+            <div className="bc-progress-card">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <Spinner size="sm" />
+                <strong>Generating audio</strong>
+                <Badge tone="info">{runningJob.sections_completed} / {runningJob.sections_total} sections</Badge>
+                <span style={{ marginLeft: "auto", color: "var(--text-muted)", fontSize: 13 }}>
+                  ETA ~{Math.round(runningJob.eta_seconds / 60)} min
+                </span>
+              </div>
+              <div className="bc-coverage-bar" style={{ maxWidth: "100%" }}>
+                <span className="bc-coverage-bar__fill" style={{ width: `${Math.round(runningJob.progress * 100)}%` }} />
+              </div>
+              <div className="bc-cost-line">Engine: <EngineChip engine={runningJob.engine} voice="Bella" /> · You can keep working — generation runs in the background.</div>
+            </div>
+          )}
+
+          {stale > 0 && coverageState !== "generating" && (
+            <Banner
+              tone="warning"
+              title={`${stale} section${stale > 1 ? "s" : ""} have stale audio`}
+              body="The summary text was edited after audio was generated. Regenerate to bring audio in sync."
+              action={<Button variant="primary" size="md" onClick={async () => {
+                await window.__proto.mockApi.post("/audio/regenerate-stale", { book_id: book.id });
+                window.__proto.toast.push({ type: "success", message: `Regenerated ${stale} section${stale > 1 ? "s" : ""}.` });
+              }}>Regenerate {stale} stale</Button>}
+            />
+          )}
+
+          <Card>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="bc-stat">
+                <span className="bc-stat__label">Coverage</span>
+                <span className="bc-stat__value">{completed} / {totalSections}</span>
+              </div>
+              <div className="bc-stat">
+                <span className="bc-stat__label">Total length</span>
+                <span className="bc-stat__value">~{book.audio_total_min} min</span>
+              </div>
+              <div className="bc-stat">
+                <span className="bc-stat__label">Storage</span>
+                <span className="bc-stat__value">{fmt.size(book.audio_size_mb)}</span>
+              </div>
+              <div className="bc-stat">
+                <span className="bc-stat__label">Engine</span>
+                <span className="bc-stat__value" style={{ fontSize: 14 }}><EngineChip engine={book.default_engine} voice="Bella" /></span>
+              </div>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                {coverageState !== "none" && (
+                  <Button variant="secondary" onClick={handleListenBookSummary}>
+                    <span aria-hidden="true">▶</span> Listen to book summary
+                  </Button>
+                )}
+                {coverageState === "none" || coverageState === "partial" ? (
+                  <Button variant="primary" onClick={() => setGenOpen(true)}>
+                    {coverageState === "none" ? "Generate audio" : `Generate audio for ${totalSections - completed} remaining`}
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => setDelOpen(true)}>Delete audio for this book</Button>
+                )}
+              </div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <CoverageBar done={completed} total={totalSections} ariaLabel="Audio coverage" />
+            </div>
+            {coverageState === "none" && (
+              <div className="bc-cost-line">~{Math.round(totalSections * 1.4)} min · ~{fmt.size(totalSections * 4.5)} for {totalSections} sections</div>
+            )}
+            {coverageState === "partial" && (
+              <div className="bc-cost-line">~{estMinutes} min · ~{fmt.size(estSizeMb)} for the remaining {totalSections - completed} sections</div>
+            )}
+          </Card>
+
+          <h3 style={{ marginTop: 24 }}>Sections</h3>
+          {bookSections.length === 0 ? (
+            <EmptyState title="No sections indexed" description="Re-import the book to populate sections." />
+          ) : (
+            <div className="bc-tablebox">
+              <Table
+                ariaLabel="Sections audio status"
+                columns={[
+                  { key: "order", label: "#", width: "48px", render: (r) => r.order_index },
+                  { key: "title", label: "Section", render: (r) => r.title },
+                  { key: "status", label: "Audio", render: (r) => (
+                    r.audio_status === "complete" && r.is_stale ? <span className="bc-status-pill bc-status-pill--stale">stale</span> :
+                    r.audio_status === "complete" ? <span className="bc-status-pill bc-status-pill--complete">ready</span> :
+                    r.audio_status === "stale" ? <span className="bc-status-pill bc-status-pill--stale">stale</span> :
+                    <span className="bc-status-pill bc-status-pill--none">none</span>
+                  )},
+                  { key: "len", label: "Length", render: (r) => r.audio_duration_sec ? fmt.duration(r.audio_duration_sec) : "—" },
+                  { key: "size", label: "Size", render: (r) => r.audio_size_mb ? fmt.size(r.audio_size_mb) : "—" },
+                  { key: "actions", label: "", render: (r) => (
+                    <div className="bc-row-actions">
+                      {r.audio_status === "complete" ? (
+                        <IconButton icon="▶" ariaLabel={`Play ${r.title}`} onClick={() => {
+                          window.__proto.player.load({ book_id: book.id, section_id: r.id, sentence_index: 0,
+                            sentence_count: r.sentence_count, duration_sec: r.audio_duration_sec, engine: r.engine, voice: "Bella" });
+                          window.__proto.player.play();
+                        }} />
+                      ) : null}
+                      <IconButton icon="⟳" ariaLabel={`Regenerate ${r.title}`} onClick={async () => {
+                        window.__proto.toast.push({ type: "info", message: `Queued regeneration for "${r.title}".` });
+                      }} />
+                      <IconButton icon="✕" ariaLabel={`Delete audio for ${r.title}`} onClick={async () => {
+                        await window.__proto.mockApi.delete(`/sections/${r.id}/audio`);
+                        window.__proto.toast.push({ type: "success", message: `Deleted audio for "${r.title}".` });
+                      }} />
+                    </div>
+                  )}
+                ]}
+                rows={bookSections}
+              />
+            </div>
+          )}
+
+          <GenerateAudioModal open={genOpen} onClose={() => setGenOpen(false)} book={book} pendingSections={totalSections - completed} />
+          <DeleteAudioModal open={delOpen} onClose={() => setDelOpen(false)} book={book} />
+        </div>
+      );
+    }
+    window.__screens.BookAudioTabScreen = BookAudioTabScreen;
+
+    /* ----------- Generate audio modal (file 04) ----------- */
+    function GenerateAudioModal({ open, onClose, book, pendingSections }) {
+      const voices = window.__proto.useStore("voices");
+      const [voiceId, setVoiceId] = React.useState("kokoro_af_bella");
+      const [includePerSection, setIncludePerSection] = React.useState(true);
+      const [includeBookSummary, setIncludeBookSummary] = React.useState(true);
+      const [includeAnnotations, setIncludeAnnotations] = React.useState(true);
+      const [submitting, setSubmitting] = React.useState(false);
+
+      const selectedVoice = voices.find((v) => v.id === voiceId);
+      const sectionsToGen = includePerSection ? pendingSections : 0;
+      const extras = (includeBookSummary ? 1 : 0) + (includeAnnotations ? 1 : 0);
+      const totalUnits = sectionsToGen + extras;
+      const estMinutes = Math.round(totalUnits * 1.4);
+      const estSize = Math.round(totalUnits * 4.5);
+
+      const handleGenerate = async () => {
+        setSubmitting(true);
+        await window.__proto.mockApi.post("/audio/generate", {
+          book_id: book.id,
+          sections_total: Math.max(1, sectionsToGen),
+          voice: selectedVoice?.name || "Bella",
+          engine: selectedVoice?.engine || "kokoro"
+        });
+        setSubmitting(false);
+        onClose();
+        window.__proto.toast.push({ type: "info", message: `Generating audio for ${book.title} — running in the background.` });
+      };
+
+      return (
+        <Modal
+          open={open}
+          onClose={onClose}
+          title="Generate audio"
+          size="md"
+          footer={
+            <>
+              <Button variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button variant="primary" onClick={handleGenerate} loading={submitting} disabled={totalUnits === 0}>Generate</Button>
+            </>
+          }
+        >
+          <div className="bc-modal-section">
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
+              Generating audio for <strong style={{ color: "var(--text)" }}>{book.title}</strong>. Files are stored locally and play offline.
+            </p>
+          </div>
+
+          <div className="bc-modal-section">
+            <h4>Voice</h4>
+            {voices.filter((v) => v.engine === "kokoro").map((v) => (
+              <div key={v.id} className={`bc-voice-row ${voiceId === v.id ? "is-selected" : ""}`}>
+                <input type="radio" name="gen-voice" checked={voiceId === v.id} onChange={() => setVoiceId(v.id)} aria-label={v.name} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500 }}>{v.name} <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: 13 }}>· {v.locale} · {v.gender}</span></div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>"{v.sample_text}"</div>
+                </div>
+                <Button variant="ghost" size="md" onClick={() => window.__proto.toast.push({ type: "info", message: `Sampling ${v.name}…` })}>Play sample</Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="bc-modal-section">
+            <h4>What to generate</h4>
+            <label className="bc-checkbox">
+              <input type="checkbox" checked={includePerSection} onChange={(e) => setIncludePerSection(e.target.checked)} />
+              <div>
+                <div className="bc-checkbox__title">Per-section audio</div>
+                <div className="bc-checkbox__hint">{pendingSections} section{pendingSections === 1 ? "" : "s"} without audio.</div>
+              </div>
+            </label>
+            <label className="bc-checkbox">
+              <input type="checkbox" checked={includeBookSummary} onChange={(e) => setIncludeBookSummary(e.target.checked)} />
+              <div>
+                <div className="bc-checkbox__title">Book summary</div>
+                <div className="bc-checkbox__hint">A single ~6 min overview of the whole book.</div>
+              </div>
+            </label>
+            <label className="bc-checkbox">
+              <input type="checkbox" checked={includeAnnotations} onChange={(e) => setIncludeAnnotations(e.target.checked)} />
+              <div>
+                <div className="bc-checkbox__title">
+                  Annotations playlist <span className="bc-pill-recommended">recommended</span>
+                </div>
+                <div className="bc-checkbox__hint">Your highlights and notes, narrated in reading order.</div>
+              </div>
+            </label>
+          </div>
+
+          <div className="bc-modal-section">
+            <h4>Estimate</h4>
+            <div className="bc-cost-line">
+              ~{estMinutes} min of audio · ~{fmt.size(estSize)} on disk · runs in the background.
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    /* ----------- Delete audio (type-to-confirm) ----------- */
+    function DeleteAudioModal({ open, onClose, book }) {
+      const [confirm, setConfirm] = React.useState("");
+      React.useEffect(() => { if (open) setConfirm(""); }, [open]);
+      const matches = confirm === book.title;
+
+      const handleDelete = async () => {
+        await window.__proto.mockApi.delete(`/books/${book.id}/audio`);
+        window.__proto.toast.push({ type: "success", message: `Deleted audio for ${book.title}.` });
+        onClose();
+      };
+
+      return (
+        <Modal
+          open={open}
+          onClose={onClose}
+          title="Delete audio for this book"
+          size="md"
+          footer={
+            <>
+              <Button variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={!matches}>Delete audio</Button>
+            </>
+          }
+        >
+          <p>This removes all generated audio files for <strong>{book.title}</strong>. Summaries and notes are not affected. You can regenerate audio at any time.</p>
+          <Input
+            label={`Type the book title to confirm: "${book.title}"`}
+            value={confirm}
+            onChange={setConfirm}
+            name="confirm-delete"
+            placeholder={book.title}
+          />
+          {confirm && !matches && <div style={{ color: "var(--danger)", fontSize: 13, marginTop: -8 }}>Title doesn't match yet.</div>}
+        </Modal>
+      );
+    }
+
+    /* ----------- Sections tab w/ audio (file 08) ----------- */
+    function SectionsAudioTabScreen({ params }) {
+      const books = window.__proto.useStore("books");
+      const sections = window.__proto.useStore("sections");
+      const [selected, setSelected] = React.useState(new Set());
+      const [staleOnly, setStaleOnly] = React.useState(false);
+
+      const book = books.find((b) => b.id === params.id);
+      if (!book) return <div className="bc-content"><EmptyState title="Book not found" /></div>;
+      let bookSections = sections.filter((s) => s.book_id === book.id);
+      if (staleOnly) bookSections = bookSections.filter((s) => s.is_stale);
+
+      const toggle = (id) => {
+        const next = new Set(selected);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setSelected(next);
+      };
+
+      const bulkRegen = async () => {
+        await window.__proto.mockApi.post("/audio/regenerate-stale", { book_id: book.id });
+        window.__proto.toast.push({ type: "success", message: `Queued regeneration for ${selected.size || "all stale"} sections.` });
+        setSelected(new Set());
+      };
+
+      return (
+        <div className="bc-content">
+          <BookSubHeader book={book} />
+
+          <div style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "center" }}>
+            <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{bookSections.length} of {book.sections_count} sections</span>
+            <label className="bc-checkbox" style={{ marginLeft: "auto", padding: "6px 10px" }}>
+              <input type="checkbox" checked={staleOnly} onChange={(e) => setStaleOnly(e.target.checked)} />
+              <span>Stale audio only</span>
+            </label>
+            {selected.size > 0 && (
+              <>
+                <Button variant="secondary" size="md" onClick={bulkRegen}>Regenerate {selected.size}</Button>
+                <Button variant="secondary" size="md" onClick={() => setSelected(new Set())}>Clear selection</Button>
+              </>
+            )}
+          </div>
+
+          <div className="bc-tablebox">
+            <table className="table" aria-label="Sections with audio columns">
+              <thead>
+                <tr>
+                  <th style={{ width: 36 }}><span className="sr-only">Select</span></th>
+                  <th style={{ width: 48 }}>#</th>
+                  <th>Section</th>
+                  <th>Audio</th>
+                  <th>Engine</th>
+                  <th>Length</th>
+                  <th>Size</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {bookSections.map((s) => (
+                  <tr key={s.id}>
+                    <td><input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} aria-label={`Select ${s.title}`} /></td>
+                    <td>{s.order_index}</td>
+                    <td>
+                      <a href={`#/books/${book.id}/section/${s.id}`} style={{ fontWeight: 500 }}>{s.title}</a>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{s.sentence_count} sentences</div>
+                    </td>
+                    <td>
+                      {s.is_stale ? <span className="bc-status-pill bc-status-pill--stale">stale</span> :
+                        s.audio_status === "complete" ? <span className="bc-status-pill bc-status-pill--complete">ready</span> :
+                        <span className="bc-status-pill bc-status-pill--none">none</span>}
+                    </td>
+                    <td>{s.engine ? <EngineChip engine={s.engine} voice="Bella" /> : <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+                    <td>{s.audio_duration_sec ? fmt.duration(s.audio_duration_sec) : "—"}</td>
+                    <td>{s.audio_size_mb ? fmt.size(s.audio_size_mb) : "—"}</td>
+                    <td>
+                      <div className="bc-row-actions">
+                        {s.audio_status === "complete" && (
+                          <IconButton icon="▶" ariaLabel="Play" onClick={() => {
+                            window.__proto.player.load({ book_id: book.id, section_id: s.id, sentence_index: 0,
+                              sentence_count: s.sentence_count, duration_sec: s.audio_duration_sec, engine: s.engine, voice: "Bella" });
+                            window.__proto.player.play();
+                          }} />
+                        )}
+                        <IconButton icon="⟳" ariaLabel="Regenerate" onClick={() => window.__proto.toast.push({ type: "info", message: `Queued "${s.title}".` })} />
+                        <IconButton icon="✕" ariaLabel="Delete audio" onClick={async () => {
+                          await window.__proto.mockApi.delete(`/sections/${s.id}/audio`);
+                          window.__proto.toast.push({ type: "success", message: `Deleted audio for "${s.title}".` });
+                        }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {bookSections.length === 0 && (
+                  <tr><td colSpan="8"><EmptyState title="No sections match" description={staleOnly ? "Nothing is stale." : "Re-import the book."} /></td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+    window.__screens.SectionsAudioTabScreen = SectionsAudioTabScreen;
+
+    /* ----------- Annotations player (file 06) ----------- */
+    function AnnotationsPlayerScreen({ params }) {
+      const books = window.__proto.useStore("books");
+      const annotations = window.__proto.useStore("annotations");
+      const player = window.__proto.usePlayer();
+
+      const book = books.find((b) => b.id === params.id);
+      if (!book) return <div className="bc-content"><EmptyState title="Book not found" /></div>;
+      const list = annotations.filter((a) => a.book_id === book.id);
+
+      const estMinutes = Math.max(1, Math.round(list.length * 0.5));
+
+      const handlePlayAll = () => {
+        window.__proto.player.load({
+          book_id: book.id,
+          section_id: "annotations",
+          sentence_index: 0,
+          sentence_count: list.length,
+          duration_sec: estMinutes * 60,
+          engine: book.default_engine,
+          voice: "Bella"
+        });
+        window.__proto.player.play();
+      };
+
+      const isPlayingHere = player.book_id === book.id && player.section_id === "annotations";
+
+      if (list.length === 0) {
+        return (
+          <div className="bc-content">
+            <BookSubHeader book={book} />
+            <EmptyState title="No annotations yet" description="Highlight passages while reading to build a playlist." />
+          </div>
+        );
+      }
+
+      return (
+        <div className="bc-content">
+          <BookSubHeader book={book} />
+
+          <Card>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <h3 style={{ margin: 0 }}>Annotations playlist</h3>
+                <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 2 }}>
+                  ~{estMinutes} min · {list.length} highlights · in reading order
+                </div>
+              </div>
+              <span title="Audio engine used for narration. Kokoro produces pre-generated files; Web Speech reads in your browser instantly.">
+                <EngineChip engine={book.default_engine} voice="Bella" />
+              </span>
+              <Button variant="primary" onClick={handlePlayAll}>
+                <span aria-hidden="true">▶</span> Play all
+              </Button>
+            </div>
+          </Card>
+
+          <ol style={{ listStyle: "none", padding: 0, marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            {list.map((a, i) => (
+              <li key={a.id}>
+                <Card>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 999, background: "var(--surface-3)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, color: "var(--text-muted)", flexShrink: 0
+                    }}>{i + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
+                        From <a href={`#/books/${book.id}/section/${a.section_id}`}>{a.section_title}</a> · {formatDate(a.created_at)}
+                      </div>
+                      <div style={{
+                        background: "#fef9c3", padding: "8px 10px", borderRadius: 6, marginBottom: 8,
+                        borderLeft: "3px solid #ca8a04"
+                      }}>
+                        {a.highlighted_text}
+                      </div>
+                      {a.has_note && (
+                        <div style={{ fontSize: 14, color: "var(--text)" }}>
+                          <span className="bc-divider-cue" aria-hidden="true">♪</span>
+                          <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>{a.note}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-start" }}>
+                      <IconButton icon={isPlayingHere && player.sentence_index === i ? "❚❚" : "▶"} ariaLabel="Play this annotation" onClick={() => {
+                        if (!isPlayingHere) handlePlayAll();
+                        else window.__proto.player.skipSentence(i - player.sentence_index);
+                      }} />
+                    </div>
+                  </div>
+                </Card>
+              </li>
+            ))}
+          </ol>
+        </div>
+      );
+    }
+    window.__screens.AnnotationsPlayerScreen = AnnotationsPlayerScreen;
+
+    /* ----------- Settings · TTS (file 07) ----------- */
+    function SettingsTtsScreen() {
+      const settingsList = window.__proto.useStore("settings");
+      const voices = window.__proto.useStore("voices");
+      const cfg = settingsList[0] || {};
+
+      const [engine, setEngine] = React.useState(cfg.default_engine || "kokoro");
+      const [voiceId, setVoiceId] = React.useState(cfg.default_voice_kokoro ? `kokoro_${cfg.default_voice_kokoro}` : "kokoro_af_bella");
+      const [speed, setSpeed] = React.useState(cfg.default_speed || 1.0);
+      const [autoAdvance, setAutoAdvance] = React.useState(!!cfg.auto_advance);
+      const [modelDownloaded, setModelDownloaded] = React.useState(cfg.kokoro_model_downloaded);
+
+      const engineVoices = voices.filter((v) => v.engine === engine);
+      const noVoices = engineVoices.length === 0;
+
+      const downloadModel = () => {
+        window.__proto.toast.push({ type: "info", message: "Downloading Kokoro-82M model (~102 MB)…" });
+        setTimeout(() => {
+          setModelDownloaded(true);
+          window.__proto.toast.push({ type: "success", message: "Kokoro model ready." });
+        }, 1500);
+      };
+
+      const sampleVoice = (v) => window.__proto.toast.push({ type: "info", message: `${v.name} (${v.engine}): "${v.sample_text}"` });
+
+      return (
+        <div className="bc-content">
+          <h1>Settings</h1>
+          <div className="bc-settings-shell">
+            <nav className="bc-settings-nav" aria-label="Settings sections">
+              <button>General</button>
+              <button>Library</button>
+              <button>Summarization</button>
+              <button className="is-active">Text-to-speech</button>
+              <button>Backups</button>
+              <button>About</button>
+            </nav>
+            <div>
+              <h2 style={{ marginTop: 0 }}>Text-to-speech</h2>
+              <p style={{ color: "var(--text-muted)", marginTop: -4 }}>
+                Two engines. Kokoro produces high-quality pre-generated files for re-listening. Web Speech reads instantly in your browser.
+              </p>
+
+              <Banner
+                tone="info"
+                icon="🔬"
+                title="Engine spike summary"
+                body={
+                  <span>
+                    {cfg.spike_summary}{" "}
+                    <a href={"./" + cfg.spike_doc_path} target="_blank" rel="noopener">Read the full spike →</a>
+                  </span>
+                }
+              />
+
+              <Card>
+                <h3 style={{ marginTop: 0 }}>Engine</h3>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant={engine === "kokoro" ? "primary" : "secondary"} onClick={() => setEngine("kokoro")}>Kokoro (local)</Button>
+                  <Button variant={engine === "web-speech" ? "primary" : "secondary"} onClick={() => setEngine("web-speech")}>Web Speech (browser)</Button>
+                  <span style={{ marginLeft: "auto" }}>
+                    <Button variant="ghost" onClick={() => window.__proto.toast.push({ type: "info", message: "Playing Kokoro vs Web Speech sample…" })}>
+                      Listen to comparison
+                    </Button>
+                  </span>
+                </div>
+                {engine === "kokoro" && !modelDownloaded && (
+                  <div style={{ marginTop: 16 }}>
+                    <Banner
+                      tone="warning"
+                      title="Kokoro model not downloaded"
+                      body={`Download the ~${cfg.kokoro_install_size_mb} MB model to enable high-quality pre-generated audio.`}
+                      action={<Button variant="primary" size="md" onClick={downloadModel}>Download model</Button>}
+                    />
+                  </div>
+                )}
+              </Card>
+
+              <Card>
+                <h3 style={{ marginTop: 0 }}>Voice</h3>
+                {noVoices ? (
+                  <EmptyState
+                    icon="🎙"
+                    title="No voices available"
+                    description="Your browser hasn't surfaced any speech voices. Try a different browser or switch engines."
+                  />
+                ) : engineVoices.map((v) => (
+                  <div key={v.id} className={`bc-voice-row ${voiceId === v.id ? "is-selected" : ""}`}>
+                    <input type="radio" name="settings-voice" checked={voiceId === v.id} onChange={() => setVoiceId(v.id)} aria-label={v.name} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500 }}>{v.name} <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 13 }}>· {v.locale} · {v.gender}</span></div>
+                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>"{v.sample_text}"</div>
+                    </div>
+                    <Button variant="ghost" onClick={() => sampleVoice(v)}>Play sample</Button>
+                  </div>
+                ))}
+              </Card>
+
+              <Card>
+                <h3 style={{ marginTop: 0 }}>Playback</h3>
+                <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
+                  <label className="field" style={{ marginBottom: 0 }}>
+                    <span className="field__label">Default speed</span>
+                    <SpeedSelect value={speed} onChange={setSpeed} />
+                  </label>
+                  <label className="bc-checkbox" style={{ alignSelf: "flex-end" }}>
+                    <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} />
+                    <div>
+                      <div className="bc-checkbox__title">Auto-advance to the next section</div>
+                      <div className="bc-checkbox__hint">Continue playback through the book without manual taps.</div>
+                    </div>
+                  </label>
+                </div>
+              </Card>
+
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <Button variant="primary" onClick={() => window.__proto.toast.push({ type: "success", message: "TTS settings saved." })}>Save</Button>
+                <Button variant="secondary" onClick={() => { setEngine("kokoro"); setVoiceId("kokoro_af_bella"); setSpeed(1); setAutoAdvance(true); }}>Reset to defaults</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    window.__screens.SettingsTtsScreen = SettingsTtsScreen;
+
+    /* ----------- Shared book sub-header ----------- */
+    function BookSubHeader({ book }) {
+      return (
+        <div className="bc-book-header">
+          <BookCover initials={book.cover_initials} size="md" />
+          <div style={{ flex: 1 }}>
+            <h1 style={{ margin: 0, fontSize: 22 }}>{book.title}</h1>
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+              {book.author} · {book.sections_count} sections
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ----------- 404 ----------- */
+    function NotFoundScreen() {
+      return (
+        <div className="bc-content">
+          <EmptyState
+            icon="↪"
+            title="Page not found"
+            description="That route isn't part of this prototype."
+            cta={<Button variant="primary" onClick={() => window.__proto.navigate("/")}>Back to library</Button>}
+          />
+        </div>
+      );
+    }
+    window.__screens.NotFoundScreen = NotFoundScreen;
+  </script>
+
+  <script type="text/babel" data-presets="react">
+    /* ============== App shell + router ============== */
+    const { Playbar, KbdShortcutsModal, GlobalToasts, Input } = window.__protoComponents;
+
+    function Sidebar({ activePath }) {
+      const books = window.__proto.useStore("books");
+      const isActive = (p) => activePath === p || activePath.startsWith(p + "/");
+      return (
+        <aside className="bc-sidebar" aria-label="Primary navigation">
+          <div className="bc-sidebar__brand">Book Companion</div>
+          <a href="#/" className={activePath === "/" ? "is-active" : ""}>
+            <span aria-hidden="true">📚</span> Library
+          </a>
+          <a href="#/settings/tts" className={isActive("/settings") ? "is-active" : ""}>
+            <span aria-hidden="true">⚙</span> Settings
+          </a>
+
+          <div className="bc-sidebar__section">Books</div>
+          {books.map((b) => (
+            <a key={b.id} href={`#/books/${b.id}/audio`}
+               className={activePath.startsWith(`/books/${b.id}`) ? "is-active" : ""}
+               title={b.title}>
+              <span aria-hidden="true">📖</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</span>
+            </a>
+          ))}
+
+          <div style={{ marginTop: "auto", fontSize: 11, color: "#7f849c", padding: "0 6px" }}>
+            Press <kbd style={{ background: "#313244", padding: "1px 5px", borderRadius: 4 }}>?</kbd> for shortcuts
+          </div>
+        </aside>
+      );
+    }
+
+    function TopBar({ book, activePath }) {
+      const [q, setQ] = React.useState("");
+      return (
+        <div className="bc-topbar">
+          <div className="bc-topbar__crumbs">
+            {book ? (
+              <>
+                <a href="#/">Library</a> {" / "} <strong>{book.title}</strong>
+              </>
+            ) : activePath.startsWith("/settings") ? (
+              <>Settings {" / "} <strong>Text-to-speech</strong></>
+            ) : (
+              <strong>Library</strong>
+            )}
+          </div>
+          <div className="bc-topbar__search">
+            <Input
+              name="search"
+              type="search"
+              value={q}
+              onChange={setQ}
+              placeholder="Search books, sections, notes…"
+            />
+          </div>
+          <a href="#/settings/tts" style={{ fontSize: 13 }}>Settings</a>
+        </div>
+      );
+    }
+
+    function TabStrip({ bookId, activePath }) {
+      const tabs = [
+        { key: "overview", label: "Overview", path: `/books/${bookId}/overview` },
+        { key: "summary", label: "Summary", path: `/books/${bookId}/summary` },
+        { key: "sections", label: "Sections", path: `/books/${bookId}/sections` },
+        { key: "audio", label: "Audio", path: `/books/${bookId}/audio` },
+        { key: "annotations", label: "Annotations", path: `/books/${bookId}/annotations` }
+      ];
+      return (
+        <div className="bc-tabstrip" role="tablist">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={activePath.startsWith(t.path)}
+              className={"bc-tab " + (activePath.startsWith(t.path) ? "is-active" : "")}
+              onClick={() => window.__proto.navigate(t.path)}
+            >{t.label}</button>
+          ))}
+        </div>
+      );
+    }
+
+    function App() {
+      const route = window.__proto.useRoute();
+      const [ready, setReady] = React.useState(false);
+      React.useEffect(() => { window.__proto.ready.then(() => setReady(true)); }, []);
+
+      const books = window.__proto.useStore("books");
+      const path = route.path;
+
+      // Resolve route -> screen
+      let screen = null;
+      let bookId = null;
+      let book = null;
+
+      if (!ready) {
+        screen = (
+          <div className="bc-content">
+            <p>Loading…</p>
+            <p><span className="skeleton skeleton--text" style={{ width: "70%", height: 18 }} /></p>
+            <p><span className="skeleton skeleton--text" style={{ width: "60%", height: 18 }} /></p>
+            <p><span className="skeleton skeleton--text" style={{ width: "80%", height: 18 }} /></p>
+          </div>
+        );
+      } else if (path === "/" || path === "") {
+        screen = <window.__screens.LibraryScreen />;
+      } else if (path.startsWith("/settings")) {
+        screen = <window.__screens.SettingsTtsScreen />;
+      } else {
+        const m1 = path.match(/^\/books\/([^/]+)\/section\/([^/]+)$/);
+        const m2 = path.match(/^\/books\/([^/]+)\/(audio|sections|annotations|summary|overview)$/);
+        if (m1) {
+          bookId = m1[1];
+          book = books.find((b) => b.id === bookId);
+          screen = <window.__screens.ReaderSectionScreen params={{ id: m1[1], sec: m1[2] }} />;
+        } else if (m2) {
+          bookId = m2[1];
+          book = books.find((b) => b.id === bookId);
+          const tab = m2[2];
+          if (tab === "audio") screen = <window.__screens.BookAudioTabScreen params={{ id: bookId }} />;
+          else if (tab === "sections") screen = <window.__screens.SectionsAudioTabScreen params={{ id: bookId }} />;
+          else if (tab === "annotations") screen = <window.__screens.AnnotationsPlayerScreen params={{ id: bookId }} />;
+          else if (tab === "summary") screen = <window.__screens.BookSummaryPlayerScreen params={{ id: bookId }} />;
+          else screen = <window.__screens.BookAudioTabScreen params={{ id: bookId }} />;
+        } else {
+          screen = <window.__screens.NotFoundScreen />;
+        }
+      }
+
+      // Reader screen lives outside the standard book-detail tab strip
+      const isReader = /^\/books\/[^/]+\/section\//.test(path);
+      const hasTabs = !!bookId && !isReader;
+
+      return (
+        <div className="bc-app">
+          <Sidebar activePath={path} />
+          <main className="bc-main">
+            <TopBar book={book} activePath={path} />
+            {hasTabs && <TabStrip bookId={bookId} activePath={path} />}
+            {screen}
+          </main>
+          <Playbar />
+          <KbdShortcutsModal />
+          <GlobalToasts />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

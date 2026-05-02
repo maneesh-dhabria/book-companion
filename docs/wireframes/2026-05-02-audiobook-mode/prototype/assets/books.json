@@ -1,0 +1,67 @@
+[
+  {
+    "id": "bk-thinking-fast-slow",
+    "title": "Thinking, Fast and Slow",
+    "author": "Daniel Kahneman",
+    "cover_initials": "TFS",
+    "sections_count": 38,
+    "audio_sections_count": 38,
+    "audio_total_min": 412,
+    "audio_size_mb": 178,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-deep-work",
+    "title": "Deep Work",
+    "author": "Cal Newport",
+    "cover_initials": "DW",
+    "sections_count": 11,
+    "audio_sections_count": 8,
+    "audio_total_min": 96,
+    "audio_size_mb": 41,
+    "has_stale_audio": true,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-atomic-habits",
+    "title": "Atomic Habits",
+    "author": "James Clear",
+    "cover_initials": "AH",
+    "sections_count": 22,
+    "audio_sections_count": 0,
+    "audio_total_min": 0,
+    "audio_size_mb": 0,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-sapiens",
+    "title": "Sapiens",
+    "author": "Yuval Noah Harari",
+    "cover_initials": "SP",
+    "sections_count": 47,
+    "audio_sections_count": 47,
+    "audio_total_min": 528,
+    "audio_size_mb": 236,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  },
+  {
+    "id": "bk-art-of-war",
+    "title": "The Art of War",
+    "author": "Sun Tzu",
+    "cover_initials": "AW",
+    "sections_count": 13,
+    "audio_sections_count": 0,
+    "audio_total_min": 0,
+    "audio_size_mb": 0,
+    "has_stale_audio": false,
+    "default_engine": "kokoro",
+    "default_voice": "af_bella"
+  }
+]

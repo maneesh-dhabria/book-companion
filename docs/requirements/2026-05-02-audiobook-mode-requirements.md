@@ -276,6 +276,41 @@ MSF analysis: `docs/wireframes/2026-05-02-audiobook-mode/msf-findings.md` (canon
 
 **Per-section audio actions** live inline in the Sections tab table (file 08), not on the Audio tab card — matches user feedback "shouldn't we add the audio edit / delete option to the section summary table rather than here".
 
+## Prototype
+
+Generated: 2026-05-02
+Folder: `docs/wireframes/2026-05-02-audiobook-mode/prototype/`
+Index: `docs/wireframes/2026-05-02-audiobook-mode/prototype/index.html`
+Devices: desktop-web (1366 lines), mobile-web (1764 lines)
+Mock data: 6 entities (books, sections, voices, annotations, audio_jobs, settings) — domain-real (Thinking Fast and Slow, Deep Work, Atomic Habits, Sapiens, Art of War). All inlined as `<script type="application/json">` blocks for `file://` portability.
+Findings: `docs/wireframes/2026-05-02-audiobook-mode/prototype/prototype-findings.md` (24 total — 1 high, 9 medium, 14 low)
+Friction pass: `docs/wireframes/2026-05-02-audiobook-mode/prototype/interactive-friction.md` (4 journeys, no threshold breaches)
+Design artifacts bootstrapped: `frontend/DESIGN.md` and `frontend/COMPONENTS.md` (first time for this repo).
+
+| # | Screen | Devices | Route | File |
+|---|--------|---------|-------|------|
+| 01 | Reader · Section player | desktop, mobile | `#/books/:id/section/:sec` | linked from `index.<device>.html` |
+| 02 | Book summary player | desktop, mobile | `#/books/:id/summary` | linked from `index.<device>.html` |
+| 03 | Book detail · Audio tab | desktop, mobile | `#/books/:id/audio` | linked from `index.<device>.html` |
+| 04 | Generate audio modal | desktop, mobile | (modal on Audio tab) | inline component |
+| 06 | Annotations playlist | desktop, mobile | `#/books/:id/annotations` | linked from `index.<device>.html` |
+| 07 | Settings · TTS | desktop, mobile | `#/settings/tts` | linked from `index.<device>.html` |
+| 08 | Sections tab · Audio columns | desktop, mobile | `#/books/:id/sections` | linked from `index.<device>.html` |
+
+### Prototype-driven changes (apply at /spec)
+
+These were applied to the prototype during Phase 6/8 and must propagate to the spec/build:
+
+- **DESIGN.md anti-pattern hardened**: status pills (e.g. "running") and info banners must use the indigo ramp or neutral grey — not a separate blue palette. Prevents tonal collision with the EngineChip. Now in `frontend/DESIGN.md` `## Anti-patterns`.
+- **Sentence highlight binds to `player.sentence_index`** in both reader and book-summary screens — the "karaoke effect" must be live, not a static index.
+- **Resume affordance shows on default load** when a section's audio is complete (per `x-interaction.audio.rememberPosition: true`). Don't gate it behind a separate "paused" state.
+- **No dead controls**: every control with an `aria-label` must have a real handler or be `aria-disabled`. The mobile prototype was wired with toasts where v1 functionality is out of scope; the spec should either implement or aria-disable each.
+- **New components introduced (in `frontend/COMPONENTS.md` "Components proposed by /prototype")**: `EngineChip`, `CoverageBar`, `Playbar`, `Banner`, `BookCover`, `SpeedSelect`, `KbdShortcutsModal`. /spec must include shape + variant decisions.
+
+### Open question carried forward (OQ-10 confirmed)
+
+The prototype's annotations playlist assumes pre-generation recommended + Web Speech fallback at runtime. Confirm in /spec.
+
 ## Wireframes & UX Analysis Updates (2026-05-02)
 
 Added during `/wireframes` Phase 6 (PSYCH) and Phase 7 (MSF). These are scope additions or hardening notes that must carry forward into `/spec`.

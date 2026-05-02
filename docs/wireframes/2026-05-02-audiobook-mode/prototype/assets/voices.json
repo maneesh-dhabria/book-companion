@@ -1,0 +1,8 @@
+[
+  { "id": "kokoro_af_bella",   "engine": "kokoro",     "name": "Bella",   "locale": "en-US", "gender": "female", "is_default": true,  "sample_text": "When you concentrate, your pupils dilate; when the task is finished, they contract." },
+  { "id": "kokoro_af_sarah",   "engine": "kokoro",     "name": "Sarah",   "locale": "en-US", "gender": "female", "is_default": false, "sample_text": "Deep work is the ability to focus without distraction on a cognitively demanding task." },
+  { "id": "kokoro_am_michael", "engine": "kokoro",     "name": "Michael", "locale": "en-US", "gender": "male",   "is_default": false, "sample_text": "System 1 operates automatically and quickly, with little or no effort." },
+  { "id": "kokoro_bf_emma",    "engine": "kokoro",     "name": "Emma",    "locale": "en-GB", "gender": "female", "is_default": false, "sample_text": "Surprise is one of the most sensitive indications of how we understand our world." },
+  { "id": "webspeech_samantha","engine": "web-speech", "name": "Samantha","locale": "en-US", "gender": "female", "is_default": false, "sample_text": "When you concentrate, your pupils dilate; when the task is finished, they contract." },
+  { "id": "webspeech_alex",    "engine": "web-speech", "name": "Alex",    "locale": "en-US", "gender": "male",   "is_default": false, "sample_text": "Deep work is the ability to focus without distraction on a cognitively demanding task." }
+]

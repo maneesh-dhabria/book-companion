@@ -1,0 +1,22 @@
+/*
+ * Prototype-only utility classes — minimal additions on top of design-overlay.css.
+ * Token-driven; no duplicated colors/fonts.
+ */
+
+/* Centering helpers */
+.proto-center { display: flex; align-items: center; justify-content: center; }
+
+/* Sentence-by-sentence pulse animation when audio "plays" */
+@keyframes bc-sentence-pulse {
+  0%   { background: color-mix(in srgb, var(--color-accent) 15%, transparent); }
+  50%  { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  100% { background: color-mix(in srgb, var(--color-accent) 15%, transparent); }
+}
+.bc-sentence--playing { animation: bc-sentence-pulse 1.6s ease-in-out infinite; }
+
+/* Generation-job bar (uses prototype.css progress bar but tightens height) */
+.bc-job-bar { height: 4px; background: var(--color-border); border-radius: var(--radius-pill); overflow: hidden; }
+.bc-job-bar__fill { height: 100%; background: var(--color-accent); transition: width .4s ease; }
+
+/* Mobile sheet variant for the player on mobile-web */
+.device-mobile-web .bc-playbar { border-radius: var(--radius-large) var(--radius-large) 0 0; margin: 0; padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); }

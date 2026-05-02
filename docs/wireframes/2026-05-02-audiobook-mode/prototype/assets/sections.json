@@ -1,0 +1,164 @@
+[
+  {
+    "id": "sec-tfs-1",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 1,
+    "title": "Introduction",
+    "audio_status": "complete",
+    "audio_duration_sec": 348,
+    "audio_size_mb": 4.2,
+    "sentence_count": 38,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": false,
+    "summary_sentences": [
+      "Most of us see the world as more benign than it really is, our own attributes as more favorable than they truly are, and the goals we adopt as more achievable than they are likely to be.",
+      "We also tend to exaggerate our ability to forecast the future, which fosters optimistic overconfidence.",
+      "In terms of its consequences for decisions, the optimistic bias may well be the most significant of the cognitive biases.",
+      "Because optimistic bias can be both a blessing and a risk, you should be both happy and wary if you are temperamentally optimistic.",
+      "The premise of this book is that it is easier to recognize other people's mistakes than our own."
+    ]
+  },
+  {
+    "id": "sec-tfs-2",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 2,
+    "title": "The Characters of the Story",
+    "audio_status": "complete",
+    "audio_duration_sec": 412,
+    "audio_size_mb": 4.9,
+    "sentence_count": 47,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": false,
+    "summary_sentences": [
+      "System 1 operates automatically and quickly, with little or no effort and no sense of voluntary control.",
+      "System 2 allocates attention to the effortful mental activities that demand it, including complex computations.",
+      "The operations of System 2 are often associated with the subjective experience of agency, choice, and concentration.",
+      "When we think of ourselves, we identify with System 2, the conscious, reasoning self that has beliefs, makes choices, and decides what to think about and what to do.",
+      "Although System 2 believes itself to be where the action is, the automatic System 1 is the hero of the book."
+    ]
+  },
+  {
+    "id": "sec-tfs-3",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 3,
+    "title": "Attention and Effort",
+    "audio_status": "complete",
+    "audio_duration_sec": 506,
+    "audio_size_mb": 5.8,
+    "sentence_count": 52,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": false,
+    "summary_sentences": [
+      "The pupils of the eyes are sensitive indicators of mental effort.",
+      "When you concentrate, your pupils dilate; when the task is finished, they contract back to their resting state.",
+      "Many of the most important findings about System 2 came from a series of experiments using the pupil as a window into mental effort.",
+      "We found that people who were given a difficult mental task could not see things that were perfectly visible just outside their focus of attention."
+    ]
+  },
+  {
+    "id": "sec-tfs-4",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 4,
+    "title": "The Lazy Controller",
+    "audio_status": "stale",
+    "audio_duration_sec": 290,
+    "audio_size_mb": 3.4,
+    "sentence_count": 31,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": true,
+    "summary_sentences": [
+      "Self-control requires attention and effort.",
+      "When people are forced to override an impulse, the control of attention is taxed.",
+      "The evidence is persuasive: activities that impose high demands on System 2 require self-control, and the exertion of self-control is depleting and unpleasant."
+    ]
+  },
+  {
+    "id": "sec-tfs-5",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 5,
+    "title": "The Associative Machine",
+    "audio_status": "complete",
+    "audio_duration_sec": 376,
+    "audio_size_mb": 4.4,
+    "sentence_count": 41,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": false,
+    "summary_sentences": [
+      "Our minds are constantly making associations between words, ideas, and experiences.",
+      "These associations happen automatically and shape our thinking in ways we rarely notice."
+    ]
+  },
+  {
+    "id": "sec-tfs-6",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 6,
+    "title": "Cognitive Ease",
+    "audio_status": "none",
+    "audio_duration_sec": 0,
+    "audio_size_mb": 0,
+    "sentence_count": 36,
+    "engine": null,
+    "voice": null,
+    "is_stale": false,
+    "summary_sentences": [
+      "Cognitive ease is a sign that things are going well—no threats, no major news, no need to redirect attention or mobilize effort.",
+      "Cognitive strain, by contrast, indicates a problem requiring increased mobilization of System 2."
+    ]
+  },
+  {
+    "id": "sec-tfs-7",
+    "book_id": "bk-thinking-fast-slow",
+    "order_index": 7,
+    "title": "Norms, Surprises, and Causes",
+    "audio_status": "none",
+    "audio_duration_sec": 0,
+    "audio_size_mb": 0,
+    "sentence_count": 44,
+    "engine": null,
+    "voice": null,
+    "is_stale": false,
+    "summary_sentences": [
+      "Surprise is one of the most sensitive indications of how we understand our world."
+    ]
+  },
+  {
+    "id": "sec-dw-1",
+    "book_id": "bk-deep-work",
+    "order_index": 1,
+    "title": "Deep Work Is Valuable",
+    "audio_status": "complete",
+    "audio_duration_sec": 612,
+    "audio_size_mb": 7.1,
+    "sentence_count": 58,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": false,
+    "summary_sentences": [
+      "Deep work is the ability to focus without distraction on a cognitively demanding task.",
+      "It's a skill that allows you to quickly master complicated information and produce better results in less time.",
+      "Deep work will make you better at what you do and provide the sense of true fulfillment that comes from craftsmanship."
+    ]
+  },
+  {
+    "id": "sec-dw-2",
+    "book_id": "bk-deep-work",
+    "order_index": 2,
+    "title": "Deep Work Is Rare",
+    "audio_status": "complete",
+    "audio_duration_sec": 478,
+    "audio_size_mb": 5.6,
+    "sentence_count": 49,
+    "engine": "kokoro",
+    "voice": "af_bella",
+    "is_stale": true,
+    "summary_sentences": [
+      "Deep work is becoming rarer in the knowledge economy at the same time it's becoming more valuable.",
+      "Most knowledge workers are losing their ability to do deep work."
+    ]
+  }
+]
