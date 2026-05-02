@@ -43,13 +43,17 @@ const { selection, isSelecting, clear: clearSelection } = useTextSelection(readi
 // annotations accidentally match text fragments in unrelated sections and
 // render misleading marks with the wrong scroll anchor.
 const inlineAnnotations = computed(() => {
-  const currentId = reader.currentSection?.id
-  if (currentId == null) return []
+  const section = reader.currentSection
+  if (!section) return []
   // Each tab projects only the annotations that target its content_type so
   // Summary-tab highlights don't bleed into the Original tab and vice versa.
+  // section_summary annotations key off the summary id, not the section id.
   const wantedType = annotationContentTypeFor(
     reader.contentMode === 'summary' ? 'summary' : 'original',
   )
+  const currentId =
+    wantedType === 'section_summary' ? section.default_summary?.id : section.id
+  if (currentId == null) return []
   return annotations.annotations.filter(
     (a) => a.content_id === currentId && a.content_type === wantedType,
   )

@@ -426,10 +426,19 @@ async function rejectSuggestion(name: string) {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  settings.loadPresets()
+})
 </script>
 
 <style scoped>
+.action-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .book-overview {
   max-width: 48rem;
   margin: 0 auto;

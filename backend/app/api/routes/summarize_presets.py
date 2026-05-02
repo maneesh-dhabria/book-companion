@@ -93,9 +93,7 @@ async def list_presets(
     presets = [_to_item(p) for p in items]
     stems = {p.id for p in presets}
     default_id = (
-        DEFAULT_PRESET_ID
-        if DEFAULT_PRESET_ID in stems
-        else (presets[0].id if presets else None)
+        DEFAULT_PRESET_ID if DEFAULT_PRESET_ID in stems else (presets[0].id if presets else None)
     )
     return PresetListResponse(
         presets=presets,

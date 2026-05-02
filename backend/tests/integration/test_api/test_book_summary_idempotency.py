@@ -70,9 +70,7 @@ async def _seed_book_with_active_job(app) -> tuple[int, int]:
 
 
 @pytest.mark.asyncio
-async def test_concurrent_book_summary_returns_409_with_active_job_id(
-    client: AsyncClient, app
-):
+async def test_concurrent_book_summary_returns_409_with_active_job_id(client: AsyncClient, app):
     book_id, job_id = await _seed_book_with_active_job(app)
     r = await client.post(
         f"/api/v1/books/{book_id}/book-summary",

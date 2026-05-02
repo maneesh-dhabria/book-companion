@@ -50,7 +50,7 @@ watch(
 </template>
 
 <style scoped>
-.context-sidebar { width: 360px; min-width: 360px; border-left: 1px solid var(--reader-border, var(--color-border, #e0e0e0)); background: var(--reader-bg, var(--color-bg, #fff)); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.context-sidebar { width: 360px; min-width: 360px; border-left: 1px solid var(--reader-border, var(--color-border, #e0e0e0)); background: var(--reader-bg, var(--color-bg-primary, #fff)); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--reader-border, var(--color-border, #e0e0e0)); }
 .tab-bar { display: flex; gap: 0; }
 .tab { padding: 0.5rem 0.75rem; border: none; background: none; cursor: pointer; font-size: 0.8rem; font-weight: 500; color: var(--reader-text-secondary, var(--color-text-secondary, #666)); border-bottom: 2px solid transparent; }
