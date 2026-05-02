@@ -15,6 +15,8 @@ from sqlalchemy.exc import OperationalError
 from app.api.routes import (
     ai_threads,
     annotations,
+    audio,
+    audio_position,
     backup,
     book_summary,
     books,
@@ -29,6 +31,7 @@ from app.api.routes import (
     reading_state,
     search,
     sections,
+    spikes,
     summaries,
     summarize_presets,
     tags,
@@ -217,6 +220,9 @@ def create_app() -> FastAPI:
     app.include_router(reading_state.router)
     app.include_router(summarize_presets.router)
     app.include_router(llm_status.router)
+    app.include_router(audio.router)
+    app.include_router(audio_position.router)
+    app.include_router(spikes.router)
     app.include_router(book_summary.router)
 
     register_db_busy_handler(app)

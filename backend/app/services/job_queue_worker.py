@@ -187,7 +187,7 @@ class JobQueueWorker:
         from app.config import Settings as _Settings
         from app.db.models import ContentType
         from app.db.repositories.audio_file_repo import AudioFileRepository
-        from app.db.repositories.section_repo import BookSectionRepository
+        from app.db.repositories.section_repo import SectionRepository
         from app.db.repositories.summary_repo import SummaryRepository
         from app.services.audio_gen_service import AudioGenService
         from app.services.tts import create_tts_provider
@@ -215,7 +215,7 @@ class JobQueueWorker:
                 self._active_provider = provider
                 self._active_job_id = job_id
 
-                section_repo = BookSectionRepository(bg_session)
+                section_repo = SectionRepository(bg_session)
                 summary_repo = SummaryRepository(bg_session)
                 audio_repo = AudioFileRepository(
                     bg_session, settings.data.directory / "audio_data"
@@ -288,7 +288,7 @@ class JobQueueWorker:
             book = await book_repo.get_by_id(book_id)
             if book is None or book.default_summary_id is None:
                 return []
-            summary = await summary_repo.get(book.default_summary_id)
+            summary = await summary_repo.get_by_id(book.default_summary_id)
             if summary is None or not summary.summary_md:
                 return []
             units.append((ContentType.BOOK_SUMMARY, book.id, summary.summary_md))
@@ -301,7 +301,7 @@ class JobQueueWorker:
         for section in sections:
             source_md = None
             if section.default_summary_id is not None:
-                summary = await summary_repo.get(section.default_summary_id)
+                summary = await summary_repo.get_by_id(section.default_summary_id)
                 if summary is not None and summary.summary_md:
                     source_md = summary.summary_md
             if source_md is None:

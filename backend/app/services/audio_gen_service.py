@@ -70,7 +70,7 @@ class AudioGenService:
         *,
         session: AsyncSession,
         audio_repo: AudioFileRepository,
-        tts_provider: TTSProvider,
+        tts_provider: TTSProvider | None,
         data_dir: Path,
         book_title: str = "Book Companion",
         book_artist: str = "Book Companion",
