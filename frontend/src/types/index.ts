@@ -64,6 +64,7 @@ export interface Section {
   order_index: number
   section_type: string
   content_token_count: number | null
+  content_char_count?: number | null
   content_md: string | null
   default_summary: SummaryBrief | null
   summary_count: number

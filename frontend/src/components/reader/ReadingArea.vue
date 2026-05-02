@@ -34,6 +34,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       :annotations="annotations"
       :highlights-inline="highlightsInline"
     />
+    <slot name="footer" />
   </article>
 </template>
 

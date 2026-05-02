@@ -5,6 +5,7 @@ import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import FloatingToolbar from '@/components/reader/FloatingToolbar.vue'
 import ReaderHeader from '@/components/reader/ReaderHeader.vue'
 import ReadingArea from '@/components/reader/ReadingArea.vue'
+import ReadingAreaFooterNav from '@/components/reader/ReadingAreaFooterNav.vue'
 import SummaryEmptyState from '@/components/reader/SummaryEmptyState.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import AIChatTab from '@/components/sidebar/AIChatTab.vue'
@@ -14,6 +15,7 @@ import NoteCompositionPanel from '@/components/sidebar/NoteCompositionPanel.vue'
 import { useReadingState } from '@/composables/useReadingState'
 import { useTextSelection } from '@/composables/useTextSelection'
 import { useAnnotationsStore } from '@/stores/annotations'
+import { annotationContentTypeFor } from '@/utils/annotationContentType'
 import { useReaderStore } from '@/stores/reader'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
@@ -41,9 +43,20 @@ const { selection, isSelecting, clear: clearSelection } = useTextSelection(readi
 // annotations accidentally match text fragments in unrelated sections and
 // render misleading marks with the wrong scroll anchor.
 const inlineAnnotations = computed(() => {
-  const currentId = reader.currentSection?.id
+  const section = reader.currentSection
+  if (!section) return []
+  // Each tab projects only the annotations that target its content_type so
+  // Summary-tab highlights don't bleed into the Original tab and vice versa.
+  // section_summary annotations key off the summary id, not the section id.
+  const wantedType = annotationContentTypeFor(
+    reader.contentMode === 'summary' ? 'summary' : 'original',
+  )
+  const currentId =
+    wantedType === 'section_summary' ? section.default_summary?.id : section.id
   if (currentId == null) return []
-  return annotations.annotations.filter((a) => a.content_id === currentId)
+  return annotations.annotations.filter(
+    (a) => a.content_id === currentId && a.content_type === wantedType,
+  )
 })
 
 // T29 — NoteCompositionPanel replaces prompt(). Capture the selection
@@ -100,15 +113,11 @@ watch(
   () => {
     if (!reader.book) return
     if (settings.annotationsScope === 'all') {
-      annotations.loadAnnotations({
-        content_type: 'section_content',
-        book_id: reader.book.id,
-      })
+      // Load both section_content and section_summary annotations; the
+      // tab-level filter below picks the right subset for inline highlighting.
+      annotations.loadAnnotations({ book_id: reader.book.id })
     } else if (reader.currentSection) {
-      annotations.loadAnnotations({
-        content_type: 'section_content',
-        content_id: reader.currentSection.id,
-      })
+      annotations.loadAnnotations({ content_id: reader.currentSection.id })
     }
   },
   { immediate: true },
@@ -117,7 +126,9 @@ watch(
 function handleHighlight() {
   if (!reader.currentSection || !selection.text) return
   annotations.addAnnotation({
-    content_type: 'section_content',
+    content_type: annotationContentTypeFor(
+      reader.contentMode === 'summary' ? 'summary' : 'original',
+    ),
     content_id: reader.currentSection.id,
     type: 'highlight',
     selected_text: selection.text,
@@ -142,7 +153,9 @@ function handleNote() {
 function onNoteSave(note: string) {
   if (!reader.currentSection || !pendingSelection.value) return
   annotations.addAnnotation({
-    content_type: 'section_content',
+    content_type: annotationContentTypeFor(
+      reader.contentMode === 'summary' ? 'summary' : 'original',
+    ),
     content_id: reader.currentSection.id,
     type: 'note',
     selected_text: pendingSelection.value.text,
@@ -240,8 +253,20 @@ function handleAskAi() {
                 :content="reader.currentSection.default_summary.summary_md"
                 :has-prev="reader.hasPrev"
                 :has-next="reader.hasNext"
+                :annotations="inlineAnnotations"
+                :highlights-inline="settings.highlightsVisible"
                 @navigate="reader.navigateSection($event)"
-              />
+              >
+                <template #footer>
+                  <ReadingAreaFooterNav
+                    v-if="reader.book"
+                    :book-id="reader.book.id"
+                    :prev="reader.prevSection ? { id: reader.prevSection.id, title: reader.prevSection.title } : null"
+                    :next="reader.nextSection ? { id: reader.nextSection.id, title: reader.nextSection.title } : null"
+                    current-tab="summary"
+                  />
+                </template>
+              </ReadingArea>
               <SummaryEmptyState
                 v-else
                 :section="reader.currentSection"
@@ -258,7 +283,17 @@ function handleAskAi() {
               :annotations="inlineAnnotations"
               :highlights-inline="settings.highlightsVisible"
               @navigate="reader.navigateSection($event)"
-            />
+            >
+              <template #footer>
+                <ReadingAreaFooterNav
+                  v-if="reader.book"
+                  :book-id="reader.book.id"
+                  :prev="reader.prevSection ? { id: reader.prevSection.id, title: reader.prevSection.title } : null"
+                  :next="reader.nextSection ? { id: reader.nextSection.id, title: reader.nextSection.title } : null"
+                  current-tab="original"
+                />
+              </template>
+            </ReadingArea>
           </template>
 
           <template v-else-if="reader.sections.length === 0">

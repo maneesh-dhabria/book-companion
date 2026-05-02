@@ -29,19 +29,39 @@ describe('OverflowMenu', () => {
     w.unmount()
   })
 
-  it('click opens menu with both items', async () => {
+  it('renders the canonical menu items (T12)', async () => {
     const w = mount(OverflowMenu, {
-      props: { editRoute },
+      props: { editRoute, hasBookSummary: false },
       global: { plugins: [makeRouter()] },
       attachTo: document.body,
     })
     await w.find('button').trigger('click')
     const items = w.findAll('[role="menuitem"]').map((i) => i.text())
-    expect(items).toEqual(['Edit Structure', 'Customize Reader'])
+    expect(items).toContain('Generate book summary')
+    expect(items).toContain('Customize reader…')
+    expect(items).toContain('Edit structure')
+    expect(items).toContain('Re-import')
+    expect(items).toContain('Export Markdown')
+    expect(items).toContain('Delete book')
+    expect(items).not.toContain('Customize text')
+    expect(items).not.toContain('Customize text…')
     w.unmount()
   })
 
-  it('Edit Structure is a router-link to editRoute', async () => {
+  it('shows Read book summary when hasBookSummary=true', async () => {
+    const w = mount(OverflowMenu, {
+      props: { editRoute, hasBookSummary: true },
+      global: { plugins: [makeRouter()] },
+      attachTo: document.body,
+    })
+    await w.find('button').trigger('click')
+    const items = w.findAll('[role="menuitem"]').map((i) => i.text())
+    expect(items).toContain('Read book summary')
+    expect(items).not.toContain('Generate book summary')
+    w.unmount()
+  })
+
+  it('Edit structure is a router-link to editRoute', async () => {
     const router = makeRouter()
     const w = mount(OverflowMenu, {
       props: { editRoute },
@@ -49,20 +69,20 @@ describe('OverflowMenu', () => {
       attachTo: document.body,
     })
     await w.find('button').trigger('click')
-    const editItem = w.findAll('[role="menuitem"]')[0]
-    expect(editItem.attributes('href')).toContain('/books/1/edit-structure')
+    const editItem = w.findAll('[role="menuitem"]').find((i) => i.text() === 'Edit structure')
+    expect(editItem!.attributes('href')).toContain('/books/1/edit-structure')
     w.unmount()
   })
 
-  it('Customize Reader emits open-reader-settings and closes menu', async () => {
+  it('Customize reader emits open-reader-settings and closes menu', async () => {
     const w = mount(OverflowMenu, {
       props: { editRoute },
       global: { plugins: [makeRouter()] },
       attachTo: document.body,
     })
     await w.find('button').trigger('click')
-    const customizeItem = w.findAll('[role="menuitem"]')[1]
-    await customizeItem.trigger('click')
+    const customizeItem = w.findAll('[role="menuitem"]').find((i) => i.text() === 'Customize reader…')
+    await customizeItem!.trigger('click')
     expect(w.emitted('open-reader-settings')).toHaveLength(1)
     await w.vm.$nextTick()
     expect(w.find('[role="menu"]').exists()).toBe(false)

@@ -13,9 +13,9 @@ const navItems = [
 
 <template>
   <nav class="icon-rail" role="navigation" aria-label="Main navigation">
-    <div class="icon-rail-logo">
+    <router-link to="/" class="icon-rail-logo" aria-label="Book Companion home">
       <span class="text-lg font-bold">BC</span>
-    </div>
+    </router-link>
     <div class="icon-rail-items">
       <router-link
         v-for="item in navItems"
@@ -51,6 +51,18 @@ const navItems = [
   color: var(--color-sidebar-text);
   margin-bottom: 24px;
   opacity: 0.8;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.icon-rail-logo:hover {
+  opacity: 1;
+}
+.icon-rail-logo:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
 }
 
 .icon-rail-items {

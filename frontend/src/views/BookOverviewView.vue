@@ -60,43 +60,18 @@
             >
               Read
             </router-link>
-            <router-link
-              class="btn-secondary"
-              data-action="read-summary"
-              :class="{ 'is-disabled': !hasBookSummary }"
-              :aria-disabled="!hasBookSummary || undefined"
-              :title="hasBookSummary ? '' : 'No book summary yet — summarize sections first.'"
-              :to="
-                hasBookSummary
-                  ? { name: 'book-summary', params: { id: String(book.id) } }
-                  : { name: 'book-overview', params: { id: String(book.id) } }
-              "
-              @click="(e: MouseEvent) => !hasBookSummary && e.preventDefault()"
-            >
-              Read Summary
-            </router-link>
-            <ExportSplitButton
-              data-action="export"
-              data-testid="export-summary-btn"
-              :disabled="exportDisabled"
-              :disabled-reason="disabledTooltip()"
-              :loading="exporting"
-              @download="onExportClick"
-              @copy="onCopyClick"
-            />
-            <a
-              class="customize-link"
-              data-testid="customize-export-link"
-              :class="{ disabled: customizeDisabled }"
-              :aria-disabled="customizeDisabled"
-              @click.prevent="customizeDisabled ? null : (showModal = true)"
-            >
-              Customize…
-            </a>
             <OverflowMenu
               data-action="overflow"
               :edit-route="{ name: 'book-edit-structure', params: { id: String(book.id) } }"
+              :has-book-summary="hasBookSummary"
+              :can-generate="!hasNoSummaries"
+              :can-export="!exportDisabled"
               @open-reader-settings="settings.popoverOpen = true"
+              @generate-book-summary="onGenerateBookSummary"
+              @read-book-summary="onReadBookSummary"
+              @re-import="onReimport"
+              @export-markdown="onExportClick"
+              @delete-book="onDeleteBook"
             />
             <ReaderSettingsPopover />
           </div>
@@ -109,13 +84,37 @@
         </div>
       </header>
 
-      <section v-if="defaultSummary" class="summary">
-        <h2>Summary</h2>
-        <MarkdownRenderer :content="defaultSummary" />
+      <nav class="book-tabs" role="tablist" aria-label="Book detail sections">
+        <button
+          v-for="t in ['overview', 'summary', 'sections']"
+          :key="t"
+          type="button"
+          role="tab"
+          class="book-tab"
+          :class="{ active: activeTab === t }"
+          :aria-selected="activeTab === t"
+          @click="setTab(t as 'overview' | 'summary' | 'sections')"
+        >
+          {{ tabLabel(t) }}
+        </button>
+      </nav>
+
+      <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel">
+        <div class="overview-meta">
+          <p v-if="(book.suggested_tags || []).length === 0 && !book.summary_progress" class="overview-empty">
+            No additional metadata yet.
+          </p>
+          <p v-else class="overview-hint">
+            Use the Summary tab to read or generate a book-level summary, or the Sections tab to browse chapters.
+          </p>
+        </div>
       </section>
 
-      <section class="sections-toc">
-        <h2>Sections</h2>
+      <section v-else-if="activeTab === 'summary'" class="tab-panel" role="tabpanel">
+        <BookSummaryTab :book="book" :default-preset="book.last_used_preset" @book-refetch="reloadBook" />
+      </section>
+
+      <section v-else-if="activeTab === 'sections'" class="tab-panel" role="tabpanel">
         <SectionListTable
           :sections="(book.sections || []) as SectionRow[]"
           :book-id="book.id"
@@ -129,7 +128,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import CoverFallback from '@/components/common/CoverFallback.vue'
 import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
 import TagChip from '@/components/common/TagChip.vue'
@@ -138,8 +137,8 @@ import SuggestedTagsBar from '@/components/book/SuggestedTagsBar.vue'
 import SummarizationProgress from '@/components/book/SummarizationProgress.vue'
 import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
 import SectionListTable from '@/components/book/SectionListTable.vue'
-import ExportSplitButton from '@/components/book/ExportSplitButton.vue'
 import OverflowMenu from '@/components/book/OverflowMenu.vue'
+import BookSummaryTab from '@/components/book/BookSummaryTab.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
@@ -163,6 +162,23 @@ interface BookTag {
 }
 
 const route = useRoute()
+const router = useRouter()
+
+type BookTab = 'overview' | 'summary' | 'sections'
+const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections']
+const activeTab = computed<BookTab>(() => {
+  const t = route.query.tab
+  return typeof t === 'string' && (TAB_VALUES as string[]).includes(t)
+    ? (t as BookTab)
+    : 'overview'
+})
+function tabLabel(t: string): string {
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+function setTab(t: BookTab) {
+  router.replace({ query: { ...route.query, tab: t } })
+}
+
 const loading = ref(true)
 const book = ref<any>(null)
 const bookTags = ref<BookTag[]>([])
@@ -250,6 +266,30 @@ async function onExportClick() {
 // alt aren't realistic for our content.
 const STRIP_IMG_RE = /!\[([^\]]*)\]\([^)]*\)/g
 
+function onGenerateBookSummary() {
+  router.replace({ query: { ...route.query, tab: 'summary' } })
+  ui.showToast('Use the Summary tab to start generation.', 'info')
+}
+function onReadBookSummary() {
+  router.replace({ query: { ...route.query, tab: 'summary' } })
+}
+function onReimport() {
+  ui.showToast('Re-import is available from the CLI: bookcompanion add <path>', 'info')
+}
+async function onDeleteBook() {
+  if (!book.value) return
+  const ok = window.confirm(`Delete "${book.value.title}"? This cannot be undone.`)
+  if (!ok) return
+  try {
+    const r = await fetch(`/api/v1/books/${book.value.id}`, { method: 'DELETE' })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    ui.showToast('Book deleted.', 'success')
+    router.push('/')
+  } catch (e) {
+    ui.showToast(`Delete failed: ${(e as Error).message}`, 'error')
+  }
+}
+
 async function onCopyClick() {
   if (exportDisabled.value) return
   exporting.value = true
@@ -310,6 +350,10 @@ async function onCopyClick() {
   } finally {
     exporting.value = false
   }
+}
+
+function reloadBook() {
+  return load()
 }
 
 async function load() {
@@ -382,10 +426,73 @@ async function rejectSuggestion(name: string) {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  settings.loadPresets()
+})
 </script>
 
 <style scoped>
+.action-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--color-accent, #4f46e5);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--color-accent-hover, #4338ca);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
+}
+.book-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  margin-top: 1rem;
+}
+.book-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.book-tab:hover {
+  color: var(--color-text-primary, #1a1a2e);
+}
+.book-tab:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+.book-tab.active {
+  color: var(--color-accent, #4f46e5);
+  border-bottom-color: var(--color-accent, #4f46e5);
+}
 .book-overview {
   max-width: 48rem;
   margin: 0 auto;

@@ -143,6 +143,7 @@ class SectionResponse(BaseModel):
     order_index: int
     section_type: str
     content_token_count: int | None = None
+    content_char_count: int = 0
     content_md: str | None = None
     default_summary: SummaryBriefResponse | None = None
     summary_count: int = 0

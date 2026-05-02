@@ -36,6 +36,7 @@ export interface MigrationStatus {
   current: string | null
   latest: string | null
   is_behind: boolean
+  error?: string | null
 }
 
 export function getSettings() {

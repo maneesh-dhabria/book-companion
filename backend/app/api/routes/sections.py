@@ -163,6 +163,7 @@ async def _build_section_response(
         "order_index": section.order_index,
         "section_type": section.section_type,
         "content_token_count": section.content_token_count,
+        "content_char_count": len(section.content_md) if section.content_md else 0,
         "content_md": section.content_md if include_content else None,
         "default_summary": default_summary,
         "summary_count": summary_count,

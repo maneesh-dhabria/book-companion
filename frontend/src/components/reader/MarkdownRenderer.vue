@@ -59,5 +59,42 @@ const renderedHtml = computed(() => {
 </script>
 
 <template>
-  <div class="md-content" v-html="renderedHtml" />
+  <div class="md-content markdown-body" v-html="renderedHtml" />
 </template>
+
+<style scoped>
+.markdown-body :deep(ul) {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0 1em;
+}
+.markdown-body :deep(ul ul) {
+  list-style-type: circle;
+}
+.markdown-body :deep(ul ul ul) {
+  list-style-type: square;
+}
+.markdown-body :deep(ol) {
+  list-style-type: decimal;
+  padding-left: 1.75em;
+  margin: 0.5em 0 1em;
+}
+.markdown-body :deep(li) {
+  margin: 0.25em 0;
+}
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid var(--reader-border, var(--color-border));
+  padding: 0.4em 0.75em;
+  text-align: left;
+}
+.markdown-body :deep(thead) {
+  background: var(--reader-surface-muted, var(--color-bg-muted, transparent));
+  font-weight: 600;
+}
+</style>

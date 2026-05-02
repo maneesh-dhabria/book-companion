@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
+import { formatCompression } from './SectionListTable.formatters'
 
 interface SectionRow {
   id: number
@@ -39,7 +40,7 @@ function compressionLabel(s: SectionRow): string {
   if (!s.has_summary || !s.default_summary || !s.content_char_count) return '—'
   if (s.content_char_count === 0) return '—'
   const pct = (s.default_summary.summary_char_count / s.content_char_count) * 100
-  return `${pct.toFixed(1)}%`
+  return formatCompression(pct)
 }
 
 interface SummaryStatus {

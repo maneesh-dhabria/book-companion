@@ -44,7 +44,9 @@ useKeyboard([
 
 <template>
   <header class="top-bar">
-    <h1 class="top-bar-title">{{ pageTitle }}</h1>
+    <h1 class="top-bar-title">
+      <router-link to="/" class="top-bar-title-link">{{ pageTitle }}</router-link>
+    </h1>
     <div class="top-bar-actions">
       <input
         type="text"
@@ -76,6 +78,20 @@ useKeyboard([
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
+}
+.top-bar-title-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.top-bar-title-link:hover {
+  text-decoration: underline;
+}
+.top-bar-title-link:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
 }
 
 .top-bar-actions {

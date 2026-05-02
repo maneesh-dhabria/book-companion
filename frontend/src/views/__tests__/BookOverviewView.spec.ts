@@ -51,7 +51,7 @@ describe('BookOverviewView', () => {
     expect(progress.props('failedAndPending')).toBe(3)
   })
 
-  it('action row renders [Read][Read Summary][Export ▾][⋯] in order (F9a)', async () => {
+  it('action row renders [Read][⋯] only — no Read Summary, Export, or Customize text (T12)', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
       const u = String(url)
       if (u.endsWith('/books/1'))
@@ -65,7 +65,8 @@ describe('BookOverviewView', () => {
     await flushPromises()
     const actions = w.findAll('.action-row > [data-action]')
     const labels = actions.map((a) => a.attributes('data-action'))
-    expect(labels).toEqual(['read', 'read-summary', 'export', 'overflow'])
+    expect(labels).toEqual(['read', 'overflow'])
+    expect(w.text()).not.toContain('Customize text')
   })
 
   it('static "Summaries: X of Y" text is gone (FR-24)', async () => {
@@ -82,7 +83,7 @@ describe('BookOverviewView', () => {
     expect(w.text()).not.toMatch(/Summaries:\s*\d+\s+of\s+\d+/)
   })
 
-  it('Read Summary disabled when no default_summary (FR-23)', async () => {
+  it('Overflow shows Generate (not Read) book summary when no default_summary (T12)', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
       const u = String(url)
       if (u.endsWith('/books/1')) return new Response(JSON.stringify({ ...BOOK, default_summary_id: null }))
@@ -93,9 +94,10 @@ describe('BookOverviewView', () => {
     await router.isReady()
     const w = mount(BookOverviewView, { global: { plugins: [router] } })
     await flushPromises()
-    const btn = w.find('[data-action="read-summary"]')
-    expect(btn.attributes('aria-disabled')).toBe('true')
-    expect(btn.attributes('title')).toMatch(/no book summary yet/i)
+    await w.find('[data-action="overflow"] .overflow-trigger').trigger('click')
+    const items = w.findAll('[role="menuitem"]').map((i) => i.text())
+    expect(items).toContain('Generate book summary')
+    expect(items).not.toContain('Read book summary')
   })
 
   it('uses SectionListTable instead of inline ol (FR-33)', async () => {
@@ -105,7 +107,7 @@ describe('BookOverviewView', () => {
       return new Response('{"tags":[],"summary_md":null}')
     })
     const router = makeRouter()
-    router.push('/1')
+    router.push('/1?tab=sections')
     await router.isReady()
     const w = mount(BookOverviewView, { global: { plugins: [router] } })
     await flushPromises()

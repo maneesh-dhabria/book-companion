@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import * as readingPresetsApi from '@/api/readingPresets'
 import type { ReadingPreset } from '@/types'
+import ThemeCard from '@/components/shared/ThemeCard.vue'
+import { themeMap } from './themeColors'
 
 const settingsStore = useSettingsStore()
 const presets = ref<ReadingPreset[]>([])
@@ -60,13 +62,16 @@ async function saveReadingSettings() {
     <div v-if="presets.length > 0" class="setting-group">
       <h3 class="group-title">Reading Presets</h3>
       <div class="presets-list">
-        <div
+        <ThemeCard
           v-for="preset in presets"
           :key="preset.id"
-          class="preset-chip"
-        >
-          {{ preset.name }}
-        </div>
+          :label="preset.name"
+          :bg="(themeMap[preset.theme] ?? themeMap.light).bg"
+          :fg="(themeMap[preset.theme] ?? themeMap.light).fg"
+          :active="false"
+          :preview-font="preset.font_family"
+          :preview-size="preset.font_size_px"
+        />
       </div>
     </div>
 
@@ -133,25 +138,12 @@ async function saveReadingSettings() {
 }
 
 .presets-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  max-width: 560px;
 }
 
-.preset-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 1rem;
-  font-size: 0.8125rem;
-}
-
-.preset-chip.active {
-  border-color: var(--color-accent, #2563eb);
-  background: rgba(37, 99, 235, 0.05);
-}
 
 .active-badge {
   font-size: 0.6875rem;

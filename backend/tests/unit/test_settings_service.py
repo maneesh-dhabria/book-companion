@@ -220,3 +220,32 @@ def test_load_shipped_models_yaml_from_package():
     data = svc.load_models()
     assert "providers" in data
     assert "claude" in data["providers"]
+
+
+# ---- T1: migration-status programmatic API ----
+
+
+@pytest.mark.asyncio
+async def test_get_migration_status_returns_revision_strings(engine, test_settings):
+    svc = SettingsService(settings=test_settings, engine=engine)
+    result = await svc.get_migration_status()
+    assert "error" in result
+    assert result["error"] is None
+    # latest must be a hex revision when migrations dir is well-formed
+    assert result["latest"] is not None and len(result["latest"]) >= 8
+    assert isinstance(result["is_behind"], bool)
+    # Critical guard: response must never contain alembic's error banner
+    for value in (result["current"], result["latest"]):
+        assert value is None or not value.startswith("FAILED")
+
+
+@pytest.mark.asyncio
+async def test_get_migration_status_failure_returns_structured_error(monkeypatch):
+    """When Alembic config is broken, returns structured error (not subprocess output)."""
+    # Construct a service with no engine and no settings → forces error path.
+    svc = SettingsService(settings=None, engine=None)
+    result = await svc.get_migration_status()
+    assert result["current"] is None
+    assert result["latest"] is None
+    assert result["is_behind"] is False
+    assert isinstance(result["error"], str) and len(result["error"]) > 0

@@ -52,8 +52,10 @@ const router = createRouter({
     {
       path: '/books/:id/summary',
       name: 'book-summary',
-      meta: { title: 'Book Summary' },
-      component: () => import('@/views/BookSummaryView.vue'),
+      redirect: (to) => ({
+        path: `/books/${to.params.id}`,
+        query: { tab: 'summary' },
+      }),
     },
     {
       path: '/jobs/:id',

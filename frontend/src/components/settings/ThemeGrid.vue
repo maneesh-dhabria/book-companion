@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 
-import ThemeCard from './ThemeCard.vue'
+import ThemeCard from '@/components/shared/ThemeCard.vue'
 import { themeMap } from './themeColors'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 
