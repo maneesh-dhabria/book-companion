@@ -85,6 +85,7 @@
         <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
         <button class="wf-tab" aria-selected="false" data-state="playing-with-highlight">Playing + Highlight</button>
         <button class="wf-tab" aria-selected="false" data-state="ended-auto-advance">Ended / Auto-advance</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Loading voice</button>
       </nav>
       <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
     </div>
@@ -227,14 +228,8 @@
             <h1 class="text-3xl font-semibold text-slate-900 mb-1">Atomic Habits</h1>
             <div class="text-slate-500 text-sm mb-5">James Clear · 24 sections · 11:42 / 18:30</div>
 
-            <div class="flex items-center gap-3 flex-wrap mb-6">
-              <span class="bc-engine-chip">
-                <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
-                Kokoro · af_bella
-              </span>
-              <span class="mock-pill">Audio: 24 of 24 sections</span>
-              <span class="text-xs text-slate-500 wf-anno" data-note="aria-live='polite' region announces each sentence change for screen readers.">live region active</span>
-            </div>
+            <!-- G1: reader-band purity — engine chip, coverage, and download disappear during playback. The playbar at the bottom owns engine + position + time. -->
+            <div class="sr-only" aria-live="polite">Now reading sentence 84 of 142</div>
 
             <article class="summary-prose">
               <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year, while 1% decline collapses to nothing.</p>
@@ -377,6 +372,66 @@
           <span class="bc-engine-chip">Kokoro · af_bella</span>
           <button class="icon-btn" aria-label="Close player">✕</button>
         </div>
+      </div>
+    </section>
+
+    <!-- ============= STATE: loading voice ============= -->
+    <section class="wf-state" data-state="loading" aria-labelledby="state-loading-h">
+      <h1 id="state-loading-h" class="sr-only">Loading Kokoro voice — pre-play cold start</h1>
+
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Atomic Habits</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-link is-current">Book summary</span>
+          </div>
+          <div class="reader-controls">
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn play-action wf-anno" aria-disabled="true" aria-label="Loading voice" data-note="Header play button shows skeleton shimmer while Kokoro voice loads (~1–3s)." style="position:relative; overflow:hidden;">
+              <span aria-hidden="true">▶</span> Listen
+              <span class="skeleton" style="position:absolute; inset:0; opacity:0.5;"></span>
+            </button>
+          </div>
+        </header>
+
+        <div class="reader-body" style="opacity: 0.7;">
+          <div class="reader-body__inner">
+
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+              <span class="mock-pill">Book summary</span>
+              <span class="mock-pill">practitioner_bullets</span>
+              <span class="mock-pill">Generated May 1, 2026</span>
+            </div>
+
+            <h1 class="text-3xl font-semibold text-slate-900 mb-1">Atomic Habits</h1>
+            <div class="text-slate-500 text-sm mb-5">James Clear · 24 sections · ~18 min listen</div>
+
+            <div class="flex items-center gap-3 flex-wrap mb-6 text-sm" style="color:var(--wf-muted)">
+              <span class="bc-engine-chip wf-anno" data-note="Kokoro cold-start. Model loads once per session (~1–3s) before MP3 streams.">
+                <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
+                Loading Kokoro voice…
+              </span>
+              <span class="mock-pill">Audio · 24 of 24 sections</span>
+              <div class="skeleton" style="width: 140px; height: 14px;"></div>
+            </div>
+
+            <article class="summary-prose">
+              <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year, while 1% decline collapses to nothing.</p>
+              <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong> — adapted from earlier work in behavioral psychology. Every habit you have, good or bad, runs this loop.</p>
+            </article>
+          </div>
+        </div>
+
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
       </div>
     </section>
 

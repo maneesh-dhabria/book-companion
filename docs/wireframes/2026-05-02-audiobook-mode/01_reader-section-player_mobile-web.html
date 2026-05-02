@@ -105,16 +105,12 @@
         <div class="mob-content">
           <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1 · System 1 and System 2</div>
           <h1>System 1 and System 2</h1>
+          <div class="text-xs text-slate-500 mb-4 mt-1 wf-anno" data-note="Pre-play subtitle mirrors file 02. '~6 min listen · pre-generated' when Kokoro MP3 exists; '~6 min listen · Web Speech' otherwise.">~6 min listen · Web Speech</div>
 
-          <div class="flex flex-wrap items-center gap-2 mb-4 mt-3">
-            <button class="play-trigger" aria-label="Listen to summary">
-              <span aria-hidden="true">▶</span> Listen
-            </button>
-            <span class="bc-engine-chip bc-engine-chip--web wf-anno" data-note="Web Speech — instant playback. Used when no pre-gen MP3 exists for this section.">🔊 Web Speech (instant)</span>
-          </div>
-          <div class="mb-5">
+          <div class="flex flex-wrap items-center gap-2 mb-5 wf-anno" data-note="Pre-play meta band — engine chip + duration pill. The canonical Play CTA lives in the reader-header (▶); no body-level play button (G2).">
+            <span class="bc-engine-chip bc-engine-chip--web">🔊 Web Speech</span>
             <span class="mock-pill">~6 min listen</span>
-            <span class="mock-pill ml-1">chapter</span>
+            <span class="mock-pill">chapter</span>
           </div>
 
           <div class="summary-prose">
@@ -151,14 +147,12 @@
           </div>
         </header>
 
-        <div class="mob-content" aria-live="polite">
+        <div class="mob-content">
           <h1>System 1 and System 2</h1>
-          <div class="flex flex-wrap items-center gap-2 mb-4 mt-2">
-            <span class="bc-engine-chip bc-engine-chip--web">🔊 Web Speech</span>
-            <span class="mock-pill">Sentence 17 of 47</span>
-          </div>
+          <!-- G1: engine + sentence position live in the playbar only during playback. -->
+          <div class="sr-only" aria-live="polite">Now reading sentence 17 of 47</div>
 
-          <div class="summary-prose">
+          <div class="summary-prose mt-3">
             <h2>Summary</h2>
             <p>Kahneman opens by inviting the reader into a deliberate metaphor: the mind operates as if two distinct agents were sharing the steering wheel.</p>
             <p>
@@ -187,7 +181,7 @@
             <select class="speed-select wf-anno" aria-label="Playback speed" data-note="0.75x / 1x / 1.25x / 1.5x / 2x">
               <option>1x</option><option selected>1.25x</option><option>1.5x</option>
             </select>
-            <span class="bc-engine-chip bc-engine-chip--web">Web</span>
+            <span class="bc-engine-chip bc-engine-chip--web">Web Speech</span>
           </div>
         </div>
       </div>
@@ -218,16 +212,16 @@
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
 
-          <div class="resume-card mt-3">
-            <button class="play-trigger" aria-label="Resume listening">
-              <span aria-hidden="true">▶</span> Resume
-            </button>
-            <div class="text-xs text-slate-600 mt-2 leading-snug">
+          <div class="resume-card mt-3 wf-anno" data-note="Resume meta only — the canonical Resume CTA is the ▶ in the reader-header. No body-level play button (G2).">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bc-engine-chip bc-engine-chip--web" style="font-size: 11px;">Web Speech</span>
+              <span class="mock-pill" style="font-size: 11px;">paused at sentence 12 of 47</span>
+            </div>
+            <div class="text-xs text-slate-600 leading-snug">
               Resume from sentence 12 of 47 · last listened from this browser 2 hours ago
             </div>
             <div class="mt-2">
               <a class="text-sm" style="color: var(--wf-accent, #4f46e5)" href="#">Start over</a>
-              <span class="ml-2 bc-engine-chip bc-engine-chip--web" style="font-size: 11px;">Web Speech</span>
             </div>
           </div>
 
@@ -321,10 +315,7 @@
           <div class="text-xs text-slate-500 mb-1">Part I · Chapter 8</div>
           <h1>Of Two Minds</h1>
 
-          <div class="flex flex-col items-start gap-3 mt-4">
-            <button class="play-trigger" disabled aria-label="Listen disabled">
-              <span aria-hidden="true">▶</span> Listen
-            </button>
+          <div class="flex flex-col items-start gap-3 mt-4 wf-anno" data-note="No-summary: the disabled play button in the reader-header (▶) signals playback unavailability. Body shows only the explanation + 'Generate summary' CTA (G2).">
             <div class="text-xs text-slate-500 max-w-xs leading-snug">Audio is only generated for summaries in v1. Generate this section's summary first.</div>
             <a href="#" class="mock-button mock-button--primary" style="min-height: 44px; display:inline-flex; align-items:center;">Generate summary</a>
           </div>
@@ -361,18 +352,15 @@
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
 
-          <div class="bc-banner mt-3 wf-anno" data-note="Stale audio still plays — user is informed but never blocked.">
+          <div class="bc-banner mt-3 wf-anno" data-note="Stale audio still plays — header ▶ stays enabled. Body shows status only (G2: no body Listen pill).">
             <span>⚠ Source has been edited since audio was generated. Regenerate?</span>
             <button class="mock-button mock-button--primary" style="min-height: 36px;">Regenerate audio</button>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 mb-4 mt-4">
-            <button class="play-trigger" aria-label="Listen">
-              <span aria-hidden="true">▶</span> Listen
-            </button>
-            <span class="bc-engine-chip">🎙 Kokoro · 3.2 MB</span>
+            <span class="bc-engine-chip">🎙 Kokoro · af_bella · 3.2 MB</span>
+            <span class="mock-pill">audio from May 1, 2026</span>
           </div>
-          <div class="text-xs text-slate-500 mb-4">audio from May 1, 2026</div>
 
           <div class="summary-prose">
             <p>Kahneman opens by inviting the reader into a deliberate metaphor: the mind operates as if two distinct agents were sharing the steering wheel.</p>
@@ -406,11 +394,9 @@
 
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
-          <div class="flex flex-wrap items-center gap-2 mb-3 mt-2">
-            <span class="bc-engine-chip">🎙 Kokoro · af_bella</span>
-            <span class="mock-pill">Sentence 17 of 47</span>
-          </div>
-          <div class="summary-prose">
+          <!-- G1: engine + sentence position live in the playbar only during playback. -->
+          <div class="sr-only" aria-live="polite">Now reading sentence 17 of 47</div>
+          <div class="summary-prose mt-3">
             <p><span class="bc-sentence-active">System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</span></p>
             <p>The chapter's pivotal demonstration is the Müller-Lyer illusion.</p>
           </div>

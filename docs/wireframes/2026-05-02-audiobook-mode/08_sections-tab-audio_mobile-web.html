@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Sections Tab · Audio Columns — mobile-web — Wireframe</title>
+  <title>Sections Tab · Audio Status — mobile-web — Wireframe</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,30 +32,31 @@
                 background:#fff; display:flex; flex-direction:column; gap:.4rem }
     .sec-card.is-selected { background:#eef2ff; border-color:#c7d2fe }
     .sec-card.is-summary-missing { background:#fafafa }
+    .sec-card.is-generating { background:#eef2ff; border-color:#c7d2fe }
     .sec-row1 { display:flex; gap:.5rem; align-items:baseline }
     .sec-num { color: var(--wf-muted); font-size:.78rem; font-variant-numeric: tabular-nums }
     .sec-title { font-weight:600; color:#111827; font-size:.92rem; flex:1; min-width:0 }
     .sec-meta { font-size:.72rem; color: var(--wf-muted); display:flex; gap:.4rem; flex-wrap:wrap }
     .sec-meta .dot { color:#d1d5db }
     .sec-status-row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap }
-    .sec-actions { display:flex; gap:.5rem; margin-top:.25rem }
 
-    .audio-pill { display:inline-flex; align-items:center; gap:.25rem; padding:.18rem .55rem;
-                  border-radius:9999px; font-size:.7rem; font-weight:500; white-space:nowrap }
-    .audio-pill--pre { background:#dcfce7; color:#15803d }
-    .audio-pill--web { background:#f3f4f6; color:#4b5563 }
-    .audio-pill--stale { background:#fef3c7; color:#92400e }
-    .audio-pill--none { background:transparent; color:#9ca3af }
+    /* Canonical status pills (G7) */
+    .status-pill { display:inline-flex; align-items:center; gap:.25rem; padding:.18rem .55rem;
+                   border-radius:9999px; font-size:.7rem; font-weight:500; white-space:nowrap }
+    .status-ok    { background:#dcfce7; color:#166534 }
+    .status-web   { background:#dbeafe; color:#1e40af }
+    .status-stale { background:#fef3c7; color:#92400e }
+    .status-prog  { background:#e0e7ff; color:#3730a3 }
+    .status-queue { background:#f1f5f9; color:#475569 }
+    .status-none  { background:transparent; color:#9ca3af }
+
     .summary-pill { display:inline-flex; align-items:center; gap:.25rem; padding:.18rem .5rem;
                     border-radius:9999px; font-size:.7rem; background:#f3f4f6; color:#4b5563 }
     .summary-pill--ok { color:#15803d }
     .summary-pill--missing { color:#9ca3af }
 
-    .icon-btn-mob { width:40px; height:40px; border:1px solid var(--wf-border); background:#fff;
-                    border-radius:8px; font-size:1rem; color:#4b5563;
-                    display:inline-flex; align-items:center; justify-content:center }
-    .icon-btn-mob--danger { color:#b91c1c }
-    .icon-btn-mob:disabled { opacity:.35 }
+    .audio-link { font-size:.7rem; color:var(--wf-accent); text-decoration:none }
+    .audio-link:hover { text-decoration:underline }
 
     .toolbar-mob { display:flex; gap:.4rem; align-items:center; padding:.5rem .15rem;
                     font-size:.78rem; color:var(--wf-muted); justify-content:space-between }
@@ -74,17 +75,27 @@
 
     .ellide { text-align:center; color:var(--wf-muted); font-style:italic; font-size:.78rem;
               padding:.6rem; background:#fafafa; border-radius:8px }
+
+    .audio-banner { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap;
+                    padding:.5rem .7rem; background:#eef2ff; border:1px solid #c7d2fe;
+                    border-radius:8px; font-size:.74rem; color:#3730a3 }
+    .audio-banner a { color:var(--wf-accent); font-weight:500; text-decoration:underline }
+    .gen-spinner { display:inline-block; width:9px; height:9px; border:2px solid #c7d2fe;
+                   border-top-color:var(--wf-accent,#4f46e5); border-radius:50%;
+                   animation: spin 1s linear infinite; vertical-align:middle }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body data-annotations="on">
   <header class="wf-chrome">
     <div class="wf-chrome__inner">
-      <span class="wf-chrome__title">Sections Tab · Audio Columns</span>
+      <span class="wf-chrome__title">Sections Tab · Audio Status</span>
       <span class="wf-chrome__device">mobile-web</span>
       <nav class="wf-tabs" aria-label="State switcher">
         <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
         <button class="wf-tab" aria-selected="false" data-state="bulk-actions">Bulk</button>
         <button class="wf-tab" aria-selected="false" data-state="filtered-stale">Stale</button>
+        <button class="wf-tab" aria-selected="false" data-state="generating">Generating</button>
       </nav>
       <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
     </div>
@@ -94,10 +105,9 @@
 
     <!-- ============================== DEFAULT ============================== -->
     <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
-      <h1 id="state-default-h" class="sr-only">Default sections list with audio status</h1>
+      <h1 id="state-default-h" class="sr-only">Default sections list — section-centric, audio status only</h1>
 
       <div style="padding: 14px 14px 24px; display:flex; flex-direction:column; gap: 14px;">
-        <!-- Book header -->
         <header class="book-header">
           <div class="cover mock-img" aria-label="Book cover">cover</div>
           <div style="flex:1;min-width:0">
@@ -105,7 +115,7 @@
             <p class="byline">Daniel Kahneman</p>
             <div class="wf-row" style="gap:.3rem;margin-top:.35rem;flex-wrap:wrap">
               <span class="mock-pill" style="font-size:.65rem">47 sections</span>
-              <span class="mock-pill" style="font-size:.65rem">8 / 47 audio</span>
+              <span class="mock-pill" style="font-size:.65rem">Audio · 8 of 47</span>
             </div>
             <div style="display:flex;gap:.4rem;margin-top:.5rem">
               <a class="btn-primary" href="#">Read</a>
@@ -114,22 +124,22 @@
           </div>
         </header>
 
-        <!-- Tabs -->
         <nav class="book-tabs" role="tablist">
           <button class="book-tab">Overview</button>
           <button class="book-tab">Summary</button>
           <button class="book-tab active" aria-selected="true">Sections</button>
           <button class="book-tab">Audio <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
-          <button class="book-tab">Annotations</button>
+          <button class="book-tab">Annotations <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
         </nav>
+
+        <div class="audio-banner wf-anno"
+             data-note="G4: file 03 owns per-MP3 management; this tab is section-centric and only displays audio status pill.">
+          <span>Audio is managed in the Audio tab.</span>
+          <a href="./03_book-detail-audio_mobile-web.html">Open &rarr;</a>
+        </div>
 
         <div class="toolbar-mob">
           <span>47 sections</span>
-          <button class="wf-anno mock-button"
-                  data-note="Opens Generate Audio modal (file 04)"
-                  style="font-size:.75rem; padding:.3rem .6rem">
-            &#9654; Generate audio
-          </button>
         </div>
 
         <!-- Stacked rows -->
@@ -143,12 +153,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>3,420 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 18%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-01">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -160,12 +166,8 @@
             <div class="sec-meta"><span>part</span><span class="dot">·</span><span>1,180 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 22%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-02">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -177,12 +179,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,820 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 19%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-03">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -195,17 +193,12 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,120 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 21%</span>
-              <span class="audio-pill audio-pill--web">&#9889; Web Speech</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate" disabled>&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete" disabled>&#128465;</button>
+              <span class="status-pill status-web">&#9889; Web Speech</span>
             </div>
           </div>
 
           <div class="sec-card wf-anno"
-               data-note="Stale = section summary edited after audio generated. Click ⟳ to refresh.">
+               data-note="Stale = section summary edited after audio generated. Refresh from Audio tab.">
             <div class="sec-row1">
               <span class="sec-num">05</span>
               <span class="sec-title">The Lazy Controller</span>
@@ -213,12 +206,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>5,640 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 18%</span>
-              <span class="audio-pill audio-pill--stale">&#9998; Stale</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-stale">&#9998; Stale</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-05">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -230,12 +219,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,120 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 20%</span>
-              <span class="audio-pill audio-pill--none">&mdash; no audio</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play" disabled>&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate" disabled>&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete" disabled>&#128465;</button>
+              <span class="status-pill status-none">&mdash;</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-06">Generate audio for this section &rarr;</a>
             </div>
           </div>
 
@@ -248,7 +233,7 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,820 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--missing">&#10007; No summary</span>
-              <span class="audio-pill audio-pill--none">&mdash;</span>
+              <span class="status-pill status-none">&mdash;</span>
             </div>
             <div style="font-size:.7rem;color:var(--wf-muted);font-style:italic">Generate this section's summary first.</div>
           </div>
@@ -261,12 +246,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>5,210 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; Summary · 19%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-08">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -277,7 +258,7 @@
 
     <!-- ============================== BULK ============================== -->
     <section class="wf-state" data-state="bulk-actions" aria-labelledby="state-bulk-h">
-      <h1 id="state-bulk-h" class="sr-only">Bulk actions state</h1>
+      <h1 id="state-bulk-h" class="sr-only">Bulk actions — section-centric only</h1>
 
       <div style="padding: 14px 14px 24px; display:flex; flex-direction:column; gap: 14px;">
         <header class="book-header">
@@ -293,14 +274,20 @@
           <button class="book-tab">Summary</button>
           <button class="book-tab active" aria-selected="true">Sections</button>
           <button class="book-tab">Audio <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
-          <button class="book-tab">Annotations</button>
+          <button class="book-tab">Annotations <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
         </nav>
 
+        <div class="audio-banner wf-anno"
+             data-note="Bulk audio actions live in the Audio tab overflow.">
+          <span>Bulk audio actions are in the Audio tab.</span>
+          <a href="./03_book-detail-audio_mobile-web.html">Open &rarr;</a>
+        </div>
+
         <div class="wf-anno bulk-bar"
-             data-note="Bulk audio actions for power users — N2 from MSF analysis">
+             data-note="Section-only bulk ops; audio bulk lives in file 03's overflow.">
           <strong>3 selected</strong>
-          <button class="bulk-action">&#9654; Gen audio</button>
-          <button class="bulk-action">&#x21bb; Regen</button>
+          <button class="bulk-action">Gen summary</button>
+          <button class="bulk-action">Mark read</button>
           <button class="bulk-action bulk-action--danger">&#128465; Delete</button>
           <button class="bulk-action" style="margin-left:auto">Cancel</button>
         </div>
@@ -316,7 +303,7 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>3,420 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 18%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
             </div>
           </div>
 
@@ -329,7 +316,7 @@
             <div class="sec-meta"><span>part</span><span class="dot">·</span><span>1,180 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 22%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
             </div>
           </div>
 
@@ -342,7 +329,7 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,820 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 19%</span>
-              <span class="audio-pill audio-pill--pre">&#10003; Pre-gen</span>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
             </div>
           </div>
 
@@ -355,7 +342,7 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,120 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 21%</span>
-              <span class="audio-pill audio-pill--web">&#9889; Web Speech</span>
+              <span class="status-pill status-web">&#9889; Web Speech</span>
             </div>
           </div>
 
@@ -368,7 +355,7 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,120 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 20%</span>
-              <span class="audio-pill audio-pill--none">&mdash; no audio</span>
+              <span class="status-pill status-none">&mdash;</span>
             </div>
           </div>
 
@@ -379,7 +366,7 @@
 
     <!-- ============================== FILTERED: STALE ============================== -->
     <section class="wf-state" data-state="filtered-stale" aria-labelledby="state-stale-h">
-      <h1 id="state-stale-h" class="sr-only">Filtered to stale audio only</h1>
+      <h1 id="state-stale-h" class="sr-only">Filtered to stale audio only — view only</h1>
 
       <div style="padding: 14px 14px 24px; display:flex; flex-direction:column; gap: 14px;">
         <header class="book-header">
@@ -395,8 +382,14 @@
           <button class="book-tab">Summary</button>
           <button class="book-tab active" aria-selected="true">Sections</button>
           <button class="book-tab">Audio <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
-          <button class="book-tab">Annotations</button>
+          <button class="book-tab">Annotations <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
         </nav>
+
+        <div class="audio-banner wf-anno"
+             data-note="Bulk-fix-stale moved to Audio tab. This view shows which sections are stale; the action lives there.">
+          <span>Stale sections listed. Regenerate them from the Audio tab.</span>
+          <a href="./03_book-detail-audio_mobile-web.html#stale">Open &rarr;</a>
+        </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
           <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
@@ -406,11 +399,6 @@
             </span>
             <a class="clear-link" href="#">Clear</a>
           </div>
-          <button class="wf-anno mock-button mock-button--primary"
-                  data-note="N2 — one tap fixes all stale at once"
-                  style="font-size:.78rem;padding:.4rem .7rem">
-            &#x21bb; Regen all 3
-          </button>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:.6rem">
@@ -423,12 +411,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>5,640 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 18%</span>
-              <span class="audio-pill audio-pill--stale">&#9998; Stale</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-stale">&#9998; Stale</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-05">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -440,12 +424,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>3,910 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 20%</span>
-              <span class="audio-pill audio-pill--stale">&#9998; Stale</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-stale">&#9998; Stale</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-11">Manage in Audio tab &rarr;</a>
             </div>
           </div>
 
@@ -457,12 +437,8 @@
             <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,540 chars</span></div>
             <div class="sec-status-row">
               <span class="summary-pill summary-pill--ok">&#10003; 19%</span>
-              <span class="audio-pill audio-pill--stale">&#9998; Stale</span>
-            </div>
-            <div class="sec-actions">
-              <button class="icon-btn-mob" aria-label="Play">&#9654;</button>
-              <button class="icon-btn-mob" aria-label="Regenerate">&#x21bb;</button>
-              <button class="icon-btn-mob icon-btn-mob--danger" aria-label="Delete">&#128465;</button>
+              <span class="status-pill status-stale">&#9998; Stale</span>
+              <a class="audio-link" href="./03_book-detail-audio_mobile-web.html#sec-23">Manage in Audio tab &rarr;</a>
             </div>
           </div>
         </div>
@@ -473,11 +449,117 @@
       </div>
     </section>
 
+    <!-- ============================== GENERATING ============================== -->
+    <section class="wf-state" data-state="generating" aria-labelledby="state-generating-h">
+      <h1 id="state-generating-h" class="sr-only">Audio generation in progress</h1>
+
+      <div style="padding: 14px 14px 24px; display:flex; flex-direction:column; gap: 14px;">
+        <header class="book-header">
+          <div class="cover mock-img" aria-label="Book cover">cover</div>
+          <div style="flex:1;min-width:0">
+            <h1 style="font-size:1.05rem;font-weight:700;color:#111827;margin:0;line-height:1.3">Thinking, Fast and Slow</h1>
+            <p class="byline">Daniel Kahneman</p>
+          </div>
+        </header>
+
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab">Overview</button>
+          <button class="book-tab">Summary</button>
+          <button class="book-tab active" aria-selected="true">Sections</button>
+          <button class="book-tab">Audio <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
+          <button class="book-tab">Annotations <span class="mock-pill" style="font-size:.55rem">NEW</span></button>
+        </nav>
+
+        <div class="audio-banner wf-anno"
+             data-note="H5: while a job runs, sections show in-progress pills. Progress detail + cancel live in Audio tab.">
+          <span><span class="gen-spinner" aria-hidden="true"></span> Audio is being generated. Track progress in the Audio tab.</span>
+          <a href="./03_book-detail-audio_mobile-web.html">Open &rarr;</a>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:.6rem">
+
+          <div class="sec-card">
+            <div class="sec-row1">
+              <span class="sec-num">01</span>
+              <span class="sec-title">Introduction</span>
+            </div>
+            <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>3,420 chars</span></div>
+            <div class="sec-status-row">
+              <span class="summary-pill summary-pill--ok">&#10003; 18%</span>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
+            </div>
+          </div>
+
+          <div class="sec-card">
+            <div class="sec-row1">
+              <span class="sec-num">02</span>
+              <span class="sec-title">Part I: Two Systems</span>
+            </div>
+            <div class="sec-meta"><span>part</span><span class="dot">·</span><span>1,180 chars</span></div>
+            <div class="sec-status-row">
+              <span class="summary-pill summary-pill--ok">&#10003; 22%</span>
+              <span class="status-pill status-ok">&#10003; Pre-gen</span>
+            </div>
+          </div>
+
+          <div class="sec-card is-generating">
+            <div class="sec-row1">
+              <span class="sec-num">03</span>
+              <span class="sec-title">System 1 and System 2</span>
+            </div>
+            <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,820 chars</span></div>
+            <div class="sec-status-row">
+              <span class="summary-pill summary-pill--ok">&#10003; 19%</span>
+              <span class="status-pill status-prog"><span class="gen-spinner" aria-hidden="true"></span> Generating</span>
+            </div>
+          </div>
+
+          <div class="sec-card">
+            <div class="sec-row1">
+              <span class="sec-num">04</span>
+              <span class="sec-title">Attention and Effort</span>
+            </div>
+            <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,120 chars</span></div>
+            <div class="sec-status-row">
+              <span class="summary-pill summary-pill--ok">&#10003; 21%</span>
+              <span class="status-pill status-queue">&#9201; Queued</span>
+            </div>
+          </div>
+
+          <div class="sec-card">
+            <div class="sec-row1">
+              <span class="sec-num">05</span>
+              <span class="sec-title">The Lazy Controller</span>
+            </div>
+            <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>5,640 chars</span></div>
+            <div class="sec-status-row">
+              <span class="summary-pill summary-pill--ok">&#10003; 18%</span>
+              <span class="status-pill status-queue">&#9201; Queued</span>
+            </div>
+          </div>
+
+          <div class="sec-card">
+            <div class="sec-row1">
+              <span class="sec-num">06</span>
+              <span class="sec-title">The Associative Machine</span>
+            </div>
+            <div class="sec-meta"><span>chapter</span><span class="dot">·</span><span>4,120 chars</span></div>
+            <div class="sec-status-row">
+              <span class="summary-pill summary-pill--ok">&#10003; 20%</span>
+              <span class="status-pill status-queue">&#9201; Queued</span>
+            </div>
+          </div>
+
+          <div class="ellide">… 41 more sections queued</div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer class="wf-footer">
     <div class="wf-footer__inner">
-      <span>Sections Tab · Audio Columns</span>
+      <span>Sections Tab · Audio Status</span>
       <span class="mock-pill">mobile-web</span>
       <span>File 08 of 14</span>
       <span>Generated 2026-05-02</span>

@@ -17,13 +17,34 @@
     .anno-quote { background: var(--bc-highlight, #fef3c7); border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 4px; font-size: 14px; line-height: 1.55; color: #1f2937; }
     .anno-note { font-style: italic; color: #4b5563; font-size: 13px; margin-top: 8px; line-height: 1.5; }
     .anno-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #6b7280; margin-bottom: 8px; }
-    .tab-row { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; }
-    .tab-row .tab { padding: 10px 16px; font-size: 14px; color: #6b7280; border-bottom: 2px solid transparent; cursor: pointer; }
-    .tab-row .tab.active { color: var(--wf-accent, #4f46e5); border-bottom-color: var(--wf-accent, #4f46e5); font-weight: 600; }
+
+    /* Canonical BookDetail tab strip — copied from file 03 */
+    .book-tabs { display:flex; gap:.25rem; border-bottom:1px solid var(--wf-border); margin-top:1rem }
+    .book-tab { background:none; border:none; padding:.6rem 1rem; font-size:.9rem; font-weight:500;
+                color:var(--wf-muted); cursor:pointer; border-bottom:2px solid transparent;
+                margin-bottom:-1px; display:inline-flex; align-items:center; gap:.4rem }
+    .book-tab:hover { color:var(--wf-text) }
+    .book-tab.active { color:var(--wf-accent); border-bottom-color:var(--wf-accent) }
+
+    /* Canonical playbar — copied from file 01 */
+    .bc-playbar { background: #0f172a; color: #f8fafc; padding: 12px 20px; display: flex; gap: 12px; align-items: center; border-top: 1px solid #1e293b; }
+    .icon-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; border: none; cursor: pointer; flex-shrink: 0; }
+    .icon-btn--primary { background: var(--wf-accent, #4f46e5); width: 44px; height: 44px; }
+    .icon-btn[disabled], .icon-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .speed-select { background: rgba(255,255,255,0.08); color:#fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
     .playbar-fixed { position: sticky; bottom: 0; left: 0; right: 0; }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   </style>
 </head>
 <body data-annotations="on">
+  <!--
+    Review Log
+    Loop 2: rework — canonical BookDetail tab strip (5 tabs); canonical bc-playbar with prev/play/next/track/speed/engine/close;
+            stripped per-card engine + size + now-playing badge (visual focus + sentence highlight + voice-shift cue retained);
+            added Web Speech fallback state (D14); aria-live region for screen readers.
+  -->
+
   <header class="wf-chrome">
     <div class="wf-chrome__inner">
       <span class="wf-chrome__title">Annotations Playlist Player</span>
@@ -31,6 +52,7 @@
       <nav class="wf-tabs" aria-label="State switcher">
         <button class="wf-tab" aria-selected="true"  data-state="default-list">Default list</button>
         <button class="wf-tab" aria-selected="false" data-state="playing">Playing</button>
+        <button class="wf-tab" aria-selected="false" data-state="playing-web-fallback">Web Speech fallback</button>
         <button class="wf-tab" aria-selected="false" data-state="empty">Empty</button>
       </nav>
       <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
@@ -58,16 +80,24 @@
           </div>
         </div>
 
-        <!-- Tabs row -->
-        <div class="tab-row" style="margin-top: 20px;">
-                <div class="tab">Overview</div>
-                <div class="tab">Summary</div>
-                <div class="tab">Sections</div>
-                <div class="tab">Audio <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span></div>
-                <div class="tab active">Annotations <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span></div>
-              <!-- Tab content -->
+        <!-- Canonical 5-tab strip -->
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab" role="tab">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Annotations
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Tab content -->
       <div style="padding: 24px 32px;">
-        <!-- Tab header with Play CTA -->
         <div class="wf-row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <div class="wf-stack" style="gap: 4px;">
             <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
@@ -93,7 +123,7 @@
               <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
               <span>&middot;</span><span>p. 19</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "What doesn't kill you makes you weaker. This is the first Great Untruth, and it's the one that drives the rise of safetyism on college campuses."
             </div>
             <div class="anno-note">Note: Inverts Nietzsche &mdash; central frame for the whole book.</div>
@@ -105,7 +135,7 @@
               <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
               <span>&middot;</span><span>p. 24</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Concept creep &mdash; the steady expansion of what counts as 'trauma' or 'harm' &mdash; makes more students believe they need protection from ordinary discomfort."
             </div>
           </div>
@@ -116,7 +146,7 @@
               <span class="mock-pill">Ch 2 &middot; Untruth of Emotional Reasoning</span>
               <span>&middot;</span><span>p. 38</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Always trust your feelings. The second Great Untruth teaches that if you feel offended, an offense has occurred &mdash; emotion as evidence."
             </div>
             <div class="anno-note">Note: Compare to CBT principles in Ch 10 &mdash; deliberate inverse.</div>
@@ -128,7 +158,7 @@
               <span class="mock-pill">Ch 3 &middot; Us vs. Them</span>
               <span>&middot;</span><span>p. 58</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Life is a battle between good people and evil people. The third Great Untruth turns disagreement into moral warfare and makes nuance feel like betrayal."
             </div>
           </div>
@@ -139,7 +169,7 @@
               <span class="mock-pill">Ch 5 &middot; Witch Hunts</span>
               <span>&middot;</span><span>p. 89</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Call-out culture rewards public shaming over private correction. Once a tribe believes it's under threat, mercy looks like complicity."
             </div>
             <div class="anno-note">Note: Echoes Mercier &amp; Sperber on argumentation as social signaling.</div>
@@ -151,7 +181,7 @@
               <span class="mock-pill">Ch 7 &middot; Anxiety &amp; Depression</span>
               <span>&middot;</span><span>p. 122</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "iGen &mdash; born after 1995 &mdash; reports sharply higher rates of anxiety and depression beginning around 2011, the year smartphone adoption crossed 50%."
             </div>
           </div>
@@ -162,7 +192,7 @@
               <span class="mock-pill">Ch 9 &middot; The Bureaucracy of Safetyism</span>
               <span>&middot;</span><span>p. 158</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Administrative bloat outpaces faculty growth 2-to-1. Each new dean of student wellbeing creates new categories of harm to administer."
             </div>
             <div class="anno-note">Note: Parkinson's law applied to grievance infrastructure.</div>
@@ -174,7 +204,7 @@
               <span class="mock-pill">Ch 12 &middot; Wiser Kids</span>
               <span>&middot;</span><span>p. 213</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Prepare the child for the road, not the road for the child. Antifragility is built through graduated exposure to manageable adversity."
             </div>
           </div>
@@ -186,6 +216,9 @@
     <!-- ================== PLAYING STATE ================== -->
     <section class="wf-state" data-state="playing" aria-labelledby="state-playing-h">
       <h1 id="state-playing-h" class="sr-only">Playing state</h1>
+
+      <!-- aria-live region — announces playlist position to screen readers -->
+      <div class="sr-only" aria-live="polite">Now playing annotation 3 of 18 — Untruth of Emotional Reasoning</div>
 
       <!-- Book header -->
       <div style="border-bottom: 1px solid #e5e7eb; padding: 20px 32px; background: #fff;">
@@ -201,20 +234,28 @@
             </div>
           </div>
         </div>
-        <div class="tab-row" style="margin-top: 20px;">
-                <div class="tab">Overview</div>
-                <div class="tab">Summary</div>
-                <div class="tab">Sections</div>
-                <div class="tab">Audio <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span></div>
-                <div class="tab active">Annotations <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span></div>
-              <!-- Tab content -->
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab" role="tab">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Annotations
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Tab content -->
       <div style="padding: 24px 32px 140px 32px;">
         <div class="wf-row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <div class="wf-stack" style="gap: 4px;">
             <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
             <div style="font-size: 13px; color: #6b7280;">Playing 3 of 18 &middot; auto-advances through the playlist</div>
           </div>
-          <button class="mock-button">&#10073;&#10073; Pause playlist</button>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -225,7 +266,7 @@
               <span>&middot;</span><span>p. 19</span>
               <span style="margin-left:auto; color: #16a34a;">&#10003; played</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "What doesn't kill you makes you weaker. This is the first Great Untruth..."
             </div>
           </div>
@@ -236,29 +277,23 @@
               <span>&middot;</span><span>p. 24</span>
               <span style="margin-left:auto; color: #16a34a;">&#10003; played</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Concept creep &mdash; the steady expansion of what counts as 'trauma' or 'harm'..."
             </div>
           </div>
 
-          <!-- Card 3 — PLAYING -->
+          <!-- Card 3 — PLAYING (visual focus only — no per-card engine/size/badge) -->
           <div class="wf-anno anno-card is-playing"
                data-note="Tap any annotation to jump playback to it"
                style="grid-column: 1 / -1;">
             <div class="anno-meta">
               <span class="mock-pill">Ch 2 &middot; Untruth of Emotional Reasoning</span>
               <span>&middot;</span><span>p. 38</span>
-              <span style="margin-left:auto; color: var(--wf-accent);">&#9654; Now playing &middot; 3 of 18</span>
             </div>
-            <div style="margin-bottom: 8px;" class="wf-anno"
-                 data-note="Annotations playlist uses pre-generated Kokoro audio when available; otherwise falls back to instant Web Speech (per D14)">
-              <span class="bc-engine-chip">Kokoro local &middot; af_sarah</span>
-              <span class="text-xs ml-2" style="color:var(--wf-muted)">pre-generated · 142 MB on disk</span>
-            </div>
-            <div class="anno-quote" aria-live="polite" style="background: var(--bc-highlight);">
+            <div class="anno-quote" aria-live="polite">
               "Always trust your feelings. <span class="bc-sentence-active" style="background: #fde68a; box-shadow: 0 0 0 2px #f59e0b; border-radius: 3px; padding: 0 2px;">The second Great Untruth teaches that if you feel offended, an offense has occurred &mdash; emotion as evidence.</span>"
             </div>
-            <!-- Audible cue divider — represents 0.5s pause + tone shift -->
+            <!-- Audible cue divider — represents 0.5s pause + tone shift (D6) -->
             <div class="flex items-center gap-2 my-2" aria-hidden="true">
               <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,var(--wf-border),transparent)"></span>
               <span class="wf-anno text-xs" style="color:var(--wf-accent);" data-note="Half-second pause + tone shift (D6) — same cue across the playlist">♪ pause &middot; voice shift</span>
@@ -275,7 +310,7 @@
               <span>&middot;</span><span>p. 58</span>
               <span style="margin-left:auto; color: #6b7280;">up next</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Life is a battle between good people and evil people..."
             </div>
           </div>
@@ -285,7 +320,7 @@
               <span class="mock-pill">Ch 5 &middot; Witch Hunts</span>
               <span>&middot;</span><span>p. 89</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "Call-out culture rewards public shaming over private correction..."
             </div>
             <div class="anno-note">Note: Echoes Mercier &amp; Sperber on argumentation as social signaling.</div>
@@ -296,7 +331,7 @@
               <span class="mock-pill">Ch 7 &middot; Anxiety &amp; Depression</span>
               <span>&middot;</span><span>p. 122</span>
             </div>
-            <div class="anno-quote" style="background: var(--bc-highlight);">
+            <div class="anno-quote">
               "iGen &mdash; born after 1995 &mdash; reports sharply higher rates of anxiety and depression..."
             </div>
           </div>
@@ -304,19 +339,152 @@
         </div>
       </div>
 
-      <!-- Sticky playbar -->
-      <div class="wf-anno bc-playbar playbar-fixed"
-           data-note="skip-by-annotation, not by sentence — annotations are short"
-           style="background: #111827; color: #f9fafb; padding: 14px 24px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #1f2937;">
-        <button class="mock-button" aria-label="Pause" style="background: #4f46e5; color: white; border: none;">&#10073;&#10073;</button>
-        <button class="mock-button" aria-label="Previous annotation" style="background: #1f2937; color: white; border: none;">&#9198; prev highlight</button>
-        <button class="mock-button" aria-label="Next annotation" style="background: #1f2937; color: white; border: none;">next highlight &#9197;</button>
-        <button class="mock-button" aria-label="Speed" style="background: #1f2937; color: white; border: none;">1.0x</button>
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; margin-left: 8px;">
-          <div style="font-size: 13px; font-weight: 600;">3 of 18 &middot; The Coddling of the American Mind</div>
-          <div style="font-size: 12px; color: #9ca3af;">Ch 2 &middot; Untruth of Emotional Reasoning &middot; reading note next</div>
+      <!-- Sticky canonical playbar -->
+      <div class="bc-playbar playbar-fixed">
+        <button class="icon-btn" aria-label="Previous annotation" title="Prev annotation">⏮</button>
+        <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
+        <button class="icon-btn wf-anno" aria-label="Next annotation" title="Next annotation"
+                data-note="Skips by annotation, not by sentence — annotations are short">⏭</button>
+
+        <div class="flex-1 px-3 min-w-0">
+          <div class="text-sm font-medium truncate">Always trust your feelings. The second Great Untruth…</div>
+          <div class="text-xs opacity-70 truncate">The Coddling of the American Mind · 3 of 18 · ♪ Kokoro · af_sarah · 1:42 / ~9:00</div>
+          <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+            <div class="h-1 rounded" style="background:var(--wf-accent);width:17%"></div>
+          </div>
         </div>
-        <button class="mock-button" aria-label="Close player" style="background: transparent; color: #9ca3af; border: 1px solid #374151;">&times;</button>
+
+        <select class="speed-select" aria-label="Playback speed">
+          <option>0.75x</option><option>1x</option><option selected>1.25x</option><option>1.5x</option><option>2x</option>
+        </select>
+        <span class="bc-engine-chip">Kokoro · af_sarah</span>
+        <button class="icon-btn" aria-label="Close player">✕</button>
+      </div>
+    </section>
+
+    <!-- ================== PLAYING — WEB SPEECH FALLBACK (D14) ================== -->
+    <section class="wf-state" data-state="playing-web-fallback" aria-labelledby="state-fallback-h">
+      <h1 id="state-fallback-h" class="sr-only">Playing via Web Speech fallback</h1>
+
+      <div class="sr-only" aria-live="polite">Now playing annotation 3 of 18 via Web Speech — Untruth of Emotional Reasoning</div>
+
+      <div style="border-bottom: 1px solid #e5e7eb; padding: 20px 32px; background: #fff;">
+        <div class="wf-row" style="gap: 20px; align-items: flex-start;">
+          <div class="mock-img" style="width: 72px; height: 100px; flex: 0 0 72px;">cover</div>
+          <div class="wf-stack" style="gap: 6px; flex: 1;">
+            <div style="font-size: 22px; font-weight: 700; color: #111827;">The Coddling of the American Mind</div>
+            <div style="font-size: 14px; color: #6b7280;">Greg Lukianoff &amp; Jonathan Haidt &middot; 2018</div>
+            <div class="wf-row" style="gap: 6px; margin-top: 4px;">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">14 sections</span>
+              <span class="mock-pill">18 highlights</span>
+            </div>
+          </div>
+        </div>
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab" role="tab">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Annotations
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+        </nav>
+      </div>
+
+      <div style="padding: 24px 32px 140px 32px;">
+        <div class="wf-stack" style="gap: 4px; margin-bottom: 16px;">
+          <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
+          <div style="font-size: 13px; color: #6b7280;">Playing 3 of 18 &middot; auto-advancing</div>
+        </div>
+
+        <!-- Info banner — fallback explanation + escape hatch to Audio tab -->
+        <div class="bc-banner bc-banner--info wf-anno" style="margin-bottom: 16px;"
+             data-note="No pre-generated MP3 for this book — fell back to Web Speech instantly (D14). Generate audio CTA links to the Audio tab.">
+          <span>ℹ Playing via Web Speech (browser). Pre-generate audio for this book to use the Kokoro voice.</span>
+          <a href="#" class="mock-button mock-button--primary">Generate audio</a>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+          <div class="anno-card" style="opacity: 0.55;">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
+              <span>&middot;</span><span>p. 19</span>
+              <span style="margin-left:auto; color: #16a34a;">&#10003; played</span>
+            </div>
+            <div class="anno-quote">
+              "What doesn't kill you makes you weaker. This is the first Great Untruth..."
+            </div>
+          </div>
+
+          <div class="anno-card" style="opacity: 0.55;">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
+              <span>&middot;</span><span>p. 24</span>
+              <span style="margin-left:auto; color: #16a34a;">&#10003; played</span>
+            </div>
+            <div class="anno-quote">
+              "Concept creep &mdash; the steady expansion of what counts as 'trauma' or 'harm'..."
+            </div>
+          </div>
+
+          <div class="anno-card is-playing" style="grid-column: 1 / -1;">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 2 &middot; Untruth of Emotional Reasoning</span>
+              <span>&middot;</span><span>p. 38</span>
+            </div>
+            <div class="anno-quote" aria-live="polite">
+              "Always trust your feelings. <span class="bc-sentence-active" style="background: #fde68a; box-shadow: 0 0 0 2px #f59e0b; border-radius: 3px; padding: 0 2px;">The second Great Untruth teaches that if you feel offended, an offense has occurred &mdash; emotion as evidence.</span>"
+            </div>
+            <div class="flex items-center gap-2 my-2" aria-hidden="true">
+              <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,var(--wf-border),transparent)"></span>
+              <span class="text-xs" style="color:var(--wf-accent);">♪ pause &middot; voice shift</span>
+              <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,var(--wf-border),transparent)"></span>
+            </div>
+            <div class="anno-note">
+              Note: Compare to CBT principles in Ch 10 &mdash; deliberate inverse.
+            </div>
+          </div>
+
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 3 &middot; Us vs. Them</span>
+              <span>&middot;</span><span>p. 58</span>
+              <span style="margin-left:auto; color: #6b7280;">up next</span>
+            </div>
+            <div class="anno-quote">
+              "Life is a battle between good people and evil people..."
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Sticky playbar — Web Speech engine chip swapped in -->
+      <div class="bc-playbar playbar-fixed">
+        <button class="icon-btn" aria-label="Previous annotation" title="Prev annotation">⏮</button>
+        <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
+        <button class="icon-btn" aria-label="Next annotation" title="Next annotation">⏭</button>
+
+        <div class="flex-1 px-3 min-w-0">
+          <div class="text-sm font-medium truncate">Always trust your feelings. The second Great Untruth…</div>
+          <div class="text-xs opacity-70 truncate">The Coddling of the American Mind · 3 of 18 · ♪ Web Speech · 1:42 / ~9:00</div>
+          <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+            <div class="h-1 rounded" style="background:var(--wf-accent);width:17%"></div>
+          </div>
+        </div>
+
+        <select class="speed-select" aria-label="Playback speed">
+          <option>0.75x</option><option>1x</option><option selected>1.25x</option><option>1.5x</option><option>2x</option>
+        </select>
+        <span class="bc-engine-chip bc-engine-chip--web wf-anno"
+              data-note="No pre-generated MP3 for this annotation set — falls back to Web Speech instantly (D14)">Web Speech</span>
+        <button class="icon-btn" aria-label="Close player">✕</button>
       </div>
     </section>
 
@@ -337,13 +505,22 @@
             </div>
           </div>
         </div>
-        <div class="tab-row" style="margin-top: 20px;">
-                <div class="tab">Overview</div>
-                <div class="tab">Summary</div>
-                <div class="tab">Sections</div>
-                <div class="tab">Audio <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span></div>
-                <div class="tab active">Annotations <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span></div>
-              <div style="padding: 24px 32px;">
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab" role="tab">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Annotations
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+          </button>
+        </nav>
+      </div>
+
+      <div style="padding: 24px 32px;">
         <div class="wf-row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <div class="wf-stack" style="gap: 4px;">
             <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
