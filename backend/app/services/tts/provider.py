@@ -12,6 +12,7 @@ class SynthesisResult:
     audio_bytes: bytes
     sample_rate: int
     sentence_offsets: list[float] = field(default_factory=list)
+    duration_seconds: float = 0.0
 
 
 @dataclass

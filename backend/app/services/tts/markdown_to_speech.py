@@ -16,6 +16,10 @@ from dataclasses import dataclass, field
 import pysbd
 from markdown_it import MarkdownIt
 
+from app.services.tts.provider import EmptySanitizedTextError
+
+__all__ = ["sanitize", "SanitizedText", "SANITIZER_VERSION", "EmptySanitizedTextError"]
+
 SANITIZER_VERSION = "1.0"
 
 _ABBREVIATIONS = [
@@ -36,10 +40,6 @@ _MATH_INLINE_DOLLAR_RE = re.compile(r"\$[^$\n]+\$")
 _MATH_BRACKET_RE = re.compile(r"\\\[[^\]]+\\\]")
 _MATH_PAREN_RE = re.compile(r"\\\([^)]+\\\)")
 _WHITESPACE_RE = re.compile(r"\s+")
-
-
-class EmptySanitizedTextError(Exception):
-    pass
 
 
 @dataclass

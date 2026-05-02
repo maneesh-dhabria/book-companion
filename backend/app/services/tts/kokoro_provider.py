@@ -118,7 +118,10 @@ class KokoroProvider(TTSProvider):
         joined = np.concatenate(buffers).astype("float32")
         mp3_bytes = self._run_ffmpeg(joined.tobytes())
         return SynthesisResult(
-            audio_bytes=mp3_bytes, sample_rate=SAMPLE_RATE, sentence_offsets=offsets
+            audio_bytes=mp3_bytes,
+            sample_rate=SAMPLE_RATE,
+            sentence_offsets=offsets,
+            duration_seconds=cursor,
         )
 
     def list_voices(self) -> list[VoiceInfo]:
