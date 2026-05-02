@@ -63,6 +63,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:  # noqa: BLE001 — startup sweep is best-effort
         pass
 
+    # FR-21b — orphan recovery for AUDIO jobs (worker-restart hardening).
+    try:
+        from app.services.audio_orphan_recovery import recover_orphan_audio_jobs
+
+        async with app.state.session_factory() as audio_sweep:
+            await recover_orphan_audio_jobs(audio_sweep)
+    except Exception:  # noqa: BLE001
+        pass
+
+    # FR-07 / D32 — Kokoro pre-warm.
+    from app.services.tts.prewarm import prewarm_kokoro
+
+    app.state.tts_warm = await prewarm_kokoro(settings)
+
     # Start backup scheduler if configured
     scheduler = None
     backup_freq = getattr(getattr(settings, "backup", None), "frequency", "disabled")
