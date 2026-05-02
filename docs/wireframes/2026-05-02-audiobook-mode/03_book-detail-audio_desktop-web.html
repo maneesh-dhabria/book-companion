@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Book Detail · Audio Panel — desktop-web — Wireframe</title>
+  <title>Book Detail · Audio Tab — desktop-web — Wireframe</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,24 +20,63 @@
     }
     .bc-progress { position:relative; height:8px; border-radius:9999px; background:#e5e7eb; overflow:hidden; }
     .bc-progress__fill { position:absolute; inset:0 auto 0 0; background:var(--wf-accent,#4f46e5); border-radius:9999px; }
-    .bc-cover { width:88px; height:132px; border-radius:6px; }
-    .bc-tabrow { display:flex; gap:1.5rem; border-bottom:1px solid #e5e7eb; }
-    .bc-tab { padding:.75rem 0; font-size:.9rem; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; }
-    .bc-tab--active { color:#111827; border-bottom-color: var(--wf-accent,#4f46e5); font-weight:600; }
-    .bc-fade-row { opacity:.55; }
-    .bc-check { color:#10b981; font-weight:700; }
-    .red-text { color: var(--wf-error, #b91c1c); }
+
+    /* Real BookDetail chrome — from rework brief §2 */
+    .book-tabs { display:flex; gap:.25rem; border-bottom:1px solid var(--wf-border); margin-top:1rem }
+    .book-tab { background:none; border:none; padding:.6rem 1rem; font-size:.9rem; font-weight:500;
+                color:var(--wf-muted); cursor:pointer; border-bottom:2px solid transparent;
+                margin-bottom:-1px; display:inline-flex; align-items:center; gap:.4rem }
+    .book-tab:hover { color:var(--wf-text) }
+    .book-tab.active { color:var(--wf-accent); border-bottom-color:var(--wf-accent) }
+    .book-header { display:flex; gap:1.25rem; align-items:flex-start }
+    .book-overview { max-width:64rem; margin:0 auto; padding:1.5rem 1.25rem;
+                     display:flex; flex-direction:column; gap:1rem }
+    .cover { width:140px; height:200px; flex:0 0 140px; background:#e5e7eb; border-radius:6px; }
+
+    /* Audio tab content */
+    .audio-table { width:100%; font-size:.85rem; border-collapse:collapse; }
+    .audio-table th { text-align:left; padding:.5rem .6rem; font-size:.7rem; text-transform:uppercase;
+                      letter-spacing:.05em; color:#6b7280; font-weight:600; border-bottom:1px solid #e5e7eb; }
+    .audio-table td { padding:.55rem .6rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+    .audio-table tr:hover td { background:#f8fafc; }
+    .audio-table .num { color:#94a3b8; font-variant-numeric:tabular-nums; width:36px; }
+    .audio-table .title { color:#111827; font-weight:500; }
+    .audio-table .meta { color:#6b7280; font-variant-numeric:tabular-nums; }
+    .audio-table .actions { white-space:nowrap; text-align:right; }
+    .icon-btn { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+                border:1px solid #e5e7eb; background:#fff; border-radius:6px; color:#374151; cursor:pointer;
+                margin-left:2px; font-size:13px; }
+    .icon-btn:hover { background:#f3f4f6; }
+    .icon-btn--play { color:var(--wf-accent,#4f46e5); border-color:#c7d2fe; background:#eef2ff; }
+    .icon-btn--danger { color:var(--wf-error,#b91c1c); }
+    .status-pill { display:inline-flex; align-items:center; gap:4px; font-size:.7rem; padding:2px 8px;
+                   border-radius:9999px; font-weight:500; }
+    .status-ok { background:#dcfce7; color:#166534; }
+    .status-pending { background:#fef3c7; color:#92400e; }
+    .status-stale { background:#fee2e2; color:#991b1b; }
+    .status-none { background:#f1f5f9; color:#64748b; }
+    .status-prog { background:#e0e7ff; color:#3730a3; }
+    .status-queue { background:#f8fafc; color:#94a3b8; }
+    .bc-fade-row td { opacity:.55; }
+    .pagination-row td { text-align:center; color:#6b7280; font-style:italic; padding:.75rem; }
+
+    .header-card { display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem; }
+    .header-card__meta { flex:1; min-width:0; }
+    .spinner { display:inline-block; width:12px; height:12px; border:2px solid #c7d2fe;
+               border-top-color:var(--wf-accent,#4f46e5); border-radius:50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body data-annotations="on">
   <!--
     Review Log
-    Loop 1: initial draft — 4 states (no-audio, partial-audio, full-audio, generating) on desktop-web frame.
+    Loop 2: rework — Audio is now its own dedicated tab on BookDetail (5 tabs total).
+            Per-section table replaces the old card-only audio panel. File 05 absorbed.
   -->
 
   <header class="wf-chrome">
     <div class="wf-chrome__inner">
-      <span class="wf-chrome__title">Book Detail · Audio Panel</span>
+      <span class="wf-chrome__title">Book Detail · Audio Tab</span>
       <span class="wf-chrome__device">desktop-web</span>
       <nav class="wf-tabs" aria-label="State switcher">
         <button class="wf-tab" aria-selected="true"  data-state="no-audio">No audio</button>
@@ -55,205 +94,429 @@
     <section class="wf-state active" data-state="no-audio" aria-labelledby="state-no-audio-h">
       <h1 id="state-no-audio-h" class="sr-only">No audio state</h1>
 
-      <!-- Page header -->
-      <div class="mock-card" style="padding:1.5rem;">
-        <div class="flex gap-5 items-start">
-          <div class="mock-img bc-cover" aria-label="Book cover"></div>
-          <div class="flex-1">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Non-fiction · Psychology</div>
-            <h1 class="text-2xl font-semibold mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-sm text-slate-600 mt-1">by Daniel Kahneman</div>
+      <div class="book-overview">
+        <!-- Real BookDetail header (rework brief §2) -->
+        <header class="book-header">
+          <div class="cover" aria-label="Book cover">cover</div>
+          <div>
+            <h1 class="text-2xl font-semibold">Thinking, Fast and Slow</h1>
+            <p class="byline text-sm text-slate-600 mt-1">Daniel Kahneman</p>
+            <div class="action-row mt-3 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary">Read</a>
+              <button class="overflow-menu mock-button" aria-label="More actions">⋯</button>
+            </div>
             <div class="flex flex-wrap gap-2 mt-3">
-              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">Non-fiction · Psychology</span>
               <span class="mock-pill">47 sections</span>
               <span class="mock-pill">Imported Apr 12, 2026</span>
             </div>
           </div>
-          <div class="flex gap-2">
-            <button class="mock-button">Open reader</button>
-            <button class="mock-button">More…</button>
-          </div>
-        </div>
-      </div>
+        </header>
 
-      <!-- Tabs row -->
-      <div class="bc-tabrow mt-4 px-2">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
+        <!-- Tab strip (5 tabs) — Audio active -->
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+            <span class="mock-pill" style="font-size:.65rem;background:#f1f5f9;color:#64748b;">0 / 47</span>
+          </button>
+          <button class="book-tab" role="tab">Annotations</button>
+        </nav>
 
-      <!-- Overview 2-col -->
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <!-- Left: existing summarization stub -->
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="text-sm font-semibold text-slate-700">Generate summaries</div>
-          <div class="mock-divider"></div>
-          <div class="wf-stack" style="gap:.5rem;">
-            <div class="skeleton" style="width:80%"></div>
-            <div class="skeleton" style="width:60%"></div>
-            <div class="skeleton" style="width:70%"></div>
-          </div>
-          <div class="text-xs text-slate-500 mt-3">(Existing summary panel — out of scope for this wireframe)</div>
-        </div>
-
-        <!-- Right: NEW Audio panel -->
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="flex items-center justify-between">
-            <div class="text-sm font-semibold text-slate-700">Audio</div>
+        <!-- Audio tab content -->
+        <div class="mock-card" style="padding:0;">
+          <div class="header-card">
+            <div class="header-card__meta">
+              <div class="text-sm font-semibold text-slate-700">Audio</div>
+              <div class="text-xs text-slate-500 mt-0.5">No audio generated yet for this book.</div>
+            </div>
             <span class="bc-engine-chip--web mock-pill">Web Speech (browser, instant)</span>
           </div>
-          <div class="mock-divider"></div>
-          <div class="wf-message" style="margin:0; padding:1rem 0;">
-            <div class="wf-message__title">No audio generated yet</div>
-            <div class="wf-message__hint">Generate audio for sections, the book summary, or annotations.</div>
-            <button class="wf-anno mock-button mock-button--primary mt-3"
+          <div class="mock-divider" style="margin:0;"></div>
+          <div class="wf-message" style="margin:0; padding:2rem 1.5rem; text-align:center;">
+            <div class="wf-message__title text-base">No audio generated yet</div>
+            <div class="wf-message__hint">Pre-generate Kokoro MP3s for offline listening, or just hit play in the reader for instant Web Speech.</div>
+            <button class="wf-anno mock-button mock-button--primary mt-4"
                     data-note="Opens the Generate Audio modal (file 04)">
               Generate audio
             </button>
             <div class="text-xs mt-2" style="color:var(--wf-muted)">
-              Estimate: ~12 min · ~140 MB for 47 sections (Kokoro)
+              ~12 min · ~140 MB for 47 sections (Kokoro)
             </div>
-          </div>
-          <div class="text-xs text-slate-500 mt-2">
-            Tip · You can also click play in the reader for instant Web Speech playback without pre-generating.
           </div>
         </div>
       </div>
     </section>
 
-    <!-- =========================== STATE: PARTIAL AUDIO =========================== -->
+    <!-- =========================== STATE: PARTIAL =========================== -->
     <section class="wf-state" data-state="partial-audio" aria-labelledby="state-partial-h">
       <h1 id="state-partial-h" class="sr-only">Partial audio state</h1>
 
-      <div class="mock-card" style="padding:1.5rem;">
-        <div class="flex gap-5 items-start">
-          <div class="mock-img bc-cover" aria-label="Book cover"></div>
-          <div class="flex-1">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Non-fiction · Psychology</div>
-            <h1 class="text-2xl font-semibold mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-sm text-slate-600 mt-1">by Daniel Kahneman</div>
+      <div class="book-overview">
+        <header class="book-header">
+          <div class="cover" aria-label="Book cover">cover</div>
+          <div>
+            <h1 class="text-2xl font-semibold">Thinking, Fast and Slow</h1>
+            <p class="byline text-sm text-slate-600 mt-1">Daniel Kahneman</p>
+            <div class="action-row mt-3 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary">Read</a>
+              <button class="overflow-menu mock-button" aria-label="More actions">⋯</button>
+            </div>
             <div class="flex flex-wrap gap-2 mt-3">
-              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">Non-fiction · Psychology</span>
               <span class="mock-pill">47 sections</span>
               <span class="mock-pill">Audio · 12/47</span>
             </div>
           </div>
-          <div class="flex gap-2">
-            <button class="mock-button">Open reader</button>
-            <button class="mock-button">More…</button>
+        </header>
+
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+            <span class="mock-pill" style="font-size:.65rem;background:#fef3c7;color:#92400e;">12 / 47</span>
+          </button>
+          <button class="book-tab" role="tab">Annotations</button>
+        </nav>
+
+        <!-- Status header -->
+        <div class="mock-card header-card">
+          <div class="header-card__meta">
+            <div class="text-sm font-semibold text-slate-700">Audio · 12 of 47 sections</div>
+            <div class="text-xs text-slate-500 mt-1">Kokoro · af_bella · 38 MB on disk · last generated May 1, 2026</div>
+            <div class="bc-coverage-bar bc-progress mt-2" style="max-width:280px" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+              <div class="bc-progress__fill" style="width:25.5%"></div>
+            </div>
           </div>
+          <span class="bc-engine-chip mock-pill">Kokoro · af_bella</span>
+          <button class="wf-anno mock-button mock-button--primary"
+                  data-note="Opens book summary player (file 02)">▶ Listen</button>
+          <button class="mock-button">Generate remaining</button>
+          <button class="mock-button" aria-haspopup="menu" aria-label="More audio actions"
+                  title="Regenerate all · Delete all · Change voice">…</button>
         </div>
-      </div>
 
-      <div class="bc-tabrow mt-4 px-2">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="text-sm font-semibold text-slate-700">Summaries</div>
-          <div class="mock-divider"></div>
-          <div class="text-sm text-slate-700">47 of 47 sections summarized · book summary ready</div>
-          <div class="text-xs text-slate-500 mt-2">Last summarized · Apr 28, 2026</div>
-        </div>
-
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="flex items-center justify-between">
-            <div class="text-sm font-semibold text-slate-700">Audio</div>
-            <span class="bc-engine-chip mock-pill">Kokoro · af_bella</span>
-          </div>
-          <div class="mock-divider"></div>
-
-          <div class="text-sm text-slate-700 mb-2">Audio: 12 of 47 sections pre-generated</div>
-          <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
-            <div class="bc-progress__fill" style="width:25.5%"></div>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">25% covered</div>
-
-          <div class="flex flex-wrap gap-2 mt-4">
-            <button class="wf-anno mock-button mock-button--primary"
-                    data-note="Opens book summary player (file 02)">Listen</button>
-            <button class="wf-anno mock-button"
-                    data-note="Opens flat list of MP3s (file 05)">Audio files</button>
-            <button class="mock-button">Generate remaining</button>
-          </div>
-
-          <div class="mock-divider"></div>
-          <div class="text-xs text-slate-500">Last generated · May 1, 2026 · 38 MB on disk</div>
+        <!-- Per-section table -->
+        <div class="mock-card" style="padding:0; overflow:hidden;">
+          <table class="audio-table">
+            <thead>
+              <tr>
+                <th class="num">#</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Size</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="num">00</td>
+                <td class="title">Book summary <span class="mock-pill" style="font-size:.6rem;">cohesive</span></td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">18:30</td>
+                <td class="meta">3.2 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">01</td>
+                <td class="title">Introduction</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">4:12</td>
+                <td class="meta">0.9 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">02</td>
+                <td class="title">The Characters of the Story</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">5:48</td>
+                <td class="meta">1.3 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">03</td>
+                <td class="title">System 1 and System 2</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">6:22</td>
+                <td class="meta">1.4 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr class="wf-anno" data-note="Stale: source summary edited since audio was generated. Single-row regenerate fires same SSE job pattern as book-level (D12 atomic replace).">
+                <td class="num">04</td>
+                <td class="title">Attention and Effort</td>
+                <td><span class="status-pill status-stale">⚠ stale</span></td>
+                <td class="meta">5:10</td>
+                <td class="meta">1.1 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate" title="Regenerate (stale)">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">05</td>
+                <td class="title">The Lazy Controller</td>
+                <td><span class="status-pill status-pending">… pending</span></td>
+                <td class="meta">—</td>
+                <td class="meta">—</td>
+                <td class="actions">
+                  <button class="icon-btn" aria-label="Play" disabled style="opacity:.4">▶</button>
+                  <button class="icon-btn" aria-label="Download" disabled style="opacity:.4">⬇</button>
+                  <button class="icon-btn" aria-label="Generate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete" disabled style="opacity:.4">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">06</td>
+                <td class="title">The Associative Machine</td>
+                <td><span class="status-pill status-none">— none</span></td>
+                <td class="meta">—</td>
+                <td class="meta">—</td>
+                <td class="actions">
+                  <button class="icon-btn" aria-label="Play" disabled style="opacity:.4">▶</button>
+                  <button class="icon-btn" aria-label="Download" disabled style="opacity:.4">⬇</button>
+                  <button class="icon-btn" aria-label="Generate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete" disabled style="opacity:.4">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">07</td>
+                <td class="title">Cognitive Ease</td>
+                <td><span class="status-pill status-none">— none</span></td>
+                <td class="meta">—</td>
+                <td class="meta">—</td>
+                <td class="actions">
+                  <button class="icon-btn" aria-label="Play" disabled style="opacity:.4">▶</button>
+                  <button class="icon-btn" aria-label="Download" disabled style="opacity:.4">⬇</button>
+                  <button class="icon-btn" aria-label="Generate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete" disabled style="opacity:.4">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">08</td>
+                <td class="title">Norms, Surprises, and Causes</td>
+                <td><span class="status-pill status-none">— none</span></td>
+                <td class="meta">—</td>
+                <td class="meta">—</td>
+                <td class="actions">
+                  <button class="icon-btn" aria-label="Play" disabled style="opacity:.4">▶</button>
+                  <button class="icon-btn" aria-label="Download" disabled style="opacity:.4">⬇</button>
+                  <button class="icon-btn" aria-label="Generate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete" disabled style="opacity:.4">🗑</button>
+                </td>
+              </tr>
+              <tr class="bc-fade-row">
+                <td class="num">09</td>
+                <td class="title">A Machine for Jumping to Conclusions</td>
+                <td><span class="status-pill status-none">— none</span></td>
+                <td class="meta">—</td>
+                <td class="meta">—</td>
+                <td class="actions">
+                  <button class="icon-btn" aria-label="Generate">⟳</button>
+                </td>
+              </tr>
+              <tr class="pagination-row">
+                <td colspan="6">…(38 more sections — scroll or load more)</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
 
-    <!-- =========================== STATE: FULL AUDIO =========================== -->
+    <!-- =========================== STATE: FULL =========================== -->
     <section class="wf-state" data-state="full-audio" aria-labelledby="state-full-h">
       <h1 id="state-full-h" class="sr-only">Full audio state</h1>
 
-      <div class="mock-card" style="padding:1.5rem;">
-        <div class="flex gap-5 items-start">
-          <div class="mock-img bc-cover" aria-label="Book cover"></div>
-          <div class="flex-1">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Non-fiction · Psychology</div>
-            <h1 class="text-2xl font-semibold mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-sm text-slate-600 mt-1">by Daniel Kahneman</div>
+      <div class="book-overview">
+        <header class="book-header">
+          <div class="cover" aria-label="Book cover">cover</div>
+          <div>
+            <h1 class="text-2xl font-semibold">Thinking, Fast and Slow</h1>
+            <p class="byline text-sm text-slate-600 mt-1">Daniel Kahneman</p>
+            <div class="action-row mt-3 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary">Read</a>
+              <button class="overflow-menu mock-button" aria-label="More actions">⋯</button>
+            </div>
             <div class="flex flex-wrap gap-2 mt-3">
-              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">Non-fiction · Psychology</span>
               <span class="mock-pill">47 sections</span>
               <span class="mock-pill">Audio · complete</span>
             </div>
           </div>
-          <div class="flex gap-2">
-            <button class="mock-button">Open reader</button>
-            <button class="mock-button">More…</button>
+        </header>
+
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+            <span class="mock-pill" style="font-size:.65rem;background:#dcfce7;color:#166534;">47 / 47</span>
+          </button>
+          <button class="book-tab" role="tab">Annotations</button>
+        </nav>
+
+        <div class="mock-card header-card">
+          <div class="header-card__meta">
+            <div class="text-sm font-semibold text-slate-700">Audio · 47 of 47 sections + Book summary + Annotations playlist</div>
+            <div class="text-xs text-slate-500 mt-1">Kokoro · af_bella · 142 MB on disk · Audio is up to date · last regenerated May 1, 2026</div>
+            <div class="bc-coverage-bar bc-progress mt-2" style="max-width:280px" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+              <div class="bc-progress__fill" style="width:100%"></div>
+            </div>
           </div>
+          <span class="bc-engine-chip mock-pill">Kokoro · af_bella</span>
+          <button class="mock-button mock-button--primary">▶ Listen</button>
+          <button class="wf-anno mock-button" aria-haspopup="menu"
+                  data-note="Overflow: Regenerate all · Delete all · Change voice">…</button>
         </div>
-      </div>
 
-      <div class="bc-tabrow mt-4 px-2">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="text-sm font-semibold text-slate-700">Summaries</div>
-          <div class="mock-divider"></div>
-          <div class="text-sm text-slate-700">47 of 47 sections · book summary · 8 annotation summaries</div>
-          <div class="text-xs text-slate-500 mt-2">Last summarized · Apr 28, 2026</div>
-        </div>
-
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="flex items-center justify-between">
-            <div class="text-sm font-semibold text-slate-700">Audio</div>
-            <span class="bc-engine-chip mock-pill">Kokoro · af_bella</span>
-          </div>
-          <div class="mock-divider"></div>
-
-          <div class="text-sm text-slate-700 mb-2">47 of 47 sections · book summary · annotations playlist</div>
-          <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-            <div class="bc-progress__fill" style="width:100%"></div>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">100% covered</div>
-
-          <div class="flex flex-wrap gap-2 mt-4">
-            <button class="mock-button mock-button--primary">Listen</button>
-            <button class="mock-button">Audio files</button>
-            <button class="mock-button" aria-haspopup="menu">Regenerate audio ▾</button>
-            <button class="wf-anno mock-button"
-                    style="color: var(--wf-error, #b91c1c);"
-                    data-note="One-click; only removes MP3s, not summaries or annotations">
-              Delete audio for this book
-            </button>
-          </div>
-
-          <div class="mock-divider"></div>
-          <div class="text-xs text-slate-500">Last generated · May 1, 2026 · 142 MB on disk</div>
+        <div class="mock-card wf-anno" data-note="Per-row regenerate fires the same SSE job pattern as book-level (D12 atomic replace)" style="padding:0; overflow:hidden;">
+          <table class="audio-table">
+            <thead>
+              <tr>
+                <th class="num">#</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Size</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="num">00</td>
+                <td class="title">Book summary <span class="mock-pill" style="font-size:.6rem;">cohesive</span></td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">18:30</td>
+                <td class="meta">3.2 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">01</td><td class="title">Introduction</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">4:12</td><td class="meta">0.9 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">02</td><td class="title">The Characters of the Story</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">5:48</td><td class="meta">1.3 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">03</td><td class="title">System 1 and System 2</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">6:22</td><td class="meta">1.4 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">04</td><td class="title">Attention and Effort</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">5:10</td><td class="meta">1.1 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">05</td><td class="title">The Lazy Controller</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">4:45</td><td class="meta">1.0 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">06</td><td class="title">The Associative Machine</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">5:30</td><td class="meta">1.2 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                  <button class="icon-btn icon-btn--danger" aria-label="Delete">🗑</button>
+                </td>
+              </tr>
+              <tr class="bc-fade-row">
+                <td class="num">07</td><td class="title">Cognitive Ease</td>
+                <td><span class="status-pill status-ok">✓</span></td>
+                <td class="meta">4:18</td><td class="meta">0.95 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                </td>
+              </tr>
+              <tr class="bc-fade-row">
+                <td class="num">08</td><td class="title">Norms, Surprises, and Causes</td>
+                <td><span class="status-pill status-ok">✓</span></td>
+                <td class="meta">5:02</td><td class="meta">1.1 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                  <button class="icon-btn" aria-label="Regenerate">⟳</button>
+                </td>
+              </tr>
+              <tr class="pagination-row">
+                <td colspan="6">…(38 more sections — scroll or load more) · 47 Annotations Playlist at the end</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -262,70 +525,140 @@
     <section class="wf-state" data-state="generating" aria-labelledby="state-generating-h">
       <h1 id="state-generating-h" class="sr-only">Generating state</h1>
 
-      <div class="mock-card" style="padding:1.5rem;">
-        <div class="flex gap-5 items-start">
-          <div class="mock-img bc-cover" aria-label="Book cover"></div>
-          <div class="flex-1">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Non-fiction · Psychology</div>
-            <h1 class="text-2xl font-semibold mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-sm text-slate-600 mt-1">by Daniel Kahneman</div>
+      <div class="book-overview">
+        <header class="book-header">
+          <div class="cover" aria-label="Book cover">cover</div>
+          <div>
+            <h1 class="text-2xl font-semibold">Thinking, Fast and Slow</h1>
+            <p class="byline text-sm text-slate-600 mt-1">Daniel Kahneman</p>
+            <div class="action-row mt-3 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary">Read</a>
+              <button class="overflow-menu mock-button" aria-label="More actions">⋯</button>
+            </div>
             <div class="flex flex-wrap gap-2 mt-3">
-              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">Non-fiction · Psychology</span>
               <span class="mock-pill">47 sections</span>
-              <span class="mock-pill">Generating audio…</span>
+              <span class="mock-pill"><span class="pulse-dot" aria-hidden="true"></span> Generating audio…</span>
             </div>
           </div>
-          <div class="flex gap-2">
-            <button class="mock-button">Open reader</button>
-            <button class="mock-button">More…</button>
-          </div>
-        </div>
-      </div>
+        </header>
 
-      <div class="bc-tabrow mt-4 px-2">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
+        <nav class="book-tabs" role="tablist">
+          <button class="book-tab" role="tab">Overview</button>
+          <button class="book-tab" role="tab">Summary</button>
+          <button class="book-tab" role="tab">Sections</button>
+          <button class="book-tab active" role="tab" aria-selected="true">
+            Audio
+            <span class="mock-pill" style="font-size:.6rem;padding:1px 6px;">NEW</span>
+            <span class="mock-pill" style="font-size:.65rem;background:#e0e7ff;color:#3730a3;">18 / 47</span>
+          </button>
+          <button class="book-tab" role="tab">Annotations</button>
+        </nav>
 
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div class="mock-card" style="padding:1.25rem;">
-          <div class="text-sm font-semibold text-slate-700">Summaries</div>
-          <div class="mock-divider"></div>
-          <div class="text-sm text-slate-700">47 of 47 sections summarized</div>
-        </div>
-
-        <div class="mock-card wf-anno" data-note="Same SSE event stream as summarization jobs (job_progress)" style="padding:1.25rem;">
-          <div class="flex items-center justify-between">
+        <!-- Live status header -->
+        <div class="mock-card header-card wf-anno" data-note="Same SSE event stream as summarization jobs (job_progress)">
+          <div class="header-card__meta">
             <div class="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <span class="pulse-dot" aria-hidden="true"></span>
-              Audio · generating
+              Audio · 18 of 47 · ~6 min remaining
             </div>
-            <span class="bc-engine-chip mock-pill">Kokoro · af_bella</span>
+            <div class="text-xs text-slate-500 mt-1" aria-live="polite">
+              Current: <span class="font-medium text-slate-700">The Two Selves</span> · Kokoro · af_bella
+            </div>
+            <div class="bc-coverage-bar bc-progress mt-2" style="max-width:280px" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-live="polite">
+              <div class="bc-progress__fill" style="width:38.3%"></div>
+            </div>
           </div>
-          <div class="mock-divider"></div>
+          <span class="bc-engine-chip mock-pill">Kokoro · af_bella</span>
+          <button class="mock-button">⏸ Pause job</button>
+          <button class="mock-button" style="color:var(--wf-error,#b91c1c);">Cancel job</button>
+        </div>
 
-          <div class="text-sm text-slate-700 mb-2">Generating section audio · 18 of 47 · ~6 min remaining</div>
-          <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-live="polite">
-            <div class="bc-progress__fill" style="width:38.3%"></div>
-          </div>
-          <div class="text-xs text-slate-500 mt-1">Current: <span class="font-medium text-slate-700">The Two Selves</span></div>
-
-          <div class="flex flex-wrap gap-2 mt-4">
-            <button class="mock-button">Pause job</button>
-            <button class="mock-button">Cancel</button>
-          </div>
-
-          <div class="mock-divider"></div>
-          <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Recently completed</div>
-          <ul class="text-sm text-slate-700 space-y-1">
-            <li><span class="bc-check">✓</span> Attention and Effort <span class="text-xs text-slate-500">· 2.1 MB</span></li>
-            <li><span class="bc-check">✓</span> The Lazy Controller <span class="text-xs text-slate-500">· 1.8 MB</span></li>
-            <li class="bc-fade-row"><span class="bc-check">✓</span> The Associative Machine <span class="text-xs text-slate-500">· 2.4 MB</span></li>
-            <li class="bc-fade-row"><span class="bc-check">✓</span> Cognitive Ease <span class="text-xs text-slate-500">· 1.6 MB</span></li>
-            <li class="bc-fade-row"><span class="bc-check">✓</span> Norms, Surprises, and Causes <span class="text-xs text-slate-500">· 2.0 MB</span></li>
-          </ul>
+        <div class="mock-card" style="padding:0; overflow:hidden;">
+          <table class="audio-table">
+            <thead>
+              <tr>
+                <th class="num">#</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Size</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="num">00</td>
+                <td class="title">Book summary</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">18:30</td><td class="meta">3.2 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">15</td>
+                <td class="title">The Illusion of Understanding</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">5:18</td><td class="meta">1.2 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">16</td>
+                <td class="title">The Illusion of Validity</td>
+                <td><span class="status-pill status-ok">✓ ready</span></td>
+                <td class="meta">4:55</td><td class="meta">1.1 MB</td>
+                <td class="actions">
+                  <button class="icon-btn icon-btn--play" aria-label="Play">▶</button>
+                  <button class="icon-btn" aria-label="Download">⬇</button>
+                </td>
+              </tr>
+              <tr style="background:#eef2ff;">
+                <td class="num">17</td>
+                <td class="title font-semibold">The Two Selves</td>
+                <td><span class="status-pill status-prog"><span class="spinner" aria-hidden="true"></span> generating…</span></td>
+                <td class="meta">—</td><td class="meta">—</td>
+                <td class="actions">
+                  <button class="icon-btn" aria-label="Cancel" title="Cancel this section">✕</button>
+                </td>
+              </tr>
+              <tr>
+                <td class="num">18</td>
+                <td class="title">The Experiencing Self</td>
+                <td><span class="status-pill status-queue">⏱ queued</span></td>
+                <td class="meta">—</td><td class="meta">—</td>
+                <td class="actions"><span class="text-xs text-slate-400">in queue</span></td>
+              </tr>
+              <tr>
+                <td class="num">19</td>
+                <td class="title">Life as a Story</td>
+                <td><span class="status-pill status-queue">⏱ queued</span></td>
+                <td class="meta">—</td><td class="meta">—</td>
+                <td class="actions"><span class="text-xs text-slate-400">in queue</span></td>
+              </tr>
+              <tr>
+                <td class="num">20</td>
+                <td class="title">Experienced Well-Being</td>
+                <td><span class="status-pill status-queue">⏱ queued</span></td>
+                <td class="meta">—</td><td class="meta">—</td>
+                <td class="actions"><span class="text-xs text-slate-400">in queue</span></td>
+              </tr>
+              <tr class="bc-fade-row">
+                <td class="num">21</td>
+                <td class="title">Thinking About Life</td>
+                <td><span class="status-pill status-queue">⏱ queued</span></td>
+                <td class="meta">—</td><td class="meta">—</td>
+                <td class="actions"><span class="text-xs text-slate-400">in queue</span></td>
+              </tr>
+              <tr class="pagination-row">
+                <td colspan="6">…(26 more sections queued)</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -334,7 +667,7 @@
 
   <footer class="wf-footer">
     <div class="wf-footer__inner">
-      <span>Book Detail · Audio Panel</span>
+      <span>Book Detail · Audio Tab</span>
       <span class="mock-pill">desktop-web</span>
       <span>File 03 of 14</span>
       <span>Generated 2026-05-02</span>

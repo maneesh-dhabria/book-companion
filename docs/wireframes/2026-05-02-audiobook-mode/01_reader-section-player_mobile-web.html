@@ -13,15 +13,29 @@
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
     .mob-frame { display: flex; flex-direction: column; height: 100%; background: #fff; }
-    .mob-topbar { display:flex; align-items:center; gap:8px; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; background:#fff; position:sticky; top:0; z-index:10; }
+
+    /* Real reader chrome — 2-row header on mobile */
+    .reader-header { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--wf-border, #e2e8f0); background: #fff; position: sticky; top: 0; z-index: 10; }
+    .reader-header__row1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .reader-header__row2 { display: flex; align-items: center; gap: 6px; }
+    .breadcrumb-link { color: var(--wf-muted, #64748b); font-size: 12px; text-decoration: none; }
+    .breadcrumb-sep { color: var(--wf-muted, #cbd5e1); font-size: 12px; }
+    .toc-dropdown { background: none; border: 1px solid var(--wf-border, #e2e8f0); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--wf-text, #111827); cursor: pointer; min-height: 32px; flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-btn { width: 44px; height: 44px; min-width: 44px; border-radius: 8px; border: 1px solid var(--wf-border, #e2e8f0); background: #fff; color: var(--wf-text, #111827); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; flex-shrink: 0; }
+    .nav-btn[disabled], .nav-btn[aria-disabled="true"] { opacity: 0.4; }
+    .nav-btn.play-action { background: var(--wf-accent, #4f46e5); color: #fff; border-color: var(--wf-accent, #4f46e5); width: auto; padding: 0 12px; gap: 4px; font-weight: 500; }
+    .content-toggle { display: inline-flex; border: 1px solid var(--wf-border, #e2e8f0); border-radius: 8px; overflow: hidden; flex: 1; }
+    .content-toggle button { background: #fff; border: none; padding: 0 12px; min-height: 44px; font-size: 13px; color: var(--wf-muted, #64748b); cursor: pointer; flex: 1; }
+    .content-toggle button.active { background: var(--wf-accent, #4f46e5); color: #fff; }
+    .ham-btn { width: 44px; height: 44px; min-width: 44px; display:inline-flex; align-items:center; justify-content:center; border-radius: 8px; background: #f1f5f9; border: none; flex-shrink: 0; }
+
     .mob-content { flex: 1; overflow-y: auto; padding: 16px; }
     .mob-content h1 { font-size: 22px; font-weight: 600; color: #111827; margin-bottom: 8px; }
     .summary-prose p { margin-bottom: 14px; line-height: 1.65; color: #1f2937; font-size: 15px; }
     .summary-prose h2 { font-size: 17px; font-weight: 600; margin: 14px 0 8px; color: #111827; }
 
-    .play-trigger { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height: 44px; padding: 10px 18px; border-radius: 999px; background: var(--wf-accent, #4f46e5); color: #fff; font-weight: 500; font-size: 15px; }
+    .play-trigger { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height: 44px; padding: 10px 18px; border-radius: 999px; background: var(--wf-accent, #4f46e5); color: #fff; font-weight: 500; font-size: 15px; border: none; }
     .play-trigger[disabled] { opacity: 0.5; background: #cbd5e1; color: #475569; }
-    .summary-toggle { font-size: 13px; color: #475569; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; min-height: 44px; }
 
     .bc-engine-chip { display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: #ede9fe; color: #4338ca; border: 1px solid #c7d2fe; }
     .bc-engine-chip--web { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
@@ -29,26 +43,22 @@
     .bc-banner { display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding: 10px 12px; border-radius: 8px; background: #fef3c7; color: #78350f; border: 1px solid #fde68a; font-size: 13px; }
     .bc-banner--info { background: #dbeafe; color: #1e3a8a; border-color: #bfdbfe; }
 
-    .playbar { background: #0f172a; color:#f8fafc; padding: 10px 12px; border-top: 1px solid #1e293b; }
+    /* Unified playbar — mobile stacks rows but same fields */
+    .bc-playbar { background: #0f172a; color:#f8fafc; padding: 10px 12px; border-top: 1px solid #1e293b; }
     .playbar__row { display:flex; align-items:center; gap:10px; }
-    .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; flex-shrink: 0; }
+    .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; flex-shrink: 0; border: none; }
     .icon-btn--primary { background: var(--wf-accent, #4f46e5); width: 52px; height: 52px; }
     .icon-btn[aria-disabled="true"] { opacity: 0.4; }
     .speed-select { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 8px 10px; font-size: 13px; min-height: 36px; }
 
-    .toggle-switch { display:inline-flex; align-items:center; gap:8px; font-size: 12px; color:#cbd5e1; }
-    .toggle-switch__track { width: 30px; height: 18px; border-radius: 999px; background: var(--wf-accent, #4f46e5); position: relative; }
-    .toggle-switch__track::after { content:''; width: 14px; height:14px; border-radius:50%; background:#fff; position:absolute; top:2px; left:14px; }
-
-    .ham-btn { width: 44px; height: 44px; display:inline-flex; align-items:center; justify-content:center; border-radius: 8px; background: #f1f5f9; }
     .resume-card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background:#f8fafc; }
-    .headphone-ico { font-size: 11px; opacity: 0.85; }
   </style>
 </head>
 <body data-annotations="on">
   <!--
     Review Log
     Loop 1: initial generation — mobile reader player
+    Loop 2: rework — replaced bc-sidebar with 2-row reader-header (breadcrumb + controls); adopted unified playbar contract; right ContextSidebar omitted on mobile per brief (icons via hamburger)
   -->
 
   <header class="wf-chrome">
@@ -74,28 +84,37 @@
     <section class="wf-state active" data-state="default">
       <h1 class="sr-only">Default state</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn wf-anno" aria-label="Open sections menu" data-note="Opens slide-over sidebar with section list (sections with 🎧 have Kokoro pre-gen audio).">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn wf-anno" aria-label="Open menu (annotations, AI chat, settings)" data-note="Hamburger opens slide-over with annotations, AI chat, and section list. Right context sidebar collapses into this menu on mobile.">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown wf-anno" data-note="TOCDropdown — opens section picker. Sections with pre-gen Kokoro audio show 🎧.">TOC ▾</button>
           </div>
-          <button class="ham-btn" aria-label="More">⋯</button>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action wf-anno" aria-label="Play summary audio" data-note="Play action — instant Web Speech if no MP3, Kokoro stream if pre-generated.">▶</button>
+          </div>
+        </header>
 
         <div class="mob-content">
-          <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1</div>
+          <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1 · System 1 and System 2</div>
           <h1>System 1 and System 2</h1>
 
           <div class="flex flex-wrap items-center gap-2 mb-4 mt-3">
             <button class="play-trigger" aria-label="Listen to summary">
               <span aria-hidden="true">▶</span> Listen
             </button>
-            <span class="bc-engine-chip bc-engine-chip--web wf-anno" data-note="Web Speech engine — instant playback. Used when no pre-gen MP3 exists for this section.">🔊 Web Speech (instant)</span>
+            <span class="bc-engine-chip bc-engine-chip--web wf-anno" data-note="Web Speech — instant playback. Used when no pre-gen MP3 exists for this section.">🔊 Web Speech (instant)</span>
           </div>
           <div class="mb-5">
-            <button class="summary-toggle">Show full content</button>
-            <span class="mock-pill ml-2">~6 min listen</span>
+            <span class="mock-pill">~6 min listen</span>
+            <span class="mock-pill ml-1">chapter</span>
           </div>
 
           <div class="summary-prose">
@@ -114,20 +133,29 @@
     <section class="wf-state" data-state="playing">
       <h1 class="sr-only">Playing</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn" aria-label="Open sections menu">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn" aria-label="Open menu">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">TOC ▾</button>
           </div>
-          <button class="ham-btn" aria-label="More">⋯</button>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Pause" style="background:#1e293b;border-color:#1e293b">⏸</button>
+          </div>
+        </header>
 
         <div class="mob-content" aria-live="polite">
           <h1>System 1 and System 2</h1>
           <div class="flex flex-wrap items-center gap-2 mb-4 mt-2">
             <span class="bc-engine-chip bc-engine-chip--web">🔊 Web Speech</span>
-            <span class="mock-pill">Sentence 8 of 23</span>
+            <span class="mock-pill">Sentence 17 of 47</span>
           </div>
 
           <div class="summary-prose">
@@ -143,29 +171,23 @@
           </div>
         </div>
 
-        <div class="playbar">
+        <div class="bc-playbar">
           <div class="playbar__row mb-2">
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium truncate">System 1 and System 2</div>
-              <div class="text-xs text-slate-400 truncate">2:14 / 6:08 · sentence 17 of 47</div>
+              <div class="text-xs opacity-70 truncate">Thinking, Fast and Slow · 2:14 / 6:08 · sentence 17 of 47</div>
             </div>
             <button class="icon-btn" aria-label="Close player">✕</button>
           </div>
-          <div class="h-1 bg-slate-700 rounded mb-3"><div class="h-1 rounded bg-indigo-500" style="width: 36%"></div></div>
+          <div class="h-1 rounded mb-3" style="background:rgba(255,255,255,.15)"><div class="h-1 rounded" style="background:var(--wf-accent);width:36%"></div></div>
           <div class="playbar__row">
-            <button class="icon-btn wf-anno" aria-label="Previous sentence" data-note="Jumps backward one sentence boundary.">⏮</button>
+            <button class="icon-btn wf-anno" aria-label="Previous sentence" title="Prev sentence" data-note="Jumps backward one sentence boundary.">⏮</button>
             <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
-            <button class="icon-btn" aria-label="Next sentence">⏭</button>
+            <button class="icon-btn" aria-label="Next sentence" title="Next sentence">⏭</button>
             <select class="speed-select wf-anno" aria-label="Playback speed" data-note="0.75x / 1x / 1.25x / 1.5x / 2x">
               <option>1x</option><option selected>1.25x</option><option>1.5x</option>
             </select>
             <span class="bc-engine-chip bc-engine-chip--web">Web</span>
-          </div>
-          <div class="playbar__row mt-2 justify-between">
-            <label class="toggle-switch wf-anno" data-note="When ON, playback continues into next section's audio at boundary. Default ON.">
-              <span>Auto-advance to next section</span>
-              <span class="toggle-switch__track" role="switch" aria-checked="true"></span>
-            </label>
           </div>
         </div>
       </div>
@@ -175,13 +197,23 @@
     <section class="wf-state" data-state="resume">
       <h1 class="sr-only">Paused with resume prompt</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn" aria-label="Open sections menu">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn" aria-label="Open menu">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">TOC ▾</button>
           </div>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Resume audio">▶</button>
+          </div>
+        </header>
 
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
@@ -213,13 +245,23 @@
     <section class="wf-state" data-state="loading">
       <h1 class="sr-only">Loading voice</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn" aria-label="Open sections menu">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn" aria-label="Open menu">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">TOC ▾</button>
           </div>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-disabled="true" aria-label="Loading">⏳</button>
+          </div>
+        </header>
 
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
@@ -233,21 +275,21 @@
           </div>
         </div>
 
-        <div class="playbar">
+        <div class="bc-playbar">
           <div class="playbar__row mb-2">
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium truncate">System 1 and System 2</div>
-              <div class="text-xs text-slate-400 truncate">Loading Kokoro voice… 3.2 MB MP3</div>
+              <div class="text-xs opacity-70 truncate">Thinking, Fast and Slow · loading Kokoro voice… 3.2 MB MP3</div>
             </div>
             <button class="icon-btn" aria-label="Cancel">✕</button>
           </div>
-          <div class="h-1 bg-slate-700 rounded mb-3"><div class="skeleton" style="height: 4px; width: 30%;"></div></div>
+          <div class="h-1 rounded mb-3" style="background:rgba(255,255,255,.15)"><div class="skeleton" style="height: 4px; width: 30%; border-radius: 4px;"></div></div>
           <div class="playbar__row">
-            <button class="icon-btn" aria-disabled="true" aria-label="Previous">⏮</button>
+            <button class="icon-btn" aria-disabled="true" aria-label="Previous sentence">⏮</button>
             <button class="icon-btn icon-btn--primary" aria-disabled="true" aria-label="Loading">⏸</button>
-            <button class="icon-btn" aria-disabled="true" aria-label="Next">⏭</button>
+            <button class="icon-btn" aria-disabled="true" aria-label="Next sentence">⏭</button>
             <select class="speed-select" disabled><option>1x</option></select>
-            <span class="bc-engine-chip">Kokoro</span>
+            <span class="bc-engine-chip">Kokoro · af_bella</span>
           </div>
         </div>
       </div>
@@ -257,13 +299,23 @@
     <section class="wf-state" data-state="no-summary">
       <h1 class="sr-only">No summary — audio disabled</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn" aria-label="Open sections menu">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">Of Two Minds</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn" aria-label="Open menu">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Of Two Minds ▾</button>
           </div>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button class="active">Original</button>
+              <button>Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" disabled aria-label="Play disabled" style="opacity:.5">▶</button>
+          </div>
+        </header>
 
         <div class="mob-content">
           <div class="text-xs text-slate-500 mb-1">Part I · Chapter 8</div>
@@ -288,13 +340,23 @@
     <section class="wf-state" data-state="stale">
       <h1 class="sr-only">Stale source</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn" aria-label="Open sections menu">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn" aria-label="Open menu">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">TOC ▾</button>
           </div>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Play summary audio">▶</button>
+          </div>
+        </header>
 
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
@@ -324,19 +386,29 @@
     <section class="wf-state" data-state="midregen">
       <h1 class="sr-only">Mid-listen regen prompt</h1>
       <div class="mob-frame">
-        <div class="mob-topbar">
-          <button class="ham-btn" aria-label="Open sections menu">☰</button>
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
-            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+        <header class="reader-header">
+          <div class="reader-header__row1">
+            <button class="ham-btn" aria-label="Open menu">☰</button>
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">TOC ▾</button>
           </div>
-        </div>
+          <div class="reader-header__row2">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Pause" style="background:#1e293b;border-color:#1e293b">⏸</button>
+          </div>
+        </header>
 
         <div class="mob-content">
           <h1>System 1 and System 2</h1>
           <div class="flex flex-wrap items-center gap-2 mb-3 mt-2">
-            <span class="bc-engine-chip">🎙 Kokoro</span>
-            <span class="mock-pill">Sentence 8 of 23</span>
+            <span class="bc-engine-chip">🎙 Kokoro · af_bella</span>
+            <span class="mock-pill">Sentence 17 of 47</span>
           </div>
           <div class="summary-prose">
             <p><span class="bc-sentence-active">System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</span></p>
@@ -344,20 +416,21 @@
           </div>
         </div>
 
-        <div class="playbar">
+        <div class="bc-playbar">
           <div class="playbar__row mb-2">
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium truncate">System 1 and System 2</div>
-              <div class="text-xs text-slate-400 truncate">2:14 / 6:08 · Kokoro</div>
+              <div class="text-xs opacity-70 truncate">Thinking, Fast and Slow · 2:14 / 6:08 · sentence 17 of 47</div>
             </div>
-            <button class="icon-btn" aria-label="Close">✕</button>
+            <button class="icon-btn" aria-label="Close player">✕</button>
           </div>
-          <div class="h-1 bg-slate-700 rounded mb-3"><div class="h-1 rounded bg-indigo-500" style="width: 36%"></div></div>
+          <div class="h-1 rounded mb-3" style="background:rgba(255,255,255,.15)"><div class="h-1 rounded" style="background:var(--wf-accent);width:36%"></div></div>
           <div class="playbar__row">
-            <button class="icon-btn" aria-label="Previous">⏮</button>
+            <button class="icon-btn" aria-label="Previous sentence">⏮</button>
             <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
-            <button class="icon-btn" aria-label="Next">⏭</button>
-            <select class="speed-select"><option>1.25x</option></select>
+            <button class="icon-btn" aria-label="Next sentence">⏭</button>
+            <select class="speed-select"><option>1x</option><option selected>1.25x</option></select>
+            <span class="bc-engine-chip">Kokoro · af_bella</span>
           </div>
         </div>
 

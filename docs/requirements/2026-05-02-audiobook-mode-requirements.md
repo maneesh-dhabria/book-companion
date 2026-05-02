@@ -266,11 +266,15 @@ MSF analysis: `docs/wireframes/2026-05-02-audiobook-mode/msf-findings.md` (canon
 |---|-----------|---------|--------|------|
 | 01 | Reader · Section player | desktop-web, mobile-web | 7 (default · playing-with-highlight · paused-with-resume · loading-voice · no-summary-disabled · stale-source-banner · mid-listen-regen-banner) | `01_reader-section-player_{device}.html` |
 | 02 | Book summary player | desktop-web, mobile-web | 3 (default · playing · ended-auto-advance) | `02_book-summary-player_{device}.html` |
-| 03 | Book detail · Audio panel | desktop-web, mobile-web | 4 (no-audio · partial · full · generating) | `03_book-detail-audio_{device}.html` |
+| 03 | Book detail · **Audio tab** (new tab on BookOverviewView) | desktop-web, mobile-web | 4 (no-audio · partial · full · generating) | `03_book-detail-audio_{device}.html` |
 | 04 | Generate audio modal | desktop-web, mobile-web | 3 (default · model-download-required · error) | `04_generate-audio-modal_{device}.html` |
-| 05 | Audio files list | desktop-web, mobile-web | 3 (populated · empty · partial-failed) | `05_audio-files-list_{device}.html` |
-| 06 | Annotations playlist player | desktop-web, mobile-web | 3 (default-list · playing · empty) | `06_annotations-player_{device}.html` |
+| 06 | Annotations playlist player (new Annotations tab on BookOverviewView) | desktop-web, mobile-web | 3 (default-list · playing · empty) | `06_annotations-player_{device}.html` |
 | 07 | Settings · TTS panel | desktop-web, mobile-web | 4 (default · voice-sample-loading · model-not-downloaded · no-voices-available) | `07_settings-tts_{device}.html` |
+| 08 | Sections tab · Audio columns (existing Sections tab + audio-status pill, per-section play/regen/delete, bulk-actions, stale filter) | desktop-web, mobile-web | 3 (default · bulk-actions · filtered-stale) | `08_sections-tab-audio_{device}.html` |
+
+**Tab-strip change:** Book detail now has 5 tabs — `Overview | Summary | Sections | Audio (new) | Annotations (new)` — replacing the prior 3-tab strip. The Audio tab subsumes the per-book audio file list (no separate "Audio files" page); the Annotations tab moves the existing top-level `/annotations` view onto the book detail surface for per-book-scoped review including the playlist player.
+
+**Per-section audio actions** live inline in the Sections tab table (file 08), not on the Audio tab card — matches user feedback "shouldn't we add the audio edit / delete option to the section summary table rather than here".
 
 ## Wireframes & UX Analysis Updates (2026-05-02)
 

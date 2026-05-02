@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Book Detail · Audio Panel — mobile-web — Wireframe</title>
+  <title>Book Detail · Audio Tab — mobile-web — Wireframe</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,29 +20,61 @@
     }
     .bc-progress { position:relative; height:8px; border-radius:9999px; background:#e5e7eb; overflow:hidden; }
     .bc-progress__fill { position:absolute; inset:0 auto 0 0; background:var(--wf-accent,#4f46e5); border-radius:9999px; }
-    .bc-cover-sm { width:64px; height:96px; border-radius:6px; flex-shrink:0; }
-    .bc-tabrow-m {
-      display:flex; gap:1.25rem; overflow-x:auto; white-space:nowrap;
-      border-bottom:1px solid #e5e7eb; padding: 0 .25rem;
-      scrollbar-width: none;
-    }
-    .bc-tabrow-m::-webkit-scrollbar { display:none; }
-    .bc-tab { padding:.65rem 0; font-size:.9rem; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; }
-    .bc-tab--active { color:#111827; border-bottom-color: var(--wf-accent,#4f46e5); font-weight:600; }
+
+    /* BookDetail chrome (mobile-adapted) */
+    .book-tabs { display:flex; gap:.25rem; border-bottom:1px solid var(--wf-border); margin-top:.75rem;
+                 overflow-x:auto; white-space:nowrap; scrollbar-width:none; }
+    .book-tabs::-webkit-scrollbar { display:none; }
+    .book-tab { background:none; border:none; padding:.55rem .85rem; font-size:.85rem; font-weight:500;
+                color:var(--wf-muted); cursor:pointer; border-bottom:2px solid transparent;
+                margin-bottom:-1px; display:inline-flex; align-items:center; gap:.35rem; flex-shrink:0; }
+    .book-tab:hover { color:var(--wf-text) }
+    .book-tab.active { color:var(--wf-accent); border-bottom-color:var(--wf-accent) }
+    .book-header { display:flex; gap:.85rem; align-items:flex-start }
+    .cover-sm { width:84px; height:120px; flex:0 0 84px; background:#e5e7eb; border-radius:6px; }
+
     .btn-full { width:100%; min-height:44px; }
-    .bc-fade-row { opacity:.55; }
-    .bc-check { color:#10b981; font-weight:700; }
+    .tap44 { min-height:44px; min-width:44px; }
+
+    /* Per-section row card */
+    .audio-row { display:flex; align-items:center; gap:.6rem; padding:.7rem .85rem;
+                 border-bottom:1px solid #f1f5f9; }
+    .audio-row__num { font-size:.7rem; color:#94a3b8; font-variant-numeric:tabular-nums;
+                      width:24px; flex-shrink:0; }
+    .audio-row__body { flex:1; min-width:0; }
+    .audio-row__title { font-size:.85rem; font-weight:500; color:#111827;
+                        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .audio-row__meta { font-size:.7rem; color:#6b7280; margin-top:2px; }
+    .audio-row__actions { display:flex; gap:6px; flex-shrink:0; }
+    .icon-btn-44 { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center;
+                   border:1px solid #e5e7eb; background:#fff; border-radius:8px; color:#374151; cursor:pointer;
+                   font-size:14px; }
+    .icon-btn-44--play { color:var(--wf-accent,#4f46e5); border-color:#c7d2fe; background:#eef2ff; }
+
+    .status-pill { display:inline-flex; align-items:center; gap:3px; font-size:.65rem; padding:1px 7px;
+                   border-radius:9999px; font-weight:500; }
+    .status-ok { background:#dcfce7; color:#166534; }
+    .status-pending { background:#fef3c7; color:#92400e; }
+    .status-stale { background:#fee2e2; color:#991b1b; }
+    .status-none { background:#f1f5f9; color:#64748b; }
+    .status-prog { background:#e0e7ff; color:#3730a3; }
+    .status-queue { background:#f8fafc; color:#94a3b8; }
+
+    .spinner { display:inline-block; width:10px; height:10px; border:2px solid #c7d2fe;
+               border-top-color:var(--wf-accent,#4f46e5); border-radius:50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pagination-mobile { padding:.85rem; text-align:center; color:#6b7280; font-style:italic; font-size:.8rem; }
   </style>
 </head>
 <body data-annotations="on">
   <!--
     Review Log
-    Loop 1: initial draft — mobile-web stacked layout, full-width CTAs, scrollable tabs.
+    Loop 2: rework — Audio tab on mobile, stacked rows replace table. File 05 absorbed.
   -->
 
   <header class="wf-chrome">
     <div class="wf-chrome__inner">
-      <span class="wf-chrome__title">Book Detail · Audio Panel</span>
+      <span class="wf-chrome__title">Book Detail · Audio Tab</span>
       <span class="wf-chrome__device">mobile-web</span>
       <nav class="wf-tabs" aria-label="State switcher">
         <button class="wf-tab" aria-selected="true"  data-state="no-audio">No audio</button>
@@ -60,53 +92,48 @@
     <section class="wf-state active" data-state="no-audio" aria-labelledby="m-state-no-audio-h">
       <h1 id="m-state-no-audio-h" class="sr-only">No audio state</h1>
 
-      <div class="mock-card" style="padding:1rem;">
-        <div class="flex gap-3 items-start">
-          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+      <div class="mock-card" style="padding:.85rem;">
+        <header class="book-header">
+          <div class="cover-sm" aria-label="Book cover"></div>
           <div class="flex-1 min-w-0">
-            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
-            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <span class="mock-pill">Summarized</span>
-              <span class="mock-pill">47 sections</span>
+            <h1 class="text-base font-semibold leading-tight">Thinking, Fast and Slow</h1>
+            <p class="byline text-xs text-slate-600 mt-0.5">Daniel Kahneman</p>
+            <div class="action-row mt-2 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary tap44" style="padding:8px 16px;">Read</a>
+              <button class="overflow-menu mock-button tap44" aria-label="More" style="padding:8px 12px;">⋯</button>
             </div>
           </div>
-        </div>
+        </header>
       </div>
 
-      <div class="bc-tabrow-m mt-3">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
+      <nav class="book-tabs" role="tablist">
+        <button class="book-tab" role="tab">Overview</button>
+        <button class="book-tab" role="tab">Summary</button>
+        <button class="book-tab" role="tab">Sections</button>
+        <button class="book-tab active" role="tab" aria-selected="true">
+          Audio
+          <span class="mock-pill" style="font-size:.55rem;padding:1px 5px;">NEW</span>
+          <span class="mock-pill" style="font-size:.6rem;background:#f1f5f9;color:#64748b;">0/47</span>
+        </button>
+        <button class="book-tab" role="tab">Annotations</button>
+      </nav>
 
-      <div class="mock-card mt-3" style="padding:1rem;">
-        <div class="text-sm font-semibold text-slate-700">Summaries</div>
-        <div class="mock-divider"></div>
-        <div class="text-xs text-slate-500">47 of 47 sections summarized</div>
-      </div>
-
-      <div class="mock-card mt-3" style="padding:1rem;">
-        <div class="flex items-center justify-between">
+      <div class="mock-card mt-3" style="padding:0;">
+        <div style="padding:.85rem; display:flex; align-items:center; justify-content:space-between;">
           <div class="text-sm font-semibold text-slate-700">Audio</div>
           <span class="bc-engine-chip--web mock-pill text-[10px]">Web Speech</span>
         </div>
-        <div class="mock-divider"></div>
-        <div class="wf-message" style="margin:0; padding:.5rem 0;">
+        <div class="mock-divider" style="margin:0;"></div>
+        <div class="wf-message" style="margin:0; padding:1.25rem .85rem; text-align:center;">
           <div class="wf-message__title">No audio generated yet</div>
-          <div class="wf-message__hint">Generate audio for sections, the book summary, or annotations.</div>
+          <div class="wf-message__hint text-xs">Pre-generate Kokoro MP3s for offline listening, or just hit play in the reader for instant Web Speech.</div>
           <button class="wf-anno mock-button mock-button--primary btn-full mt-3"
                   data-note="Opens the Generate Audio modal (file 04)">
             Generate audio
           </button>
           <div class="text-xs mt-2" style="color:var(--wf-muted)">
-            Estimate: ~12 min · ~140 MB for 47 sections (Kokoro)
+            ~12 min · ~140 MB for 47 sections (Kokoro)
           </div>
-        </div>
-        <div class="text-xs text-slate-500 mt-2">
-          Or tap play in the reader for instant Web Speech playback.
         </div>
       </div>
     </section>
@@ -115,52 +142,154 @@
     <section class="wf-state" data-state="partial-audio" aria-labelledby="m-state-partial-h">
       <h1 id="m-state-partial-h" class="sr-only">Partial audio state</h1>
 
-      <div class="mock-card" style="padding:1rem;">
-        <div class="flex gap-3 items-start">
-          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+      <div class="mock-card" style="padding:.85rem;">
+        <header class="book-header">
+          <div class="cover-sm" aria-label="Book cover"></div>
           <div class="flex-1 min-w-0">
-            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
-            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <span class="mock-pill">Summarized</span>
-              <span class="mock-pill">47 sections</span>
-              <span class="mock-pill">Audio · 12/47</span>
+            <h1 class="text-base font-semibold leading-tight">Thinking, Fast and Slow</h1>
+            <p class="byline text-xs text-slate-600 mt-0.5">Daniel Kahneman</p>
+            <div class="action-row mt-2 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary tap44" style="padding:8px 16px;">Read</a>
+              <button class="overflow-menu mock-button tap44" aria-label="More" style="padding:8px 12px;">⋯</button>
             </div>
           </div>
-        </div>
+        </header>
       </div>
 
-      <div class="bc-tabrow-m mt-3">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
+      <nav class="book-tabs" role="tablist">
+        <button class="book-tab" role="tab">Overview</button>
+        <button class="book-tab" role="tab">Summary</button>
+        <button class="book-tab" role="tab">Sections</button>
+        <button class="book-tab active" role="tab" aria-selected="true">
+          Audio
+          <span class="mock-pill" style="font-size:.55rem;padding:1px 5px;">NEW</span>
+          <span class="mock-pill" style="font-size:.6rem;background:#fef3c7;color:#92400e;">12/47</span>
+        </button>
+        <button class="book-tab" role="tab">Annotations</button>
+      </nav>
 
-      <div class="mock-card mt-3" style="padding:1rem;">
+      <!-- Status header -->
+      <div class="mock-card mt-3" style="padding:.9rem;">
         <div class="flex items-center justify-between">
-          <div class="text-sm font-semibold text-slate-700">Audio</div>
+          <div class="text-sm font-semibold text-slate-700">Audio · 12 of 47</div>
           <span class="bc-engine-chip mock-pill text-[10px]">Kokoro · af_bella</span>
         </div>
-        <div class="mock-divider"></div>
-
-        <div class="text-sm text-slate-700 mb-2">Audio: 12 of 47 sections pre-generated</div>
-        <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+        <div class="text-xs text-slate-500 mt-1">38 MB on disk · last generated May 1, 2026</div>
+        <div class="bc-coverage-bar bc-progress mt-2" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
           <div class="bc-progress__fill" style="width:25.5%"></div>
         </div>
-        <div class="text-xs text-slate-500 mt-1">25% covered</div>
 
-        <div class="flex flex-col gap-2 mt-4">
+        <div class="flex flex-col gap-2 mt-3">
           <button class="wf-anno mock-button mock-button--primary btn-full"
-                  data-note="Opens book summary player (file 02)">Listen</button>
-          <button class="wf-anno mock-button btn-full"
-                  data-note="Opens flat list of MP3s (file 05)">Audio files</button>
+                  data-note="Opens book summary player (file 02)">▶ Listen</button>
           <button class="mock-button btn-full">Generate remaining</button>
+          <button class="mock-button btn-full" aria-haspopup="menu"
+                  title="Regenerate all · Delete all · Change voice">More actions ⋯</button>
+        </div>
+      </div>
+
+      <!-- Per-section stacked rows -->
+      <div class="mock-card mt-3" style="padding:0; overflow:hidden;">
+        <div class="text-[10px] uppercase tracking-wide text-slate-500 px-3 pt-3">Sections</div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">00</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Book summary</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 18:30 · 3.2 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More" title="Regenerate · Delete">⋯</button>
+          </div>
         </div>
 
-        <div class="mock-divider"></div>
-        <div class="text-xs text-slate-500">Last generated · May 1, 2026 · 38 MB on disk</div>
+        <div class="audio-row">
+          <div class="audio-row__num">01</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Introduction</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 4:12 · 0.9 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">02</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Characters of the Story</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 5:48 · 1.3 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">03</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">System 1 and System 2</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 6:22 · 1.4 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row wf-anno" data-note="Stale: source summary edited since audio was generated.">
+          <div class="audio-row__num">04</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Attention and Effort</div>
+            <div class="audio-row__meta"><span class="status-pill status-stale">⚠ stale</span> · 5:10 · 1.1 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Regenerate">⟳</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">05</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Lazy Controller</div>
+            <div class="audio-row__meta"><span class="status-pill status-pending">… pending</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44" aria-label="Generate">⟳</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">06</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Associative Machine</div>
+            <div class="audio-row__meta"><span class="status-pill status-none">— none</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44" aria-label="Generate">⟳</button>
+          </div>
+        </div>
+
+        <div class="audio-row" style="opacity:.6;">
+          <div class="audio-row__num">07</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Cognitive Ease</div>
+            <div class="audio-row__meta"><span class="status-pill status-none">— none</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44" aria-label="Generate">⟳</button>
+          </div>
+        </div>
+
+        <div class="pagination-mobile">…(39 more sections — scroll or load more)</div>
       </div>
     </section>
 
@@ -168,55 +297,143 @@
     <section class="wf-state" data-state="full-audio" aria-labelledby="m-state-full-h">
       <h1 id="m-state-full-h" class="sr-only">Full audio state</h1>
 
-      <div class="mock-card" style="padding:1rem;">
-        <div class="flex gap-3 items-start">
-          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+      <div class="mock-card" style="padding:.85rem;">
+        <header class="book-header">
+          <div class="cover-sm" aria-label="Book cover"></div>
           <div class="flex-1 min-w-0">
-            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
-            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <span class="mock-pill">Summarized</span>
-              <span class="mock-pill">47 sections</span>
-              <span class="mock-pill">Audio · complete</span>
+            <h1 class="text-base font-semibold leading-tight">Thinking, Fast and Slow</h1>
+            <p class="byline text-xs text-slate-600 mt-0.5">Daniel Kahneman</p>
+            <div class="action-row mt-2 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary tap44" style="padding:8px 16px;">Read</a>
+              <button class="overflow-menu mock-button tap44" aria-label="More" style="padding:8px 12px;">⋯</button>
             </div>
           </div>
-        </div>
+        </header>
       </div>
 
-      <div class="bc-tabrow-m mt-3">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
+      <nav class="book-tabs" role="tablist">
+        <button class="book-tab" role="tab">Overview</button>
+        <button class="book-tab" role="tab">Summary</button>
+        <button class="book-tab" role="tab">Sections</button>
+        <button class="book-tab active" role="tab" aria-selected="true">
+          Audio
+          <span class="mock-pill" style="font-size:.55rem;padding:1px 5px;">NEW</span>
+          <span class="mock-pill" style="font-size:.6rem;background:#dcfce7;color:#166534;">47/47</span>
+        </button>
+        <button class="book-tab" role="tab">Annotations</button>
+      </nav>
 
-      <div class="mock-card mt-3" style="padding:1rem;">
+      <div class="mock-card mt-3" style="padding:.9rem;">
         <div class="flex items-center justify-between">
-          <div class="text-sm font-semibold text-slate-700">Audio</div>
+          <div class="text-sm font-semibold text-slate-700">Audio · complete</div>
           <span class="bc-engine-chip mock-pill text-[10px]">Kokoro · af_bella</span>
         </div>
-        <div class="mock-divider"></div>
-
-        <div class="text-sm text-slate-700 mb-2">47 of 47 sections · book summary · annotations</div>
-        <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+        <div class="text-xs text-slate-500 mt-1">47 sections + Book summary + Annotations playlist · 142 MB</div>
+        <div class="text-xs text-slate-500 mt-0.5">Audio is up to date · last regenerated May 1, 2026</div>
+        <div class="bc-coverage-bar bc-progress mt-2" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
           <div class="bc-progress__fill" style="width:100%"></div>
         </div>
-        <div class="text-xs text-slate-500 mt-1">100% covered</div>
 
-        <div class="flex flex-col gap-2 mt-4">
-          <button class="mock-button mock-button--primary btn-full">Listen</button>
-          <button class="mock-button btn-full">Audio files</button>
-          <button class="mock-button btn-full" aria-haspopup="menu">Regenerate audio ▾</button>
-          <button class="wf-anno mock-button btn-full"
-                  style="color: var(--wf-error, #b91c1c);"
-                  data-note="One-click; only removes MP3s, not summaries or annotations">
-            Delete audio for this book
-          </button>
+        <div class="flex flex-col gap-2 mt-3">
+          <button class="mock-button mock-button--primary btn-full">▶ Listen</button>
+          <button class="wf-anno mock-button btn-full" aria-haspopup="menu"
+                  data-note="Overflow: Regenerate all · Delete all · Change voice">More actions ⋯</button>
+        </div>
+      </div>
+
+      <div class="mock-card mt-3 wf-anno" data-note="Per-row regenerate fires the same SSE job pattern as book-level (D12 atomic replace)" style="padding:0; overflow:hidden;">
+        <div class="text-[10px] uppercase tracking-wide text-slate-500 px-3 pt-3">Sections</div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">00</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Book summary</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 18:30 · 3.2 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
         </div>
 
-        <div class="mock-divider"></div>
-        <div class="text-xs text-slate-500">Last generated · May 1, 2026 · 142 MB on disk</div>
+        <div class="audio-row">
+          <div class="audio-row__num">01</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Introduction</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 4:12 · 0.9 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">02</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Characters of the Story</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 5:48 · 1.3 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">03</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">System 1 and System 2</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 6:22 · 1.4 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">04</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Attention and Effort</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 5:10 · 1.1 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="Download">⬇</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row" style="opacity:.7;">
+          <div class="audio-row__num">05</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Lazy Controller</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 4:45 · 1.0 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="audio-row" style="opacity:.55;">
+          <div class="audio-row__num">06</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Associative Machine</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓</span> · 5:30 · 1.2 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+            <button class="icon-btn-44" aria-label="More">⋯</button>
+          </div>
+        </div>
+
+        <div class="pagination-mobile">…(40 more · 47 Annotations Playlist at the end)</div>
       </div>
     </section>
 
@@ -224,59 +441,132 @@
     <section class="wf-state" data-state="generating" aria-labelledby="m-state-generating-h">
       <h1 id="m-state-generating-h" class="sr-only">Generating state</h1>
 
-      <div class="mock-card" style="padding:1rem;">
-        <div class="flex gap-3 items-start">
-          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+      <div class="mock-card" style="padding:.85rem;">
+        <header class="book-header">
+          <div class="cover-sm" aria-label="Book cover"></div>
           <div class="flex-1 min-w-0">
-            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
-            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
-            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-              <span class="mock-pill">Summarized</span>
-              <span class="mock-pill">47 sections</span>
-              <span class="mock-pill">Generating…</span>
+            <h1 class="text-base font-semibold leading-tight">Thinking, Fast and Slow</h1>
+            <p class="byline text-xs text-slate-600 mt-0.5">Daniel Kahneman</p>
+            <div class="action-row mt-2 flex gap-2 items-center">
+              <a class="mock-button mock-button--primary tap44" style="padding:8px 16px;">Read</a>
+              <button class="overflow-menu mock-button tap44" aria-label="More" style="padding:8px 12px;">⋯</button>
             </div>
           </div>
-        </div>
+        </header>
       </div>
 
-      <div class="bc-tabrow-m mt-3">
-        <div class="bc-tab bc-tab--active">Overview</div>
-        <div class="bc-tab">Sections</div>
-        <div class="bc-tab">Annotations</div>
-        <div class="bc-tab">Concepts</div>
-      </div>
+      <nav class="book-tabs" role="tablist">
+        <button class="book-tab" role="tab">Overview</button>
+        <button class="book-tab" role="tab">Summary</button>
+        <button class="book-tab" role="tab">Sections</button>
+        <button class="book-tab active" role="tab" aria-selected="true">
+          Audio
+          <span class="mock-pill" style="font-size:.55rem;padding:1px 5px;">NEW</span>
+          <span class="mock-pill" style="font-size:.6rem;background:#e0e7ff;color:#3730a3;">18/47</span>
+        </button>
+        <button class="book-tab" role="tab">Annotations</button>
+      </nav>
 
-      <div class="mock-card wf-anno mt-3" data-note="Same SSE event stream as summarization jobs (job_progress)" style="padding:1rem;">
+      <div class="mock-card mt-3 wf-anno" data-note="Same SSE event stream as summarization jobs (job_progress)" style="padding:.9rem;">
         <div class="flex items-center justify-between">
           <div class="text-sm font-semibold text-slate-700 flex items-center gap-2">
             <span class="pulse-dot" aria-hidden="true"></span>
-            Audio · generating
+            Audio · 18 of 47
           </div>
           <span class="bc-engine-chip mock-pill text-[10px]">Kokoro · af_bella</span>
         </div>
-        <div class="mock-divider"></div>
-
-        <div class="text-sm text-slate-700 mb-2">Generating section audio · 18 of 47 · ~6 min remaining</div>
-        <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-live="polite">
+        <div class="text-xs text-slate-500 mt-1" aria-live="polite">~6 min remaining · current: <span class="font-medium text-slate-700">The Two Selves</span></div>
+        <div class="bc-coverage-bar bc-progress mt-2" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-live="polite">
           <div class="bc-progress__fill" style="width:38.3%"></div>
         </div>
-        <div class="text-xs text-slate-500 mt-1">Current: <span class="font-medium text-slate-700">The Two Selves</span></div>
 
-        <div class="flex flex-col gap-2 mt-4">
-          <button class="mock-button btn-full">Pause job</button>
-          <button class="mock-button btn-full">Cancel</button>
+        <div class="flex flex-col gap-2 mt-3">
+          <button class="mock-button btn-full">⏸ Pause job</button>
+          <button class="mock-button btn-full" style="color:var(--wf-error,#b91c1c);">Cancel job</button>
+        </div>
+      </div>
+
+      <div class="mock-card mt-3" style="padding:0; overflow:hidden;">
+        <div class="text-[10px] uppercase tracking-wide text-slate-500 px-3 pt-3">Sections</div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">00</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Book summary</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 18:30 · 3.2 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+          </div>
         </div>
 
-        <div class="mock-divider"></div>
-        <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Recently completed</div>
-        <ul class="text-sm text-slate-700 space-y-1">
-          <li><span class="bc-check">✓</span> Attention and Effort <span class="text-xs text-slate-500">· 2.1 MB</span></li>
-          <li><span class="bc-check">✓</span> The Lazy Controller <span class="text-xs text-slate-500">· 1.8 MB</span></li>
-          <li class="bc-fade-row"><span class="bc-check">✓</span> The Associative Machine <span class="text-xs text-slate-500">· 2.4 MB</span></li>
-          <li class="bc-fade-row"><span class="bc-check">✓</span> Cognitive Ease <span class="text-xs text-slate-500">· 1.6 MB</span></li>
-          <li class="bc-fade-row"><span class="bc-check">✓</span> Norms, Surprises, and Causes <span class="text-xs text-slate-500">· 2.0 MB</span></li>
-        </ul>
+        <div class="audio-row">
+          <div class="audio-row__num">15</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Illusion of Understanding</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 5:18 · 1.2 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">16</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Illusion of Validity</div>
+            <div class="audio-row__meta"><span class="status-pill status-ok">✓ ready</span> · 4:55 · 1.1 MB</div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44 icon-btn-44--play" aria-label="Play">▶</button>
+          </div>
+        </div>
+
+        <div class="audio-row" style="background:#eef2ff;">
+          <div class="audio-row__num">17</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title font-semibold">The Two Selves</div>
+            <div class="audio-row__meta"><span class="status-pill status-prog"><span class="spinner" aria-hidden="true"></span> generating…</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <button class="icon-btn-44" aria-label="Cancel section">✕</button>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">18</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">The Experiencing Self</div>
+            <div class="audio-row__meta"><span class="status-pill status-queue">⏱ queued</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <span class="text-xs text-slate-400">queue</span>
+          </div>
+        </div>
+
+        <div class="audio-row">
+          <div class="audio-row__num">19</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Life as a Story</div>
+            <div class="audio-row__meta"><span class="status-pill status-queue">⏱ queued</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <span class="text-xs text-slate-400">queue</span>
+          </div>
+        </div>
+
+        <div class="audio-row" style="opacity:.65;">
+          <div class="audio-row__num">20</div>
+          <div class="audio-row__body">
+            <div class="audio-row__title">Experienced Well-Being</div>
+            <div class="audio-row__meta"><span class="status-pill status-queue">⏱ queued</span></div>
+          </div>
+          <div class="audio-row__actions">
+            <span class="text-xs text-slate-400">queue</span>
+          </div>
+        </div>
+
+        <div class="pagination-mobile">…(27 more sections queued)</div>
       </div>
     </section>
 
@@ -284,7 +574,7 @@
 
   <footer class="wf-footer">
     <div class="wf-footer__inner">
-      <span>Book Detail · Audio Panel</span>
+      <span>Book Detail · Audio Tab</span>
       <span class="mock-pill">mobile-web</span>
       <span>File 03 of 14</span>
       <span>Generated 2026-05-02</span>

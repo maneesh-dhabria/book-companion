@@ -36,6 +36,7 @@
       <h1 class="text-2xl font-semibold tracking-tight mb-1" style="color:var(--wf-text)">Audiobook Mode</h1>
       <p class="text-sm" style="color:var(--wf-muted)">
         14 wireframes across 7 components × 2 devices. Web Speech (instant) + Kokoro local (file-output) two-engine TTS for Book Companion summaries and annotations.
+        <span class="mock-pill" style="margin-left:.5rem">v2 · post-review rework</span>
       </p>
       <p class="text-sm mt-1" style="color:var(--wf-muted)">
         Tier 3 feature · Generated 2026-05-02 ·
@@ -68,11 +69,11 @@
     const wireframes = [
       { n: '01', name: 'Reader · Section player',     slug: 'reader-section-player',  states: 7 },
       { n: '02', name: 'Book summary player',          slug: 'book-summary-player',    states: 3 },
-      { n: '03', name: 'Book detail · Audio panel',    slug: 'book-detail-audio',      states: 4 },
+      { n: '03', name: 'Book detail · Audio tab',      slug: 'book-detail-audio',      states: 4 },
       { n: '04', name: 'Generate audio modal',         slug: 'generate-audio-modal',   states: 3 },
-      { n: '05', name: 'Audio files list',             slug: 'audio-files-list',       states: 3 },
       { n: '06', name: 'Annotations playlist player',  slug: 'annotations-player',     states: 3 },
       { n: '07', name: 'Settings · TTS panel',         slug: 'settings-tts',           states: 4 },
+      { n: '08', name: 'Sections tab · Audio columns', slug: 'sections-tab-audio',     states: 3 },
     ];
     const devices = ['desktop-web', 'mobile-web'];
     const grid = document.getElementById('grid');

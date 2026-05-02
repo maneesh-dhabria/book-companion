@@ -12,31 +12,54 @@
   <link rel="stylesheet" href="./assets/house-style.css">
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
-    .reader-grid { display: grid; grid-template-columns: 240px 1fr; min-height: 100%; }
+
+    /* Real reader chrome — horizontal header on top, no dark sidebar */
+    .reader-shell { display: grid; grid-template-columns: 1fr 60px; grid-template-rows: auto 1fr auto; min-height: 100%; background: var(--wf-surface, #fff); }
+    .reader-header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--wf-border, #e2e8f0); background: var(--wf-surface, #fff); position: sticky; top: 0; z-index: 5; }
+    .reader-breadcrumb { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+    .breadcrumb-link { color: var(--wf-muted, #64748b); font-size: 13px; text-decoration: none; }
+    .breadcrumb-link:hover { color: var(--wf-text, #111827); }
+    .breadcrumb-sep { color: var(--wf-muted, #cbd5e1); font-size: 13px; }
+    .toc-dropdown { background: none; border: 1px solid var(--wf-border, #e2e8f0); padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--wf-text, #111827); cursor: pointer; }
+    .toc-dropdown:hover { background: #f8fafc; }
+    .reader-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .nav-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--wf-border, #e2e8f0); background: #fff; color: var(--wf-text, #111827); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; }
+    .nav-btn:hover { background: #f8fafc; }
+    .nav-btn[disabled], .nav-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .nav-btn.play-action { background: var(--wf-accent, #4f46e5); color: #fff; border-color: var(--wf-accent, #4f46e5); width: auto; padding: 0 12px; gap: 6px; font-weight: 500; }
+    .content-toggle { display: inline-flex; border: 1px solid var(--wf-border, #e2e8f0); border-radius: 8px; overflow: hidden; }
+    .content-toggle button { background: #fff; border: none; padding: 6px 12px; font-size: 13px; color: var(--wf-muted, #64748b); cursor: pointer; }
+    .content-toggle button.active { background: var(--wf-accent, #4f46e5); color: #fff; }
+
+    /* Body */
+    .reader-body { grid-column: 1 / 2; padding: 32px 40px; min-width: 0; }
+    .reader-body__inner { max-width: 56rem; margin: 0 auto; }
     .summary-prose p { margin-bottom: 1rem; line-height: 1.7; color: #1f2937; }
     .summary-prose h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.75rem; color: #111827; }
-    .sidebar-section { display:flex; align-items:center; gap:6px; padding: 6px 12px; font-size: 13px; color: #cbd5e1; cursor:pointer; border-radius: 4px; }
-    .sidebar-section:hover { background: rgba(255,255,255,0.05); }
-    .sidebar-section.is-current { background: rgba(79,70,229,0.25); color: #fff; }
-    .headphone-ico { font-size: 11px; opacity: 0.85; }
-    .playbar { position: sticky; bottom: 0; background: #0f172a; color: #f8fafc; padding: 12px 20px; display: flex; align-items: center; gap: 14px; border-top: 1px solid #1e293b; }
-    .icon-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; }
+
+    /* Right context sidebar — collapsed icon strip */
+    .context-strip { grid-column: 2 / 3; grid-row: 2 / 3; border-left: 1px solid var(--wf-border, #e2e8f0); background: #fafafa; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0; }
+    .context-strip__btn { width: 36px; height: 36px; border-radius: 8px; background: #fff; border: 1px solid var(--wf-border, #e2e8f0); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--wf-text, #111827); }
+    .context-strip__btn:hover { background: #f1f5f9; }
+
+    /* Section meta pills inline in breadcrumb */
+    .section-tags { display: inline-flex; gap: 6px; margin-left: 8px; }
+
+    /* Playbar — unified contract */
+    .bc-playbar { grid-column: 1 / -1; background: #0f172a; color: #f8fafc; border-radius: 0; padding: 12px 20px; display: flex; gap: 12px; align-items: center; border-top: 1px solid #1e293b; }
+    .icon-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; border: none; cursor: pointer; flex-shrink: 0; }
     .icon-btn--primary { background: var(--wf-accent, #4f46e5); width: 44px; height: 44px; }
     .icon-btn[disabled], .icon-btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .speed-select { background: rgba(255,255,255,0.08); color:#fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
     .bc-engine-chip { display:inline-flex; align-items:center; gap:6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: #ede9fe; color: #4338ca; border: 1px solid #c7d2fe; }
     .bc-engine-chip--web { background: #e0f2fe; color: #075985; border-color:#bae6fd; }
     .bc-sentence-active { background: linear-gradient(transparent 60%, #fde68a 60%); border-radius: 2px; }
     .bc-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 10px 14px; border-radius: 8px; background: #fef3c7; color: #78350f; border: 1px solid #fde68a; font-size: 14px; }
     .bc-banner--info { background: #dbeafe; color: #1e3a8a; border-color: #bfdbfe; }
-    .bc-sidebar { background: #0f172a; color:#e2e8f0; padding: 16px 12px; }
-    .play-trigger { display:inline-flex; align-items:center; gap:10px; padding: 8px 14px; border-radius: 999px; background: var(--wf-accent, #4f46e5); color: #fff; font-weight: 500; font-size: 14px; }
+
+    /* Pre-play CTA — plain button, no inline speed */
+    .play-trigger { display:inline-flex; align-items:center; gap:10px; padding: 8px 14px; border-radius: 999px; background: var(--wf-accent, #4f46e5); color: #fff; font-weight: 500; font-size: 14px; border: none; cursor: pointer; }
     .play-trigger[disabled] { opacity: 0.5; cursor: not-allowed; background: #cbd5e1; color: #475569; }
-    .play-trigger--ghost { background: transparent; color: var(--wf-accent, #4f46e5); border: 1px solid #c7d2fe; }
-    .summary-toggle { font-size: 13px; color: #64748b; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; }
-    .speed-select { background: rgba(255,255,255,0.08); color:#fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
-    .toggle-switch { display:inline-flex; align-items:center; gap:8px; font-size: 12px; color:#cbd5e1; }
-    .toggle-switch__track { width: 28px; height: 16px; border-radius: 999px; background: var(--wf-accent, #4f46e5); position: relative; }
-    .toggle-switch__track::after { content:''; width: 12px; height:12px; border-radius:50%; background:#fff; position:absolute; top:2px; left:14px; }
     .resume-meta { font-size: 13px; color: #64748b; }
   </style>
 </head>
@@ -44,6 +67,7 @@
   <!--
     Review Log
     Loop 1: initial generation — desktop reader player
+    Loop 2: rework — replaced dark bc-sidebar with horizontal reader-header; added right ContextSidebar icon strip; adopted unified playbar contract from _rework-brief section 4
   -->
 
   <header class="wf-chrome">
@@ -65,49 +89,39 @@
 
   <main class="wf-frame wf-frame--desktop-web">
 
+    <!-- Reusable header markup is repeated per state so each state is self-contained -->
+
     <!-- ============= DEFAULT ============= -->
     <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
       <h1 id="state-default-h" class="sr-only">Default state — section summary, no audio playing</h1>
 
-      <div class="reader-grid">
-        <!-- Sidebar -->
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="text-xs text-slate-500 px-3 mb-3">Daniel Kahneman</div>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown wf-anno" data-note="TOCDropdown — opens section list popover. Sections with pre-gen Kokoro audio show a 🎧 icon in the list.">Section 2 · System 1 and System 2 ▾</button>
+            <span class="section-tags">
+              <span class="mock-pill">chapter</span>
+              <span class="mock-pill">4,820 chars</span>
+              <span class="mock-pill">summarized</span>
+            </span>
+          </div>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle wf-anno" data-note="ContentToggle — switches between original chapter text and generated summary. Audio is summary-only in v1.">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action wf-anno" aria-label="Play summary audio" data-note="Play action button — slot at the end of reader-controls. Click triggers Web Speech instantly (or streams Kokoro MP3 if pre-generated).">▶ Play</button>
+          </div>
+        </header>
 
-          <div class="text-[11px] uppercase tracking-wide text-slate-500 px-3 mb-1 mt-3">Part I — Two Systems</div>
-          <div class="sidebar-section is-current">
-            <span class="wf-grow">1. The Characters of the Story</span>
-          </div>
-          <div class="sidebar-section">
-            <span class="wf-grow">2. System 1 and System 2</span>
-            <span class="wf-anno headphone-ico" data-note="Sections with this icon have Kokoro pre-generated audio (offline + higher quality). Sections without it fall back to instant Web Speech.">🎧</span>
-          </div>
-          <div class="sidebar-section">
-            <span class="wf-grow">3. Attention and Effort</span>
-            <span class="headphone-ico">🎧</span>
-          </div>
-          <div class="sidebar-section">
-            <span class="wf-grow">4. The Lazy Controller</span>
-          </div>
-          <div class="sidebar-section">
-            <span class="wf-grow">5. The Associative Machine</span>
-            <span class="headphone-ico">🎧</span>
-          </div>
-          <div class="sidebar-section">
-            <span class="wf-grow">6. Norms, Surprises, and Causes</span>
-          </div>
-          <div class="sidebar-section">
-            <span class="wf-grow">7. A Machine for Jumping to Conclusions</span>
-          </div>
-
-          <div class="mock-divider" style="border-color:#334155; margin: 12px 4px;"></div>
-          <div class="px-3 text-xs text-slate-400">Audio: 3 of 38 sections pre-generated</div>
-        </aside>
-
-        <!-- Main content -->
-        <div class="bg-white">
-          <div class="max-w-3xl mx-auto px-10 py-8">
+        <div class="reader-body">
+          <div class="reader-body__inner">
             <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1</div>
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">System 1 and System 2</h1>
 
@@ -116,7 +130,6 @@
                 <span aria-hidden="true">▶</span> Listen
               </button>
               <span class="bc-engine-chip bc-engine-chip--web wf-anno" data-note="Web Speech engine — instant playback in the browser. Used when no pre-generated MP3 exists for this section.">🔊 Web Speech (instant)</span>
-              <button class="summary-toggle">Show full content</button>
               <span class="mock-pill">~6 min listen</span>
             </div>
 
@@ -134,6 +147,11 @@
             </div>
           </div>
         </div>
+
+        <aside class="context-strip wf-anno" data-note="ContextSidebar — click to expand annotations or AI chat (existing reader feature)">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
       </div>
     </section>
 
@@ -141,27 +159,35 @@
     <section class="wf-state" data-state="playing" aria-labelledby="state-playing-h">
       <h1 id="state-playing-h" class="sr-only">Playing state with active sentence highlight</h1>
 
-      <div class="reader-grid" style="grid-template-rows: 1fr auto;">
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="text-xs text-slate-500 px-3 mb-3">Daniel Kahneman</div>
-          <div class="sidebar-section is-current">
-            <span class="wf-grow">2. System 1 and System 2</span>
-            <span class="headphone-ico">🎧</span>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Section 2 · System 1 and System 2 ▾</button>
           </div>
-          <div class="sidebar-section"><span class="wf-grow">3. Attention and Effort</span><span class="headphone-ico">🎧</span></div>
-          <div class="sidebar-section"><span class="wf-grow">4. The Lazy Controller</span></div>
-        </aside>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Pause" style="background:#1e293b;border-color:#1e293b">⏸ Playing</button>
+          </div>
+        </header>
 
-        <div class="bg-white relative">
-          <div class="max-w-3xl mx-auto px-10 py-8" aria-live="polite">
+        <div class="reader-body" aria-live="polite">
+          <div class="reader-body__inner">
             <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1</div>
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">System 1 and System 2</h1>
 
             <div class="flex items-center gap-3 mb-6">
               <span class="bc-engine-chip bc-engine-chip--web">🔊 Web Speech</span>
-              <span class="mock-pill">Sentence 8 of 23</span>
-              <span class="text-xs text-slate-500">aria-live region announces each sentence change</span>
+              <span class="mock-pill">Sentence 17 of 47</span>
+              <span class="text-xs text-slate-500 wf-anno" data-note="aria-live='polite' region announces each sentence change for screen readers.">live region active</span>
             </div>
 
             <div class="summary-prose">
@@ -182,29 +208,29 @@
           </div>
         </div>
 
-        <!-- Playbar -->
-        <div class="playbar" style="grid-column: 1 / -1;">
-          <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
-          <button class="icon-btn wf-anno" aria-label="Previous sentence" data-note="Skips backward one sentence boundary, not 15 seconds.">⏮</button>
-          <button class="icon-btn" aria-label="Next sentence">⏭</button>
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
 
-          <div class="flex-1 px-3">
-            <div class="text-sm font-medium">System 1 and System 2</div>
-            <div class="text-xs text-slate-400">Thinking, Fast and Slow · <span class="wf-anno" data-note="Section elapsed / total + sentence position (resumes by sentence)">2:14 / 6:08 · sentence 17 of 47</span></div>
-            <div class="h-1 bg-slate-700 rounded mt-2 relative"><div class="h-1 rounded bg-indigo-500" style="width: 36%"></div></div>
+        <!-- Unified playbar -->
+        <div class="bc-playbar">
+          <button class="icon-btn wf-anno" aria-label="Previous sentence" title="Prev sentence" data-note="Skips backward one sentence boundary, not 15 seconds.">⏮</button>
+          <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
+          <button class="icon-btn" aria-label="Next sentence" title="Next sentence">⏭</button>
+
+          <div class="flex-1 px-3 min-w-0">
+            <div class="text-sm font-medium truncate">System 1 and System 2</div>
+            <div class="text-xs opacity-70 truncate wf-anno" data-note="Section elapsed / total + sentence position (resumes by sentence)">Thinking, Fast and Slow · 2:14 / 6:08 · sentence 17 of 47</div>
+            <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+              <div class="h-1 rounded" style="background:var(--wf-accent);width:36%"></div>
+            </div>
           </div>
 
           <select class="speed-select wf-anno" aria-label="Playback speed" data-note="0.75x / 1x / 1.25x / 1.5x / 2x">
             <option>1x</option><option selected>1.25x</option><option>1.5x</option>
           </select>
-
           <span class="bc-engine-chip bc-engine-chip--web">Web Speech</span>
-
-          <label class="toggle-switch wf-anno" data-note="When ON, playback continues into the next section's audio at section boundary. Default ON.">
-            <span>Auto-advance</span>
-            <span class="toggle-switch__track" role="switch" aria-checked="true"></span>
-          </label>
-
           <button class="icon-btn" aria-label="Close player">✕</button>
         </div>
       </div>
@@ -214,15 +240,28 @@
     <section class="wf-state" data-state="resume" aria-labelledby="state-resume-h">
       <h1 id="state-resume-h" class="sr-only">Paused with resume prompt</h1>
 
-      <div class="reader-grid">
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="sidebar-section is-current"><span class="wf-grow">2. System 1 and System 2</span><span class="headphone-ico">🎧</span></div>
-          <div class="sidebar-section"><span class="wf-grow">3. Attention and Effort</span><span class="headphone-ico">🎧</span></div>
-        </aside>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Section 2 · System 1 and System 2 ▾</button>
+          </div>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Resume audio">▶ Resume</button>
+          </div>
+        </header>
 
-        <div class="bg-white">
-          <div class="max-w-3xl mx-auto px-10 py-8">
+        <div class="reader-body">
+          <div class="reader-body__inner">
             <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1</div>
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">System 1 and System 2</h1>
 
@@ -245,6 +284,11 @@
             </div>
           </div>
         </div>
+
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
       </div>
     </section>
 
@@ -252,14 +296,28 @@
     <section class="wf-state" data-state="loading" aria-labelledby="state-loading-h">
       <h1 id="state-loading-h" class="sr-only">Loading voice (Kokoro cold start)</h1>
 
-      <div class="reader-grid" style="grid-template-rows: 1fr auto;">
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="sidebar-section is-current"><span class="wf-grow">2. System 1 and System 2</span><span class="headphone-ico">🎧</span></div>
-        </aside>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Section 2 · System 1 and System 2 ▾</button>
+          </div>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-disabled="true" aria-label="Loading">⏳ Loading</button>
+          </div>
+        </header>
 
-        <div class="bg-white">
-          <div class="max-w-3xl mx-auto px-10 py-8">
+        <div class="reader-body">
+          <div class="reader-body__inner">
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">System 1 and System 2</h1>
             <div class="flex items-center gap-3 mb-6">
               <span class="bc-engine-chip wf-anno" data-note="Kokoro cold-start. Model loads once per session (~1–3s), then plays the pre-generated MP3.">🎙 Loading voice…</span>
@@ -272,17 +330,27 @@
           </div>
         </div>
 
-        <div class="playbar" style="grid-column: 1 / -1;">
-          <button class="icon-btn icon-btn--primary" aria-label="Loading" aria-disabled="true">⏸</button>
-          <button class="icon-btn" aria-disabled="true">⏮</button>
-          <button class="icon-btn" aria-disabled="true">⏭</button>
-          <div class="flex-1 px-3">
-            <div class="text-sm font-medium">System 1 and System 2</div>
-            <div class="text-xs text-slate-400">Loading Kokoro voice… preparing 3.2 MB MP3</div>
-            <div class="h-1 bg-slate-700 rounded mt-2"><div class="skeleton" style="height: 4px; width: 30%;"></div></div>
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
+
+        <!-- Unified playbar — loading state -->
+        <div class="bc-playbar">
+          <button class="icon-btn" aria-disabled="true" aria-label="Previous sentence" title="Prev sentence">⏮</button>
+          <button class="icon-btn icon-btn--primary" aria-disabled="true" aria-label="Loading">⏸</button>
+          <button class="icon-btn" aria-disabled="true" aria-label="Next sentence" title="Next sentence">⏭</button>
+
+          <div class="flex-1 px-3 min-w-0">
+            <div class="text-sm font-medium truncate">System 1 and System 2</div>
+            <div class="text-xs opacity-70 truncate">Thinking, Fast and Slow · loading Kokoro voice… 3.2 MB MP3</div>
+            <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+              <div class="skeleton" style="height: 4px; width: 30%; border-radius:4px"></div>
+            </div>
           </div>
+
           <select class="speed-select" disabled><option>1x</option></select>
-          <span class="bc-engine-chip">Kokoro</span>
+          <span class="bc-engine-chip">Kokoro · af_bella</span>
           <button class="icon-btn" aria-label="Cancel">✕</button>
         </div>
       </div>
@@ -292,14 +360,29 @@
     <section class="wf-state" data-state="no-summary" aria-labelledby="state-no-summary-h">
       <h1 id="state-no-summary-h" class="sr-only">Section has no summary — audio disabled</h1>
 
-      <div class="reader-grid">
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="sidebar-section is-current"><span class="wf-grow">8. Of Two Minds</span></div>
-        </aside>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Section 8 · Of Two Minds ▾</button>
+            <span class="section-tags"><span class="mock-pill">chapter</span><span class="mock-pill">no summary</span></span>
+          </div>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button class="active">Original</button>
+              <button>Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" disabled aria-label="Play disabled" style="opacity:.5;cursor:not-allowed">▶ Play</button>
+          </div>
+        </header>
 
-        <div class="bg-white">
-          <div class="max-w-3xl mx-auto px-10 py-8">
+        <div class="reader-body">
+          <div class="reader-body__inner">
             <div class="text-xs text-slate-500 mb-1">Part I · Chapter 8</div>
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">Of Two Minds</h1>
 
@@ -316,6 +399,11 @@
             </div>
           </div>
         </div>
+
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
       </div>
     </section>
 
@@ -323,14 +411,28 @@
     <section class="wf-state" data-state="stale" aria-labelledby="state-stale-h">
       <h1 id="state-stale-h" class="sr-only">Stale source banner — audio still playable</h1>
 
-      <div class="reader-grid">
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="sidebar-section is-current"><span class="wf-grow">2. System 1 and System 2</span><span class="headphone-ico">🎧</span></div>
-        </aside>
+      <div class="reader-shell">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Section 2 · System 1 and System 2 ▾</button>
+          </div>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Play summary audio">▶ Play</button>
+          </div>
+        </header>
 
-        <div class="bg-white">
-          <div class="max-w-3xl mx-auto px-10 py-8">
+        <div class="reader-body">
+          <div class="reader-body__inner">
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">System 1 and System 2</h1>
 
             <div class="bc-banner mb-4 wf-anno" data-note="Stale audio is still playable — user is informed but never blocked.">
@@ -352,6 +454,11 @@
             </div>
           </div>
         </div>
+
+        <aside class="context-strip">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
       </div>
     </section>
 
@@ -359,18 +466,32 @@
     <section class="wf-state" data-state="midregen" aria-labelledby="state-midregen-h">
       <h1 id="state-midregen-h" class="sr-only">Playing stale MP3 — regenerate prompt under playbar</h1>
 
-      <div class="reader-grid" style="grid-template-rows: 1fr auto auto;">
-        <aside class="bc-sidebar">
-          <div class="text-xs uppercase tracking-wide text-slate-400 px-3 mb-2">Thinking, Fast and Slow</div>
-          <div class="sidebar-section is-current"><span class="wf-grow">2. System 1 and System 2</span><span class="headphone-ico">🎧</span></div>
-        </aside>
+      <div class="reader-shell" style="grid-template-rows: auto 1fr auto auto;">
+        <header class="reader-header">
+          <div class="reader-breadcrumb">
+            <a class="breadcrumb-link" href="#">Library</a>
+            <span class="breadcrumb-sep">/</span>
+            <a class="breadcrumb-link" href="#">Thinking, Fast and Slow</a>
+            <span class="breadcrumb-sep">/</span>
+            <button class="toc-dropdown">Section 2 · System 1 and System 2 ▾</button>
+          </div>
+          <div class="reader-controls">
+            <button class="nav-btn" aria-label="Previous section">←</button>
+            <div class="content-toggle">
+              <button>Original</button>
+              <button class="active">Summary</button>
+            </div>
+            <button class="nav-btn" aria-label="Next section">→</button>
+            <button class="nav-btn play-action" aria-label="Pause" style="background:#1e293b;border-color:#1e293b">⏸ Playing</button>
+          </div>
+        </header>
 
-        <div class="bg-white">
-          <div class="max-w-3xl mx-auto px-10 py-8">
+        <div class="reader-body">
+          <div class="reader-body__inner">
             <h1 class="text-3xl font-semibold text-slate-900 mb-4">System 1 and System 2</h1>
             <div class="flex items-center gap-3 mb-6">
-              <span class="bc-engine-chip">🎙 Kokoro</span>
-              <span class="mock-pill">Sentence 8 of 23</span>
+              <span class="bc-engine-chip">🎙 Kokoro · af_bella</span>
+              <span class="mock-pill">Sentence 17 of 47</span>
             </div>
             <div class="summary-prose">
               <p><span class="bc-sentence-active">System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</span></p>
@@ -379,17 +500,30 @@
           </div>
         </div>
 
-        <div class="playbar" style="grid-column: 1 / -1;">
+        <aside class="context-strip" style="grid-row: 2 / 3;">
+          <button class="context-strip__btn" aria-label="Annotations">📝</button>
+          <button class="context-strip__btn" aria-label="AI chat">💬</button>
+        </aside>
+
+        <!-- Unified playbar -->
+        <div class="bc-playbar">
+          <button class="icon-btn" aria-label="Previous sentence" title="Prev sentence">⏮</button>
           <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
-          <button class="icon-btn" aria-label="Previous sentence">⏮</button>
-          <button class="icon-btn" aria-label="Next sentence">⏭</button>
-          <div class="flex-1 px-3">
-            <div class="text-sm font-medium">System 1 and System 2</div>
-            <div class="text-xs text-slate-400">Thinking, Fast and Slow · 2:14 / 6:08</div>
+          <button class="icon-btn" aria-label="Next sentence" title="Next sentence">⏭</button>
+
+          <div class="flex-1 px-3 min-w-0">
+            <div class="text-sm font-medium truncate">System 1 and System 2</div>
+            <div class="text-xs opacity-70 truncate">Thinking, Fast and Slow · 2:14 / 6:08 · sentence 17 of 47</div>
+            <div class="h-1 rounded mt-1" style="background:rgba(255,255,255,.15)">
+              <div class="h-1 rounded" style="background:var(--wf-accent);width:36%"></div>
+            </div>
           </div>
-          <select class="speed-select"><option>1.25x</option></select>
-          <span class="bc-engine-chip">Kokoro</span>
-          <button class="icon-btn" aria-label="Close">✕</button>
+
+          <select class="speed-select" aria-label="Playback speed">
+            <option>1x</option><option selected>1.25x</option><option>1.5x</option>
+          </select>
+          <span class="bc-engine-chip">Kokoro · af_bella</span>
+          <button class="icon-btn" aria-label="Close player">✕</button>
         </div>
 
         <div style="grid-column: 1 / -1; padding: 0 20px 16px; background: #f8fafc;">
