@@ -251,6 +251,20 @@ async def audio_lookup(
         if section is None:
             raise HTTPException(status_code=404, detail="section not found")
         source_md = section.content_md or ""
+    elif ct == ContentType.ANNOTATIONS_PLAYLIST:
+        # FR-54/55: synthesize from concatenated highlight+note text. Web Speech
+        # fallback when no pre-generated MP3 exists.
+        from app.db.repositories.annotation_repo import AnnotationRepository
+
+        ann_repo = AnnotationRepository(db)
+        anns = await ann_repo.list_by_book(content_id)
+        parts: list[str] = []
+        for a in anns:
+            if a.selected_text:
+                parts.append(a.selected_text)
+            if a.note:
+                parts.append(a.note)
+        source_md = "\n\n".join(parts)
 
     if not source_md.strip():
         # No source — empty result, fronts can render "no content"

@@ -140,6 +140,43 @@ class AudioGenService:
             job_id=job_id,
         )
 
+    async def generate_annotations_playlist(
+        self,
+        *,
+        book_id: int,
+        voice: str,
+        job_id: int | None = None,
+    ) -> AudioFile:
+        """Generate a single MP3 for the book's annotations playlist (FR-54).
+
+        Concatenates each annotation's selected_text + (if present) note with
+        blank-line separators. The audio is synthesized as one continuous
+        unit; the audible-cue divider between highlight and note is signaled
+        by the paragraph break in the sanitized text. Storage keys the row
+        as ``(ANNOTATIONS_PLAYLIST, book_id)``.
+        """
+        from app.db.repositories.annotation_repo import AnnotationRepository
+
+        ann_repo = AnnotationRepository(self.session)
+        anns = await ann_repo.list_by_book(book_id)
+        parts: list[str] = []
+        for a in anns:
+            if a.selected_text:
+                parts.append(a.selected_text)
+            if a.note:
+                parts.append(a.note)
+        source_md = "\n\n".join(parts)
+        if not source_md.strip():
+            raise EmptySanitizedTextError("no annotation text")
+        return await self.generate_unit(
+            book_id=book_id,
+            content_type=ContentType.ANNOTATIONS_PLAYLIST,
+            content_id=book_id,
+            voice=voice,
+            source_md=source_md,
+            job_id=job_id,
+        )
+
     async def run_job(
         self,
         *,
