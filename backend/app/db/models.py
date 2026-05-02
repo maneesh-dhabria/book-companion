@@ -324,8 +324,9 @@ class ProcessingJob(Base):
     __table_args__ = (
         Index("ix_processing_jobs_book_status", "book_id", "status"),
         Index(
-            "ix_processing_jobs_one_active_per_book",
+            "ix_processing_jobs_one_active_per_book_step",
             "book_id",
+            "step",
             unique=True,
             sqlite_where=text("status IN ('PENDING','RUNNING')"),
         ),
