@@ -4,6 +4,7 @@ import { useSettingsStore } from '@/stores/settings'
 import * as readingPresetsApi from '@/api/readingPresets'
 import type { ReadingPreset } from '@/types'
 import ThemeCard from '@/components/shared/ThemeCard.vue'
+import { themeMap } from './themeColors'
 
 const settingsStore = useSettingsStore()
 const presets = ref<ReadingPreset[]>([])
@@ -65,9 +66,11 @@ async function saveReadingSettings() {
           v-for="preset in presets"
           :key="preset.id"
           :label="preset.name"
-          bg="var(--color-bg, white)"
-          fg="var(--color-text-primary, #111)"
+          :bg="(themeMap[preset.theme] ?? themeMap.light).bg"
+          :fg="(themeMap[preset.theme] ?? themeMap.light).fg"
           :active="false"
+          :preview-font="preset.font_family"
+          :preview-size="preset.font_size_px"
         />
       </div>
     </div>
@@ -135,9 +138,10 @@ async function saveReadingSettings() {
 }
 
 .presets-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  max-width: 560px;
 }
 
 

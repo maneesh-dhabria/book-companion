@@ -438,6 +438,60 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--color-accent, #4f46e5);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--color-accent-hover, #4338ca);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
+}
+.book-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  margin-top: 1rem;
+}
+.book-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.book-tab:hover {
+  color: var(--color-text-primary, #1a1a2e);
+}
+.book-tab:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+.book-tab.active {
+  color: var(--color-accent, #4f46e5);
+  border-bottom-color: var(--color-accent, #4f46e5);
 }
 .book-overview {
   max-width: 48rem;
