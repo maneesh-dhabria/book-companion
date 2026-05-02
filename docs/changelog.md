@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-05-02 — Cross-Surface UX Cohesion Bundle
+
+- Book Detail now has a proper tab strip — Overview / Summary / Sections — with `?tab=` deep-links. The legacy `/books/:id/summary` route redirects to `?tab=summary` automatically.
+- The Book Detail toolbar is reshaped to a single primary **Read** CTA plus a `⋯` overflow menu (Generate book summary, Customize reader…, Edit structure, Re-import, Export Markdown, Delete). Dead "Read Summary" and floating "Customize text" controls are gone.
+- New **Summary** tab on Book Detail with empty / in-progress / failed / populated states. The Generate CTA enables as soon as ≥1 section summary exists, shows live progress with Cancel, surfaces the last error with a Retry CTA, and refreshes automatically when a regeneration completes in another tab.
+- The Section Reader's summary tab now renders Markdown legibly: bullet markers (`disc` / `circle`), numbered list markers, and tables with borders, padded cells, and a distinct header row.
+- Inline **Previous / Next** footer nav at the end of every section's content (both Summary and Original tabs), with first/last sections rendering only the available side and the active `?tab=` preserved across navigation.
+- The TOC dropdown now shows real per-section character counts that match the Book Detail Sections table — no more "0 chars" placeholders.
+- Annotations and AI Chat side panels now follow the active reader theme. Switching to Dark, Sepia, Night, etc. no longer leaves the side panel as a white island next to the themed reading area.
+- Highlights you create on the Summary tab now persist with `content_type=section_summary` and re-render the next time you visit that tab. Original-tab highlights continue to work unchanged.
+- The app-bar title and the BC logo in the side rail are both clickable and route to `/` with proper hover, focus, and cursor states.
+- Database settings: migration status now shows real revision IDs (or `Unknown` with the underlying error in a tooltip) instead of leaking the literal string `"FAILED:"`. The stats table no longer has alternating row stripes.
+- New **Preset management UI** under Settings → Presets: create, edit, and delete user presets (name, label, description, four facet card grids with plain-language subheads). Selecting any preset shows the raw Jinja prompt template — base file plus each fragment block — so you can see exactly what the LLM receives. System presets are read-only. Malformed user-preset YAML files are skipped with a structured warning instead of breaking the whole list.
+- Reading Settings preset cards now use the same shared component as the reader settings popover — proper bordered cards with each theme's actual bg/fg colors and font preview, instead of plain text labels.
+- LLM Settings page restyled to match the rest of the settings pages — no more divergent Tailwind `dark:` utility classes.
+- Compression in the Sections table now reads `~15%`, `~25%` etc. (rounded to the nearest 5) instead of `15.5%` — same number, less false precision.
+
+**References:**
+- [Requirements](requirements/2026-05-01-cross-surface-ux-cohesion-bundle.md)
+- [Spec](specs/2026-05-01-cross-surface-ux-cohesion-bundle-spec.md)
+- [Plan](plans/2026-05-01-cross-surface-ux-cohesion-bundle-implementation-plan.md)
+- [Verify report](audits/2026-05-02-cross-surface-ux-cohesion-bundle-review.md)
+- [Verify-skill feedback](audits/2026-05-02-verify-skill-feedback.md)
+
 ## 2026-05-01 — Reader + Book Detail UX Fixes Bundle
 
 - The book-detail page's section list is now a sortable 6-column table (#, Title, Type, Chars, Summary, Compression). Each summarised section shows its real compression ratio (e.g., 18.2%) instead of a placeholder dash, and the same component renders in compact form inside the reader's TOC dropdown.
