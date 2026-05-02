@@ -51,10 +51,35 @@ describe('useTtsEngine', () => {
     expect(engine.kind).toBe('web-speech')
   })
 
-  it('lookup failure raises lookup_failed', async () => {
+  it('lookup failure raises lookup_failed and sets store error', async () => {
+    const { useTtsPlayerStore } = await import('@/stores/ttsPlayer')
+    const store = useTtsPlayerStore()
     vi.mocked(audioApi.lookup).mockRejectedValueOnce(new Error('boom'))
     await expect(
       useTtsEngine().load({ bookId: 1, contentType: 'section_summary', contentId: 42 }),
     ).rejects.toThrow()
+    expect(store.errorKind).toBe('lookup_failed')
+  })
+
+  it('engine error transitions store to error', async () => {
+    const { useTtsPlayerStore } = await import('@/stores/ttsPlayer')
+    const store = useTtsPlayerStore()
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: true,
+      url: '/x.mp3',
+      duration_seconds: 30,
+      sentence_offsets_seconds: [0, 4, 9],
+      sentence_offsets_chars: [0, 7, 15],
+      sanitized_text: 'A. B. C.',
+      voice: 'af_sarah',
+    })
+    const eng = await useTtsEngine().load({
+      bookId: 1,
+      contentType: 'section_summary',
+      contentId: 42,
+    })
+    eng._fakeError?.('mp3_fetch_failed')
+    expect(store.status).toBe('error')
+    expect(store.errorKind).toBe('mp3_fetch_failed')
   })
 })
