@@ -49,11 +49,39 @@ describe('BookOverviewView tab strip', () => {
     mockFetch()
   })
 
-  it('renders three tab buttons: Overview, Summary, Sections', async () => {
+  it('renders five tab buttons: Overview, Summary, Sections, Audio, Annotations', async () => {
     const { wrapper } = await mountAt('/3')
     const tabs = wrapper.findAll('[role="tab"]')
-    expect(tabs.length).toBe(3)
-    expect(tabs.map((t) => t.text())).toEqual(['Overview', 'Summary', 'Sections'])
+    expect(tabs.length).toBe(5)
+    expect(tabs.map((t) => t.text())).toEqual([
+      'Overview',
+      'Summary',
+      'Sections',
+      'Audio',
+      'Annotations',
+    ])
+  })
+
+  it('clicking Audio tab activates it', async () => {
+    const { wrapper, router } = await mountAt('/3')
+    const replaceSpy = vi.spyOn(router, 'replace')
+    await wrapper.findAll('[role="tab"]')[3].trigger('click')
+    const arg = replaceSpy.mock.calls[0][0] as { query?: { tab?: string } }
+    expect(arg.query?.tab).toBe('audio')
+  })
+
+  it('clicking Annotations tab activates it', async () => {
+    const { wrapper, router } = await mountAt('/3')
+    const replaceSpy = vi.spyOn(router, 'replace')
+    await wrapper.findAll('[role="tab"]')[4].trigger('click')
+    const arg = replaceSpy.mock.calls[0][0] as { query?: { tab?: string } }
+    expect(arg.query?.tab).toBe('annotations')
+  })
+
+  it('?tab=audio activates audio tab', async () => {
+    const { wrapper } = await mountAt('/3?tab=audio')
+    const active = wrapper.find('[role="tab"][aria-selected="true"]')
+    expect(active.text()).toBe('Audio')
   })
 
   it('defaults to overview tab when ?tab= is absent', async () => {

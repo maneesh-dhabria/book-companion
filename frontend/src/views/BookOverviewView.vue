@@ -86,14 +86,15 @@
 
       <nav class="book-tabs" role="tablist" aria-label="Book detail sections">
         <button
-          v-for="t in ['overview', 'summary', 'sections']"
+          v-for="t in TAB_VALUES"
           :key="t"
           type="button"
           role="tab"
           class="book-tab"
+          :data-tab="t"
           :class="{ active: activeTab === t }"
           :aria-selected="activeTab === t"
-          @click="setTab(t as 'overview' | 'summary' | 'sections')"
+          @click="setTab(t)"
         >
           {{ tabLabel(t) }}
         </button>
@@ -120,6 +121,14 @@
           :book-id="book.id"
           :compact="false"
         />
+      </section>
+
+      <section v-else-if="activeTab === 'audio'" class="tab-panel" role="tabpanel">
+        <div>Audio tab placeholder</div>
+      </section>
+
+      <section v-else-if="activeTab === 'annotations'" class="tab-panel" role="tabpanel">
+        <div>Annotations tab placeholder</div>
       </section>
     </template>
     <div v-else class="error">Book not found.</div>
@@ -164,8 +173,8 @@ interface BookTag {
 const route = useRoute()
 const router = useRouter()
 
-type BookTab = 'overview' | 'summary' | 'sections'
-const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections']
+type BookTab = 'overview' | 'summary' | 'sections' | 'audio' | 'annotations'
+const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections', 'audio', 'annotations']
 const activeTab = computed<BookTab>(() => {
   const t = route.query.tab
   return typeof t === 'string' && (TAB_VALUES as string[]).includes(t)
