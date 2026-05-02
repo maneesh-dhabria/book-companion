@@ -1,26 +1,59 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
-const props = defineProps<{
-  jobs: { jobId: number; bookTitle: string; progress: number; status: string }[]
-}>()
+interface AudioJob {
+  jobId: number
+  step: 'audio'
+  completed: number
+  total: number
+  current_kind?: string | null
+  current_ref?: string | null
+  already_stale?: number
+}
+
+const props = withDefaults(
+  defineProps<{
+    jobs: { jobId: number; bookTitle: string; progress: number; status: string }[]
+    audioJob?: AudioJob | null
+  }>(),
+  { audioJob: null },
+)
 
 const minimized = ref(true)
+const hasAny = computed(() => props.jobs.length > 0 || props.audioJob)
+const audioPct = computed(() =>
+  props.audioJob && props.audioJob.total > 0
+    ? Math.round((props.audioJob.completed / props.audioJob.total) * 100)
+    : 0,
+)
 </script>
 
 <template>
-  <div v-if="jobs.length" class="processing-bar" :class="{ minimized }">
+  <div v-if="hasAny" class="processing-bar" :class="{ minimized }">
     <button class="toggle-btn" @click="minimized = !minimized">
-      {{ jobs.length }} active {{ jobs.length === 1 ? 'job' : 'jobs' }}
+      <template v-if="audioJob && jobs.length === 0">Generating audio</template>
+      <template v-else>{{ jobs.length }} active {{ jobs.length === 1 ? 'job' : 'jobs' }}</template>
       {{ minimized ? '▲' : '▼' }}
     </button>
-    <div v-if="!minimized" class="job-list">
+    <div v-if="!minimized || audioJob" class="job-list">
       <div v-for="job in jobs" :key="job.jobId" class="job-item">
         <span class="job-title">{{ job.bookTitle }}</span>
         <div class="progress-bar">
           <div class="progress-fill" :style="{ width: job.progress + '%' }" />
         </div>
         <span class="job-status">{{ job.status }}</span>
+      </div>
+      <div v-if="audioJob" class="job-item" data-testid="audio-job">
+        <span class="job-title">Generating audio</span>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: audioPct + '%' }" />
+        </div>
+        <span class="job-status">
+          {{ audioJob.completed }} / {{ audioJob.total }}
+          <template v-if="audioJob.already_stale">
+            · {{ audioJob.already_stale }} already stale
+          </template>
+        </span>
       </div>
     </div>
   </div>
