@@ -117,7 +117,9 @@ class KokoroProvider(TTSProvider):
 
         joined = np.concatenate(buffers).astype("float32")
         mp3_bytes = self._run_ffmpeg(joined.tobytes())
-        return SynthesisResult(audio_bytes=mp3_bytes, sample_rate=SAMPLE_RATE, sentence_offsets=offsets)
+        return SynthesisResult(
+            audio_bytes=mp3_bytes, sample_rate=SAMPLE_RATE, sentence_offsets=offsets
+        )
 
     def list_voices(self) -> list[VoiceInfo]:
         self._load()
@@ -143,13 +145,20 @@ class KokoroProvider(TTSProvider):
     def _run_ffmpeg(self, pcm_bytes: bytes) -> bytes:
         cmd = [
             "ffmpeg",
-            "-f", "f32le",
-            "-ar", str(SAMPLE_RATE),
-            "-ac", "1",
-            "-i", "-",
-            "-codec:a", "libmp3lame",
-            "-b:a", "96k",
-            "-f", "mp3",
+            "-f",
+            "f32le",
+            "-ar",
+            str(SAMPLE_RATE),
+            "-ac",
+            "1",
+            "-i",
+            "-",
+            "-codec:a",
+            "libmp3lame",
+            "-b:a",
+            "96k",
+            "-f",
+            "mp3",
             "-",
         ]
         proc = subprocess.Popen(
@@ -172,4 +181,8 @@ class KokoroProvider(TTSProvider):
         if not offsets:
             return []
         ends = list(offsets[1:]) + [len(text)]
-        return [text[start:end].strip() for start, end in zip(offsets, ends, strict=True) if text[start:end].strip()]
+        return [
+            text[start:end].strip()
+            for start, end in zip(offsets, ends, strict=True)
+            if text[start:end].strip()
+        ]

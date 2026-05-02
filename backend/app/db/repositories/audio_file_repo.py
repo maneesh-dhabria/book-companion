@@ -148,16 +148,12 @@ class AudioFileRepository:
         return len(targets)
 
     async def delete_all_for_book(self, book_id: int) -> int:
-        rows = await self.session.execute(
-            select(AudioFile).where(AudioFile.book_id == book_id)
-        )
+        rows = await self.session.execute(select(AudioFile).where(AudioFile.book_id == book_id))
         targets = list(rows.scalars().all())
         for r in targets:
             self._unlink_file(r.file_path)
         if targets:
-            await self.session.execute(
-                delete(AudioFile).where(AudioFile.book_id == book_id)
-            )
+            await self.session.execute(delete(AudioFile).where(AudioFile.book_id == book_id))
             await self.session.flush()
         return len(targets)
 

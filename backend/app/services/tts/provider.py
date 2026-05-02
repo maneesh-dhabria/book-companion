@@ -21,12 +21,17 @@ class VoiceInfo:
     gender: str | None = None
 
 
-class TTSProviderError(Exception):
+from app.exceptions import BookCompanionError
+
+
+class TTSProviderError(BookCompanionError):
     """Base for TTS subsystem errors."""
 
 
 class KokoroModelDownloadError(TTSProviderError):
-    def __init__(self, message: str = "kokoro model download failed", retry_after_seconds: int | None = None):
+    def __init__(
+        self, message: str = "kokoro model download failed", retry_after_seconds: int | None = None
+    ):
         super().__init__(message)
         self.retry_after_seconds = retry_after_seconds
 
@@ -38,7 +43,10 @@ class FfmpegEncodeError(TTSProviderError):
 
 
 class EmptySanitizedTextError(TTSProviderError):
-    """Raised when sanitization produces no synthesizable text (re-exported for boundary handlers)."""
+    """Raised when sanitization produces no synthesizable text.
+
+    Re-exported here so boundary handlers can import it from one location.
+    """
 
 
 class TTSProvider(ABC):

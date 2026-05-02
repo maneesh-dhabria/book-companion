@@ -1,7 +1,5 @@
 """TTS factory + auto-detect tests."""
 
-import importlib.util as _iu
-
 import pytest
 
 from app.config import Settings

@@ -18,7 +18,11 @@ CASES = [
     ("Apples e.g. Granny.", ["for example"], ["e.g."]),
     ("Mass is $E=mc^2$ here.", ["equation"], ["E=mc"]),
     ("Equation \\[F=ma\\] block here.", ["equation"], ["F=ma"]),
-    ("Dr. Smith met Mr. Jones on St. Paul Rd.", ["Doctor", "Mister", "Saint"], ["Dr.", "Mr.", "St."]),
+    (
+        "Dr. Smith met Mr. Jones on St. Paul Rd.",
+        ["Doctor", "Mister", "Saint"],
+        ["Dr.", "Mr.", "St."],
+    ),
     ("See https://example.com here.", ["See"], ["https://", "example.com"]),
     ("[link text](https://example.com) is good.", ["link text"], ["https://"]),
 ]

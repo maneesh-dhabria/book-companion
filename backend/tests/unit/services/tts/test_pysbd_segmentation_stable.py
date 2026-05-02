@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pysbd
 
-FIXTURE = Path(__file__).parent.parent.parent.parent / "fixtures" / "tts" / "segmentation_expected.json"
+FIXTURE = (
+    Path(__file__).parent.parent.parent.parent / "fixtures" / "tts" / "segmentation_expected.json"
+)
 
 
 def test_pysbd_corpus_stable():

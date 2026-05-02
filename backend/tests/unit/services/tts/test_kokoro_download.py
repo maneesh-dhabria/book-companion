@@ -10,17 +10,20 @@ from app.services.tts.provider import KokoroModelDownloadError
 
 
 def _install_fake_hf(monkeypatch, *, raises: type[BaseException] | None = None):
-    fake_pkg = types.SimpleNamespace()
     errors_mod = types.ModuleType("huggingface_hub.errors")
+
     class HfHubHTTPError(Exception):
         pass
+
     errors_mod.HfHubHTTPError = HfHubHTTPError
 
     hub_mod = types.ModuleType("huggingface_hub")
     called = {}
+
     def fake_dl(*, repo_id, filename, local_dir):
         called[filename] = True
         from pathlib import Path
+
         p = Path(local_dir) / filename
         p.parent.mkdir(parents=True, exist_ok=True)
         if raises is not None:

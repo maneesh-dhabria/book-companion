@@ -7,9 +7,7 @@ import sqlalchemy as sa
 from alembic.command import downgrade, upgrade
 from alembic.config import Config
 
-ALEMBIC_INI = (
-    Path(__file__).parent.parent.parent / "app" / "migrations" / "alembic.ini"
-)
+ALEMBIC_INI = Path(__file__).parent.parent.parent / "app" / "migrations" / "alembic.ini"
 PRE_REV = "9a67312a27a7"
 HEAD_REV = "2026_05_02_audiobook"
 
@@ -63,7 +61,8 @@ def test_concurrent_audio_and_summarize_per_book(tmp_path, monkeypatch):
     with eng.begin() as conn:
         conn.execute(
             sa.text(
-                "INSERT INTO books (title, status, file_data, file_hash, file_size_bytes, file_format) "
+                "INSERT INTO books "
+                "(title, status, file_data, file_hash, file_size_bytes, file_format) "
                 "VALUES ('B1', 'completed', X'00', 'h', 1, 'epub')"
             )
         )
@@ -84,20 +83,22 @@ def test_duplicate_same_step_same_book_rejected(tmp_path, monkeypatch):
     with eng.begin() as conn:
         conn.execute(
             sa.text(
-                "INSERT INTO books (title, status, file_data, file_hash, file_size_bytes, file_format) "
+                "INSERT INTO books "
+                "(title, status, file_data, file_hash, file_size_bytes, file_format) "
                 "VALUES ('B1', 'completed', X'00', 'h', 1, 'epub')"
             )
         )
         conn.execute(
-            sa.text("INSERT INTO processing_jobs (book_id, step, status) VALUES (1, 'AUDIO', 'RUNNING')")
-        )
-    with pytest.raises(sa.exc.IntegrityError):
-        with eng.begin() as conn:
-            conn.execute(
-                sa.text(
-                    "INSERT INTO processing_jobs (book_id, step, status) VALUES (1, 'AUDIO', 'PENDING')"
-                )
+            sa.text(
+                "INSERT INTO processing_jobs (book_id, step, status) VALUES (1, 'AUDIO', 'RUNNING')"
             )
+        )
+    with pytest.raises(sa.exc.IntegrityError), eng.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO processing_jobs (book_id, step, status) VALUES (1, 'AUDIO', 'PENDING')"
+            )
+        )
 
 
 def test_downgrade_round_trip(tmp_path, monkeypatch):

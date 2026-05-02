@@ -56,7 +56,5 @@ async def test_audio_position_pk_composite(db_session):
     )
     db_session.add(pos)
     await db_session.commit()
-    loaded = await db_session.get(
-        AudioPosition, (ContentType.SECTION_SUMMARY, 42, "abc-uuid")
-    )
+    loaded = await db_session.get(AudioPosition, (ContentType.SECTION_SUMMARY, 42, "abc-uuid"))
     assert loaded.sentence_index == 16
