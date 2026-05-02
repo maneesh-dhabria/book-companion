@@ -638,3 +638,52 @@ class ReadingState(Base):
 
     book: Mapped["Book"] = relationship("Book", foreign_keys=[book_id])
     section: Mapped["BookSection"] = relationship("BookSection", foreign_keys=[section_id])
+
+
+class AudioFile(Base):
+    __tablename__ = "audio_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+    )
+    content_type: Mapped[ContentType] = mapped_column(String(64), nullable=False)
+    content_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    voice: Mapped[str] = mapped_column(String(128), nullable=False)
+    engine: Mapped[str] = mapped_column(String(32), nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_seconds: Mapped[float] = mapped_column(sqlalchemy.Float, nullable=False)
+    sentence_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    sentence_offsets_json: Mapped[str] = mapped_column(Text, nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    sanitizer_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    job_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("processing_jobs.id", ondelete="SET NULL"), nullable=True
+    )
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "book_id", "content_type", "content_id", "voice", name="ux_audio_files_unit"
+        ),
+        Index("ix_audio_files_book_id", "book_id"),
+    )
+
+
+class AudioPosition(Base):
+    __tablename__ = "audio_positions"
+
+    content_type: Mapped[ContentType] = mapped_column(String(64), primary_key=True)
+    content_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    browser_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    sentence_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_audio_positions_target", "content_type", "content_id"),
+    )
