@@ -168,7 +168,12 @@ class AudioGenService:
         job.progress = progress
         await on_event(
             "processing_started",
-            {"book_id": job.book_id, "job_id": job.id, "total": total},
+            {
+                "book_id": job.book_id,
+                "job_id": job.id,
+                "total": total,
+                "last_event_at": progress["last_event_at"],
+            },
         )
 
         for i, (kind, ref, source_md) in enumerate(units):
@@ -187,6 +192,36 @@ class AudioGenService:
                     "last_event_at": progress["last_event_at"],
                 },
             )
+            # Mid-job regen detection: if a prior AudioFile exists for this
+            # unit and its stored source_hash differs from the current one,
+            # the source was edited *during* the job — emit already_stale.
+            try:
+                existing = await self.repo.lookup(
+                    book_id=job.book_id,
+                    content_type=kind,
+                    content_id=ref,
+                    voice=voice,
+                )
+                if existing is not None:
+                    current_hash = _hash_text(sanitize(source_md).text)
+                    if existing.source_hash != current_hash:
+                        progress["already_stale"] += 1
+                        progress["last_event_at"] = _time.time_ns()
+                        self._flag_progress(job)
+                        await on_event(
+                            "section_audio_already_stale",
+                            {
+                                "job_id": job.id,
+                                "kind": kind.value,
+                                "ref": ref,
+                                "section_id": ref,
+                                "last_event_at": progress["last_event_at"],
+                            },
+                        )
+            except EmptySanitizedTextError:
+                # Empty sanitization is handled below in the main try block.
+                pass
+
             try:
                 af = await self.generate_unit(
                     book_id=job.book_id,
