@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Book Summary Player — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .prose-body p { margin-bottom: 0.9rem; line-height: 1.65; color: #1f2937; font-size: 15px; }
+    .prose-body h2 { font-size: 1.05rem; font-weight: 600; margin: 1.25rem 0 0.6rem; color: #111827; }
+    .prose-body ul { list-style: disc; padding-left: 1.1rem; margin-bottom: 1rem; }
+    .prose-body ul li { margin-bottom: 0.5rem; line-height: 1.55; color: #1f2937; font-size: 14px; }
+    .tap44 { min-height: 44px; min-width: 44px; }
+  </style>
+</head>
+<body data-annotations="on">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Book Summary Player</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="playing-with-highlight">Playing + Highlight</button>
+        <button class="wf-tab" aria-selected="false" data-state="ended-auto-advance">Ended / Auto-advance</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web">
+
+    <!-- ============= STATE: default ============= -->
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default state</h1>
+
+      <div style="display:flex; flex-direction:column; min-height: 100%; background:#f8fafc;">
+
+        <!-- Compact header -->
+        <header style="background:#fff; border-bottom:1px solid #e5e7eb; padding: 10px 14px; display:flex; align-items:center; gap:10px; position: sticky; top:0; z-index: 5;">
+          <button class="mock-button tap44" aria-label="Open sections menu" style="padding: 8px 10px;">☰</button>
+          <div class="mock-img" style="width:40px; height:60px; flex-shrink:0; border-radius:4px;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:14px; color:#111827; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Atomic Habits</div>
+            <div style="font-size:12px; color:#6b7280; line-height:1.2;">James Clear · Book summary</div>
+          </div>
+          <span class="mock-pill wf-anno" data-note="Audio coverage: all 24 sections pre-generated with Kokoro" style="font-size:11px;">24/24 audio</span>
+        </header>
+
+        <!-- Player controls -->
+        <div style="padding: 14px; background:#fff; border-bottom:1px solid #e5e7eb;">
+          <div style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
+            <button class="wf-anno mock-button mock-button--primary tap44"
+                    data-note="Plays cohesive book-level summary (~18 min Kokoro MP3)"
+                    style="flex:1;">▶ Play book summary</button>
+            <select class="mock-input tap44" style="width:78px;">
+              <option>1x</option><option>1.25x</option><option>1.5x</option><option>2x</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap: wrap;">
+            <span class="bc-engine-chip" style="display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-size: 12px; font-weight: 500; border: 1px solid #c7d2fe;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
+              Kokoro · af_bella
+            </span>
+            <a href="#" style="font-size: 13px; color: #4f46e5; font-weight:500;">Download MP3 (3.2 MB)</a>
+          </div>
+        </div>
+
+        <!-- Coverage + section count under header -->
+        <div style="padding: 10px 14px; background:#f8fafc; border-bottom:1px solid #e5e7eb;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">
+            <span>Audio coverage</span><span style="color:#111827; font-weight:600;">24 of 24</span>
+          </div>
+          <div class="bc-coverage-bar" style="height:5px; background:#e5e7eb; border-radius:3px; overflow:hidden;">
+            <div style="width:100%; height:100%; background:#4f46e5;"></div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div style="flex:1; padding: 18px 16px 100px;">
+          <div style="margin-bottom: 10px;">
+            <span class="mock-pill" style="font-size:11px;">practitioner_bullets</span>
+            <span class="mock-pill" style="font-size:11px;">~18 min</span>
+          </div>
+
+          <article class="prose-body">
+            <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem rather than a willpower problem. Clear's central claim is that the quality of your life is the sum of your habits, and that habits compound — a 1% improvement repeated daily yields a 37x gain in a year.</p>
+
+            <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong> — adapted from behavioral psychology. Every habit you have, good or bad, runs this loop. Clear maps each stage to a design lever, giving four "laws" to make good habits stick.</p>
+
+            <p>The deeper move is the shift from outcome-based goals to identity-based habits. Rather than "I want to run a marathon," the framing is "I am a runner" — proven with small repeatable votes.</p>
+
+            <h2>Six key ideas</h2>
+            <ul>
+              <li><strong>The 1% rule.</strong> Small improvements compound dramatically over time.</li>
+              <li><strong>Systems over goals.</strong> Goals set direction; systems produce progress.</li>
+              <li><strong>The Four Laws.</strong> Make it obvious, attractive, easy, and satisfying.</li>
+              <li><strong>Identity-based habits.</strong> Cast votes for who you want to become.</li>
+              <li><strong>Environment beats motivation.</strong> Design friction in or out.</li>
+              <li><strong>The two-minute rule.</strong> Scale any new habit down to under two minutes.</li>
+            </ul>
+
+            <h2>Takeaways for practice</h2>
+            <p>The most actionable habits are the design tactics: implementation intentions, habit stacking, and visible cue design. Each is a small environmental edit that removes a decision from your day.</p>
+
+            <p>Pair a daily 2-minute identity vote with a weekly review and the system runs itself. The promise is transformation through architecture, not effort — and the architecture is small enough to start today.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= STATE: playing-with-highlight ============= -->
+    <section class="wf-state" data-state="playing-with-highlight" aria-labelledby="state-playing-h">
+      <h1 id="state-playing-h" class="sr-only">Playing with sentence highlight</h1>
+
+      <div style="display:flex; flex-direction:column; min-height: 100%; background:#f8fafc;">
+
+        <header style="background:#fff; border-bottom:1px solid #e5e7eb; padding: 10px 14px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:5;">
+          <button class="mock-button tap44" aria-label="Open sections menu" style="padding:8px 10px;">☰</button>
+          <div class="mock-img" style="width:40px; height:60px; flex-shrink:0; border-radius:4px;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:14px; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Atomic Habits</div>
+            <div style="font-size:12px; color:#6b7280;">11:42 / 18:30</div>
+          </div>
+          <span class="mock-pill" style="font-size:11px;">24/24 audio</span>
+        </header>
+
+        <div class="wf-anno" data-note="Auto-scroll: viewport follows the active sentence" aria-live="polite" style="flex:1; padding: 18px 16px 110px;">
+          <article class="prose-body">
+            <p><em>Atomic Habits</em> reframes self-improvement as a system-design problem. Clear's claim: the quality of your life is the sum of your habits, and habits compound.</p>
+
+            <p>The framework rests on a four-stage behavior loop — <strong>cue, craving, response, reward</strong>. <span class="bc-sentence-active" style="background:#fef3c7; box-shadow: 0 0 0 3px #fef3c7; border-radius:2px;">Every habit you have, good or bad, runs this loop.</span> Clear maps each stage to a design lever, giving four "laws".</p>
+
+            <p>The deeper move is the shift from outcome-based goals to identity-based habits. Rather than "I want to run a marathon," the framing is "I am a runner."</p>
+
+            <h2>Six key ideas</h2>
+            <ul>
+              <li><strong>The 1% rule.</strong> Small improvements compound.</li>
+              <li><strong>Systems over goals.</strong></li>
+              <li><strong>The Four Laws.</strong></li>
+              <li><strong>Identity-based habits.</strong></li>
+              <li><strong>Environment beats motivation.</strong></li>
+              <li><strong>The two-minute rule.</strong></li>
+            </ul>
+          </article>
+        </div>
+
+        <!-- Full-width playbar -->
+        <div class="bc-playbar" style="position:fixed; left:0; right:0; bottom:0; background:#111827; color:#fff; padding: 10px 12px 14px; border-top:1px solid #1f2937;">
+          <!-- progress -->
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:11px; color:#9ca3af; font-variant-numeric:tabular-nums;">11:42</span>
+            <div style="flex:1; height:4px; background:#374151; border-radius:2px; position:relative;">
+              <div style="position:absolute; left:0; top:0; bottom:0; width:63%; background:#4f46e5; border-radius:2px;"></div>
+              <div style="position:absolute; left:63%; top:50%; width:10px; height:10px; background:#fff; border-radius:50%; transform:translate(-50%,-50%);"></div>
+            </div>
+            <span style="font-size:11px; color:#9ca3af; font-variant-numeric:tabular-nums;">18:30</span>
+          </div>
+
+          <!-- transport -->
+          <div style="display:flex; align-items:center; gap:6px; justify-content: space-between;">
+            <button class="mock-button tap44" aria-label="Previous sentence" style="background:#1f2937; color:#fff; border-color:#374151; padding: 8px 10px;">⏮</button>
+            <button class="mock-button mock-button--primary tap44" aria-label="Pause" style="padding: 10px 18px;">⏸</button>
+            <button class="mock-button tap44" aria-label="Next sentence" style="background:#1f2937; color:#fff; border-color:#374151; padding: 8px 10px;">⏭</button>
+            <button class="wf-anno mock-button tap44" data-note="Skip to next section's summary chunk in the book-level summary"
+                    aria-label="Skip section" style="background:#1f2937; color:#fff; border-color:#374151; padding: 8px 10px; font-size: 12px;">⏩ Skip sec</button>
+            <select class="mock-input tap44" style="background:#1f2937; color:#fff; border-color:#374151; width: 64px; padding: 6px 6px;">
+              <option selected>1x</option><option>1.25x</option><option>1.5x</option><option>2x</option>
+            </select>
+            <button class="mock-button tap44" aria-label="Close player" style="background:transparent; color:#9ca3af; border-color:#374151; padding: 8px 10px;">✕</button>
+          </div>
+
+          <!-- engine row -->
+          <div style="display:flex; justify-content:center; margin-top: 8px;">
+            <span class="bc-engine-chip" style="display:inline-flex; align-items:center; gap:6px; padding: 3px 10px; border-radius: 999px; background: rgba(79,70,229,0.15); color: #c7d2fe; font-size: 11px; border: 1px solid rgba(79,70,229,0.4);">
+              <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
+              Kokoro · af_bella
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= STATE: ended-auto-advance ============= -->
+    <section class="wf-state" data-state="ended-auto-advance" aria-labelledby="state-ended-h">
+      <h1 id="state-ended-h" class="sr-only">Ended — auto-advance</h1>
+
+      <div style="display:flex; flex-direction:column; min-height: 100%; background:#f8fafc; position: relative;">
+
+        <header style="background:#fff; border-bottom:1px solid #e5e7eb; padding: 10px 14px; display:flex; align-items:center; gap:10px;">
+          <button class="mock-button tap44" aria-label="Open menu" style="padding:8px 10px;">☰</button>
+          <div class="mock-img" style="width:40px; height:60px; flex-shrink:0; border-radius:4px;"></div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:14px; color:#111827;">Atomic Habits</div>
+            <div style="font-size:12px; color:#6b7280;">18:30 / 18:30 · Finished</div>
+          </div>
+        </header>
+
+        <div style="flex:1; padding: 18px 16px 100px; opacity: 0.35; pointer-events:none;">
+          <article class="prose-body">
+            <p>…the architecture is small enough to start today.</p>
+            <p style="color:#6b7280; font-style:italic;">— end of book summary —</p>
+          </article>
+        </div>
+
+        <!-- Overlay -->
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding: 20px; background: rgba(15,23,42,0.55);">
+          <div class="mock-card wf-anno" data-note="Auto-advance default ON, configurable in settings"
+               style="width:100%; max-width: 360px; padding: 22px; background:#fff; box-shadow: 0 20px 50px rgba(0,0,0,0.25); text-align:center;">
+            <div style="font-size:30px; margin-bottom:6px;">✓</div>
+            <h2 style="font-size:16px; font-weight:600; color:#111827; margin-bottom:4px;">Finished book summary</h2>
+            <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">Continue with section summaries?</p>
+
+            <button class="mock-button mock-button--primary tap44" style="width:100%; margin-bottom:8px;">Play section summaries</button>
+            <div style="font-size:11px; color:#6b7280; margin-bottom:10px;">Auto-starting in 5s…</div>
+            <button class="mock-button tap44" style="width:100%;">Done</button>
+
+            <div class="mock-divider" style="margin: 16px 0 10px;"></div>
+            <div style="font-size:11px; color:#6b7280; line-height:1.4;">
+              Next: <strong style="color:#111827;">1. The Surprising Power of Atomic Habits</strong> · 1:42
+            </div>
+          </div>
+        </div>
+
+        <!-- mini playbar -->
+        <div class="bc-playbar" style="position:fixed; left:0; right:0; bottom:0; background:#111827; color:#fff; padding: 10px 14px; display:flex; align-items:center; gap:10px; border-top:1px solid #1f2937;">
+          <button class="mock-button mock-button--primary tap44" aria-label="Replay" style="padding: 8px 14px;">↻ Replay</button>
+          <div style="flex:1; height:4px; background:#374151; border-radius:2px;">
+            <div style="width:100%; height:100%; background:#4f46e5; border-radius:2px;"></div>
+          </div>
+          <span class="bc-engine-chip" style="display:inline-flex; align-items:center; gap:6px; padding: 3px 8px; border-radius: 999px; background: rgba(79,70,229,0.15); color: #c7d2fe; font-size: 11px; border: 1px solid rgba(79,70,229,0.4);">
+            <span style="width:6px;height:6px;border-radius:50%;background:#4f46e5;display:inline-block;"></span>
+            Kokoro
+          </span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Book Summary Player</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 02 of 14</span>
+      <span>Generated 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Generate Audio Modal — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .ga-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px;
+    }
+    .ga-faded {
+      position: absolute; inset: 0;
+      padding: 24px 32px;
+      opacity: 0.35;
+      filter: saturate(0.7);
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .ga-modal {
+      position: relative;
+      width: 100%;
+      max-width: 540px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: var(--wf-shadow);
+      border: 1px solid var(--wf-border);
+      overflow: hidden;
+    }
+    .ga-modal__header {
+      padding: 20px 24px 14px;
+      border-bottom: 1px solid var(--wf-border);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    }
+    .ga-modal__body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+    .ga-modal__footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--wf-border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: #f8fafc;
+    }
+    .ga-section { margin-bottom: 22px; }
+    .ga-section__title { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 10px; }
+    .ga-check {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px; border: 1px solid var(--wf-border); border-radius: 8px;
+      margin-bottom: 8px; font-size: 14px; cursor: pointer;
+    }
+    .ga-check input { margin-top: 3px; }
+    .ga-check__hint { font-size: 12px; color: var(--wf-muted); margin-top: 2px; }
+    .ga-speed { display: inline-flex; border: 1px solid var(--wf-border); border-radius: 999px; overflow: hidden; }
+    .ga-speed button {
+      padding: 6px 14px; font-size: 13px; background: #fff; border: none; cursor: pointer;
+      color: var(--wf-muted);
+    }
+    .ga-speed button.active { background: var(--wf-accent); color: white; font-weight: 600; }
+    .ga-voice-row { display: flex; align-items: center; gap: 8px; }
+    .ga-estimate {
+      margin-top: 8px; font-size: 13px; color: var(--wf-muted);
+      padding: 10px 12px; background: #f8fafc; border-radius: 6px;
+    }
+    .ga-progress { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+    .ga-progress__fill { height: 100%; width: 64%; background: var(--wf-accent); }
+  </style>
+</head>
+<body data-annotations="on">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Generate Audio Modal</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="model-download-required">Model download required</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Error</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="position: relative; min-height: 720px;">
+
+    <!-- Faded book detail backdrop (shared across all states) -->
+    <div class="ga-faded" aria-hidden="true">
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
+        <div class="mock-img" style="width:88px; height:128px;">cover</div>
+        <div>
+          <div style="font-size:22px; font-weight:700; color:#0f172a;">Thinking, Fast and Slow</div>
+          <div style="color:var(--wf-muted); font-size:14px;">Daniel Kahneman · 47 sections · 512 pages</div>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <span class="mock-pill">Summarized</span>
+            <span class="mock-pill">Evaluated</span>
+            <span class="mock-pill">Audio: not generated</span>
+          </div>
+        </div>
+        <div class="wf-grow"></div>
+        <button class="mock-button mock-button--primary">Generate audio</button>
+      </div>
+      <div style="display:flex; gap:24px; border-bottom:1px solid var(--wf-border); padding-bottom:8px; font-size:14px;">
+        <span style="color:var(--wf-accent); font-weight:600; border-bottom:2px solid var(--wf-accent); padding-bottom:6px;">Overview</span>
+        <span style="color:var(--wf-muted);">Sections (47)</span>
+        <span style="color:var(--wf-muted);">Annotations (16)</span>
+        <span style="color:var(--wf-muted);">Concepts</span>
+      </div>
+      <div style="margin-top:18px;">
+        <div class="placeholder" style="width:80%; height:14px; margin-bottom:8px;"></div>
+        <div class="placeholder" style="width:92%; height:14px; margin-bottom:8px;"></div>
+        <div class="placeholder" style="width:65%; height:14px; margin-bottom:24px;"></div>
+        <div class="mock-card" style="padding:16px;">
+          <div style="font-weight:600; margin-bottom:8px;">Book summary</div>
+          <div class="placeholder" style="width:100%; height:12px; margin-bottom:6px;"></div>
+          <div class="placeholder" style="width:96%; height:12px; margin-bottom:6px;"></div>
+          <div class="placeholder" style="width:88%; height:12px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEFAULT STATE -->
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default state — generate audio modal</h1>
+      <div class="ga-backdrop">
+        <div class="ga-modal wf-anno" data-note="Esc closes modal · focus is trapped inside (first focus on first checkbox, last focus loops back)">
+          <div class="ga-modal__header">
+            <div>
+              <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--wf-muted); font-weight:600;">Generate audio</div>
+              <div style="font-size:17px; font-weight:600; color:#0f172a; margin-top:2px;">Generate audio for Thinking, Fast and Slow</div>
+            </div>
+            <button class="mock-button" aria-label="Close" style="padding:4px 10px;">×</button>
+          </div>
+
+          <div class="ga-modal__body">
+            <div class="ga-section">
+              <div class="ga-section__title">Which content?</div>
+              <label class="ga-check">
+                <input type="checkbox" checked>
+                <div>
+                  <div>Section summaries <span class="wf-muted">(47)</span></div>
+                  <div class="ga-check__hint">One MP3 per section, atomically replaced on regenerate.</div>
+                </div>
+              </label>
+              <label class="ga-check">
+                <input type="checkbox" checked>
+                <div>
+                  <div>Book summary</div>
+                  <div class="ga-check__hint">A single MP3 of the consolidated book-level summary.</div>
+                </div>
+              </label>
+              <label class="ga-check wf-anno" data-note="Plays each highlight + note in section reading order (file 06). Default ON — recommended for spaced-repetition review.">
+                <input type="checkbox" checked>
+                <div>
+                  <div>Annotations playlist <span class="wf-muted">(12 highlights, 4 notes)</span> <span class="mock-pill" style="font-size:10px;background:color-mix(in srgb,var(--wf-accent) 12%,var(--wf-surface));color:var(--wf-accent-2);border-color:transparent">recommended</span></div>
+                  <div class="ga-check__hint">A walk-through of your annotations, grouped by section. Great for spaced-repetition review.</div>
+                </div>
+              </label>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Voice</div>
+              <div class="ga-voice-row">
+                <div class="mock-input wf-grow" style="display:flex; align-items:center; justify-content:space-between;">
+                  <span>Kokoro · af_bella (en-US, female)</span>
+                  <span style="color:var(--wf-muted);">▾</span>
+                </div>
+                <button class="mock-button wf-anno" data-note="Plays a 5-second clip with this voice" aria-label="Play voice sample">
+                  ▶ Sample
+                </button>
+              </div>
+              <div class="wf-muted" style="font-size:12px; margin-top:6px;">
+                Or use Web Speech (browser, instant) — file output not available.
+              </div>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Speed</div>
+              <div class="ga-speed" role="radiogroup" aria-label="Playback speed">
+                <button role="radio" aria-checked="false">0.75x</button>
+                <button role="radio" aria-checked="true" class="active">1x</button>
+                <button role="radio" aria-checked="false">1.25x</button>
+                <button role="radio" aria-checked="false">1.5x</button>
+              </div>
+              <div class="ga-estimate">
+                Estimated time: <strong>~12 minutes</strong> · ~140 MB on disk
+              </div>
+            </div>
+          </div>
+
+          <div class="ga-modal__footer">
+            <button class="mock-button">Cancel</button>
+            <button class="mock-button mock-button--primary">Generate audio</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODEL DOWNLOAD REQUIRED STATE -->
+    <section class="wf-state" data-state="model-download-required" aria-labelledby="state-mdr-h">
+      <h1 id="state-mdr-h" class="sr-only">Model download required</h1>
+      <div class="ga-backdrop">
+        <div class="ga-modal">
+          <div class="ga-modal__header">
+            <div>
+              <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--wf-muted); font-weight:600;">Generate audio</div>
+              <div style="font-size:17px; font-weight:600; color:#0f172a; margin-top:2px;">Generate audio for Thinking, Fast and Slow</div>
+            </div>
+            <button class="mock-button" aria-label="Close" style="padding:4px 10px;">×</button>
+          </div>
+
+          <div class="ga-modal__body">
+            <div class="bc-banner wf-anno" data-note="Reuses fastembed model-download UX" style="margin-bottom:18px;">
+              <div style="font-weight:600; margin-bottom:4px;">Voice model not yet downloaded.</div>
+              <div style="font-size:13px; margin-bottom:10px;">Kokoro voices require a one-time ~100 MB download.</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="mock-button mock-button--primary">Download model</button>
+                <button class="mock-button">Use Web Speech instead</button>
+              </div>
+              <!-- In-progress alternate (shown side-by-side here for review) -->
+              <div style="margin-top:14px; padding-top:14px; border-top:1px dashed var(--wf-border);">
+                <div style="font-size:12px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">While downloading</div>
+                <div style="font-size:13px;">Downloading model · 64 MB / 100 MB</div>
+                <div class="ga-progress"><div class="ga-progress__fill"></div></div>
+              </div>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Which content?</div>
+              <label class="ga-check"><input type="checkbox" checked><div>Section summaries <span class="wf-muted">(47)</span></div></label>
+              <label class="ga-check"><input type="checkbox" checked><div>Book summary</div></label>
+              <label class="ga-check"><input type="checkbox"><div>Annotations playlist <span class="wf-muted">(12 highlights, 4 notes)</span></div></label>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Voice</div>
+              <div class="ga-voice-row">
+                <div class="mock-input wf-grow" style="display:flex; align-items:center; justify-content:space-between; opacity:0.6;">
+                  <span>Kokoro · af_bella (en-US, female)</span>
+                  <span style="color:var(--wf-muted);">▾</span>
+                </div>
+                <button class="mock-button" disabled style="opacity:0.5;">▶ Sample</button>
+              </div>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Speed</div>
+              <div class="ga-speed" role="radiogroup" aria-label="Playback speed">
+                <button role="radio" aria-checked="false">0.75x</button>
+                <button role="radio" aria-checked="true" class="active">1x</button>
+                <button role="radio" aria-checked="false">1.25x</button>
+                <button role="radio" aria-checked="false">1.5x</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ga-modal__footer">
+            <button class="mock-button">Cancel</button>
+            <button class="mock-button mock-button--primary wf-anno" data-note="Disabled until download completes" disabled style="opacity:0.5; cursor:not-allowed;">Generate audio</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ERROR STATE -->
+    <section class="wf-state" data-state="error" aria-labelledby="state-error-h">
+      <h1 id="state-error-h" class="sr-only">Error state — generation failed</h1>
+      <div class="ga-backdrop">
+        <div class="ga-modal">
+          <div class="ga-modal__header">
+            <div>
+              <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--wf-muted); font-weight:600;">Generate audio</div>
+              <div style="font-size:17px; font-weight:600; color:#0f172a; margin-top:2px;">Generate audio for Thinking, Fast and Slow</div>
+            </div>
+            <button class="mock-button" aria-label="Close" style="padding:4px 10px;">×</button>
+          </div>
+
+          <div class="ga-modal__body">
+            <div class="bc-banner" style="margin-bottom:18px; border-color:#fca5a5; background:#fef2f2; color:#7f1d1d;">
+              <div style="font-weight:600; margin-bottom:4px;">Generation failed: Disk full.</div>
+              <div style="font-size:13px;">~140 MB needed, only 38 MB available in <span class="wf-mono">~/Library/Application Support/bookcompanion/audio/</span>. Free space, or reduce scope below to fit.</div>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Which content?</div>
+              <label class="ga-check"><input type="checkbox" checked><div>Section summaries <span class="wf-muted">(47)</span></div></label>
+              <label class="ga-check wf-anno" data-note="Uncheck to reduce footprint and retry"><input type="checkbox" checked><div>Book summary</div></label>
+              <label class="ga-check"><input type="checkbox"><div>Annotations playlist <span class="wf-muted">(12 highlights, 4 notes)</span></div></label>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Voice</div>
+              <div class="ga-voice-row">
+                <div class="mock-input wf-grow" style="display:flex; align-items:center; justify-content:space-between;">
+                  <span>Kokoro · af_bella (en-US, female)</span>
+                  <span style="color:var(--wf-muted);">▾</span>
+                </div>
+                <button class="mock-button">▶ Sample</button>
+              </div>
+            </div>
+
+            <div class="ga-section">
+              <div class="ga-section__title">Speed</div>
+              <div class="ga-speed" role="radiogroup" aria-label="Playback speed">
+                <button role="radio" aria-checked="false">0.75x</button>
+                <button role="radio" aria-checked="true" class="active">1x</button>
+                <button role="radio" aria-checked="false">1.25x</button>
+                <button role="radio" aria-checked="false">1.5x</button>
+              </div>
+              <div class="ga-estimate">
+                Estimated time: <strong>~12 minutes</strong> · ~140 MB on disk
+              </div>
+            </div>
+          </div>
+
+          <div class="ga-modal__footer">
+            <button class="mock-button">Cancel</button>
+            <button class="mock-button mock-button--primary">Free space and retry</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Generate Audio Modal</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 04 of 14</span>
+      <span>Generated 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+    // Speed pill demo
+    document.querySelectorAll('.ga-speed').forEach(group => {
+      group.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', () => {
+          group.querySelectorAll('button').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-checked','false'); });
+          b.classList.add('active'); b.setAttribute('aria-checked','true');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

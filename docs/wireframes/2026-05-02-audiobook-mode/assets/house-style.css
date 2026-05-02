@@ -1,0 +1,91 @@
+/*
+ * Book Companion — house-style overrides for wireframe.css
+ * Extracted from frontend/src/assets/theme.css (light theme tokens)
+ * Re-skins the wireframe vocabulary to match the live app.
+ */
+:root {
+  --wf-bg:        #f8f9fa;
+  --wf-surface:   #ffffff;
+  --wf-surface-2: #f1f3f5;
+  --wf-border:    #d1d5db;
+  --wf-border-2:  #e5e7eb;
+  --wf-text:      #1a1a2e;
+  --wf-muted:     #6b7280;
+  --wf-faint:     #9ca3af;
+  --wf-accent:    #4f46e5;   /* indigo-600 — Book Companion accent */
+  --wf-accent-2:  #4338ca;
+  --wf-success:   #16a34a;
+  --wf-warning:   #d97706;
+  --wf-error:     #dc2626;
+  --wf-radius:    8px;
+  --wf-radius-lg: 14px;
+  --wf-shadow:    0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  --wf-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --wf-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Book Companion sidebar token (dark sidebar in light mode) */
+  --bc-sidebar-bg:   #1e1e2e;
+  --bc-sidebar-text: #cdd6f4;
+  --bc-sidebar-active: #4f46e5;
+  /* Saved-highlight color from theme.css */
+  --bc-highlight: #fef9c3;
+}
+
+/* App-specific primitives layered on top of mock-* vocabulary */
+.bc-sidebar {
+  background: var(--bc-sidebar-bg);
+  color: var(--bc-sidebar-text);
+  border-radius: var(--wf-radius);
+  padding: .75rem;
+  min-height: 320px;
+  width: 240px;
+}
+.bc-sidebar a, .bc-sidebar .bc-section-link {
+  display: block; padding: .4rem .65rem; border-radius: 6px;
+  color: var(--bc-sidebar-text); text-decoration: none; font-size: 13px;
+}
+.bc-sidebar .bc-section-link.active { background: var(--bc-sidebar-active); color: #fff; }
+.bc-sidebar .bc-section-link:hover { background: rgba(255,255,255,.06); }
+
+.bc-playbar {
+  position: sticky; bottom: 0;
+  background: var(--wf-surface);
+  border: 1px solid var(--wf-border-2);
+  border-radius: var(--wf-radius-lg);
+  box-shadow: 0 -2px 12px rgba(0,0,0,.06);
+  padding: .75rem 1rem;
+}
+
+.bc-sentence-active {
+  background: linear-gradient(transparent 60%, color-mix(in srgb, var(--wf-accent) 28%, transparent) 60%);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.bc-engine-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--wf-accent) 10%, var(--wf-surface));
+  border: 1px solid color-mix(in srgb, var(--wf-accent) 30%, var(--wf-border-2));
+  color: var(--wf-accent-2);
+  font-size: 11px; font-weight: 500;
+}
+.bc-engine-chip--web { background: var(--wf-surface-2); color: var(--wf-muted); border-color: var(--wf-border-2); }
+
+.bc-coverage-bar {
+  height: 6px; border-radius: 999px; background: var(--wf-border-2); overflow: hidden;
+}
+.bc-coverage-bar > span {
+  display: block; height: 100%; background: var(--wf-accent); border-radius: 999px;
+}
+
+.bc-banner {
+  display: flex; gap: .65rem; align-items: flex-start;
+  padding: .75rem 1rem; border-radius: var(--wf-radius);
+  border: 1px solid color-mix(in srgb, var(--wf-warning) 30%, var(--wf-border-2));
+  background: color-mix(in srgb, var(--wf-warning) 8%, var(--wf-surface));
+  color: var(--wf-text); font-size: 13px;
+}
+.bc-banner--info {
+  border-color: color-mix(in srgb, var(--wf-accent) 30%, var(--wf-border-2));
+  background: color-mix(in srgb, var(--wf-accent) 6%, var(--wf-surface));
+}

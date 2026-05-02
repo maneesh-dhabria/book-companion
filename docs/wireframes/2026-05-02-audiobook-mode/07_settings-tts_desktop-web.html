@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Settings — TTS — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .settings-grid { display: grid; grid-template-columns: 240px 1fr; min-height: 100%; background:#f8fafc; }
+    .settings-nav { background:#fff; border-right:1px solid #e5e7eb; padding: 20px 12px; }
+    .settings-nav__title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color:#64748b; padding: 0 10px 10px; }
+    .nav-item { display:flex; align-items:center; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 14px; color:#334155; cursor:pointer; }
+    .nav-item:hover { background:#f1f5f9; }
+    .nav-item.is-active { background:#eef2ff; color:#3730a3; font-weight: 600; }
+    .nav-item .new-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--wf-accent, #4f46e5); color:#fff; letter-spacing: 0.04em; }
+    .settings-pane { padding: 32px 40px; }
+    .pane-inner { max-width: 720px; }
+    .pane-h1 { font-size: 24px; font-weight: 700; color: #0f172a; }
+    .pane-sub { font-size: 14px; color:#64748b; margin-top: 4px; }
+    .form-section { background:#fff; border:1px solid #e5e7eb; border-radius: 10px; padding: 20px 22px; margin-top: 20px; }
+    .form-section__title { font-size: 15px; font-weight: 600; color:#0f172a; }
+    .form-section__hint { font-size: 13px; color:#64748b; margin-top: 4px; line-height: 1.5; }
+    .radio-row { display:flex; gap: 12px; align-items:flex-start; padding: 12px 14px; border:1px solid #e5e7eb; border-radius: 8px; margin-top: 10px; cursor:pointer; }
+    .radio-row.is-selected { border-color: var(--wf-accent, #4f46e5); background:#f5f3ff; }
+    .radio-dot { width: 18px; height:18px; border-radius:50%; border:2px solid #cbd5e1; flex-shrink:0; margin-top: 2px; position: relative; }
+    .radio-row.is-selected .radio-dot { border-color: var(--wf-accent, #4f46e5); }
+    .radio-row.is-selected .radio-dot::after { content:''; width:10px; height:10px; border-radius:50%; background: var(--wf-accent,#4f46e5); position:absolute; top: 2px; left:2px; }
+    .pill-tag { display:inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 500; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+    .pill-tag--accent { background:#ede9fe; color:#4338ca; border-color:#c7d2fe; }
+    .voice-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+    .voice-card { border:1px solid #e5e7eb; border-radius:8px; padding: 12px 14px; display:flex; align-items:center; gap: 10px; cursor:pointer; background:#fff; }
+    .voice-card.is-selected { border-color: var(--wf-accent, #4f46e5); background:#f5f3ff; }
+    .voice-card__name { font-size: 14px; font-weight: 600; color:#0f172a; }
+    .voice-card__meta { font-size: 12px; color:#64748b; margin-top: 2px; }
+    .voice-card__play { width: 28px; height:28px; border-radius:50%; background:#eef2ff; color:var(--wf-accent,#4f46e5); display:inline-flex; align-items:center; justify-content:center; font-size: 12px; }
+    .voice-card__check { color: var(--wf-accent,#4f46e5); font-weight: 700; }
+    .speed-pills { display:inline-flex; gap: 6px; padding: 4px; background:#f1f5f9; border-radius: 999px; }
+    .speed-pill { padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; color:#475569; cursor:pointer; }
+    .speed-pill.is-active { background:#fff; color:#3730a3; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+    .toggle { width: 38px; height: 22px; border-radius:999px; background: var(--wf-accent,#4f46e5); position:relative; cursor:pointer; flex-shrink: 0; }
+    .toggle::after { content:''; width: 16px; height:16px; border-radius:50%; background:#fff; position:absolute; top:3px; left: 19px; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    .toggle--off { background:#cbd5e1; }
+    .toggle--off::after { left: 3px; }
+    .toggle-row { display:flex; align-items:flex-start; justify-content:space-between; gap: 16px; }
+    .info-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color:#334155; display:flex; align-items:center; justify-content:space-between; gap: 12px; }
+    .form-section.is-disabled { opacity: 0.45; pointer-events: none; }
+    .pane-footer { display:flex; justify-content:flex-end; gap: 10px; margin-top: 24px; padding-top: 16px; border-top:1px solid #e5e7eb; }
+    .breadcrumb-back { display:none; }
+    .bc-banner { display:flex; align-items:center; justify-content:space-between; gap: 12px; padding: 12px 16px; border-radius: 10px; background: #fef3c7; color: #78350f; border: 1px solid #fde68a; font-size: 14px; }
+    .bc-banner--info { background:#dbeafe; color:#1e3a8a; border-color:#bfdbfe; }
+    .skeleton-shimmer { display:flex; align-items:center; gap: 10px; padding: 12px 14px; border:1px dashed #c7d2fe; border-radius:8px; background: #f5f3ff; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1: initial generation — Settings TTS panel desktop
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Settings — TTS</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="voice-sample-loading">Voice sample loading</button>
+        <button class="wf-tab" aria-selected="false" data-state="model-not-downloaded">Model not downloaded</button>
+        <button class="wf-tab" aria-selected="false" data-state="no-voices-available">No voices available</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- ============= DEFAULT ============= -->
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default — TTS settings populated</h1>
+
+      <div class="settings-grid">
+        <!-- LEFT NAV -->
+        <aside class="settings-nav">
+          <div class="settings-nav__title">Settings</div>
+          <div class="nav-item">⚙️ <span class="wf-grow">LLM Provider</span></div>
+          <div class="nav-item">🗄️ <span class="wf-grow">Database</span></div>
+          <div class="nav-item">📋 <span class="wf-grow">Presets</span></div>
+          <div class="nav-item">📖 <span class="wf-grow">Reading</span></div>
+          <div class="nav-item is-active">🎧 <span class="wf-grow">TTS</span> <span class="new-badge">NEW</span></div>
+          <div class="nav-item">📤 <span class="wf-grow">Export</span></div>
+          <div class="nav-item">💾 <span class="wf-grow">Backups</span></div>
+        </aside>
+
+        <!-- RIGHT PANE -->
+        <div class="settings-pane">
+          <div class="pane-inner">
+            <div>
+              <div class="pane-h1">Text-to-Speech</div>
+              <div class="pane-sub">Configure voice playback for summaries. Two engines: Web Speech (instant, browser-native) and Kokoro (high-quality, local pre-generation).</div>
+            </div>
+
+            <!-- A. Default engine -->
+            <div class="form-section">
+              <div class="form-section__title">Default engine</div>
+
+              <label class="radio-row" aria-checked="false">
+                <span class="radio-dot"></span>
+                <div class="wf-grow">
+                  <div class="font-medium text-slate-900 text-sm">Web Speech <span class="text-slate-500 font-normal">(browser, instant)</span></div>
+                  <div class="text-xs text-slate-500 mt-1">Uses your browser's built-in voices. No download required.</div>
+                  <div class="mt-2 flex gap-2 items-center">
+                    <span class="pill-tag">no install</span>
+                    <span class="pill-tag">file output not available</span>
+                    <button class="mock-button text-xs ml-auto" style="padding:.3rem .6rem;min-height:0"
+                            aria-label="Sample Web Speech voice">▶ Sample</button>
+                  </div>
+                </div>
+              </label>
+
+              <label class="radio-row is-selected" aria-checked="true">
+                <span class="radio-dot"></span>
+                <div class="wf-grow">
+                  <div class="font-medium text-slate-900 text-sm">Kokoro local <span class="text-slate-500 font-normal">(higher quality)</span></div>
+                  <div class="text-xs text-slate-500 mt-1">Runs locally. Generates MP3s you can keep, share, or play offline.</div>
+                  <div class="mt-2 flex gap-2 flex-wrap items-center">
+                    <span class="pill-tag pill-tag--accent">100 MB</span>
+                    <span class="pill-tag pill-tag--accent">MP3 export</span>
+                    <span class="pill-tag pill-tag--accent">3–11x realtime</span>
+                    <button class="mock-button text-xs ml-auto" style="padding:.3rem .6rem;min-height:0"
+                            aria-label="Sample Kokoro default voice">▶ Sample</button>
+                  </div>
+                </div>
+              </label>
+
+              <!-- Spike-derived guidance (Success Metric: spike materially shapes v1) -->
+              <div class="bc-banner bc-banner--info mt-3 wf-anno"
+                   data-note="Required by req-doc Success Metrics: ≥1 paragraph of user-facing engine guidance derived from spike findings — must cite docs/spikes/2026-05-XX-tts-engine-spike.md">
+                <div>
+                  <div class="font-medium text-slate-900 text-sm mb-1">From the engine spike (May 2026)</div>
+                  <div class="text-xs text-slate-700 leading-relaxed">
+                    On a 1,200-word section of <em>Thinking, Fast and Slow</em>: <strong>Web Speech</strong> sounded crisp but
+                    occasionally mis-stressed multi-syllable terms; <strong>Kokoro</strong> sounded notably more natural,
+                    especially on long sentences and bracketed asides. The default below is set to Kokoro based on this —
+                    change it if your ear differs.
+                  </div>
+                  <div class="mt-2 flex gap-2">
+                    <button class="mock-button text-xs" style="padding:.3rem .65rem;min-height:0">▶ Listen to comparison (30 s, same passage in both)</button>
+                    <a class="text-xs self-center" style="color:var(--wf-accent)" href="../../spikes/2026-05-XX-tts-engine-spike.md">View spike notes →</a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-section__hint mt-3">
+                <strong class="text-slate-700">Note:</strong>
+                <span class="wf-anno" data-note="D14: Engine fallback — click play in reader uses Web Speech instantly when no pre-gen MP3 exists, regardless of this setting.">
+                  Click play in the reader uses Web Speech instantly when no pre-generated MP3 exists, regardless of this setting (D14).
+                </span>
+              </div>
+
+              <!-- S3: Kokoro warm status -->
+              <div class="mt-3 flex items-center gap-2 text-xs" style="color:var(--wf-muted)">
+                <span class="bc-engine-chip" style="background:rgba(22,163,74,.12);color:var(--wf-success);border-color:rgba(22,163,74,.4)">●</span>
+                <span class="wf-anno" data-note="Engine pre-warms on `bookcompanion serve` startup when local engine is selected (req doc Friction §cold-start).">Kokoro · ready (warm)</span>
+                <span class="ml-auto">Last warmed: today 09:14</span>
+              </div>
+            </div>
+
+            <!-- B. Voice (Kokoro) -->
+            <div class="form-section">
+              <div class="form-section__title">Voice (Kokoro)</div>
+              <div class="form-section__hint">Choose the default voice for newly generated audio. Per-book overrides available in book detail.</div>
+
+              <div class="flex gap-2 mt-3">
+                <div class="mock-input wf-grow flex items-center justify-between" style="padding: 10px 14px;">
+                  <span class="text-sm text-slate-900 font-medium">af_bella</span>
+                  <span class="text-xs text-slate-500">en-US, female ▾</span>
+                </div>
+                <button class="mock-button wf-anno" data-note="Plays directly without saving; samples generated on-demand (~5 s)">▶ Sample</button>
+              </div>
+
+              <div class="voice-grid">
+                <div class="voice-card is-selected">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">af_bella</div>
+                    <div class="voice-card__meta">en-US · female</div>
+                  </div>
+                  <span class="voice-card__check">✓</span>
+                </div>
+                <div class="voice-card">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">am_michael</div>
+                    <div class="voice-card__meta">en-US · male</div>
+                  </div>
+                </div>
+                <div class="voice-card">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">bf_emma</div>
+                    <div class="voice-card__meta">en-GB · female</div>
+                  </div>
+                </div>
+                <div class="voice-card">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">bm_george</div>
+                    <div class="voice-card__meta">en-GB · male</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- C. Default speed -->
+            <div class="form-section">
+              <div class="form-section__title">Default speed</div>
+              <div class="form-section__hint">Applied to new playback sessions. Adjust per-session in the player.</div>
+              <div class="speed-pills mt-3">
+                <span class="speed-pill">0.75x</span>
+                <span class="speed-pill">1x</span>
+                <span class="speed-pill is-active">1.25x</span>
+                <span class="speed-pill">1.5x</span>
+                <span class="speed-pill">2x</span>
+              </div>
+            </div>
+
+            <!-- D. Auto-advance -->
+            <div class="form-section">
+              <div class="toggle-row">
+                <div class="wf-grow">
+                  <div class="form-section__title">Auto-advance to next section</div>
+                  <div class="form-section__hint">When a section's audio ends, automatically continue to the next section's summary (Journey 1 step 6).</div>
+                </div>
+                <span class="toggle wf-anno" data-note="Auto-advance respects book TOC order; pause when reaching end of book"></span>
+              </div>
+            </div>
+
+            <!-- E. Pause on tab navigation -->
+            <div class="form-section">
+              <div class="toggle-row">
+                <div class="wf-grow">
+                  <div class="form-section__title">Pause on tab navigation</div>
+                  <div class="form-section__hint">Audio pauses when you navigate to another book or page. Turn off to keep playing.</div>
+                </div>
+                <span class="toggle"></span>
+              </div>
+            </div>
+
+            <!-- F. Storage -->
+            <div class="form-section">
+              <div class="form-section__title">Storage</div>
+              <div class="info-card mt-3">
+                <div>
+                  <div class="font-medium text-slate-900">Audio uses 142 MB across 1 book.</div>
+                  <div class="text-xs text-slate-500 mt-1">Atomic Habits — 47 sections · MP3 @ 64 kbps</div>
+                </div>
+                <button class="mock-button">Manage audio files</button>
+              </div>
+            </div>
+
+            <!-- G. Lock-screen / Media Session -->
+            <div class="form-section">
+              <div class="toggle-row">
+                <div class="wf-grow">
+                  <div class="form-section__title">Lock-screen / Media Session integration</div>
+                  <div class="form-section__hint wf-anno" data-note="Native lock-screen play/pause/scrub on iOS, macOS, Android via the Media Session API.">
+                    Show audiobook on the system lock screen with play/pause and scrub controls.
+                  </div>
+                </div>
+                <span class="toggle"></span>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="pane-footer">
+              <button class="mock-button">Cancel</button>
+              <button class="mock-button mock-button--primary">Save changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= VOICE SAMPLE LOADING ============= -->
+    <section class="wf-state" data-state="voice-sample-loading" aria-labelledby="state-vsl-h">
+      <h1 id="state-vsl-h" class="sr-only">Voice sample loading</h1>
+
+      <div class="settings-grid">
+        <aside class="settings-nav">
+          <div class="settings-nav__title">Settings</div>
+          <div class="nav-item">⚙️ <span class="wf-grow">LLM Provider</span></div>
+          <div class="nav-item">🗄️ <span class="wf-grow">Database</span></div>
+          <div class="nav-item">📋 <span class="wf-grow">Presets</span></div>
+          <div class="nav-item">📖 <span class="wf-grow">Reading</span></div>
+          <div class="nav-item is-active">🎧 <span class="wf-grow">TTS</span> <span class="new-badge">NEW</span></div>
+          <div class="nav-item">📤 <span class="wf-grow">Export</span></div>
+          <div class="nav-item">💾 <span class="wf-grow">Backups</span></div>
+        </aside>
+
+        <div class="settings-pane">
+          <div class="pane-inner">
+            <div class="pane-h1">Text-to-Speech</div>
+            <div class="pane-sub">Configure voice playback for summaries.</div>
+
+            <div class="form-section">
+              <div class="form-section__title">Voice (Kokoro)</div>
+              <div class="form-section__hint">Sampling <strong>af_bella</strong>…</div>
+
+              <div class="flex gap-2 mt-3">
+                <div class="mock-input wf-grow flex items-center justify-between" style="padding: 10px 14px;">
+                  <span class="text-sm text-slate-900 font-medium">af_bella</span>
+                  <span class="text-xs text-slate-500">en-US, female ▾</span>
+                </div>
+                <button class="mock-button" disabled>⏳ Loading…</button>
+              </div>
+
+              <div class="skeleton-shimmer mt-3 wf-anno" data-note="Plays directly without saving; samples generated on-demand">
+                <div class="skeleton" style="width: 24px; height: 24px; border-radius:50%;"></div>
+                <div class="wf-grow">
+                  <div class="skeleton" style="width: 60%; height: 12px;"></div>
+                  <div class="text-xs text-indigo-700 mt-2">Loading 5-second sample…</div>
+                </div>
+              </div>
+
+              <div class="voice-grid">
+                <div class="voice-card is-selected" style="opacity:0.7;">
+                  <div class="skeleton" style="width:28px; height:28px; border-radius:50%;"></div>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">af_bella</div>
+                    <div class="voice-card__meta">en-US · female · generating sample…</div>
+                  </div>
+                </div>
+                <div class="voice-card">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">am_michael</div>
+                    <div class="voice-card__meta">en-US · male</div>
+                  </div>
+                </div>
+                <div class="voice-card">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">bf_emma</div>
+                    <div class="voice-card__meta">en-GB · female</div>
+                  </div>
+                </div>
+                <div class="voice-card">
+                  <span class="voice-card__play">▶</span>
+                  <div class="wf-grow">
+                    <div class="voice-card__name">bm_george</div>
+                    <div class="voice-card__meta">en-GB · male</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= MODEL NOT DOWNLOADED ============= -->
+    <section class="wf-state" data-state="model-not-downloaded" aria-labelledby="state-mnd-h">
+      <h1 id="state-mnd-h" class="sr-only">Kokoro model not downloaded</h1>
+
+      <div class="settings-grid">
+        <aside class="settings-nav">
+          <div class="settings-nav__title">Settings</div>
+          <div class="nav-item">⚙️ <span class="wf-grow">LLM Provider</span></div>
+          <div class="nav-item">🗄️ <span class="wf-grow">Database</span></div>
+          <div class="nav-item">📋 <span class="wf-grow">Presets</span></div>
+          <div class="nav-item">📖 <span class="wf-grow">Reading</span></div>
+          <div class="nav-item is-active">🎧 <span class="wf-grow">TTS</span> <span class="new-badge">NEW</span></div>
+          <div class="nav-item">📤 <span class="wf-grow">Export</span></div>
+          <div class="nav-item">💾 <span class="wf-grow">Backups</span></div>
+        </aside>
+
+        <div class="settings-pane">
+          <div class="pane-inner">
+            <div class="pane-h1">Text-to-Speech</div>
+            <div class="pane-sub">Configure voice playback for summaries.</div>
+
+            <div class="bc-banner mt-5 wf-anno" data-note="First-time setup; can be deferred — but pre-generation requires Kokoro">
+              <div>
+                <div class="font-semibold">Kokoro voice model not yet downloaded (~100 MB).</div>
+                <div class="text-xs mt-1">Required for high-quality voices and MP3 generation. Web Speech still works without it.</div>
+              </div>
+              <div class="flex gap-2 flex-shrink-0">
+                <button class="mock-button mock-button--primary">Download model now</button>
+                <button class="mock-button">Skip — use Web Speech only</button>
+              </div>
+            </div>
+
+            <!-- Engine still selectable -->
+            <div class="form-section">
+              <div class="form-section__title">Default engine</div>
+              <label class="radio-row is-selected">
+                <span class="radio-dot"></span>
+                <div class="wf-grow">
+                  <div class="font-medium text-slate-900 text-sm">Web Speech</div>
+                  <div class="text-xs text-slate-500 mt-1">Active default while Kokoro is unavailable.</div>
+                </div>
+              </label>
+              <label class="radio-row">
+                <span class="radio-dot"></span>
+                <div class="wf-grow">
+                  <div class="font-medium text-slate-900 text-sm">Kokoro local <span class="pill-tag ml-2">requires download</span></div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Voice section disabled -->
+            <div class="form-section is-disabled">
+              <div class="form-section__title">Voice (Kokoro)</div>
+              <div class="form-section__hint">Available after model download.</div>
+              <div class="voice-grid">
+                <div class="voice-card"><span class="voice-card__play">▶</span><div class="wf-grow"><div class="voice-card__name">af_bella</div><div class="voice-card__meta">en-US · female</div></div></div>
+                <div class="voice-card"><span class="voice-card__play">▶</span><div class="wf-grow"><div class="voice-card__name">am_michael</div><div class="voice-card__meta">en-US · male</div></div></div>
+                <div class="voice-card"><span class="voice-card__play">▶</span><div class="wf-grow"><div class="voice-card__name">bf_emma</div><div class="voice-card__meta">en-GB · female</div></div></div>
+                <div class="voice-card"><span class="voice-card__play">▶</span><div class="wf-grow"><div class="voice-card__name">bm_george</div><div class="voice-card__meta">en-GB · male</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= NO VOICES AVAILABLE ============= -->
+    <section class="wf-state" data-state="no-voices-available" aria-labelledby="state-nva-h">
+      <h1 id="state-nva-h" class="sr-only">No voices available</h1>
+
+      <div class="settings-grid">
+        <aside class="settings-nav">
+          <div class="settings-nav__title">Settings</div>
+          <div class="nav-item">⚙️ <span class="wf-grow">LLM Provider</span></div>
+          <div class="nav-item">🗄️ <span class="wf-grow">Database</span></div>
+          <div class="nav-item">📋 <span class="wf-grow">Presets</span></div>
+          <div class="nav-item">📖 <span class="wf-grow">Reading</span></div>
+          <div class="nav-item is-active">🎧 <span class="wf-grow">TTS</span> <span class="new-badge">NEW</span></div>
+          <div class="nav-item">📤 <span class="wf-grow">Export</span></div>
+          <div class="nav-item">💾 <span class="wf-grow">Backups</span></div>
+        </aside>
+
+        <div class="settings-pane">
+          <div class="pane-inner">
+            <div class="pane-h1">Text-to-Speech</div>
+            <div class="pane-sub">Configure voice playback for summaries.</div>
+
+            <div class="wf-message wf-message--error" style="margin-top: 24px;">
+              <div class="wf-message__title">No voice available on this device.</div>
+              <div class="wf-message__hint">Install Kokoro to enable audiobook features. Web Speech voices are not provided by your browser.</div>
+              <button class="mock-button mock-button--primary">Install Kokoro voice model</button>
+              <div class="mt-3 text-xs text-slate-500">Detected: Linux · Firefox 124 · 0 system voices</div>
+            </div>
+
+            <div class="form-section is-disabled">
+              <div class="form-section__title">Default engine</div>
+              <div class="form-section__hint">Locked until a voice provider is available.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Settings — TTS</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 07 of 14</span>
+      <span>Generated 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

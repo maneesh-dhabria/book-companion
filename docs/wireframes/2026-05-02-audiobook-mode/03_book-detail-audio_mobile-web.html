@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Book Detail · Audio Panel — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .pulse-dot { display:inline-block; width:8px; height:8px; border-radius:9999px; background:var(--wf-accent,#4f46e5); box-shadow:0 0 0 0 rgba(79,70,229,.6); animation: bc-pulse 1.4s infinite; vertical-align:middle; }
+    @keyframes bc-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(79,70,229,.55); }
+      70% { box-shadow: 0 0 0 10px rgba(79,70,229,0); }
+      100% { box-shadow: 0 0 0 0 rgba(79,70,229,0); }
+    }
+    .bc-progress { position:relative; height:8px; border-radius:9999px; background:#e5e7eb; overflow:hidden; }
+    .bc-progress__fill { position:absolute; inset:0 auto 0 0; background:var(--wf-accent,#4f46e5); border-radius:9999px; }
+    .bc-cover-sm { width:64px; height:96px; border-radius:6px; flex-shrink:0; }
+    .bc-tabrow-m {
+      display:flex; gap:1.25rem; overflow-x:auto; white-space:nowrap;
+      border-bottom:1px solid #e5e7eb; padding: 0 .25rem;
+      scrollbar-width: none;
+    }
+    .bc-tabrow-m::-webkit-scrollbar { display:none; }
+    .bc-tab { padding:.65rem 0; font-size:.9rem; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; }
+    .bc-tab--active { color:#111827; border-bottom-color: var(--wf-accent,#4f46e5); font-weight:600; }
+    .btn-full { width:100%; min-height:44px; }
+    .bc-fade-row { opacity:.55; }
+    .bc-check { color:#10b981; font-weight:700; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1: initial draft — mobile-web stacked layout, full-width CTAs, scrollable tabs.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Book Detail · Audio Panel</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="no-audio">No audio</button>
+        <button class="wf-tab" aria-selected="false" data-state="partial-audio">Partial</button>
+        <button class="wf-tab" aria-selected="false" data-state="full-audio">Full</button>
+        <button class="wf-tab" aria-selected="false" data-state="generating">Generating</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web">
+
+    <!-- =========================== NO AUDIO =========================== -->
+    <section class="wf-state active" data-state="no-audio" aria-labelledby="m-state-no-audio-h">
+      <h1 id="m-state-no-audio-h" class="sr-only">No audio state</h1>
+
+      <div class="mock-card" style="padding:1rem;">
+        <div class="flex gap-3 items-start">
+          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
+            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
+            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">47 sections</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bc-tabrow-m mt-3">
+        <div class="bc-tab bc-tab--active">Overview</div>
+        <div class="bc-tab">Sections</div>
+        <div class="bc-tab">Annotations</div>
+        <div class="bc-tab">Concepts</div>
+      </div>
+
+      <div class="mock-card mt-3" style="padding:1rem;">
+        <div class="text-sm font-semibold text-slate-700">Summaries</div>
+        <div class="mock-divider"></div>
+        <div class="text-xs text-slate-500">47 of 47 sections summarized</div>
+      </div>
+
+      <div class="mock-card mt-3" style="padding:1rem;">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold text-slate-700">Audio</div>
+          <span class="bc-engine-chip--web mock-pill text-[10px]">Web Speech</span>
+        </div>
+        <div class="mock-divider"></div>
+        <div class="wf-message" style="margin:0; padding:.5rem 0;">
+          <div class="wf-message__title">No audio generated yet</div>
+          <div class="wf-message__hint">Generate audio for sections, the book summary, or annotations.</div>
+          <button class="wf-anno mock-button mock-button--primary btn-full mt-3"
+                  data-note="Opens the Generate Audio modal (file 04)">
+            Generate audio
+          </button>
+          <div class="text-xs mt-2" style="color:var(--wf-muted)">
+            Estimate: ~12 min · ~140 MB for 47 sections (Kokoro)
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 mt-2">
+          Or tap play in the reader for instant Web Speech playback.
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================== PARTIAL =========================== -->
+    <section class="wf-state" data-state="partial-audio" aria-labelledby="m-state-partial-h">
+      <h1 id="m-state-partial-h" class="sr-only">Partial audio state</h1>
+
+      <div class="mock-card" style="padding:1rem;">
+        <div class="flex gap-3 items-start">
+          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
+            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
+            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">47 sections</span>
+              <span class="mock-pill">Audio · 12/47</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bc-tabrow-m mt-3">
+        <div class="bc-tab bc-tab--active">Overview</div>
+        <div class="bc-tab">Sections</div>
+        <div class="bc-tab">Annotations</div>
+        <div class="bc-tab">Concepts</div>
+      </div>
+
+      <div class="mock-card mt-3" style="padding:1rem;">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold text-slate-700">Audio</div>
+          <span class="bc-engine-chip mock-pill text-[10px]">Kokoro · af_bella</span>
+        </div>
+        <div class="mock-divider"></div>
+
+        <div class="text-sm text-slate-700 mb-2">Audio: 12 of 47 sections pre-generated</div>
+        <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+          <div class="bc-progress__fill" style="width:25.5%"></div>
+        </div>
+        <div class="text-xs text-slate-500 mt-1">25% covered</div>
+
+        <div class="flex flex-col gap-2 mt-4">
+          <button class="wf-anno mock-button mock-button--primary btn-full"
+                  data-note="Opens book summary player (file 02)">Listen</button>
+          <button class="wf-anno mock-button btn-full"
+                  data-note="Opens flat list of MP3s (file 05)">Audio files</button>
+          <button class="mock-button btn-full">Generate remaining</button>
+        </div>
+
+        <div class="mock-divider"></div>
+        <div class="text-xs text-slate-500">Last generated · May 1, 2026 · 38 MB on disk</div>
+      </div>
+    </section>
+
+    <!-- =========================== FULL =========================== -->
+    <section class="wf-state" data-state="full-audio" aria-labelledby="m-state-full-h">
+      <h1 id="m-state-full-h" class="sr-only">Full audio state</h1>
+
+      <div class="mock-card" style="padding:1rem;">
+        <div class="flex gap-3 items-start">
+          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
+            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
+            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">47 sections</span>
+              <span class="mock-pill">Audio · complete</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bc-tabrow-m mt-3">
+        <div class="bc-tab bc-tab--active">Overview</div>
+        <div class="bc-tab">Sections</div>
+        <div class="bc-tab">Annotations</div>
+        <div class="bc-tab">Concepts</div>
+      </div>
+
+      <div class="mock-card mt-3" style="padding:1rem;">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold text-slate-700">Audio</div>
+          <span class="bc-engine-chip mock-pill text-[10px]">Kokoro · af_bella</span>
+        </div>
+        <div class="mock-divider"></div>
+
+        <div class="text-sm text-slate-700 mb-2">47 of 47 sections · book summary · annotations</div>
+        <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+          <div class="bc-progress__fill" style="width:100%"></div>
+        </div>
+        <div class="text-xs text-slate-500 mt-1">100% covered</div>
+
+        <div class="flex flex-col gap-2 mt-4">
+          <button class="mock-button mock-button--primary btn-full">Listen</button>
+          <button class="mock-button btn-full">Audio files</button>
+          <button class="mock-button btn-full" aria-haspopup="menu">Regenerate audio ▾</button>
+          <button class="wf-anno mock-button btn-full"
+                  style="color: var(--wf-error, #b91c1c);"
+                  data-note="One-click; only removes MP3s, not summaries or annotations">
+            Delete audio for this book
+          </button>
+        </div>
+
+        <div class="mock-divider"></div>
+        <div class="text-xs text-slate-500">Last generated · May 1, 2026 · 142 MB on disk</div>
+      </div>
+    </section>
+
+    <!-- =========================== GENERATING =========================== -->
+    <section class="wf-state" data-state="generating" aria-labelledby="m-state-generating-h">
+      <h1 id="m-state-generating-h" class="sr-only">Generating state</h1>
+
+      <div class="mock-card" style="padding:1rem;">
+        <div class="flex gap-3 items-start">
+          <div class="mock-img bc-cover-sm" aria-label="Book cover"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] uppercase tracking-wide text-slate-500">Psychology</div>
+            <h1 class="text-base font-semibold leading-tight mt-1">Thinking, Fast and Slow</h1>
+            <div class="text-xs text-slate-600 mt-0.5">by Daniel Kahneman</div>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">47 sections</span>
+              <span class="mock-pill">Generating…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bc-tabrow-m mt-3">
+        <div class="bc-tab bc-tab--active">Overview</div>
+        <div class="bc-tab">Sections</div>
+        <div class="bc-tab">Annotations</div>
+        <div class="bc-tab">Concepts</div>
+      </div>
+
+      <div class="mock-card wf-anno mt-3" data-note="Same SSE event stream as summarization jobs (job_progress)" style="padding:1rem;">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            Audio · generating
+          </div>
+          <span class="bc-engine-chip mock-pill text-[10px]">Kokoro · af_bella</span>
+        </div>
+        <div class="mock-divider"></div>
+
+        <div class="text-sm text-slate-700 mb-2">Generating section audio · 18 of 47 · ~6 min remaining</div>
+        <div class="bc-coverage-bar bc-progress" role="progressbar" aria-valuenow="38" aria-valuemin="0" aria-valuemax="100" aria-live="polite">
+          <div class="bc-progress__fill" style="width:38.3%"></div>
+        </div>
+        <div class="text-xs text-slate-500 mt-1">Current: <span class="font-medium text-slate-700">The Two Selves</span></div>
+
+        <div class="flex flex-col gap-2 mt-4">
+          <button class="mock-button btn-full">Pause job</button>
+          <button class="mock-button btn-full">Cancel</button>
+        </div>
+
+        <div class="mock-divider"></div>
+        <div class="text-xs uppercase tracking-wide text-slate-500 mb-2">Recently completed</div>
+        <ul class="text-sm text-slate-700 space-y-1">
+          <li><span class="bc-check">✓</span> Attention and Effort <span class="text-xs text-slate-500">· 2.1 MB</span></li>
+          <li><span class="bc-check">✓</span> The Lazy Controller <span class="text-xs text-slate-500">· 1.8 MB</span></li>
+          <li class="bc-fade-row"><span class="bc-check">✓</span> The Associative Machine <span class="text-xs text-slate-500">· 2.4 MB</span></li>
+          <li class="bc-fade-row"><span class="bc-check">✓</span> Cognitive Ease <span class="text-xs text-slate-500">· 1.6 MB</span></li>
+          <li class="bc-fade-row"><span class="bc-check">✓</span> Norms, Surprises, and Causes <span class="text-xs text-slate-500">· 2.0 MB</span></li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Book Detail · Audio Panel</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 03 of 14</span>
+      <span>Generated 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

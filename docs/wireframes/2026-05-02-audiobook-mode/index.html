@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Audiobook Mode — Wireframes — Book Companion</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: var(--wf-font-sans); }
+    .filter-chip[aria-pressed="true"] { background: var(--wf-accent); color: #fff; border-color: var(--wf-accent); }
+    .card-thumb { aspect-ratio: 10 / 7; background: var(--wf-surface-2); border-bottom: 1px solid var(--wf-border-2); overflow: hidden; position: relative; }
+    .card-thumb iframe { width: 1280px; height: 800px; transform-origin: top left; transform: scale(0.22); border: 0; pointer-events: none; }
+    .card-thumb.is-mobile iframe { width: 375px; height: 812px; transform: scale(0.45); margin: 0 auto; display: block; }
+    .card { background: var(--wf-surface); border: 1px solid var(--wf-border-2); border-radius: var(--wf-radius-lg); overflow: hidden; box-shadow: var(--wf-shadow); transition: transform .15s, box-shadow .15s; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+    .card a.cover-link { display: block; text-decoration: none; color: inherit; }
+  </style>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Audiobook Mode — Wireframes</span>
+      <span class="wf-chrome__device">v1 · 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent);font-size:13px"
+         href="../../requirements/2026-05-02-audiobook-mode-requirements.md">↩ Requirements doc</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <section class="mb-6">
+      <h1 class="text-2xl font-semibold tracking-tight mb-1" style="color:var(--wf-text)">Audiobook Mode</h1>
+      <p class="text-sm" style="color:var(--wf-muted)">
+        14 wireframes across 7 components × 2 devices. Web Speech (instant) + Kokoro local (file-output) two-engine TTS for Book Companion summaries and annotations.
+      </p>
+      <p class="text-sm mt-1" style="color:var(--wf-muted)">
+        Tier 3 feature · Generated 2026-05-02 ·
+        <a href="./psych-findings.md" style="color:var(--wf-accent)">PSYCH walkthrough</a> ·
+        <a href="./msf-findings.md" style="color:var(--wf-accent)">MSF analysis</a>
+      </p>
+    </section>
+
+    <section class="mb-4 flex flex-wrap items-center gap-2">
+      <span class="text-xs uppercase tracking-wide" style="color:var(--wf-muted)">Filter:</span>
+      <button class="filter-chip mock-pill" data-filter="all" aria-pressed="true" style="cursor:pointer">All (14)</button>
+      <button class="filter-chip mock-pill" data-filter="desktop-web" aria-pressed="false" style="cursor:pointer">Desktop web (7)</button>
+      <button class="filter-chip mock-pill" data-filter="mobile-web" aria-pressed="false" style="cursor:pointer">Mobile web (7)</button>
+      <input id="search" type="search" placeholder="Search component name…"
+             class="mock-input ml-auto" style="max-width:240px" aria-label="Search wireframes">
+    </section>
+
+    <section id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
+
+    <footer class="wf-footer mt-8">
+      <div class="wf-footer__inner">
+        <span>14 wireframes</span>
+        <span class="mock-pill">desktop-web · mobile-web</span>
+        <span>docs/wireframes/2026-05-02-audiobook-mode/</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    const wireframes = [
+      { n: '01', name: 'Reader · Section player',     slug: 'reader-section-player',  states: 7 },
+      { n: '02', name: 'Book summary player',          slug: 'book-summary-player',    states: 3 },
+      { n: '03', name: 'Book detail · Audio panel',    slug: 'book-detail-audio',      states: 4 },
+      { n: '04', name: 'Generate audio modal',         slug: 'generate-audio-modal',   states: 3 },
+      { n: '05', name: 'Audio files list',             slug: 'audio-files-list',       states: 3 },
+      { n: '06', name: 'Annotations playlist player',  slug: 'annotations-player',     states: 3 },
+      { n: '07', name: 'Settings · TTS panel',         slug: 'settings-tts',           states: 4 },
+    ];
+    const devices = ['desktop-web', 'mobile-web'];
+    const grid = document.getElementById('grid');
+
+    wireframes.forEach(w => devices.forEach(dev => {
+      const file = `${w.n}_${w.slug}_${dev}.html`;
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.dataset.device = dev;
+      card.dataset.name = w.name.toLowerCase();
+      card.innerHTML = `
+        <a class="cover-link" href="${file}" target="_blank" rel="noopener">
+          <div class="card-thumb${dev === 'mobile-web' ? ' is-mobile' : ''}">
+            <iframe src="${file}" loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+          </div>
+          <div class="p-3">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-xs font-mono" style="color:var(--wf-faint)">${w.n}</span>
+              <span class="mock-pill">${dev}</span>
+            </div>
+            <div class="font-medium text-sm" style="color:var(--wf-text)">${w.name}</div>
+            <div class="text-xs mt-1" style="color:var(--wf-muted)">${w.states} states</div>
+          </div>
+        </a>`;
+      grid.appendChild(card);
+    }));
+
+    // Filter
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(b => b.setAttribute('aria-pressed', b === btn));
+        const f = btn.dataset.filter;
+        document.querySelectorAll('#grid > .card').forEach(c => {
+          c.style.display = (f === 'all' || c.dataset.device === f) ? '' : 'none';
+        });
+      });
+    });
+    // Search
+    document.getElementById('search').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('#grid > .card').forEach(c => {
+        c.style.display = !q || c.dataset.name.includes(q) ? '' : 'none';
+      });
+    });
+  </script>
+</body>
+</html>

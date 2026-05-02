@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Annotations Playlist Player — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .anno-card { border: 1px solid var(--bc-border, #e5e7eb); border-radius: 10px; padding: 14px 16px; background: #fff; }
+    .anno-card.is-playing { box-shadow: 0 0 0 2px var(--wf-accent, #4f46e5); }
+    .anno-quote { background: var(--bc-highlight, #fef3c7); border-left: 3px solid #f59e0b; padding: 10px 12px; border-radius: 4px; font-size: 14px; line-height: 1.55; color: #1f2937; }
+    .anno-note { font-style: italic; color: #4b5563; font-size: 13px; margin-top: 8px; line-height: 1.5; }
+    .anno-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+    .tab-row { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; }
+    .tab-row .tab { padding: 10px 16px; font-size: 14px; color: #6b7280; border-bottom: 2px solid transparent; cursor: pointer; }
+    .tab-row .tab.active { color: var(--wf-accent, #4f46e5); border-bottom-color: var(--wf-accent, #4f46e5); font-weight: 600; }
+    .playbar-fixed { position: sticky; bottom: 0; left: 0; right: 0; }
+  </style>
+</head>
+<body data-annotations="on">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Annotations Playlist Player</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default-list">Default list</button>
+        <button class="wf-tab" aria-selected="false" data-state="playing">Playing</button>
+        <button class="wf-tab" aria-selected="false" data-state="empty">Empty</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- ================== DEFAULT LIST STATE ================== -->
+    <section class="wf-state active" data-state="default-list" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default list state</h1>
+
+      <!-- Book detail page header -->
+      <div style="border-bottom: 1px solid #e5e7eb; padding: 20px 32px; background: #fff;">
+        <div class="wf-row" style="gap: 20px; align-items: flex-start;">
+          <div class="mock-img" style="width: 72px; height: 100px; flex: 0 0 72px;">cover</div>
+          <div class="wf-stack" style="gap: 6px; flex: 1;">
+            <div style="font-size: 22px; font-weight: 700; color: #111827;">The Coddling of the American Mind</div>
+            <div style="font-size: 14px; color: #6b7280;">Greg Lukianoff &amp; Jonathan Haidt &middot; 2018</div>
+            <div class="wf-row" style="gap: 6px; margin-top: 4px;">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">14 sections</span>
+              <span class="mock-pill">18 highlights</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs row -->
+        <div class="tab-row" style="margin-top: 20px;">
+          <div class="tab">Overview</div>
+          <div class="tab">Sections</div>
+          <div class="tab active">Annotations</div>
+          <div class="tab">Concepts</div>
+        </div>
+      </div>
+
+      <!-- Tab content -->
+      <div style="padding: 24px 32px;">
+        <!-- Tab header with Play CTA -->
+        <div class="wf-row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div class="wf-stack" style="gap: 4px;">
+            <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
+            <div style="font-size: 13px; color: #6b7280;">18 highlights across 9 sections &middot; sorted by section reading order</div>
+            <div style="font-size: 12px; color: var(--wf-accent); margin-top: 2px;">
+              ♪ Listen to your highlights as a 9-minute review — your annotations spoken aloud, grouped by section.
+            </div>
+          </div>
+          <button class="wf-anno mock-button mock-button--primary"
+                  data-note="Walks each highlight in section reading-order, then attached note (file 06 playlist mode)"
+                  style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;padding:.55rem .9rem;">
+            <span>&#9654; Play as audio</span>
+            <span style="font-size:11px;opacity:.85;font-weight:400">~9 min · 18 highlights</span>
+          </button>
+        </div>
+
+        <!-- 2-column annotation grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+          <!-- Card 1 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
+              <span>&middot;</span><span>p. 19</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "What doesn't kill you makes you weaker. This is the first Great Untruth, and it's the one that drives the rise of safetyism on college campuses."
+            </div>
+            <div class="anno-note">Note: Inverts Nietzsche &mdash; central frame for the whole book.</div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
+              <span>&middot;</span><span>p. 24</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Concept creep &mdash; the steady expansion of what counts as 'trauma' or 'harm' &mdash; makes more students believe they need protection from ordinary discomfort."
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 2 &middot; Untruth of Emotional Reasoning</span>
+              <span>&middot;</span><span>p. 38</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Always trust your feelings. The second Great Untruth teaches that if you feel offended, an offense has occurred &mdash; emotion as evidence."
+            </div>
+            <div class="anno-note">Note: Compare to CBT principles in Ch 10 &mdash; deliberate inverse.</div>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 3 &middot; Us vs. Them</span>
+              <span>&middot;</span><span>p. 58</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Life is a battle between good people and evil people. The third Great Untruth turns disagreement into moral warfare and makes nuance feel like betrayal."
+            </div>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 5 &middot; Witch Hunts</span>
+              <span>&middot;</span><span>p. 89</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Call-out culture rewards public shaming over private correction. Once a tribe believes it's under threat, mercy looks like complicity."
+            </div>
+            <div class="anno-note">Note: Echoes Mercier &amp; Sperber on argumentation as social signaling.</div>
+          </div>
+
+          <!-- Card 6 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 7 &middot; Anxiety &amp; Depression</span>
+              <span>&middot;</span><span>p. 122</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "iGen &mdash; born after 1995 &mdash; reports sharply higher rates of anxiety and depression beginning around 2011, the year smartphone adoption crossed 50%."
+            </div>
+          </div>
+
+          <!-- Card 7 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 9 &middot; The Bureaucracy of Safetyism</span>
+              <span>&middot;</span><span>p. 158</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Administrative bloat outpaces faculty growth 2-to-1. Each new dean of student wellbeing creates new categories of harm to administer."
+            </div>
+            <div class="anno-note">Note: Parkinson's law applied to grievance infrastructure.</div>
+          </div>
+
+          <!-- Card 8 -->
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 12 &middot; Wiser Kids</span>
+              <span>&middot;</span><span>p. 213</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Prepare the child for the road, not the road for the child. Antifragility is built through graduated exposure to manageable adversity."
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================== PLAYING STATE ================== -->
+    <section class="wf-state" data-state="playing" aria-labelledby="state-playing-h">
+      <h1 id="state-playing-h" class="sr-only">Playing state</h1>
+
+      <!-- Book header -->
+      <div style="border-bottom: 1px solid #e5e7eb; padding: 20px 32px; background: #fff;">
+        <div class="wf-row" style="gap: 20px; align-items: flex-start;">
+          <div class="mock-img" style="width: 72px; height: 100px; flex: 0 0 72px;">cover</div>
+          <div class="wf-stack" style="gap: 6px; flex: 1;">
+            <div style="font-size: 22px; font-weight: 700; color: #111827;">The Coddling of the American Mind</div>
+            <div style="font-size: 14px; color: #6b7280;">Greg Lukianoff &amp; Jonathan Haidt &middot; 2018</div>
+            <div class="wf-row" style="gap: 6px; margin-top: 4px;">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">14 sections</span>
+              <span class="mock-pill">18 highlights</span>
+            </div>
+          </div>
+        </div>
+        <div class="tab-row" style="margin-top: 20px;">
+          <div class="tab">Overview</div>
+          <div class="tab">Sections</div>
+          <div class="tab active">Annotations</div>
+          <div class="tab">Concepts</div>
+        </div>
+      </div>
+
+      <!-- Tab content -->
+      <div style="padding: 24px 32px 140px 32px;">
+        <div class="wf-row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div class="wf-stack" style="gap: 4px;">
+            <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
+            <div style="font-size: 13px; color: #6b7280;">Playing 3 of 18 &middot; auto-advances through the playlist</div>
+          </div>
+          <button class="mock-button">&#10073;&#10073; Pause playlist</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+          <div class="anno-card" style="opacity: 0.55;">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
+              <span>&middot;</span><span>p. 19</span>
+              <span style="margin-left:auto; color: #16a34a;">&#10003; played</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "What doesn't kill you makes you weaker. This is the first Great Untruth..."
+            </div>
+          </div>
+
+          <div class="anno-card" style="opacity: 0.55;">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 1 &middot; The Untruth of Fragility</span>
+              <span>&middot;</span><span>p. 24</span>
+              <span style="margin-left:auto; color: #16a34a;">&#10003; played</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Concept creep &mdash; the steady expansion of what counts as 'trauma' or 'harm'..."
+            </div>
+          </div>
+
+          <!-- Card 3 — PLAYING -->
+          <div class="wf-anno anno-card is-playing"
+               data-note="Tap any annotation to jump playback to it"
+               style="grid-column: 1 / -1;">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 2 &middot; Untruth of Emotional Reasoning</span>
+              <span>&middot;</span><span>p. 38</span>
+              <span style="margin-left:auto; color: var(--wf-accent);">&#9654; Now playing &middot; 3 of 18</span>
+            </div>
+            <div style="margin-bottom: 8px;" class="wf-anno"
+                 data-note="Annotations playlist uses pre-generated Kokoro audio when available; otherwise falls back to instant Web Speech (per D14)">
+              <span class="bc-engine-chip">Kokoro local &middot; af_sarah</span>
+              <span class="text-xs ml-2" style="color:var(--wf-muted)">pre-generated · 142 MB on disk</span>
+            </div>
+            <div class="anno-quote" aria-live="polite" style="background: var(--bc-highlight);">
+              "Always trust your feelings. <span class="bc-sentence-active" style="background: #fde68a; box-shadow: 0 0 0 2px #f59e0b; border-radius: 3px; padding: 0 2px;">The second Great Untruth teaches that if you feel offended, an offense has occurred &mdash; emotion as evidence.</span>"
+            </div>
+            <!-- Audible cue divider — represents 0.5s pause + tone shift -->
+            <div class="flex items-center gap-2 my-2" aria-hidden="true">
+              <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,var(--wf-border),transparent)"></span>
+              <span class="wf-anno text-xs" style="color:var(--wf-accent);" data-note="Half-second pause + tone shift (D6) — same cue across the playlist">♪ pause &middot; voice shift</span>
+              <span style="flex:1;height:1px;background:linear-gradient(to right,transparent,var(--wf-border),transparent)"></span>
+            </div>
+            <div class="anno-note">
+              Note: Compare to CBT principles in Ch 10 &mdash; deliberate inverse.
+            </div>
+          </div>
+
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 3 &middot; Us vs. Them</span>
+              <span>&middot;</span><span>p. 58</span>
+              <span style="margin-left:auto; color: #6b7280;">up next</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Life is a battle between good people and evil people..."
+            </div>
+          </div>
+
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 5 &middot; Witch Hunts</span>
+              <span>&middot;</span><span>p. 89</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "Call-out culture rewards public shaming over private correction..."
+            </div>
+            <div class="anno-note">Note: Echoes Mercier &amp; Sperber on argumentation as social signaling.</div>
+          </div>
+
+          <div class="anno-card">
+            <div class="anno-meta">
+              <span class="mock-pill">Ch 7 &middot; Anxiety &amp; Depression</span>
+              <span>&middot;</span><span>p. 122</span>
+            </div>
+            <div class="anno-quote" style="background: var(--bc-highlight);">
+              "iGen &mdash; born after 1995 &mdash; reports sharply higher rates of anxiety and depression..."
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Sticky playbar -->
+      <div class="wf-anno bc-playbar playbar-fixed"
+           data-note="skip-by-annotation, not by sentence — annotations are short"
+           style="background: #111827; color: #f9fafb; padding: 14px 24px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #1f2937;">
+        <button class="mock-button" aria-label="Pause" style="background: #4f46e5; color: white; border: none;">&#10073;&#10073;</button>
+        <button class="mock-button" aria-label="Previous annotation" style="background: #1f2937; color: white; border: none;">&#9198; prev highlight</button>
+        <button class="mock-button" aria-label="Next annotation" style="background: #1f2937; color: white; border: none;">next highlight &#9197;</button>
+        <button class="mock-button" aria-label="Speed" style="background: #1f2937; color: white; border: none;">1.0x</button>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; margin-left: 8px;">
+          <div style="font-size: 13px; font-weight: 600;">3 of 18 &middot; The Coddling of the American Mind</div>
+          <div style="font-size: 12px; color: #9ca3af;">Ch 2 &middot; Untruth of Emotional Reasoning &middot; reading note next</div>
+        </div>
+        <button class="mock-button" aria-label="Close player" style="background: transparent; color: #9ca3af; border: 1px solid #374151;">&times;</button>
+      </div>
+    </section>
+
+    <!-- ================== EMPTY STATE ================== -->
+    <section class="wf-state" data-state="empty" aria-labelledby="state-empty-h">
+      <h1 id="state-empty-h" class="sr-only">Empty state</h1>
+
+      <div style="border-bottom: 1px solid #e5e7eb; padding: 20px 32px; background: #fff;">
+        <div class="wf-row" style="gap: 20px; align-items: flex-start;">
+          <div class="mock-img" style="width: 72px; height: 100px; flex: 0 0 72px;">cover</div>
+          <div class="wf-stack" style="gap: 6px; flex: 1;">
+            <div style="font-size: 22px; font-weight: 700; color: #111827;">The Coddling of the American Mind</div>
+            <div style="font-size: 14px; color: #6b7280;">Greg Lukianoff &amp; Jonathan Haidt &middot; 2018</div>
+            <div class="wf-row" style="gap: 6px; margin-top: 4px;">
+              <span class="mock-pill">Summarized</span>
+              <span class="mock-pill">14 sections</span>
+              <span class="mock-pill">0 highlights</span>
+            </div>
+          </div>
+        </div>
+        <div class="tab-row" style="margin-top: 20px;">
+          <div class="tab">Overview</div>
+          <div class="tab">Sections</div>
+          <div class="tab active">Annotations</div>
+          <div class="tab">Concepts</div>
+        </div>
+      </div>
+
+      <div style="padding: 24px 32px;">
+        <div class="wf-row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div class="wf-stack" style="gap: 4px;">
+            <div style="font-size: 18px; font-weight: 600; color: #111827;">Highlights &amp; notes</div>
+            <div style="font-size: 13px; color: #6b7280;">No highlights captured yet</div>
+          </div>
+          <span class="wf-anno mock-pill"
+                data-note="Hidden when no annotations exist; force-clicking via deep link shows this empty state"
+                style="opacity: 0.5;">Play as audio (hidden)</span>
+        </div>
+
+        <div class="wf-message" style="margin-top: 40px;">
+          <div class="wf-message__title">No highlights yet</div>
+          <div class="wf-message__hint">Select text in the reader to add a highlight; you'll be able to play them as a personalized review.</div>
+          <button class="mock-button mock-button--primary">Open reader</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Annotations Playlist Player</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 06 of 14</span>
+      <span>Generated 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

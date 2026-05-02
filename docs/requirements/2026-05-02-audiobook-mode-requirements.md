@@ -253,3 +253,54 @@ These are spoken-output failure modes that consistently break TTS UX. The spec m
 | 7 | Annotations playlist: include the surrounding sentence as context, or just the highlighted span? Just-the-span is faster but loses meaning; with-context is richer but longer. | /wireframes or user | Before /spec |
 | 8 | MP3 cleanup policy when a book is deleted, or when a section's summary is regenerated. Auto-delete vs orphan-and-warn? | /spec | During /spec |
 | 9 | Is "play book summary" on the library list page (not just book detail) in v1, or is book detail enough? Affects how aggressive the surface coverage is. | Maneesh | Before /spec |
+
+## Wireframes
+
+Generated: 2026-05-02
+Folder: `docs/wireframes/2026-05-02-audiobook-mode/`
+Index: `docs/wireframes/2026-05-02-audiobook-mode/index.html`
+PSYCH walkthrough: `docs/wireframes/2026-05-02-audiobook-mode/psych-findings.md`
+MSF analysis: `docs/wireframes/2026-05-02-audiobook-mode/msf-findings.md` (canonical at `docs/msf/2026-05-02-audiobook-mode-msf-analysis.md`)
+
+| # | Component | Devices | States | File |
+|---|-----------|---------|--------|------|
+| 01 | Reader · Section player | desktop-web, mobile-web | 7 (default · playing-with-highlight · paused-with-resume · loading-voice · no-summary-disabled · stale-source-banner · mid-listen-regen-banner) | `01_reader-section-player_{device}.html` |
+| 02 | Book summary player | desktop-web, mobile-web | 3 (default · playing · ended-auto-advance) | `02_book-summary-player_{device}.html` |
+| 03 | Book detail · Audio panel | desktop-web, mobile-web | 4 (no-audio · partial · full · generating) | `03_book-detail-audio_{device}.html` |
+| 04 | Generate audio modal | desktop-web, mobile-web | 3 (default · model-download-required · error) | `04_generate-audio-modal_{device}.html` |
+| 05 | Audio files list | desktop-web, mobile-web | 3 (populated · empty · partial-failed) | `05_audio-files-list_{device}.html` |
+| 06 | Annotations playlist player | desktop-web, mobile-web | 3 (default-list · playing · empty) | `06_annotations-player_{device}.html` |
+| 07 | Settings · TTS panel | desktop-web, mobile-web | 4 (default · voice-sample-loading · model-not-downloaded · no-voices-available) | `07_settings-tts_{device}.html` |
+
+## Wireframes & UX Analysis Updates (2026-05-02)
+
+Added during `/wireframes` Phase 6 (PSYCH) and Phase 7 (MSF). These are scope additions or hardening notes that must carry forward into `/spec`.
+
+### Hard requirements added by MSF
+
+- **M1 — Spike-derived voice guidance is a Settings UI requirement, not boilerplate.** The existing Success Metric "Spike materially shapes v1" is restated as a hard /spec requirement: the Settings → TTS pane MUST surface a 2–3 sentence spike-derived comparison (Web Speech vs. Kokoro on the user's actual content), include a "Listen to comparison" button that plays the same passage in both, and link to `docs/spikes/2026-05-XX-tts-engine-spike.md`. The wireframe (`07_settings-tts_*.html`) reflects this.
+- **S1 — Web Speech voice MUST also be sample-able from Settings.** Sampling cannot be Kokoro-only; the user has to A/B before committing.
+- **S2 — Annotations playlist checkbox in the Generate Audio modal defaults to ON** (with a "recommended" pill). The annotations playlist is a named v1 goal; OFF-default contradicted that.
+- **S3 — Pre-warm the Kokoro engine on `bookcompanion serve` startup** when local engine is selected. Surface the warm/cold state in Settings → TTS as a status indicator. (Already implied by req-doc Friction §cold-start; making it a /spec requirement.)
+
+### v1 scope additions
+
+- **N1 — Per-row Delete on the Audio Files page.** Surgical control after re-summarizing one section. Wireframe updated.
+- **N2 — Library-level "Regenerate all stale audio" CTA.** When multiple books have stale audio (per the existing stale-source banner D13), a single library-level action removes the per-book regenerate friction P3 (Library-curator) hits. Defer to /spec for placement; v1 scope addition.
+- **N3 — Playbar shows section elapsed/total + sentence index** (e.g., "2:14 / 6:08 · sentence 17 of 47"). Wireframe updated.
+- **N4 — Visualize the 0.5-second pause + tone-shift cue** between highlight and note in the Annotations playlist UI (a thin divider with ♪ icon). Wireframe updated.
+
+### Scope rejections (v1)
+
+- **S4 — Library-list "Has audio" filter — REJECTED by user.** Rationale: an on-demand filter for "books with audio" is rarely needed enough to justify a permanent UI affordance. Books that have audio are surfaced via the per-book detail page; cross-library queries can be done on demand.
+
+### Copy / behavior changes from PSYCH walkthrough
+
+- **F1 — Generate-audio CTA on book detail now shows an inline cost estimate** ("~12 min · ~140 MB for 47 sections"). Wireframe `03_book-detail-audio_*.html` updated.
+- **F2 — "Play as audio" CTA on annotations tab now shows estimated playlist duration** ("~9 min · 18 highlights"). Wireframe `06_annotations-player_*.html` updated.
+- **F3 — Resume context disclaimer is "from this browser" not "on this device".** Per D9 the position is per-browser; cross-device handoff is best-effort and out of v1. Update Journey 1 step 7 to use "browser" terminology consistently.
+- **F4 — Annotations player engine chip carries an explanatory annotation** about the pre-gen requirement (D14 fallback rule). Wireframe `06_annotations-player_*.html` updated.
+
+### Open question added by MSF
+
+- **OQ-10:** Should the annotations playlist support runtime Web Speech streaming when no pre-gen MP3 exists (consistent with D14's section-summary rule), or does it require pre-generation? Wireframe currently assumes "pre-gen recommended, Web Speech fallback available". Confirm in /spec.

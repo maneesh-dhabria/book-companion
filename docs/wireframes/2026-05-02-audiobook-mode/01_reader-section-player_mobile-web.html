@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reader Section Player — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/house-style.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .mob-frame { display: flex; flex-direction: column; height: 100%; background: #fff; }
+    .mob-topbar { display:flex; align-items:center; gap:8px; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; background:#fff; position:sticky; top:0; z-index:10; }
+    .mob-content { flex: 1; overflow-y: auto; padding: 16px; }
+    .mob-content h1 { font-size: 22px; font-weight: 600; color: #111827; margin-bottom: 8px; }
+    .summary-prose p { margin-bottom: 14px; line-height: 1.65; color: #1f2937; font-size: 15px; }
+    .summary-prose h2 { font-size: 17px; font-weight: 600; margin: 14px 0 8px; color: #111827; }
+
+    .play-trigger { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height: 44px; padding: 10px 18px; border-radius: 999px; background: var(--wf-accent, #4f46e5); color: #fff; font-weight: 500; font-size: 15px; }
+    .play-trigger[disabled] { opacity: 0.5; background: #cbd5e1; color: #475569; }
+    .summary-toggle { font-size: 13px; color: #475569; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; min-height: 44px; }
+
+    .bc-engine-chip { display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: #ede9fe; color: #4338ca; border: 1px solid #c7d2fe; }
+    .bc-engine-chip--web { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
+    .bc-sentence-active { background: linear-gradient(transparent 60%, #fde68a 60%); border-radius: 2px; }
+    .bc-banner { display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding: 10px 12px; border-radius: 8px; background: #fef3c7; color: #78350f; border: 1px solid #fde68a; font-size: 13px; }
+    .bc-banner--info { background: #dbeafe; color: #1e3a8a; border-color: #bfdbfe; }
+
+    .playbar { background: #0f172a; color:#f8fafc; padding: 10px 12px; border-top: 1px solid #1e293b; }
+    .playbar__row { display:flex; align-items:center; gap:10px; }
+    .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); display:inline-flex; align-items:center; justify-content:center; color:#fff; flex-shrink: 0; }
+    .icon-btn--primary { background: var(--wf-accent, #4f46e5); width: 52px; height: 52px; }
+    .icon-btn[aria-disabled="true"] { opacity: 0.4; }
+    .speed-select { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 8px 10px; font-size: 13px; min-height: 36px; }
+
+    .toggle-switch { display:inline-flex; align-items:center; gap:8px; font-size: 12px; color:#cbd5e1; }
+    .toggle-switch__track { width: 30px; height: 18px; border-radius: 999px; background: var(--wf-accent, #4f46e5); position: relative; }
+    .toggle-switch__track::after { content:''; width: 14px; height:14px; border-radius:50%; background:#fff; position:absolute; top:2px; left:14px; }
+
+    .ham-btn { width: 44px; height: 44px; display:inline-flex; align-items:center; justify-content:center; border-radius: 8px; background: #f1f5f9; }
+    .resume-card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background:#f8fafc; }
+    .headphone-ico { font-size: 11px; opacity: 0.85; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1: initial generation — mobile reader player
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Reader Section Player</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="playing">Playing + highlight</button>
+        <button class="wf-tab" aria-selected="false" data-state="resume">Paused / resume</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Loading voice</button>
+        <button class="wf-tab" aria-selected="false" data-state="no-summary">No summary</button>
+        <button class="wf-tab" aria-selected="false" data-state="stale">Stale source</button>
+        <button class="wf-tab" aria-selected="false" data-state="midregen">Mid-listen regen</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web" style="width:375px; height:812px;">
+
+    <!-- ============= DEFAULT ============= -->
+    <section class="wf-state active" data-state="default">
+      <h1 class="sr-only">Default state</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn wf-anno" aria-label="Open sections menu" data-note="Opens slide-over sidebar with section list (sections with 🎧 have Kokoro pre-gen audio).">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+          </div>
+          <button class="ham-btn" aria-label="More">⋯</button>
+        </div>
+
+        <div class="mob-content">
+          <div class="text-xs text-slate-500 mb-1">Part I · Chapter 1</div>
+          <h1>System 1 and System 2</h1>
+
+          <div class="flex flex-wrap items-center gap-2 mb-4 mt-3">
+            <button class="play-trigger" aria-label="Listen to summary">
+              <span aria-hidden="true">▶</span> Listen
+            </button>
+            <span class="bc-engine-chip bc-engine-chip--web wf-anno" data-note="Web Speech engine — instant playback. Used when no pre-gen MP3 exists for this section.">🔊 Web Speech (instant)</span>
+          </div>
+          <div class="mb-5">
+            <button class="summary-toggle">Show full content</button>
+            <span class="mock-pill ml-2">~6 min listen</span>
+          </div>
+
+          <div class="summary-prose">
+            <h2>Summary</h2>
+            <p>Kahneman opens by inviting the reader into a deliberate metaphor: the mind operates as if two distinct agents were sharing the steering wheel. <strong>System 1</strong> is fast, automatic, and effortless — it recognizes faces, completes the phrase "bread and…", and senses hostility in a voice without any feeling of choice.</p>
+            <p><strong>System 2</strong> is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</p>
+            <p>The chapter's pivotal demonstration is the Müller-Lyer illusion. Even after you measure the lines and accept that they are equal, your eyes continue to insist one is longer.</p>
+            <p>Kahneman emphasizes that the two systems are not literal brain regions. They are useful fictions, characters in a story about cognition.</p>
+            <p>The division of labor is mostly efficient. System 1 handles the routine; trouble arises only in the narrow band where it makes systematic errors and System 2 fails to catch them.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= PLAYING ============= -->
+    <section class="wf-state" data-state="playing">
+      <h1 class="sr-only">Playing</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn" aria-label="Open sections menu">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+          </div>
+          <button class="ham-btn" aria-label="More">⋯</button>
+        </div>
+
+        <div class="mob-content" aria-live="polite">
+          <h1>System 1 and System 2</h1>
+          <div class="flex flex-wrap items-center gap-2 mb-4 mt-2">
+            <span class="bc-engine-chip bc-engine-chip--web">🔊 Web Speech</span>
+            <span class="mock-pill">Sentence 8 of 23</span>
+          </div>
+
+          <div class="summary-prose">
+            <h2>Summary</h2>
+            <p>Kahneman opens by inviting the reader into a deliberate metaphor: the mind operates as if two distinct agents were sharing the steering wheel.</p>
+            <p>
+              <span class="bc-sentence-active wf-anno" data-note="Sentence-level highlight (not word-level). Page auto-scrolls to keep this sentence centered.">
+                System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.
+              </span>
+              The chapter's pivotal demonstration is the Müller-Lyer illusion.
+            </p>
+            <p>Kahneman emphasizes that the two systems are not literal brain regions. They are useful fictions, characters in a story about cognition.</p>
+          </div>
+        </div>
+
+        <div class="playbar">
+          <div class="playbar__row mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate">System 1 and System 2</div>
+              <div class="text-xs text-slate-400 truncate">2:14 / 6:08 · sentence 17 of 47</div>
+            </div>
+            <button class="icon-btn" aria-label="Close player">✕</button>
+          </div>
+          <div class="h-1 bg-slate-700 rounded mb-3"><div class="h-1 rounded bg-indigo-500" style="width: 36%"></div></div>
+          <div class="playbar__row">
+            <button class="icon-btn wf-anno" aria-label="Previous sentence" data-note="Jumps backward one sentence boundary.">⏮</button>
+            <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
+            <button class="icon-btn" aria-label="Next sentence">⏭</button>
+            <select class="speed-select wf-anno" aria-label="Playback speed" data-note="0.75x / 1x / 1.25x / 1.5x / 2x">
+              <option>1x</option><option selected>1.25x</option><option>1.5x</option>
+            </select>
+            <span class="bc-engine-chip bc-engine-chip--web">Web</span>
+          </div>
+          <div class="playbar__row mt-2 justify-between">
+            <label class="toggle-switch wf-anno" data-note="When ON, playback continues into next section's audio at boundary. Default ON.">
+              <span>Auto-advance to next section</span>
+              <span class="toggle-switch__track" role="switch" aria-checked="true"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= RESUME ============= -->
+    <section class="wf-state" data-state="resume">
+      <h1 class="sr-only">Paused with resume prompt</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn" aria-label="Open sections menu">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+          </div>
+        </div>
+
+        <div class="mob-content">
+          <h1>System 1 and System 2</h1>
+
+          <div class="resume-card mt-3">
+            <button class="play-trigger" aria-label="Resume listening">
+              <span aria-hidden="true">▶</span> Resume
+            </button>
+            <div class="text-xs text-slate-600 mt-2 leading-snug">
+              Resume from sentence 12 of 47 · last listened from this browser 2 hours ago
+            </div>
+            <div class="mt-2">
+              <a class="text-sm" style="color: var(--wf-accent, #4f46e5)" href="#">Start over</a>
+              <span class="ml-2 bc-engine-chip bc-engine-chip--web" style="font-size: 11px;">Web Speech</span>
+            </div>
+          </div>
+
+          <div class="summary-prose mt-6">
+            <h2>Summary</h2>
+            <p>Kahneman opens by inviting the reader into a deliberate metaphor: the mind operates as if two distinct agents were sharing the steering wheel.</p>
+            <p>System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</p>
+            <p class="text-slate-400">…</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= LOADING ============= -->
+    <section class="wf-state" data-state="loading">
+      <h1 class="sr-only">Loading voice</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn" aria-label="Open sections menu">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+          </div>
+        </div>
+
+        <div class="mob-content">
+          <h1>System 1 and System 2</h1>
+          <div class="flex flex-wrap items-center gap-2 mb-4 mt-2">
+            <span class="bc-engine-chip wf-anno" data-note="Kokoro cold-start — model loads once per session (~1–3s) before MP3 streams.">🎙 Loading voice…</span>
+            <div class="skeleton" style="width: 100px; height: 12px;"></div>
+          </div>
+          <div class="summary-prose">
+            <p>Kahneman opens by inviting the reader into a deliberate metaphor…</p>
+            <p>System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form…</p>
+          </div>
+        </div>
+
+        <div class="playbar">
+          <div class="playbar__row mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate">System 1 and System 2</div>
+              <div class="text-xs text-slate-400 truncate">Loading Kokoro voice… 3.2 MB MP3</div>
+            </div>
+            <button class="icon-btn" aria-label="Cancel">✕</button>
+          </div>
+          <div class="h-1 bg-slate-700 rounded mb-3"><div class="skeleton" style="height: 4px; width: 30%;"></div></div>
+          <div class="playbar__row">
+            <button class="icon-btn" aria-disabled="true" aria-label="Previous">⏮</button>
+            <button class="icon-btn icon-btn--primary" aria-disabled="true" aria-label="Loading">⏸</button>
+            <button class="icon-btn" aria-disabled="true" aria-label="Next">⏭</button>
+            <select class="speed-select" disabled><option>1x</option></select>
+            <span class="bc-engine-chip">Kokoro</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= NO SUMMARY ============= -->
+    <section class="wf-state" data-state="no-summary">
+      <h1 class="sr-only">No summary — audio disabled</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn" aria-label="Open sections menu">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">Of Two Minds</div>
+          </div>
+        </div>
+
+        <div class="mob-content">
+          <div class="text-xs text-slate-500 mb-1">Part I · Chapter 8</div>
+          <h1>Of Two Minds</h1>
+
+          <div class="flex flex-col items-start gap-3 mt-4">
+            <button class="play-trigger" disabled aria-label="Listen disabled">
+              <span aria-hidden="true">▶</span> Listen
+            </button>
+            <div class="text-xs text-slate-500 max-w-xs leading-snug">Audio is only generated for summaries in v1. Generate this section's summary first.</div>
+            <a href="#" class="mock-button mock-button--primary" style="min-height: 44px; display:inline-flex; align-items:center;">Generate summary</a>
+          </div>
+
+          <div class="mock-card mt-6" style="padding: 14px; background:#f8fafc;">
+            <div class="text-sm text-slate-600">No summary yet for this section.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= STALE SOURCE ============= -->
+    <section class="wf-state" data-state="stale">
+      <h1 class="sr-only">Stale source</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn" aria-label="Open sections menu">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+          </div>
+        </div>
+
+        <div class="mob-content">
+          <h1>System 1 and System 2</h1>
+
+          <div class="bc-banner mt-3 wf-anno" data-note="Stale audio still plays — user is informed but never blocked.">
+            <span>⚠ Source has been edited since audio was generated. Regenerate?</span>
+            <button class="mock-button mock-button--primary" style="min-height: 36px;">Regenerate audio</button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 mb-4 mt-4">
+            <button class="play-trigger" aria-label="Listen">
+              <span aria-hidden="true">▶</span> Listen
+            </button>
+            <span class="bc-engine-chip">🎙 Kokoro · 3.2 MB</span>
+          </div>
+          <div class="text-xs text-slate-500 mb-4">audio from May 1, 2026</div>
+
+          <div class="summary-prose">
+            <p>Kahneman opens by inviting the reader into a deliberate metaphor: the mind operates as if two distinct agents were sharing the steering wheel.</p>
+            <p>System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= MID-LISTEN REGEN ============= -->
+    <section class="wf-state" data-state="midregen">
+      <h1 class="sr-only">Mid-listen regen prompt</h1>
+      <div class="mob-frame">
+        <div class="mob-topbar">
+          <button class="ham-btn" aria-label="Open sections menu">☰</button>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-slate-500 truncate">Thinking, Fast and Slow</div>
+            <div class="text-sm font-medium text-slate-900 truncate">System 1 and System 2</div>
+          </div>
+        </div>
+
+        <div class="mob-content">
+          <h1>System 1 and System 2</h1>
+          <div class="flex flex-wrap items-center gap-2 mb-3 mt-2">
+            <span class="bc-engine-chip">🎙 Kokoro</span>
+            <span class="mock-pill">Sentence 8 of 23</span>
+          </div>
+          <div class="summary-prose">
+            <p><span class="bc-sentence-active">System 2 is slow, deliberate, and effortful — it parks in a tight space, fills out a tax form, and compares two washing machines on price-per-load.</span></p>
+            <p>The chapter's pivotal demonstration is the Müller-Lyer illusion.</p>
+          </div>
+        </div>
+
+        <div class="playbar">
+          <div class="playbar__row mb-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate">System 1 and System 2</div>
+              <div class="text-xs text-slate-400 truncate">2:14 / 6:08 · Kokoro</div>
+            </div>
+            <button class="icon-btn" aria-label="Close">✕</button>
+          </div>
+          <div class="h-1 bg-slate-700 rounded mb-3"><div class="h-1 rounded bg-indigo-500" style="width: 36%"></div></div>
+          <div class="playbar__row">
+            <button class="icon-btn" aria-label="Previous">⏮</button>
+            <button class="icon-btn icon-btn--primary" aria-label="Pause">⏸</button>
+            <button class="icon-btn" aria-label="Next">⏭</button>
+            <select class="speed-select"><option>1.25x</option></select>
+          </div>
+        </div>
+
+        <div style="padding: 10px 12px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+          <div class="bc-banner bc-banner--info wf-anno" data-note="Shown only at section boundary or pause — never interrupts active playback (D13).">
+            <span>ℹ Summary updated since this audio was generated. Regenerate audio for the new summary?</span>
+            <button class="mock-button mock-button--primary" style="min-height: 36px;">Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Reader Section Player</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 01 of 14</span>
+      <span>Generated 2026-05-02</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>
