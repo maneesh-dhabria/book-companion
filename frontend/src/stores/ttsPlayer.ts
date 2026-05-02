@@ -49,6 +49,7 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
   const errorKind = ref<TtsErrorKind | null>(null)
   const defaultEngine = ref<TtsEngineKind | null>(null)
   const activeEngineReason = ref<ActiveEngineReason | null>(null)
+  const pendingRegenBanner = ref(false)
 
   const canPlay = computed(() => status.value === 'paused' || status.value === 'ended')
   const isPlaying = computed(() => status.value === 'playing')
@@ -142,6 +143,7 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
     errorKind,
     defaultEngine,
     activeEngineReason,
+    pendingRegenBanner,
     canPlay,
     isPlaying,
     isError,

@@ -59,6 +59,13 @@ function onRetry() {
     role="region"
     aria-label="Audio player"
   >
+    <div
+      v-if="store.pendingRegenBanner && (store.status === 'paused' || store.status === 'idle' || store.status === 'ended')"
+      data-testid="mid-listen-regen"
+      class="absolute -top-12 left-0 right-0 rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900"
+    >
+      Summary updated since this audio was generated — regenerate to apply.
+    </div>
     <template v-if="store.status === 'error'">
       <span class="text-sm text-red-600 dark:text-red-400">
         Audio error: {{ store.errorKind }}

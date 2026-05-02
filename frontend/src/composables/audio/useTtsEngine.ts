@@ -5,6 +5,32 @@ import { Mp3Engine } from './mp3Engine'
 import type { TtsEngine } from './types'
 import { WebSpeechEngine } from './webSpeechEngine'
 
+const TAB_ID =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+let channel: BroadcastChannel | null = null
+let lastEngine: TtsEngine | null = null
+
+function getChannel(): BroadcastChannel | null {
+  if (typeof BroadcastChannel === 'undefined') return null
+  if (channel) return channel
+  channel = new BroadcastChannel('bc-tts-player')
+  channel.addEventListener('message', (ev) => {
+    const data = ev.data as { type?: string; tabId?: string } | null
+    if (!data) return
+    if (data.type === 'opening' && data.tabId !== TAB_ID && lastEngine) {
+      lastEngine.pause()
+    }
+  })
+  return channel
+}
+
+function broadcastOpen(): void {
+  getChannel()?.postMessage({ type: 'opening', tabId: TAB_ID })
+}
+
 export interface LoadArgs {
   bookId: number
   contentType: AudioContentType
@@ -66,6 +92,8 @@ export function useTtsEngine(): UseTtsEngineApi {
       store.stale = lookup.stale ?? null
       store.activeEngineReason =
         engine.kind === 'mp3' ? 'pregenerated' : 'fallback_no_pregen'
+      lastEngine = engine
+      broadcastOpen()
       return Object.assign(engine, { lookup })
     },
   }
