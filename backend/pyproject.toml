@@ -37,6 +37,7 @@ dependencies = [
     "python-multipart>=0.0.18",
     "apscheduler>=3.10.0",
     "pysbd>=0.3.4",
+    "mutagen>=1.47.0",
 ]
 
 [project.optional-dependencies]
@@ -58,8 +59,9 @@ testpaths = ["tests"]
 markers = [
     "integration_llm: tests that make real LLM API calls (slow, require Claude CLI)",
     "slow: tests that build artifacts or spin up venvs (~60s; opt in with -m slow)",
+    "kokoro: tests requiring the Kokoro-82M model (~80MB download + ffmpeg; opt in with -m kokoro)",
 ]
-addopts = "-m 'not slow'"
+addopts = "-m 'not slow and not kokoro'"
 
 [tool.ruff]
 target-version = "py312"
