@@ -88,6 +88,8 @@ class BookService:
         return book
 
     async def delete_book(self, book_id: int) -> None:
+        from app.db.repositories.audio_file_repo import AudioFileRepository
+        from app.db.repositories.audio_position_repo import AudioPositionRepository
         from app.services.tag_service import TagService
 
         book = await self.book_repo.get_by_id(book_id)
@@ -103,9 +105,22 @@ class BookService:
             await tag_service.remove_all_for_entity("section", sid)
         await tag_service.remove_all_for_entity("book", book_id)
 
+        # Audio cascade — files first, then positions (FR-26 / FR-26b).
+        data_dir = Path(self.config.data.directory)
+        audio_repo = AudioFileRepository(self.db, data_dir=data_dir)
+        position_repo = AudioPositionRepository(self.db)
+        audio_deleted = await audio_repo.delete_all_for_book(book_id)
+        positions_deleted = await position_repo.cleanup_for_book(book_id)
+
         await self.book_repo.delete(book)
         await self.db.commit()
-        logger.info("book_deleted", book_id=book_id, cascaded_sections=len(section_ids))
+        logger.info(
+            "book_deleted",
+            book_id=book_id,
+            cascaded_sections=len(section_ids),
+            audio_files_unlinked=audio_deleted,
+            audio_positions_deleted=positions_deleted,
+        )
 
     async def list_books(
         self, author: str | None = None, status: str | None = None, recent: bool = False
@@ -290,8 +305,19 @@ class BookService:
 
         await self.db.flush()
         await self._substitute_image_urls(existing.id)
+
+        # Audio reconciliation — drop AudioFile rows whose content_id no longer
+        # maps to a surviving section (FR-26a). The full lookup-stale path
+        # (source_hash mismatch) is handled by the audio service at lookup time.
+        from app.db.repositories.audio_file_repo import AudioFileRepository
+
+        existing_after = await self.book_repo.get_by_id(existing.id)
+        surviving_section_ids = {s.id for s in (existing_after.sections or [])}
+        audio_repo = AudioFileRepository(self.db, data_dir=Path(self.config.data.directory))
+        deleted = await audio_repo.delete_orphans(existing.id, surviving_section_ids)
+
         await self.db.commit()
-        logger.info("book_reimported", book_id=existing.id)
+        logger.info("book_reimported", book_id=existing.id, audio_orphans_deleted=deleted)
         return existing
 
     async def _substitute_image_urls(self, book_id: int) -> None:
