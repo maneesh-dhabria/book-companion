@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import ClassVar
 
+from app.exceptions import BookCompanionError
+
 
 @dataclass
 class SynthesisResult:
@@ -20,9 +22,6 @@ class VoiceInfo:
     name: str
     language: str
     gender: str | None = None
-
-
-from app.exceptions import BookCompanionError
 
 
 class TTSProviderError(BookCompanionError):

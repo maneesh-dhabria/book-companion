@@ -80,8 +80,7 @@ async def test_run_job_completes_with_per_unit_events(setup):
         events.append((name, data))
 
     units = [
-        (ContentType.SECTION_SUMMARY, s.id, f"Section {s.title} body. Here.")
-        for s in sections
+        (ContentType.SECTION_SUMMARY, s.id, f"Section {s.title} body. Here.") for s in sections
     ]
     await service.run_job(job=job, units=units, voice="af_sarah", on_event=collect)
 

@@ -74,9 +74,7 @@ async def svc(session_factory):
         )
         session.add(book)
         await session.flush()
-        section = BookSection(
-            book_id=book.id, title="Ch1", content_md="x", order_index=0
-        )
+        section = BookSection(book_id=book.id, title="Ch1", content_md="x", order_index=0)
         session.add(section)
         await session.commit()
         repo = AudioFileRepository(session, tmp_path)
@@ -159,9 +157,7 @@ async def test_lookup_returns_stale_on_sanitizer_version_bump(svc, monkeypatch):
         source_md="X is here.",
         job_id=None,
     )
-    monkeypatch.setattr(
-        "app.services.audio_gen_service.SANITIZER_VERSION", "1.1"
-    )
+    monkeypatch.setattr("app.services.audio_gen_service.SANITIZER_VERSION", "1.1")
     result = await service.lookup(
         book_id=book_id,
         content_type=ContentType.SECTION_SUMMARY,

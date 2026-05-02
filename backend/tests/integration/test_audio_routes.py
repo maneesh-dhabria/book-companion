@@ -197,9 +197,7 @@ async def test_lookup_pregen_false_for_unknown(app_with_data):
 @pytest.mark.asyncio
 async def test_serve_404_when_missing(app_with_data):
     ac, _, book_id, section_id, _ = app_with_data
-    r = await ac.get(
-        f"/api/v1/books/{book_id}/audio/section_summary/{section_id}.mp3"
-    )
+    r = await ac.get(f"/api/v1/books/{book_id}/audio/section_summary/{section_id}.mp3")
     assert r.status_code == 404
 
 
@@ -229,9 +227,7 @@ async def test_serve_returns_mp3_when_present(app_with_data, tmp_path):
             )
         )
         await s.commit()
-    r = await ac.get(
-        f"/api/v1/books/{book_id}/audio/section_summary/{section_id}.mp3"
-    )
+    r = await ac.get(f"/api/v1/books/{book_id}/audio/section_summary/{section_id}.mp3")
     assert r.status_code == 200
     assert r.headers["content-type"] == "audio/mpeg"
     assert r.headers["cache-control"] == "public, max-age=86400"
@@ -270,9 +266,7 @@ async def test_delete_all_audio(app_with_data, tmp_path):
 @pytest.mark.asyncio
 async def test_delete_one_404(app_with_data):
     ac, _, book_id, section_id, _ = app_with_data
-    r = await ac.delete(
-        f"/api/v1/books/{book_id}/audio/section_summary/{section_id}"
-    )
+    r = await ac.delete(f"/api/v1/books/{book_id}/audio/section_summary/{section_id}")
     assert r.status_code == 404
 
 

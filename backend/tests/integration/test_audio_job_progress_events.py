@@ -71,8 +71,7 @@ async def test_every_event_has_last_event_at(setup):
         events.append((name, data))
 
     units = [
-        (ContentType.SECTION_SUMMARY, s.id, "Body text here. Two sentences.")
-        for s in sections
+        (ContentType.SECTION_SUMMARY, s.id, "Body text here. Two sentences.") for s in sections
     ]
     await service.run_job(job=job, units=units, voice="af_sarah", on_event=collect)
     for name, data in events:
@@ -88,10 +87,7 @@ async def test_last_event_at_monotonic(setup):
     async def collect(name, data):
         events.append((name, data))
 
-    units = [
-        (ContentType.SECTION_SUMMARY, s.id, "Hi there. More.")
-        for s in sections
-    ]
+    units = [(ContentType.SECTION_SUMMARY, s.id, "Hi there. More.") for s in sections]
     await service.run_job(job=job, units=units, voice="af_sarah", on_event=collect)
     timestamps = [d["last_event_at"] for _, d in events]
     assert timestamps == sorted(timestamps)
@@ -105,10 +101,7 @@ async def test_progress_dict_shape(setup):
     async def collect(name, data):
         events.append((name, data))
 
-    units = [
-        (ContentType.SECTION_SUMMARY, s.id, "Hello. World.")
-        for s in sections
-    ]
+    units = [(ContentType.SECTION_SUMMARY, s.id, "Hello. World.") for s in sections]
     await service.run_job(job=job, units=units, voice="af_sarah", on_event=collect)
     assert set(job.progress.keys()) >= {
         "completed",

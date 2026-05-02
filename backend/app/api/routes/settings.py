@@ -104,9 +104,6 @@ async def get_tts_status(settings: Settings = Depends(get_settings)):
     if settings.tts.engine != "kokoro":
         return {"status": "n/a"}
 
-    model_dir = settings.data.directory / "tts_model" if hasattr(
-        settings.data.directory, "__truediv__"
-    ) else None
     from pathlib import Path as _Path
 
     md = _Path(settings.data.directory) / "tts_model"

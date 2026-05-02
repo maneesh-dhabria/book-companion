@@ -29,8 +29,7 @@ router = APIRouter()
 
 
 SAMPLE_VOICE_TEXT = (
-    "This is a quick sample of the selected voice for the Book Companion "
-    "audiobook feature."
+    "This is a quick sample of the selected voice for the Book Companion audiobook feature."
 )
 
 
@@ -51,20 +50,14 @@ class AudioSampleRequest(BaseModel):
 # --- Helpers -----------------------------------------------------------------
 
 
-async def _resolve_audio_units(
-    db: AsyncSession, *, book_id: int, body: AudioJobRequest
-) -> int:
+async def _resolve_audio_units(db: AsyncSession, *, book_id: int, body: AudioJobRequest) -> int:
     """Compute the unit count for a request — matches worker's resolver."""
     if body.scope == "book":
-        book = (
-            await db.execute(select(Book).where(Book.id == book_id))
-        ).scalar_one_or_none()
+        book = (await db.execute(select(Book).where(Book.id == book_id))).scalar_one_or_none()
         if book is None or book.default_summary_id is None:
             return 0
         return 1
-    rows = await db.execute(
-        select(BookSection.id).where(BookSection.book_id == book_id)
-    )
+    rows = await db.execute(select(BookSection.id).where(BookSection.book_id == book_id))
     ids = [r[0] for r in rows.all()]
     if body.section_ids:
         ids = [i for i in ids if i in set(body.section_ids)]
@@ -86,16 +79,12 @@ async def queue_audio_job(
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    book = (
-        await db.execute(select(Book).where(Book.id == book_id))
-    ).scalar_one_or_none()
+    book = (await db.execute(select(Book).where(Book.id == book_id))).scalar_one_or_none()
     if book is None:
         raise HTTPException(status_code=404, detail="Book not found")
 
     if body.engine == "web-speech":
-        raise HTTPException(
-            status_code=400, detail={"error": "web_speech_not_pregeneratable"}
-        )
+        raise HTTPException(status_code=400, detail={"error": "web_speech_not_pregeneratable"})
     if shutil.which("ffmpeg") is None:
         raise HTTPException(status_code=503, detail={"error": "ffmpeg_missing"})
 
@@ -120,9 +109,7 @@ async def queue_audio_job(
                 "error": "audio_job_in_progress",
                 "existing_job_id": existing.id,
                 "scope": (existing.request_params or {}).get("scope"),
-                "started_at": existing.created_at.isoformat()
-                if existing.created_at
-                else None,
+                "started_at": existing.created_at.isoformat() if existing.created_at else None,
             },
         )
 
@@ -150,9 +137,7 @@ async def queue_audio_job(
 
     event_bus = getattr(request.app.state, "event_bus", None)
     if event_bus is not None:
-        await event_bus.publish(
-            str(job.id), "job_queued", {"job_id": job.id, "step": "audio"}
-        )
+        await event_bus.publish(str(job.id), "job_queued", {"job_id": job.id, "step": "audio"})
 
     return {"job_id": job.id, "scope": body.scope, "total_units": total_units}
 
@@ -166,12 +151,16 @@ async def get_audio_inventory(
     db: AsyncSession = Depends(get_db),
 ):
     rows = (
-        await db.execute(
-            select(AudioFile)
-            .where(AudioFile.book_id == book_id)
-            .order_by(AudioFile.content_type, AudioFile.content_id)
+        (
+            await db.execute(
+                select(AudioFile)
+                .where(AudioFile.book_id == book_id)
+                .order_by(AudioFile.content_type, AudioFile.content_id)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     files = [
         {
             "id": r.id,
@@ -192,10 +181,10 @@ async def get_audio_inventory(
         for r in rows
     ]
     total_sections = (
-        await db.execute(
-            select(BookSection.id).where(BookSection.book_id == book_id)
-        )
-    ).scalars().all()
+        (await db.execute(select(BookSection.id).where(BookSection.book_id == book_id)))
+        .scalars()
+        .all()
+    )
     return {
         "book_id": book_id,
         "files": files,
@@ -228,9 +217,7 @@ async def audio_lookup(
     try:
         ct = ContentType(content_type)
     except ValueError as e:
-        raise HTTPException(
-            status_code=400, detail=f"unknown content_type {content_type}"
-        ) from e
+        raise HTTPException(status_code=400, detail=f"unknown content_type {content_type}") from e
 
     voice = voice or settings.tts.voice or "af_sarah"
 
@@ -390,9 +377,7 @@ async def delete_all_audio(
 # --- B12: DELETE per-row -----------------------------------------------------
 
 
-@router.delete(
-    "/api/v1/books/{book_id}/audio/{content_type}/{content_id}", status_code=204
-)
+@router.delete("/api/v1/books/{book_id}/audio/{content_type}/{content_id}", status_code=204)
 async def delete_one_audio(
     book_id: int,
     content_type: str,
@@ -418,10 +403,7 @@ async def delete_one_audio(
     ).scalar_one_or_none()
     if running is not None:
         progress = running.progress or {}
-        if (
-            progress.get("current_kind") == ct.value
-            and progress.get("current_ref") == content_id
-        ):
+        if progress.get("current_kind") == ct.value and progress.get("current_ref") == content_id:
             raise HTTPException(
                 status_code=409,
                 detail="Wait or cancel job before deleting an in-flight unit",
@@ -430,9 +412,7 @@ async def delete_one_audio(
     from app.db.repositories.audio_file_repo import AudioFileRepository
 
     repo = AudioFileRepository(db, _data_dir(settings))
-    n = await repo.delete_one(
-        book_id=book_id, content_type=ct, content_id=content_id, voice=voice
-    )
+    n = await repo.delete_one(book_id=book_id, content_type=ct, content_id=content_id, voice=voice)
     await db.commit()
     if n == 0:
         raise HTTPException(status_code=404, detail="audio file not found")

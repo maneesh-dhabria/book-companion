@@ -81,9 +81,7 @@ class JobQueueWorker:
             except Exception:  # noqa: BLE001 — keep the loop alive on any error
                 log.exception("queue_worker_tick_failed")
             try:
-                await asyncio.wait_for(
-                    self._stopping.wait(), timeout=self._poll_interval
-                )
+                await asyncio.wait_for(self._stopping.wait(), timeout=self._poll_interval)
             except TimeoutError:
                 pass
 
@@ -98,9 +96,7 @@ class JobQueueWorker:
             return False
         async with self._session_factory() as session:
             job_row = (
-                await session.execute(
-                    select(ProcessingJob).where(ProcessingJob.id == promoted_id)
-                )
+                await session.execute(select(ProcessingJob).where(ProcessingJob.id == promoted_id))
             ).scalar_one_or_none()
             if job_row is None:
                 return False
@@ -162,9 +158,7 @@ class JobQueueWorker:
                 {
                     "job_id": job.id,
                     "book_id": job.book_id,
-                    "last_event_at": (
-                        job.last_event_at.isoformat() if job.last_event_at else None
-                    ),
+                    "last_event_at": (job.last_event_at.isoformat() if job.last_event_at else None),
                 },
             )
         if job.step == ProcessingStep.AUDIO:
@@ -185,7 +179,6 @@ class JobQueueWorker:
         ``section_ids`` against the live BookSection / Summary tables.
         """
         from app.config import Settings as _Settings
-        from app.db.models import ContentType
         from app.db.repositories.audio_file_repo import AudioFileRepository
         from app.db.repositories.section_repo import SectionRepository
         from app.db.repositories.summary_repo import SummaryRepository
@@ -200,9 +193,7 @@ class JobQueueWorker:
 
         async with self._session_factory() as bg_session:
             bg_job = (
-                await bg_session.execute(
-                    select(ProcessingJob).where(ProcessingJob.id == job_id)
-                )
+                await bg_session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
             ).scalar_one_or_none()
             if bg_job is None:
                 log.warning("audio_worker_run_missing_job", job_id=job_id)
@@ -215,16 +206,10 @@ class JobQueueWorker:
                 self._active_provider = provider
                 self._active_job_id = job_id
 
-                section_repo = SectionRepository(bg_session)
-                summary_repo = SummaryRepository(bg_session)
-                audio_repo = AudioFileRepository(
-                    bg_session, settings.data.directory / "audio_data"
-                    if hasattr(settings.data.directory, "__truediv__")
-                    else settings.data.directory
-                )
-                # Reuse the configured data dir from settings for atomic writes
                 from pathlib import Path as _Path
 
+                section_repo = SectionRepository(bg_session)
+                summary_repo = SummaryRepository(bg_session)
                 data_dir = _Path(settings.data.directory)
                 audio_repo = AudioFileRepository(bg_session, data_dir)
                 service = AudioGenService(
@@ -235,17 +220,19 @@ class JobQueueWorker:
                 )
 
                 units = await self._resolve_audio_units(
-                    bg_session, section_repo, summary_repo,
-                    book_id=book_id, scope=scope, explicit_ids=explicit_ids,
+                    bg_session,
+                    section_repo,
+                    summary_repo,
+                    book_id=book_id,
+                    scope=scope,
+                    explicit_ids=explicit_ids,
                 )
 
                 async def emit(name: str, data: dict[str, Any]) -> None:
                     if event_bus is not None:
                         await event_bus.publish(str(job_id), name, data)
 
-                await service.run_job(
-                    job=bg_job, units=units, voice=voice, on_event=emit
-                )
+                await service.run_job(job=bg_job, units=units, voice=voice, on_event=emit)
                 if event_bus is not None:
                     await event_bus.close(str(job_id))
             except Exception as e:  # noqa: BLE001
@@ -338,9 +325,7 @@ class JobQueueWorker:
 
         async with self._session_factory() as bg_session:
             bg_job = (
-                await bg_session.execute(
-                    select(ProcessingJob).where(ProcessingJob.id == job_id)
-                )
+                await bg_session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
             ).scalar_one_or_none()
             if bg_job is None:
                 log.warning("queue_worker_run_missing_job", job_id=job_id)
@@ -365,9 +350,7 @@ class JobQueueWorker:
                 self._active_job_id = job_id
 
                 captioner = (
-                    ImageCaptioner(llm_provider=llm)
-                    if settings.images.captioning_enabled
-                    else None
+                    ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
                 )
                 summarizer = SummarizerService(
                     db=bg_session, llm=llm, config=settings, captioner=captioner
@@ -427,15 +410,13 @@ class JobQueueWorker:
                 if failed_count > 0 and completed_count == 0:
                     bg_job.status = ProcessingJobStatus.FAILED
                     bg_job.error_message = (
-                        f"All {failed_count} sections failed to summarize. "
-                        f"Check logs for details."
+                        f"All {failed_count} sections failed to summarize. Check logs for details."
                     )
                 else:
                     bg_job.status = ProcessingJobStatus.COMPLETED
                     if failed_count > 0:
                         bg_job.error_message = (
-                            f"{completed_count} sections succeeded, "
-                            f"{failed_count} failed."
+                            f"{completed_count} sections succeeded, {failed_count} failed."
                         )
                 await bg_session.commit()
 
