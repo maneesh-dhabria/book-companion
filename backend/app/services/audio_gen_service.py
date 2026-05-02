@@ -15,7 +15,12 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AudioFile, ContentType
+from app.db.models import (
+    AudioFile,
+    ContentType,
+    ProcessingJob,
+    ProcessingJobStatus,
+)
 from app.db.repositories.audio_file_repo import AudioFileRepository
 from app.services.tts.id3_tagger import tag_mp3
 from app.services.tts.markdown_to_speech import (
@@ -23,7 +28,11 @@ from app.services.tts.markdown_to_speech import (
     EmptySanitizedTextError,
     sanitize,
 )
-from app.services.tts.provider import TTSProvider
+from app.services.tts.provider import (
+    FfmpegEncodeError,
+    KokoroModelDownloadError,
+    TTSProvider,
+)
 
 
 @dataclass
@@ -130,6 +139,158 @@ class AudioGenService:
             sanitizer_version=SANITIZER_VERSION,
             job_id=job_id,
         )
+
+    async def run_job(
+        self,
+        *,
+        job: ProcessingJob,
+        units: list[tuple[ContentType, int, str]],
+        voice: str,
+        on_event,
+    ) -> None:
+        """Execute an AUDIO job: synthesize each unit, persist, emit per-unit SSE.
+
+        ``units`` is a list of ``(content_type, content_id, source_md)`` tuples
+        precomputed by the caller (route or worker). ``on_event`` is an async
+        callable ``(event_name, data) -> None``.
+        """
+        import time as _time
+
+        total = len(units)
+        progress = {
+            "completed": 0,
+            "total": total,
+            "current_kind": None,
+            "current_ref": None,
+            "last_event_at": _time.time_ns(),
+            "already_stale": 0,
+        }
+        job.progress = progress
+        await on_event(
+            "processing_started",
+            {"book_id": job.book_id, "job_id": job.id, "total": total},
+        )
+
+        for i, (kind, ref, source_md) in enumerate(units):
+            progress["current_kind"] = kind.value
+            progress["current_ref"] = ref
+            progress["last_event_at"] = _time.time_ns()
+            self._flag_progress(job)
+            await on_event(
+                "section_audio_started",
+                {
+                    "job_id": job.id,
+                    "kind": kind.value,
+                    "ref": ref,
+                    "index": i,
+                    "total": total,
+                    "last_event_at": progress["last_event_at"],
+                },
+            )
+            try:
+                af = await self.generate_unit(
+                    book_id=job.book_id,
+                    content_type=kind,
+                    content_id=ref,
+                    voice=voice,
+                    source_md=source_md,
+                    job_id=job.id,
+                    track_n=i + 1,
+                    track_total=total,
+                )
+                progress["completed"] += 1
+                progress["last_event_at"] = _time.time_ns()
+                self._flag_progress(job)
+                await on_event(
+                    "section_audio_completed",
+                    {
+                        "job_id": job.id,
+                        "kind": kind.value,
+                        "ref": ref,
+                        "index": i,
+                        "total": total,
+                        "duration_seconds": af.duration_seconds,
+                        "file_size_bytes": af.file_size_bytes,
+                        "last_event_at": progress["last_event_at"],
+                    },
+                )
+            except EmptySanitizedTextError:
+                progress["last_event_at"] = _time.time_ns()
+                self._flag_progress(job)
+                await on_event(
+                    "section_audio_failed",
+                    {
+                        "job_id": job.id,
+                        "kind": kind.value,
+                        "ref": ref,
+                        "index": i,
+                        "total": total,
+                        "reason": "empty_after_sanitize",
+                        "last_event_at": progress["last_event_at"],
+                    },
+                )
+            except FfmpegEncodeError as e:
+                progress["last_event_at"] = _time.time_ns()
+                self._flag_progress(job)
+                await on_event(
+                    "section_audio_failed",
+                    {
+                        "job_id": job.id,
+                        "kind": kind.value,
+                        "ref": ref,
+                        "index": i,
+                        "total": total,
+                        "reason": "encode_failed",
+                        "last_event_at": progress["last_event_at"],
+                    },
+                )
+                tail = (e.stderr_tail or "")[-2048:]
+                job.error_message = ((job.error_message or "") + tail)[-2048:]
+            except KokoroModelDownloadError:
+                progress["last_event_at"] = _time.time_ns()
+                self._flag_progress(job)
+                await on_event(
+                    "section_audio_failed",
+                    {
+                        "job_id": job.id,
+                        "kind": kind.value,
+                        "ref": ref,
+                        "index": i,
+                        "total": total,
+                        "reason": "model_download_failed",
+                        "last_event_at": progress["last_event_at"],
+                    },
+                )
+                job.status = ProcessingJobStatus.FAILED
+                await self.session.commit()
+                raise
+            await self.session.commit()
+
+        if progress["completed"] == 0 and total > 0:
+            job.status = ProcessingJobStatus.FAILED
+            job.error_message = (job.error_message or "all units failed")[-2048:]
+        else:
+            job.status = ProcessingJobStatus.COMPLETED
+        progress["last_event_at"] = _time.time_ns()
+        self._flag_progress(job)
+        await self.session.commit()
+        await on_event(
+            "processing_completed",
+            {
+                "book_id": job.book_id,
+                "job_id": job.id,
+                "completed": progress["completed"],
+                "total": total,
+                "already_stale": progress["already_stale"],
+                "last_event_at": progress["last_event_at"],
+            },
+        )
+
+    @staticmethod
+    def _flag_progress(job: ProcessingJob) -> None:
+        from sqlalchemy.orm.attributes import flag_modified
+
+        flag_modified(job, "progress")
 
     async def lookup(
         self,
