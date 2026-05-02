@@ -253,6 +253,8 @@ function handleAskAi() {
                 :content="reader.currentSection.default_summary.summary_md"
                 :has-prev="reader.hasPrev"
                 :has-next="reader.hasNext"
+                :annotations="inlineAnnotations"
+                :highlights-inline="settings.highlightsVisible"
                 @navigate="reader.navigateSection($event)"
               >
                 <template #footer>
