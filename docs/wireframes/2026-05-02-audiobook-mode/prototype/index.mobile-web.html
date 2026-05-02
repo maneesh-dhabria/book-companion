@@ -291,9 +291,300 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="./assets/design-tokens.js"></script>
   <script src="./assets/runtime.js"></script>
-  <script type="text/babel" src="./assets/components.js" data-presets="react"></script>
+  <script type="text/babel" data-presets="react">
+(() => {
+/* Book Companion audiobook prototype — shared atoms.
+ * JSX compiled at runtime by Babel-standalone. Token values come from
+ * window.__designTokens; structural styles come from prototype.css +
+ * design-overlay.css.
+ */
+
+const Button = ({ variant = "primary", onClick, children, disabled, loading, type = "button", ariaLabel, size = "md", className = "" }) => (
+  <button
+    type={type}
+    className={`btn btn--${variant} btn--${size} ${loading ? "btn--loading" : ""} ${className}`}
+    onClick={onClick}
+    disabled={disabled || loading}
+    aria-label={ariaLabel}
+  >
+    {loading ? <Spinner size="sm" /> : children}
+  </button>
+);
+
+const IconButton = ({ icon, onClick, ariaLabel, variant = "ghost", disabled, className = "" }) => (
+  <button
+    type="button"
+    className={`btn btn--${variant} btn--icon ${className}`}
+    onClick={onClick}
+    aria-label={ariaLabel}
+    disabled={disabled}
+  >
+    <span aria-hidden="true">{icon}</span>
+  </button>
+);
+
+const Input = ({ label, value, onChange, error, type = "text", placeholder, required, name, autoComplete, hint }) => (
+  <label className={`field ${error ? "field--error" : ""}`}>
+    {label && <span className="field__label">{label}{required && <span className="field__required" aria-label="required"> *</span>}</span>}
+    <input
+      className="field__input"
+      type={type}
+      name={name}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      autoComplete={autoComplete}
+      aria-invalid={!!error}
+      aria-describedby={error ? `${name}-error` : hint ? `${name}-hint` : undefined}
+    />
+    {hint && !error && <span id={`${name}-hint`} className="field__hint">{hint}</span>}
+    {error && <span id={`${name}-error`} className="field__error" role="alert">{error}</span>}
+  </label>
+);
+
+const Modal = ({ open, onClose, title, children, footer, size = "md" }) => {
+  const dialogRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    // Focus trap (simple): focus first focusable inside dialog
+    setTimeout(() => {
+      const f = dialogRef.current?.querySelector("button, input, select, textarea, [tabindex]:not([tabindex='-1'])");
+      f?.focus();
+    }, 0);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className={`modal modal--${size}`}
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
+        <header className="modal__header">
+          <h2 id="modal-title" className="modal__title">{title}</h2>
+          <button className="modal__close" onClick={onClose} aria-label="Close">×</button>
+        </header>
+        <div className="modal__body">{children}</div>
+        {footer && <footer className="modal__footer">{footer}</footer>}
+      </div>
+    </div>
+  );
+};
+
+const Toast = ({ type = "info", message, onDismiss }) => (
+  <div className={`toast toast--${type}`} role="status">
+    <span className="toast__message">{message}</span>
+    <button className="toast__dismiss" onClick={onDismiss} aria-label="Dismiss">×</button>
+  </div>
+);
+
+const Card = ({ header, footer, children, onClick, className = "", ariaLabel }) => (
+  <div
+    className={`card ${onClick ? "card--clickable" : ""} ${className}`}
+    onClick={onClick}
+    onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+    role={onClick ? "button" : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    aria-label={ariaLabel}
+  >
+    {header && <header className="card__header">{header}</header>}
+    <div className="card__body">{children}</div>
+    {footer && <footer className="card__footer">{footer}</footer>}
+  </div>
+);
+
+const Table = ({ columns, rows, onRowClick, loading, emptyState, ariaLabel }) => {
+  if (loading) return <TableSkeleton rows={5} columns={columns.length} />;
+  if (!rows?.length) return emptyState || <EmptyState title="No records" />;
+  return (
+    <table className="table" aria-label={ariaLabel}>
+      <thead>
+        <tr>{columns.map((c) => <th key={c.key} scope="col" style={c.width ? { width: c.width } : undefined}>{c.label}</th>)}</tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr
+            key={row.id}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+            tabIndex={onRowClick ? 0 : -1}
+          >
+            {columns.map((c) => <td key={c.key}>{c.render ? c.render(row) : row[c.key]}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+const TableSkeleton = ({ rows, columns }) => (
+  <table className="table table--loading">
+    <tbody>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i}>{Array.from({ length: columns }).map((_, j) => (
+          <td key={j}><span className="skeleton skeleton--text" /></td>
+        ))}</tr>
+      ))}
+    </tbody>
+  </table>
+);
+
+const EmptyState = ({ icon = "📭", title, description, cta }) => (
+  <div className="empty-state">
+    <div className="empty-state__icon" aria-hidden="true" style={{ fontSize: 32 }}>{icon}</div>
+    <h3 className="empty-state__title">{title}</h3>
+    {description && <p className="empty-state__description">{description}</p>}
+    {cta}
+  </div>
+);
+
+const Spinner = ({ size = "md", label = "Loading" }) => (
+  <span className={`spinner spinner--${size}`} role="status" aria-label={label} />
+);
+
+const Badge = ({ tone = "neutral", children }) => (
+  <span className={`badge badge--${tone}`}>{children}</span>
+);
+
+const Avatar = ({ name, src, size = "md" }) => {
+  const initials = (name || "?").split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  return src
+    ? <img className={`avatar avatar--${size}`} src={src} alt={name} />
+    : <span className={`avatar avatar--${size} avatar--initials`} aria-label={name}>{initials}</span>;
+};
+
+// ─── Book-Companion-specific atoms ──────────────────────────────────
+
+const BookCover = ({ initials, size = "md" }) => (
+  <span className={`bc-cover bc-cover--${size}`} aria-hidden="true">{initials}</span>
+);
+
+const EngineChip = ({ engine, voice }) => {
+  const isKokoro = engine === "kokoro";
+  return (
+    <span className={`bc-engine-chip ${isKokoro ? "" : "bc-engine-chip--web"}`} title={`Engine: ${engine}, voice: ${voice || ""}`}>
+      <span aria-hidden="true">{isKokoro ? "◆" : "◇"}</span>
+      <span>{isKokoro ? "Kokoro" : "Web Speech"}{voice ? ` · ${voice}` : ""}</span>
+    </span>
+  );
+};
+
+const CoverageBar = ({ done, total, ariaLabel }) => {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div className="bc-coverage-bar" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label={ariaLabel}>
+      <span className="bc-coverage-bar__fill" style={{ width: `${pct}%` }} />
+    </div>
+  );
+};
+
+const Banner = ({ tone = "warning", icon, title, body, action, onDismiss }) => (
+  <div className={`bc-banner ${tone === "info" ? "bc-banner--info" : ""}`} role={tone === "info" ? "status" : "alert"}>
+    <span className="bc-banner__icon" aria-hidden="true">{icon || (tone === "info" ? "ℹ" : "⚠")}</span>
+    <div className="bc-banner__body">
+      {title && <strong style={{ display: "block", marginBottom: 2 }}>{title}</strong>}
+      {body}
+    </div>
+    {action && <span className="bc-banner__action">{action}</span>}
+    {onDismiss && <button className="modal__close" onClick={onDismiss} aria-label="Dismiss" style={{ fontSize: 18 }}>×</button>}
+  </div>
+);
+
+const SpeedSelect = ({ value, onChange }) => (
+  <label className="bc-speed-select" title="Playback speed">
+    <span className="sr-only">Playback speed</span>
+    <select value={value} onChange={(e) => onChange(parseFloat(e.target.value))}>
+      {[0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
+        <option key={s} value={s}>{s}×</option>
+      ))}
+    </select>
+  </label>
+);
+
+const Playbar = ({ extraControls, onClose }) => {
+  const p = window.__proto.usePlayer();
+  const fmt = window.__proto.fmt;
+  if (!p.book_id) return null;
+  return (
+    <div className="bc-playbar" role="region" aria-label="Audio player">
+      <button
+        className="bc-playbar__play"
+        onClick={() => window.__proto.player.toggle()}
+        aria-label={p.is_playing ? "Pause" : "Play"}
+      >
+        <span aria-hidden="true">{p.is_playing ? "❚❚" : "▶"}</span>
+      </button>
+      <button className="bc-playbar__control" onClick={() => window.__proto.player.skipSentence(-1)} aria-label="Previous sentence">
+        <span aria-hidden="true">⏮</span>
+      </button>
+      <button className="bc-playbar__control" onClick={() => window.__proto.player.skipSentence(1)} aria-label="Next sentence">
+        <span aria-hidden="true">⏭</span>
+      </button>
+      <span className="bc-playbar__time">
+        {fmt.duration(p.elapsed_sec)} / {fmt.duration(p.duration_sec)}
+        {p.sentence_count > 0 && (
+          <span style={{ marginLeft: 8, color: "var(--color-text-muted)" }}>· sentence {p.sentence_index + 1} of {p.sentence_count}</span>
+        )}
+      </span>
+      <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <EngineChip engine={p.engine} voice={p.voice} />
+        <SpeedSelect value={p.speed} onChange={(s) => window.__proto.player.setSpeed(s)} />
+        {extraControls}
+        <IconButton icon="✕" ariaLabel="Close player" onClick={() => { window.__proto.player.close(); onClose && onClose(); }} />
+      </span>
+    </div>
+  );
+};
+
+const KbdShortcutsModal = () => {
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    const h = () => setOpen(true);
+    window.addEventListener("proto:open-shortcuts", h);
+    return () => window.removeEventListener("proto:open-shortcuts", h);
+  }, []);
+  const sc = window.__designTokens?.interaction?.shortcuts || {};
+  return (
+    <Modal open={open} onClose={() => setOpen(false)} title="Keyboard shortcuts">
+      <table className="table">
+        <tbody>
+          {Object.entries(sc).map(([k, v]) => (
+            <tr key={k}><td><kbd>{k}</kbd></td><td>{v}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </Modal>
+  );
+};
+
+const GlobalToasts = () => {
+  const list = window.__proto.useToasts();
+  if (!list.length) return null;
+  return (
+    <div className="toast-container" role="region" aria-label="Notifications">
+      {list.map((t) => (
+        <Toast key={t.id} type={t.type} message={t.message} onDismiss={() => window.__proto.toast.dismiss(t.id)} />
+      ))}
+    </div>
+  );
+};
+
+window.__protoComponents = {
+  Button, IconButton, Input, Modal, Toast, Card, Table, TableSkeleton, EmptyState, Spinner, Badge, Avatar,
+  BookCover, EngineChip, CoverageBar, Banner, SpeedSelect, Playbar, KbdShortcutsModal, GlobalToasts,
+};
+/* New variants proposed: BookCover, EngineChip, CoverageBar, Banner, SpeedSelect, Playbar, KbdShortcutsModal — flagged in COMPONENTS.md "Components proposed by /prototype". */
+
+})();
+  </script>
 
   <script type="text/babel" data-presets="react">
+(() => {
     /* ────────────────────────────────────────────────────────────────
        Mobile-web prototype screens. Single screens registry per /prototype spec.
        ──────────────────────────────────────────────────────────────── */
@@ -368,41 +659,25 @@
             />
           )}
 
-          {filtered.map((b) => {
-            const pct = b.sections_count
-              ? Math.round((b.audio_sections_count / b.sections_count) * 100) : 0;
-            const tone = pct === 100 ? "success" : pct > 0 ? "info" : "neutral";
-            const label = pct === 100 ? "Full audio"
-              : pct > 0 ? `${pct}% audio` : "No audio";
-            return (
-              <div
-                key={b.id}
-                className="book-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/books/${b.id}/audio`)}
-                onKeyDown={(e) => { if (e.key === "Enter") navigate(`/books/${b.id}/audio`); }}
-              >
-                <BookCover initials={b.cover_initials} size="sm" />
-                <div className="book-card__body">
-                  <h3 className="book-card__title">{b.title}</h3>
-                  <p className="book-card__author">{b.author}</p>
-                  <CoverageBar
-                    done={b.audio_sections_count}
-                    total={b.sections_count}
-                    ariaLabel={`${pct}% audio coverage`}
-                  />
-                  <div className="book-card__meta">
-                    <Badge tone={tone}>{label}</Badge>
-                    {b.audio_total_min > 0 && (
-                      <span className="pill">{b.audio_total_min} min · {fmt.size(b.audio_size_mb)}</span>
-                    )}
-                    {b.has_stale_audio && <Badge tone="warning">Stale</Badge>}
-                  </div>
+          {filtered.map((b) => (
+            <div
+              key={b.id}
+              className="book-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/books/${b.id}/overview`)}
+              onKeyDown={(e) => { if (e.key === "Enter") navigate(`/books/${b.id}/overview`); }}
+            >
+              <BookCover initials={b.cover_initials} size="sm" />
+              <div className="book-card__body">
+                <h3 className="book-card__title">{b.title}</h3>
+                <p className="book-card__author">{b.author}</p>
+                <div className="book-card__meta">
+                  <span className="pill">{b.sections_count} sections</span>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       );
     };
@@ -798,6 +1073,39 @@
     window.__screens["book-summary-player"] = BookSummaryPlayerScreen;
 
     // ─────────────────────────────────────────────────────────────────
+    // BOOK OVERVIEW (book metadata only — no audio)
+    // ─────────────────────────────────────────────────────────────────
+    const OverviewScreen = ({ params }) => {
+      const books = window.__proto.useStore("books");
+      const annotations = window.__proto.useStore("annotations");
+      const book = books.find((b) => b.id === params.id);
+      if (!book) return <div className="screen"><EmptyState title="Book not found" /></div>;
+      const bookAnns = annotations.filter((a) => a.book_id === book.id);
+      return (
+        <>
+          <BookHeader book={book} activeTab="overview" />
+          <div className="screen">
+            <Card>
+              <div style={{ padding: 4 }}>
+                <h3 style={{ marginTop: 0, fontSize: 15 }}>About</h3>
+                <p className="small muted" style={{ marginBottom: 14, lineHeight: 1.55 }}>
+                  Open the <a href={`#/books/${book.id}/summary`}>book-level summary</a> to read or listen,
+                  browse <a href={`#/books/${book.id}/sections`}>sections</a> for chapter-by-chapter detail,
+                  or jump to <a href={`#/books/${book.id}/audio`}>Audio</a> to generate or manage spoken versions.
+                </p>
+                <div className="row-tight" style={{ flexWrap: "wrap", gap: 16, fontSize: 13 }}>
+                  <span><strong>{book.sections_count}</strong> sections</span>
+                  <span><strong>{bookAnns.length}</strong> annotations</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </>
+      );
+    };
+    window.__screens["overview"] = OverviewScreen;
+
+    // ─────────────────────────────────────────────────────────────────
     // BOOK DETAIL — Audio tab (file 03)
     // ─────────────────────────────────────────────────────────────────
     const BOOK_TABS = [
@@ -837,7 +1145,8 @@
                 else if (t.key === "sections") navigate(`/books/${book.id}/sections`);
                 else if (t.key === "annotations") navigate(`/books/${book.id}/annotations`);
                 else if (t.key === "summary") navigate(`/books/${book.id}/summary`);
-                else navigate(`/books/${book.id}/audio`);
+                else if (t.key === "overview") navigate(`/books/${book.id}/overview`);
+                else navigate(`/books/${book.id}/overview`);
               }}
             >{t.label}</button>
           ))}
@@ -1599,6 +1908,8 @@
       if (path === "/" || path === "") return { name: "library", params: {} };
       let m = path.match(/^\/books\/([^\/]+)\/section\/([^\/]+)$/);
       if (m) return { name: "reader-section", params: { id: m[1], sec: m[2] } };
+      m = path.match(/^\/books\/([^\/]+)\/overview$/);
+      if (m) return { name: "overview", params: { id: m[1] } };
       m = path.match(/^\/books\/([^\/]+)\/summary$/);
       if (m) return { name: "book-summary-player", params: { id: m[1] } };
       m = path.match(/^\/books\/([^\/]+)\/audio$/);
@@ -1758,6 +2069,7 @@
       const root = ReactDOM.createRoot(document.getElementById("app-root"));
       root.render(<App />);
     })();
+})();
   </script>
 
 </body>

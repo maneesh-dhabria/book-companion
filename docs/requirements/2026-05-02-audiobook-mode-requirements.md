@@ -278,10 +278,10 @@ MSF analysis: `docs/wireframes/2026-05-02-audiobook-mode/msf-findings.md` (canon
 
 ## Prototype
 
-Generated: 2026-05-02
+Generated: 2026-05-02 (post-feedback revision applied same day)
 Folder: `docs/wireframes/2026-05-02-audiobook-mode/prototype/`
 Index: `docs/wireframes/2026-05-02-audiobook-mode/prototype/index.html`
-Devices: desktop-web (1366 lines), mobile-web (1764 lines)
+Devices: desktop-web + mobile-web (single HTML file per device, ~1700 / ~2080 lines)
 Mock data: 6 entities (books, sections, voices, annotations, audio_jobs, settings) — domain-real (Thinking Fast and Slow, Deep Work, Atomic Habits, Sapiens, Art of War). All inlined as `<script type="application/json">` blocks for `file://` portability.
 Findings: `docs/wireframes/2026-05-02-audiobook-mode/prototype/prototype-findings.md` (24 total — 1 high, 9 medium, 14 low)
 Friction pass: `docs/wireframes/2026-05-02-audiobook-mode/prototype/interactive-friction.md` (4 journeys, no threshold breaches)
@@ -289,6 +289,8 @@ Design artifacts bootstrapped: `frontend/DESIGN.md` and `frontend/COMPONENTS.md`
 
 | # | Screen | Devices | Route | File |
 |---|--------|---------|-------|------|
+| — | Library | desktop, mobile | `#/` | linked from `index.<device>.html` |
+| — | Book detail · Overview tab (book metadata only — no audio) | desktop, mobile | `#/books/:id/overview` | linked from `index.<device>.html` |
 | 01 | Reader · Section player | desktop, mobile | `#/books/:id/section/:sec` | linked from `index.<device>.html` |
 | 02 | Book summary player | desktop, mobile | `#/books/:id/summary` | linked from `index.<device>.html` |
 | 03 | Book detail · Audio tab | desktop, mobile | `#/books/:id/audio` | linked from `index.<device>.html` |
@@ -299,17 +301,27 @@ Design artifacts bootstrapped: `frontend/DESIGN.md` and `frontend/COMPONENTS.md`
 
 ### Prototype-driven changes (apply at /spec)
 
-These were applied to the prototype during Phase 6/8 and must propagate to the spec/build:
+These were applied to the prototype during Phase 6/8 and a follow-up user-feedback pass; they must propagate to the spec/build:
 
 - **DESIGN.md anti-pattern hardened**: status pills (e.g. "running") and info banners must use the indigo ramp or neutral grey — not a separate blue palette. Prevents tonal collision with the EngineChip. Now in `frontend/DESIGN.md` `## Anti-patterns`.
 - **Sentence highlight binds to `player.sentence_index`** in both reader and book-summary screens — the "karaoke effect" must be live, not a static index.
 - **Resume affordance shows on default load** when a section's audio is complete (per `x-interaction.audio.rememberPosition: true`). Don't gate it behind a separate "paused" state.
 - **No dead controls**: every control with an `aria-label` must have a real handler or be `aria-disabled`. The mobile prototype was wired with toasts where v1 functionality is out of scope; the spec should either implement or aria-disable each.
-- **New components introduced (in `frontend/COMPONENTS.md` "Components proposed by /prototype")**: `EngineChip`, `CoverageBar`, `Playbar`, `Banner`, `BookCover`, `SpeedSelect`, `KbdShortcutsModal`. /spec must include shape + variant decisions.
+- **New components introduced (in `frontend/COMPONENTS.md` "Components proposed by /prototype")**: `EngineChip`, `Playbar`, `Banner`, `BookCover`, `SpeedSelect`, `KbdShortcutsModal`. /spec must include shape + variant decisions. (`CoverageBar` was proposed initially but dropped from the library card per the change below — keep it available only if a spec consumer surfaces a real need.)
+- **Library card simplified — no audio coverage indicator**: rationale, per user: "you can always generate audio on the fly via Web Speech (D14), so a book-level coverage % on the library card adds no decision value and clutters the surface." The library card now shows cover, title, author, and section count only. Audio status, coverage bar, total minutes, file size, and the "stale" badge no longer appear on library cards. Audio-status detail lives on the Audio tab where it's actionable.
+- **Library navigation lands on Overview, not Audio**: clicking a book card (or a sidebar book entry) navigates to `#/books/:id/overview`. Audio is one tab among many — surfacing book metadata first matches the "this is a reader, not a dashboard" identity in DESIGN.md.
+- **Overview tab is its own screen, not an alias for Audio**: a dedicated `OverviewScreen` shows just book metadata + cross-tab links. Sections list and audio coverage no longer appear there. Keeps audio strictly to the Audio tab.
+- **Sidebar reads books from a parent prop, not its own `useStore` subscription**: avoids a render-timing race where the Sidebar's subscription registered after the initial mock-data seed and the books list never re-rendered. Relevant for any composable Vue/React shell that lazy-loads data: parent owns the subscription, children take it as a prop.
+- **Per-row delete icon uses 🗑 (trash), not ✕**: ✕ is reserved for "close" / "dismiss" semantics. Per-row destructive actions on the Audio and Sections tables use the trash glyph; book-level destructive remains a labeled `Delete all audio for this book` Button with type-to-confirm.
 
 ### Open question carried forward (OQ-10 confirmed)
 
 The prototype's annotations playlist assumes pre-generation recommended + Web Speech fallback at runtime. Confirm in /spec.
+
+### Minor lessons captured (`~/.pmos/learnings.md` `## /prototype`)
+
+- Babel-standalone runs every `<script type="text/babel">` block in the same shared global scope; top-level `const` declarations in `components.js` collide with destructuring `const { Button, Playbar, … } = window.__protoComponents` in screen blocks. Fix: wrap each Babel block in an IIFE so locals don't leak. Captured for future runs.
+- When DESIGN.md is missing but wireframes exist, do a targeted `/wireframes` handoff to bootstrap DESIGN.md + COMPONENTS.md only — don't regenerate wireframes. Saves ~30 min on a feature that's already drawn.
 
 ## Wireframes & UX Analysis Updates (2026-05-02)
 
