@@ -32,9 +32,20 @@ MAX_SANITIZED_CHARS = 50_000
 
 logger = structlog.get_logger(__name__)
 
-KOKORO_REPO = "onnx-community/Kokoro-82M-v1.0-ONNX"
 ONNX_FILENAME = "kokoro-v1.0.onnx"
 VOICES_FILENAME = "voices-v1.0.bin"
+
+# GitHub Releases is the canonical distribution channel for the bundled
+# kokoro-v1.0.onnx + voices-v1.0.bin pair (the upstream HF repo
+# `onnx-community/Kokoro-82M-v1.0-ONNX` ships split shards that don't match
+# what kokoro-onnx expects to load). Tag `model-files-v1.0`.
+_GITHUB_RELEASE = (
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+)
+KOKORO_MODEL_URLS: dict[str, str] = {
+    ONNX_FILENAME: f"{_GITHUB_RELEASE}/{ONNX_FILENAME}",
+    VOICES_FILENAME: f"{_GITHUB_RELEASE}/{VOICES_FILENAME}",
+}
 
 # Static voice catalog — matches the bundled voices-v1.0.bin shipped by
 # onnx-community/Kokoro-82M-v1.0-ONNX. Kept in sync with upstream at install
@@ -84,27 +95,48 @@ class KokoroProvider(TTSProvider):
 
     @staticmethod
     def _ensure_model_downloaded(model_dir: Path) -> None:
+        """Download Kokoro model + voices binary from GitHub Releases if missing.
+
+        Files come from the kokoro-onnx project's tagged release (~338 MB total).
+        Downloads stream to a `.partial` sibling and atomic-rename on success
+        so a half-finished file can't poison subsequent loads.
+        """
         model_dir.mkdir(parents=True, exist_ok=True)
         onnx_path = model_dir / ONNX_FILENAME
         voices_path = model_dir / VOICES_FILENAME
         if onnx_path.exists() and voices_path.exists():
             return
 
+        # Use httpx for streaming + redirect handling; already a project dep.
         try:
-            from huggingface_hub import hf_hub_download
-            from huggingface_hub.errors import HfHubHTTPError
-        except ImportError as e:
-            raise KokoroModelDownloadError(f"huggingface_hub missing: {e}") from e
+            import httpx
+        except ImportError as e:  # pragma: no cover — httpx is required
+            raise KokoroModelDownloadError(f"httpx missing: {e}") from e
 
-        try:
-            for fn in (ONNX_FILENAME, VOICES_FILENAME):
-                hf_hub_download(
-                    repo_id=KOKORO_REPO,
-                    filename=fn,
-                    local_dir=str(model_dir),
-                )
-        except (HfHubHTTPError, ConnectionError, OSError) as e:
-            raise KokoroModelDownloadError(f"download failed: {e}") from e
+        targets = [
+            (onnx_path, KOKORO_MODEL_URLS[ONNX_FILENAME]),
+            (voices_path, KOKORO_MODEL_URLS[VOICES_FILENAME]),
+        ]
+        for dest, url in targets:
+            if dest.exists():
+                continue
+            partial = dest.with_suffix(dest.suffix + ".partial")
+            try:
+                with httpx.stream(
+                    "GET", url, follow_redirects=True, timeout=300.0
+                ) as resp:
+                    resp.raise_for_status()
+                    with partial.open("wb") as fh:
+                        for chunk in resp.iter_bytes(chunk_size=1024 * 1024):
+                            fh.write(chunk)
+                partial.rename(dest)
+            except (httpx.HTTPError, OSError) as e:
+                # Best-effort cleanup so a transient failure doesn't leave
+                # zero-byte/half-written files that future loads accept.
+                partial.unlink(missing_ok=True)
+                raise KokoroModelDownloadError(
+                    f"download failed for {url}: {e}"
+                ) from e
 
     def _load(self) -> None:
         if self._kokoro is not None:

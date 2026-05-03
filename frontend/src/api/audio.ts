@@ -1,10 +1,18 @@
 import { apiClient } from '@/api/client'
 
+/**
+ * Persistable content types — the subset accepted by the backend's
+ * `ContentType` enum and audio_files / audio_positions CHECK constraints.
+ * Use this for any API call that persists audio (lookup, inventory, position).
+ *
+ * The wider runtime union `TtsContentType` (in `@/stores/ttsPlayer`) adds
+ * `'annotation'` for engine routing only — that never round-trips to the
+ * backend (single-annotation playback is Web Speech only and not persisted).
+ */
 export type AudioContentType =
   | 'section_summary'
   | 'book_summary'
-  | 'annotation'
-  | 'section'
+  | 'section_content'
   | 'annotations_playlist'
 
 export interface AudioLookupResponse {

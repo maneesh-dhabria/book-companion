@@ -111,6 +111,25 @@ async def init(
             raise typer.Exit(code=1)
         console.print("  [green]✓[/green] ffmpeg: found")
 
+        # espeak-ng provides the phonemizer data files Kokoro reads at synth
+        # time. Without it, the first synth raises a cryptic "phontab not
+        # found" deep in onnxruntime — gate it here with an actionable hint.
+        try:
+            import espeakng_loader  # type: ignore[import-not-found]  # noqa: F401
+
+            has_espeak = True
+        except ImportError:
+            has_espeak = shutil.which("espeak-ng") is not None
+        if not has_espeak:
+            console.print(
+                "  [red]✗[/red] espeak-ng not found.\n"
+                "    Install via [bold]brew install espeak-ng[/bold] (macOS) or "
+                "[bold]apt install espeak-ng[/bold] (Linux),\n"
+                "    then re-run [bold]bookcompanion init[/bold]."
+            )
+            raise typer.Exit(code=1)
+        console.print("  [green]✓[/green] espeak-ng: found")
+
         if tts_engine == "kokoro":
             console.print("Downloading Kokoro model (~330MB, one-time)...")
             try:

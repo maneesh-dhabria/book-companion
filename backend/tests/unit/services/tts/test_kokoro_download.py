@@ -1,52 +1,76 @@
-"""Mocked Kokoro model-download tests (no real HF call)."""
+"""Mocked Kokoro model-download tests (no real network call).
 
-import sys
-import types
+Phase F /verify pivot: KokoroProvider._ensure_model_downloaded now streams
+from GitHub Releases via httpx (was huggingface_hub). These tests pin that
+behavior — fake httpx.stream + assert each release URL is fetched.
+"""
+
+from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
 
-from app.services.tts.kokoro_provider import KokoroProvider
+from app.services.tts.kokoro_provider import (
+    KOKORO_MODEL_URLS,
+    ONNX_FILENAME,
+    VOICES_FILENAME,
+    KokoroProvider,
+)
 from app.services.tts.provider import KokoroModelDownloadError
 
 
-def _install_fake_hf(monkeypatch, *, raises: type[BaseException] | None = None):
-    errors_mod = types.ModuleType("huggingface_hub.errors")
+class _FakeResponse:
+    def __init__(self, payload: bytes):
+        self._payload = payload
 
-    class HfHubHTTPError(Exception):
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_bytes(self, chunk_size: int = 1024 * 1024):
+        yield self._payload
+
+
+def _install_fake_httpx(monkeypatch, *, raises: type[BaseException] | None = None):
+    """Patch ``app.services.tts.kokoro_provider``'s lazy ``httpx`` import."""
+    import sys
+    import types
+
+    seen_urls: list[str] = []
+
+    fake = types.ModuleType("httpx")
+
+    class HTTPError(Exception):
         pass
 
-    errors_mod.HfHubHTTPError = HfHubHTTPError
+    fake.HTTPError = HTTPError
 
-    hub_mod = types.ModuleType("huggingface_hub")
-    called = {}
-
-    def fake_dl(*, repo_id, filename, local_dir):
-        called[filename] = True
-        from pathlib import Path
-
-        p = Path(local_dir) / filename
-        p.parent.mkdir(parents=True, exist_ok=True)
+    @contextmanager
+    def fake_stream(method: str, url: str, **kwargs):
+        seen_urls.append(url)
         if raises is not None:
             raise raises("boom")
-        p.write_bytes(b"FAKE")
-        return str(p)
+        yield _FakeResponse(b"FAKE-BYTES")
 
-    hub_mod.hf_hub_download = fake_dl
-    hub_mod.errors = errors_mod
-    monkeypatch.setitem(sys.modules, "huggingface_hub", hub_mod)
-    monkeypatch.setitem(sys.modules, "huggingface_hub.errors", errors_mod)
-    return called, HfHubHTTPError
+    fake.stream = fake_stream
+    monkeypatch.setitem(sys.modules, "httpx", fake)
+    return seen_urls
 
 
 def test_download_succeeds(tmp_path, monkeypatch):
-    called, _ = _install_fake_hf(monkeypatch)
-    KokoroProvider._ensure_model_downloaded(tmp_path / "models" / "tts")
-    assert called.get("kokoro-v1.0.onnx") is True
-    assert called.get("voices-v1.0.bin") is True
+    seen = _install_fake_httpx(monkeypatch)
+    target = tmp_path / "models" / "tts"
+    KokoroProvider._ensure_model_downloaded(target)
+    assert (target / ONNX_FILENAME).exists()
+    assert (target / VOICES_FILENAME).exists()
+    # Both GitHub-Release URLs were fetched, in order.
+    assert KOKORO_MODEL_URLS[ONNX_FILENAME] in seen
+    assert KOKORO_MODEL_URLS[VOICES_FILENAME] in seen
 
 
 def test_download_connection_error_raises(tmp_path, monkeypatch):
-    _install_fake_hf(monkeypatch, raises=ConnectionError)
+    # ConnectionError is an OSError subclass — caught by the kokoro provider's
+    # (httpx.HTTPError, OSError) tuple and rewrapped as KokoroModelDownloadError.
+    _install_fake_httpx(monkeypatch, raises=ConnectionError)
     with pytest.raises(KokoroModelDownloadError):
         KokoroProvider._ensure_model_downloaded(tmp_path / "models" / "tts")
 
@@ -54,8 +78,30 @@ def test_download_connection_error_raises(tmp_path, monkeypatch):
 def test_download_skipped_when_files_present(tmp_path, monkeypatch):
     model_dir = tmp_path / "models" / "tts"
     model_dir.mkdir(parents=True)
-    (model_dir / "kokoro-v1.0.onnx").write_bytes(b"x")
-    (model_dir / "voices-v1.0.bin").write_bytes(b"y")
-    called, _ = _install_fake_hf(monkeypatch)
+    (model_dir / ONNX_FILENAME).write_bytes(b"x")
+    (model_dir / VOICES_FILENAME).write_bytes(b"y")
+    seen = _install_fake_httpx(monkeypatch)
     KokoroProvider._ensure_model_downloaded(model_dir)
-    assert called == {}
+    assert seen == []
+
+
+def test_partial_download_cleaned_up_on_error(tmp_path, monkeypatch):
+    """A failed download must not leave a poisoned `.partial` sibling that
+    later runs would mistake for a real model file."""
+    _install_fake_httpx(monkeypatch, raises=ConnectionError)
+    target = tmp_path / "models" / "tts"
+    with pytest.raises(KokoroModelDownloadError):
+        KokoroProvider._ensure_model_downloaded(target)
+    assert not (target / f"{ONNX_FILENAME}.partial").exists()
+    assert not (target / ONNX_FILENAME).exists()
+
+
+def test_resumes_when_only_one_file_present(tmp_path, monkeypatch):
+    """If onnx is on disk but voices isn't, only voices should be fetched."""
+    target = tmp_path / "models" / "tts"
+    target.mkdir(parents=True)
+    Path(target / ONNX_FILENAME).write_bytes(b"already-here")
+    seen = _install_fake_httpx(monkeypatch)
+    KokoroProvider._ensure_model_downloaded(target)
+    assert KOKORO_MODEL_URLS[VOICES_FILENAME] in seen
+    assert KOKORO_MODEL_URLS[ONNX_FILENAME] not in seen

@@ -4,8 +4,8 @@ import { computed, ref } from 'vue'
 export type TtsContentType =
   | 'section_summary'
   | 'book_summary'
+  | 'section_content'
   | 'annotation'
-  | 'section'
   | 'annotations_playlist'
 
 export type TtsStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended' | 'error'

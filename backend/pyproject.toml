@@ -38,11 +38,16 @@ dependencies = [
     "apscheduler>=3.10.0",
     "pysbd>=0.3.4",
     "mutagen>=1.47.0",
-    "kokoro-onnx>=0.5.0",
-    "soundfile>=0.13.1",
 ]
 
 [project.optional-dependencies]
+# pip install bookcompanion[kokoro] — local Kokoro TTS engine.
+# Adds ~90 transitive deps (numpy/scipy/onnxruntime/phonemizer chain) — keeps
+# the default install lean for Web Speech users.
+kokoro = [
+    "kokoro-onnx>=0.5.0",
+    "soundfile>=0.13.1",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
