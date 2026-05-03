@@ -1,3 +1,4 @@
+import { titleForContentType } from './mediaSessionTitles'
 import type {
   EndHandler,
   ErrorHandler,
@@ -41,12 +42,33 @@ export class WebSpeechEngine implements TtsEngine {
   private errorCb: ErrorHandler | null = null
   private endCb: EndHandler | null = null
   private terminated = false
+  private contentType?: string
+  private bookTitle?: string
+  private mediaSessionApplied = false
 
   constructor(opts: WebSpeechEngineOpts) {
     this.sentences = sliceSentences(opts.sanitizedText, opts.sentenceOffsetsChars)
     this.totalSentences = this.sentences.length
     this.rate = opts.rate ?? 1.0
     this.voiceName = opts.voice
+    this.contentType = opts.contentType
+    this.bookTitle = opts.bookTitle
+  }
+
+  private applyMediaSession(): void {
+    if (this.mediaSessionApplied) return
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    if (typeof MediaMetadata === 'undefined') return
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: titleForContentType(this.contentType),
+        artist: this.bookTitle ?? '',
+        album: 'Book Companion',
+      })
+      this.mediaSessionApplied = true
+    } catch {
+      /* ignore */
+    }
   }
 
   private getSynth(): SpeechSynthesis | null {
@@ -102,6 +124,7 @@ export class WebSpeechEngine implements TtsEngine {
       this.emitError('engine_unavailable')
       return
     }
+    this.applyMediaSession()
     if (synth.paused) {
       synth.resume()
       return
