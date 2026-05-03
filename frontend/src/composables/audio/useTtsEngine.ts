@@ -42,10 +42,24 @@ export interface LoadArgs {
 
 export interface UseTtsEngineApi {
   load(args: LoadArgs): Promise<TtsEngine & { lookup: AudioLookupResponse }>
+  terminate(): TtsEngine | null
+}
+
+function terminate(): TtsEngine | null {
+  if (!lastEngine) return null
+  const eng = lastEngine
+  try {
+    eng.terminate()
+  } catch {
+    /* ignore */
+  }
+  lastEngine = null
+  return eng
 }
 
 export function useTtsEngine(): UseTtsEngineApi {
   return {
+    terminate,
     async load(args: LoadArgs) {
       const store = useTtsPlayerStore()
       // Terminate the previous engine so prior audio + queued utterances stop

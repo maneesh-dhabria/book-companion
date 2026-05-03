@@ -82,4 +82,17 @@ describe('useTtsEngine', () => {
     expect(store.status).toBe('error')
     expect(store.errorKind).toBe('mp3_fetch_failed')
   })
+
+  it('exposes terminate() that clears lastEngine and is idempotent', async () => {
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0],
+      sanitized_text: 'Hi.',
+    })
+    const api = useTtsEngine()
+    await api.load({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    const terminated = api.terminate()
+    expect(terminated).not.toBeNull()
+    expect(api.terminate()).toBeNull()
+  })
 })
