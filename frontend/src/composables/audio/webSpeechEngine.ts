@@ -11,6 +11,10 @@ export interface WebSpeechEngineOpts {
   sentenceOffsetsChars: number[]
   voice?: string
   rate?: number
+  /** Used by T18 for navigator.mediaSession metadata. Optional today. */
+  contentType?: string
+  /** Used by T18 for mediaSession.artist. Optional today. */
+  bookTitle?: string
 }
 
 function sliceSentences(text: string, offsets: number[]): string[] {

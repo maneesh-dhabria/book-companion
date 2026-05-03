@@ -26,6 +26,10 @@ export interface Mp3EngineOpts {
   sanitizedText: string
   sentenceOffsetsChars: number[]
   media?: MediaInfo
+  /** Used by T18 for navigator.mediaSession metadata title. Optional today. */
+  contentType?: string
+  /** Used by T18 for mediaSession.artist. Optional today. */
+  bookTitle?: string
 }
 
 function sliceSentences(text: string, offsets: number[]): string[] {

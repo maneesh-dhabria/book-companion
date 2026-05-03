@@ -83,6 +83,41 @@ describe('useTtsEngine', () => {
     expect(store.errorKind).toBe('mp3_fetch_failed')
   })
 
+  it('passes settingsStore.tts.voice + default_speed to WebSpeechEngine', async () => {
+    const { useSettingsStore } = await import('@/stores/settings')
+    const settings = useSettingsStore()
+    settings.tts = {
+      engine: 'web-speech',
+      voice: 'Daniel',
+      default_speed: 1.5,
+      auto_advance: true,
+    }
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0, 3],
+      sanitized_text: 'Hi there.',
+    })
+    const wsMod = await import('@/composables/audio/webSpeechEngine')
+    const RealCtor = wsMod.WebSpeechEngine
+    const wsCtorSpy = vi
+      .spyOn(wsMod, 'WebSpeechEngine')
+      .mockImplementation(function (
+        this: unknown,
+        opts: ConstructorParameters<typeof wsMod.WebSpeechEngine>[0],
+      ) {
+        // Forward to the real ctor so engine.onError/onEnd wiring still works.
+        return new RealCtor(opts)
+      } as unknown as typeof wsMod.WebSpeechEngine)
+    await useTtsEngine().load({
+      bookId: 1,
+      contentType: 'section_summary',
+      contentId: 1,
+    })
+    expect(wsCtorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ voice: 'Daniel', rate: 1.5 }),
+    )
+  })
+
   it('exposes terminate() that clears lastEngine and is idempotent', async () => {
     vi.mocked(audioApi.lookup).mockResolvedValueOnce({
       pregenerated: false,

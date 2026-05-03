@@ -1,4 +1,6 @@
 import { audioApi, type AudioContentType, type AudioLookupResponse } from '@/api/audio'
+import { useBooksStore } from '@/stores/books'
+import { useSettingsStore } from '@/stores/settings'
 import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 import { Mp3Engine } from './mp3Engine'
@@ -86,6 +88,17 @@ export function useTtsEngine(): UseTtsEngineApi {
         store.setError('lookup_failed')
         throw err
       }
+      // FR-18 / plan T5: read persisted Web Speech voice + rate so saved
+      // settings are honored. T18 will consume contentType + bookTitle for
+      // mediaSession metadata; we pass them through today so the engine
+      // constructor signatures are stable.
+      const settingsStore = useSettingsStore()
+      const ttsCfg = settingsStore.tts
+      const wsVoice = args.voice ?? ttsCfg?.voice ?? undefined
+      const wsRate = ttsCfg?.default_speed ?? 1.0
+      const booksStore = useBooksStore()
+      const bookTitle =
+        booksStore.books.find((b) => b.id === args.bookId)?.title ?? ''
       let engine: TtsEngine
       if (lookup.pregenerated && lookup.url) {
         engine = new Mp3Engine({
@@ -94,12 +107,17 @@ export function useTtsEngine(): UseTtsEngineApi {
           durationSeconds: lookup.duration_seconds ?? 0,
           sanitizedText: lookup.sanitized_text,
           sentenceOffsetsChars: lookup.sentence_offsets_chars,
+          contentType: args.contentType,
+          bookTitle,
         })
       } else {
         engine = new WebSpeechEngine({
           sanitizedText: lookup.sanitized_text,
           sentenceOffsetsChars: lookup.sentence_offsets_chars,
-          voice: args.voice,
+          voice: wsVoice,
+          rate: wsRate,
+          contentType: args.contentType,
+          bookTitle,
         })
       }
       // Wire engine events into the store.
