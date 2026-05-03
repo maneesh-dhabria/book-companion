@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import KokoroStatusIndicator from '@/components/settings/KokoroStatusIndicator.vue'
 import SpikeFindingsBlock from '@/components/settings/SpikeFindingsBlock.vue'
@@ -45,6 +45,49 @@ function loadWebSpeechVoices() {
     noVoicesAvailable.value = voices.length === 0
   } catch {
     noVoicesAvailable.value = true
+  }
+}
+
+// FR-28 / plan T17: warn when the persisted Web Speech voice is not in the
+// browser-provided voice list (user moved machines or installed/uninstalled).
+const persistedVoiceMissing = computed(
+  () =>
+    engine.value === 'web-speech' &&
+    !!webSpeechVoice.value &&
+    webSpeechVoices.value.length > 0 &&
+    !webSpeechVoices.value.includes(webSpeechVoice.value),
+)
+
+// FR-27: while voices are loading and none are available yet, show a placeholder.
+const voicesLoading = computed(
+  () => webSpeechVoices.value.length === 0 && !noVoicesAvailable.value,
+)
+
+async function onReset() {
+  if (!window.confirm('Reset TTS settings to defaults?')) return
+  saving.value = true
+  error.value = null
+  try {
+    const r = await fetch('/api/v1/settings/tts', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        engine: 'web-speech',
+        voice: '',
+        default_speed: 1.0,
+        auto_advance: true,
+      }),
+    })
+    if (!r.ok) {
+      const text = await r.text().catch(() => '')
+      throw new Error(`reset failed: ${r.status} ${text}`)
+    }
+    savedAt.value = Date.now()
+    await load()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'reset failed'
+  } finally {
+    saving.value = false
   }
 }
 
@@ -120,10 +163,20 @@ onMounted(() => {
               class="rounded border border-slate-300 px-2 py-1 text-sm"
               :disabled="engine !== 'web-speech'"
             >
-              <option v-if="noVoicesAvailable" value="" disabled>No voices available</option>
+              <option v-if="voicesLoading" value="" disabled>Loading voices…</option>
+              <option v-else-if="noVoicesAvailable" value="" disabled>
+                No voices available
+              </option>
               <option v-for="v in webSpeechVoices" :key="v" :value="v">{{ v }}</option>
             </select>
           </div>
+          <p
+            v-if="persistedVoiceMissing"
+            class="mt-1 text-xs text-amber-700"
+            data-testid="persisted-voice-missing"
+          >
+            Previously selected voice not available; falling back to browser default.
+          </p>
         </div>
       </label>
 
@@ -183,11 +236,20 @@ onMounted(() => {
       <button
         type="button"
         data-testid="save"
-        class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
+        class="btn-primary"
         :disabled="saving"
         @click="onSave"
       >
         {{ saving ? 'Saving…' : 'Save' }}
+      </button>
+      <button
+        type="button"
+        data-testid="reset"
+        class="btn-secondary"
+        :disabled="saving"
+        @click="onReset"
+      >
+        Reset to defaults
       </button>
       <span v-if="savedAt" class="text-xs text-emerald-600" data-testid="saved-indicator"
         >Saved.</span
