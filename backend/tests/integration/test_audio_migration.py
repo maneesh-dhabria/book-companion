@@ -104,7 +104,9 @@ def test_duplicate_same_step_same_book_rejected(tmp_path, monkeypatch):
 def test_downgrade_round_trip(tmp_path, monkeypatch):
     cfg, db_path = _setup_db(tmp_path, monkeypatch)
     upgrade(cfg, "head")
-    downgrade(cfg, "-1")
+    # T1 (v1.7a) added a schema-empty version anchor on top of the audiobook
+    # migration. To exercise the audiobook downgrade we must step past both.
+    downgrade(cfg, "9a67312a27a7")
     eng = _sync_engine(db_path)
     insp = sa.inspect(eng)
     tables = set(insp.get_table_names())

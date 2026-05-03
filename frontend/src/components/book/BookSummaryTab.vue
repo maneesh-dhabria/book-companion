@@ -237,7 +237,7 @@ watch(
         <button
           class="btn-primary generate-cta"
           type="button"
-          :disabled="summarizedCount === 0 || state === 'inProgress'"
+          :disabled="summarizedCount === 0"
           @click="startGenerate"
         >
           Generate book summary

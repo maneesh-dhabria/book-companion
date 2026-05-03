@@ -101,15 +101,14 @@ describe('useTtsEngine', () => {
     })
     const wsMod = await import('@/composables/audio/webSpeechEngine')
     const RealCtor = wsMod.WebSpeechEngine
-    const wsCtorSpy = vi
-      .spyOn(wsMod, 'WebSpeechEngine')
-      .mockImplementation(function (
-        this: unknown,
-        opts: ConstructorParameters<typeof wsMod.WebSpeechEngine>[0],
-      ) {
-        // Forward to the real ctor so engine.onError/onEnd wiring still works.
-        return new RealCtor(opts)
-      } as unknown as typeof wsMod.WebSpeechEngine)
+    // Spy on the constructor and forward to the real one so engine wiring
+    // still works inside useTtsEngine.load(). Cast through `any` because
+    // vi.spyOn typing of class members vs. construct signatures diverges.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wsCtorSpy = vi.spyOn(wsMod as any, 'WebSpeechEngine').mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((opts: any) => new RealCtor(opts)) as any,
+    )
     await useTtsEngine().load({
       bookId: 1,
       contentType: 'section_summary',
