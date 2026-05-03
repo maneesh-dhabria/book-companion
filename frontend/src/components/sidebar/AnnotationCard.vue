@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { Annotation } from '@/types'
 import { computed, ref } from 'vue'
+
+import TtsPlayButton from '@/components/audio/TtsPlayButton.vue'
+import type { Annotation } from '@/types'
 
 const props = defineProps<{
   annotation: Annotation
@@ -64,6 +66,11 @@ function startEdit() {
     <div class="meta">
       <span class="type-badge">{{ annotation.type }}</span>
       <span class="date">{{ new Date(annotation.created_at).toLocaleDateString() }}</span>
+      <TtsPlayButton
+        content-type="annotation"
+        :content-id="annotation.id"
+        :book-id="0"
+      />
       <button class="delete-btn" @click="$emit('delete')">Delete</button>
     </div>
   </div>
