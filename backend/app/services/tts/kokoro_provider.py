@@ -39,9 +39,7 @@ VOICES_FILENAME = "voices-v1.0.bin"
 # kokoro-v1.0.onnx + voices-v1.0.bin pair (the upstream HF repo
 # `onnx-community/Kokoro-82M-v1.0-ONNX` ships split shards that don't match
 # what kokoro-onnx expects to load). Tag `model-files-v1.0`.
-_GITHUB_RELEASE = (
-    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
-)
+_GITHUB_RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
 KOKORO_MODEL_URLS: dict[str, str] = {
     ONNX_FILENAME: f"{_GITHUB_RELEASE}/{ONNX_FILENAME}",
     VOICES_FILENAME: f"{_GITHUB_RELEASE}/{VOICES_FILENAME}",
@@ -122,9 +120,7 @@ class KokoroProvider(TTSProvider):
                 continue
             partial = dest.with_suffix(dest.suffix + ".partial")
             try:
-                with httpx.stream(
-                    "GET", url, follow_redirects=True, timeout=300.0
-                ) as resp:
+                with httpx.stream("GET", url, follow_redirects=True, timeout=300.0) as resp:
                     resp.raise_for_status()
                     with partial.open("wb") as fh:
                         for chunk in resp.iter_bytes(chunk_size=1024 * 1024):
@@ -134,9 +130,7 @@ class KokoroProvider(TTSProvider):
                 # Best-effort cleanup so a transient failure doesn't leave
                 # zero-byte/half-written files that future loads accept.
                 partial.unlink(missing_ok=True)
-                raise KokoroModelDownloadError(
-                    f"download failed for {url}: {e}"
-                ) from e
+                raise KokoroModelDownloadError(f"download failed for {url}: {e}") from e
 
     def _load(self) -> None:
         if self._kokoro is not None:
