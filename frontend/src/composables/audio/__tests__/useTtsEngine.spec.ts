@@ -12,9 +12,11 @@ import { audioApi } from '@/api/audio'
 import { useTtsEngine } from '@/composables/audio/useTtsEngine'
 
 describe('useTtsEngine', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    const cache = await import('@/composables/audio/preloadCache')
+    cache._resetForTests()
   })
 
   it('routes to Mp3Engine when pregenerated=true', async () => {

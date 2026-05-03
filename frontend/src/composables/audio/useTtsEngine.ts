@@ -1,9 +1,10 @@
-import { audioApi, type AudioContentType, type AudioLookupResponse } from '@/api/audio'
+import { type AudioContentType, type AudioLookupResponse } from '@/api/audio'
 import { useBooksStore } from '@/stores/books'
 import { useSettingsStore } from '@/stores/settings'
 import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 import { Mp3Engine } from './mp3Engine'
+import * as preloadCache from './preloadCache'
 import type { TtsEngine } from './types'
 import { WebSpeechEngine } from './webSpeechEngine'
 
@@ -78,10 +79,13 @@ export function useTtsEngine(): UseTtsEngineApi {
       }
       let lookup: AudioLookupResponse
       try {
-        lookup = await audioApi.lookup({
-          book_id: args.bookId,
-          content_type: args.contentType,
-          content_id: args.contentId,
+        // FR-24 / FR-25h / D16: route through preloadCache so a previously
+        // populated entry resolves synchronously and the iOS Safari
+        // user-gesture chain is preserved between click and engine.play().
+        lookup = await preloadCache.preload({
+          bookId: args.bookId,
+          contentType: args.contentType,
+          contentId: args.contentId,
           voice: args.voice,
         })
       } catch (err) {
