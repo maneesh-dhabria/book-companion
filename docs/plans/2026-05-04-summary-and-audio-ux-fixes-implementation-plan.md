@@ -122,6 +122,7 @@ Phase 3 (UX surfaces, 9 tasks):   T13 → T14 → T15 → T16
 | Modify | `frontend/src/components/settings/SettingsTtsPanel.vue` | **Reset to defaults** button (FR-26); Loading-voices placeholder (FR-27); persisted-voice-missing hint (FR-28); replace raw Tailwind on Save with `.btn-primary` (T17, T20). |
 | Modify | `frontend/src/composables/audio/webSpeechEngine.ts` | `play()` first-call: set `navigator.mediaSession.metadata` per FR-19 (T18). |
 | Modify | `frontend/src/composables/audio/mp3Engine.ts:105-122` | Extend existing mediaSession to vary `title` by contentType per FR-19b (T18). |
+| Create | `frontend/src/composables/audio/mediaSessionTitles.ts` | `titleForContentType(ct)` helper; consumed by both engines for mediaSession metadata title (T18). |
 | Modify | `frontend/src/assets/main.css` | Add canonical `.btn-primary` / `.btn-secondary` global classes using `var(--color-*)` tokens (T19). |
 | Modify | (9 files per Code Study Notes) | Remove scoped `.btn-primary`/`.btn-secondary` redefinitions (T19). |
 | Modify | (10 files in `frontend/src/components/audio/` + `TtsPlayButton.vue`) | Replace raw Tailwind button utilities per spec §11.2 mapping (T20). |
@@ -252,6 +253,19 @@ unchanged.
 - Test: `backend/tests/integration/api/test_audio_lookup_annotation.py`
 
 **Steps:**
+
+- [ ] Step 1a: Verify existing test fixtures (L2-F3)
+  Run: `grep -n "def seeded_book\|def db_session\|def client" backend/tests/integration/conftest.py`
+  Expected: `seeded_book`, `db_session` (or async equivalents like `async_session`), `client` fixtures defined. If any are missing or have a different name (e.g., `async_db_session`), substitute the existing name in T2 step 1's fixture code below. If `seeded_book` is missing, add a minimal version to conftest:
+  ```python
+  @pytest_asyncio.fixture
+  async def seeded_book(db_session):
+      from app.db.models import Book, BookSection
+      b = Book(title="Sim", author="X", status="ready")
+      b.sections = [BookSection(order_index=0, title="S0", content_md="x")]
+      db_session.add(b); await db_session.commit(); await db_session.refresh(b)
+      return b
+  ```
 
 - [ ] Step 1: Write failing tests
   ```python
@@ -1603,13 +1617,13 @@ is shippable.
       <TtsPlayButton
         content-type="annotation"
         :content-id="annotation.id"
-        :book-id="annotation.book_id || 0"
+        :book-id="0"
       />
       <!-- existing delete/edit buttons -->
     </div>
   </div>
   ```
-  Add the import. Note: `bookId` is informational only for `annotation` contentType (the route doesn't use it); pass 0 if the annotation object doesn't carry one.
+  Add the import. **L2-F2 note:** `bookId="0"` is correct here — the Annotation model uses polymorphic (content_type, content_id) per CLAUDE.md gotcha #20 and has no direct `book_id` field. The annotation lookup endpoint ignores book_id (D8 / spec §7.1); mediaSession `artist` falls back to empty when bookTitle isn't resolvable. If a future enhancement wants the correct book title in mediaSession, derive it from `annotation.content_type/content_id` (BOOK_SUMMARY → content_id; SECTION_* → fetch section.book_id).
 
 - [ ] Step 3: Manual smoke
   Navigate to `/annotations` (or the per-book annotations route). Per-row Listen visible. Click on row N → Playbar opens with that annotation's text. Click on row N+1 → switches immediately (J7 / E8).
@@ -1823,6 +1837,17 @@ is shippable.
   .btn-secondary:hover { background: var(--color-bg-secondary); }
   .btn-secondary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* L2-F1: icon-only modifier for circular icon buttons (Playbar Prev/Next/Close/Play-Pause).
+     Combines with .btn-primary or .btn-secondary; overrides padding to fixed square. */
+  .btn-icon {
+    padding: 0.5rem;          /* 8px all-around — square */
+    width: 2.25rem;           /* 36px */
+    height: 2.25rem;
+    border-radius: 9999px;    /* full circle */
+    justify-content: center;
+    gap: 0;
+  }
   ```
   Token sourcing notes: `--color-text-on-accent` may not exist yet; if `theme.css` doesn't define it, add it to the `:root` block (`--color-text-on-accent: #ffffff;`) and to each `[data-theme='dark']`/sepia/etc. variant as appropriate (white on accent works for all current themes).
 
@@ -1881,9 +1906,9 @@ is shippable.
   - **AudioFileRow.vue Play / Re-generate:** `class="btn-secondary"` (Delete button KEEPS its `text-red-600` styling per spec — NOT in sweep scope)
   - **AnnotationPlaylistRow.vue actions:** `class="btn-secondary"` for each action row button
   - **SectionsAudioRow.vue actions:** `class="btn-secondary"`
-  - **Playbar.vue Play/Pause:** `class="btn-primary rounded-full p-2"` (keep `rounded-full` for icon shape)
+  - **Playbar.vue Play/Pause:** `class="btn-primary btn-icon"` (L2-F1: `.btn-icon` modifier from T19 handles square padding + circle shape; remove the prior `rounded-full p-2`)
   - **Playbar.vue Retry:** `class="btn-primary"`
-  - **Playbar.vue Close (✕) + Prev + Next:** `class="btn-secondary rounded-full p-2"`
+  - **Playbar.vue Close (✕) + Prev + Next:** `class="btn-secondary btn-icon"` (L2-F1)
   - **StaleSourceBanner.vue Re-generate:** `class="btn-primary"`
   - **StaleSourceBanner.vue Dismiss:** `class="btn-secondary"`
   - **TtsPlayButton.vue:** already `.btn-secondary` per T11
@@ -2064,4 +2089,4 @@ is shippable.
 | Loop | Findings | Changes Made |
 |------|----------|--------------|
 | 1 | L1-F1 (BLOCKER): useTtsEngine.load() in T5 didn't consume preloadCache → click-time `await audioApi.lookup()` defeated the preload AND broke iOS gesture chain. L1-F2 (significant): WebSpeechEngine + Mp3Engine constructor signatures touched by T5 + T18 — risk of /execute-time TypeError. L1-F3 (minor): 5 spec FRs uncited (FR-20, FR-25, FR-29, FR-30, FR-32). L1-F4 (minor): TN smoke missed annotations hard-reload + section_content error-path probe. | L1-F1: T5 split into "settings + ctor consolidation" (Phase 1, no cache) + cache routing now lives in T7's new Step 5 with its own test (Phase 2). L1-F2: T5 Step 3 now defines the FULL final WebSpeechEngine + Mp3Engine opts shape so /execute call-sites compile; T18 only fills metadata setters. L1-F3: T11 cites FR-20; new TN sub-section "No-op verifications" cites FR-25/29/30/32 with concrete checks. L1-F4: TN frontend smoke gained step 9 (hard-reload /annotations) and step 11 (section_content error-path probe). |
-| 2 | (to be filled) | |
+| 2 | L2-F1 (significant): Playbar icon-only buttons couldn't cleanly use .btn-primary (cascade conflict on padding). L2-F2 (significant): T16 referenced non-existent `annotation.book_id` field. L2-F3 (minor): T2 fixtures unverified. L2-F4 (minor): T18's new `mediaSessionTitles.ts` not in File Map. | L2-F1: T19 ships a `.btn-icon` modifier in main.css; T20 uses `.btn-primary .btn-icon` / `.btn-secondary .btn-icon` for Playbar's circular buttons. L2-F2: T16 passes `:book-id="0"` with explanatory note; documented future enhancement to derive from polymorphic key. L2-F3: T2 step 1a verifies fixtures exist; falls back to adding minimal `seeded_book` if missing. L2-F4: File Map gains a row for `mediaSessionTitles.ts`. |
