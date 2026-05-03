@@ -124,11 +124,11 @@
       </section>
 
       <section v-else-if="activeTab === 'audio'" class="tab-panel" role="tabpanel">
-        <div>Audio tab placeholder</div>
+        <AudioTab :book-id="book.id" />
       </section>
 
       <section v-else-if="activeTab === 'annotations'" class="tab-panel" role="tabpanel">
-        <div>Annotations tab placeholder</div>
+        <AnnotationsTab :book-id="book.id" />
       </section>
     </template>
     <div v-else class="error">Book not found.</div>
@@ -148,6 +148,8 @@ import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
 import SectionListTable from '@/components/book/SectionListTable.vue'
 import OverflowMenu from '@/components/book/OverflowMenu.vue'
 import BookSummaryTab from '@/components/book/BookSummaryTab.vue'
+import AudioTab from '@/components/audio/AudioTab.vue'
+import AnnotationsTab from '@/components/audio/AnnotationsTab.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'

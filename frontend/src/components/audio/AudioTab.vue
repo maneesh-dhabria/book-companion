@@ -2,9 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { audioApi, type AudioInventoryItem } from '@/api/audio'
+import GenerateAudioModal from '@/components/audio/GenerateAudioModal.vue'
 import { useAudioJobStore } from '@/stores/audioJob'
 
 const props = defineProps<{ bookId: number }>()
+
+const showGenerateModal = ref(false)
 
 const files = ref<AudioInventoryItem[]>([])
 const coverage = ref<{ total: number; generated: number; stale?: number }>({
@@ -51,7 +54,8 @@ async function onCancelJob() {
   const id = jobStore?.activeJob?.id
   if (!id) return
   try {
-    await fetch(`/api/v1/jobs/${id}/cancel`, { method: 'POST' })
+    const r = await fetch(`/api/v1/jobs/${id}/cancel`, { method: 'POST' })
+    if (!r.ok) return
     jobStore?.clear()
   } catch {
     /* toast handled elsewhere */
@@ -59,8 +63,11 @@ async function onCancelJob() {
 }
 
 function onGenerate() {
-  // GenerateAudioModal opens via parent; this event is consumed by the host.
-  // For the placeholder D2 surface, no-op until D5 wires the modal.
+  showGenerateModal.value = true
+}
+
+function onModalClose() {
+  showGenerateModal.value = false
 }
 
 onMounted(load)
@@ -122,5 +129,14 @@ onMounted(load)
         All {{ coverage.total }} sections have audio.
       </p>
     </div>
+
+    <GenerateAudioModal
+      v-if="showGenerateModal"
+      :open="showGenerateModal"
+      :book-id="bookId"
+      :total-units="coverage.total"
+      :total-annotations="0"
+      @close="onModalClose"
+    />
   </div>
 </template>

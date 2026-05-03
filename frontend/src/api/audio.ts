@@ -1,6 +1,11 @@
 import { apiClient } from '@/api/client'
 
-export type AudioContentType = 'section_summary' | 'book_summary' | 'annotation' | 'section'
+export type AudioContentType =
+  | 'section_summary'
+  | 'book_summary'
+  | 'annotation'
+  | 'section'
+  | 'annotations_playlist'
 
 export interface AudioLookupResponse {
   pregenerated: boolean
