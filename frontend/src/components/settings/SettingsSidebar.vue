@@ -14,6 +14,7 @@ const sections = [
   { id: 'reading', label: 'Reading', icon: '📖' },
   { id: 'backup', label: 'Backup & Export', icon: '💾' },
   { id: 'llm', label: 'LLM Provider', icon: '🤖' },
+  { id: 'tts', label: 'Text-to-Speech', icon: '🎧' },
 ]
 </script>
 

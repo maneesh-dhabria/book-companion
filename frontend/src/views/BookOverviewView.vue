@@ -86,14 +86,15 @@
 
       <nav class="book-tabs" role="tablist" aria-label="Book detail sections">
         <button
-          v-for="t in ['overview', 'summary', 'sections']"
+          v-for="t in TAB_VALUES"
           :key="t"
           type="button"
           role="tab"
           class="book-tab"
+          :data-tab="t"
           :class="{ active: activeTab === t }"
           :aria-selected="activeTab === t"
-          @click="setTab(t as 'overview' | 'summary' | 'sections')"
+          @click="setTab(t)"
         >
           {{ tabLabel(t) }}
         </button>
@@ -121,6 +122,14 @@
           :compact="false"
         />
       </section>
+
+      <section v-else-if="activeTab === 'audio'" class="tab-panel" role="tabpanel">
+        <AudioTab :book-id="book.id" />
+      </section>
+
+      <section v-else-if="activeTab === 'annotations'" class="tab-panel" role="tabpanel">
+        <AnnotationsTab :book-id="book.id" />
+      </section>
     </template>
     <div v-else class="error">Book not found.</div>
   </main>
@@ -139,6 +148,8 @@ import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
 import SectionListTable from '@/components/book/SectionListTable.vue'
 import OverflowMenu from '@/components/book/OverflowMenu.vue'
 import BookSummaryTab from '@/components/book/BookSummaryTab.vue'
+import AudioTab from '@/components/audio/AudioTab.vue'
+import AnnotationsTab from '@/components/audio/AnnotationsTab.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
@@ -164,8 +175,8 @@ interface BookTag {
 const route = useRoute()
 const router = useRouter()
 
-type BookTab = 'overview' | 'summary' | 'sections'
-const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections']
+type BookTab = 'overview' | 'summary' | 'sections' | 'audio' | 'annotations'
+const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections', 'audio', 'annotations']
 const activeTab = computed<BookTab>(() => {
   const t = route.query.tab
   return typeof t === 'string' && (TAB_VALUES as string[]).includes(t)

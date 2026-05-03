@@ -31,6 +31,9 @@ export interface SseEvent {
     | 'section_failed'
     | 'section_skipped'
     | 'section_retry'
+    | 'section_audio_completed'
+    | 'section_audio_failed'
+    | 'section_audio_already_stale'
     | 'processing_completed'
     | 'processing_failed'
     | 'job_cancelling'
@@ -97,6 +100,16 @@ export function useBufferedJobStream(
         break
       case 'section_failed':
         s.failures = (s.failures ?? 0) + 1
+        break
+      // Audio-job events (Phase B) — same shape as section_completed, different name.
+      case 'section_audio_completed':
+        s.progress.current = (s.progress.current ?? 0) + 1
+        break
+      case 'section_audio_failed':
+        s.failures = (s.failures ?? 0) + 1
+        break
+      case 'section_audio_already_stale':
+        s.progress.current = (s.progress.current ?? 0) + 1
         break
       case 'section_retry':
         s.retrying_section_id = ev.data.section_id ?? null

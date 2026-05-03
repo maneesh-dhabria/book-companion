@@ -2,7 +2,7 @@
 
 import asyncio
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +57,64 @@ async def patch_settings(
                 }
             )
         raise HTTPException(status_code=400, detail=cleaned) from e
+
+
+# --- TTS (B16) ---------------------------------------------------------------
+
+
+@router.get("/tts")
+async def get_tts_settings(settings: Settings = Depends(get_settings)):
+    return {
+        "engine": settings.tts.engine,
+        "voice": settings.tts.voice,
+        "default_speed": settings.tts.default_speed,
+        "auto_advance": settings.tts.auto_advance,
+        "prewarm_on_startup": settings.tts.prewarm_on_startup,
+    }
+
+
+@router.put("/tts")
+async def put_tts_settings(
+    body: dict = Body(...),
+    svc: SettingsService = Depends(_get_settings_service),
+    settings: Settings = Depends(get_settings),
+):
+    if body.get("engine") == "kokoro" and body.get("voice"):
+        from app.services.tts.kokoro_provider import KOKORO_VOICES
+
+        if body["voice"] not in KOKORO_VOICES:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "unknown_voice",
+                    "available": sorted(KOKORO_VOICES),
+                },
+            )
+    try:
+        return svc.update_settings({"tts": body})
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get("/tts/status")
+async def get_tts_status(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+):
+    """Return the engine warm-up state for the UI status chip."""
+    if settings.tts.engine != "kokoro":
+        return {"status": "n/a"}
+
+    from pathlib import Path as _Path
+
+    md = _Path(settings.data.directory) / "models" / "tts"
+    onnx = md / "kokoro-v1.0.onnx"
+    bin_ = md / "voices-v1.0.bin"
+    if not onnx.exists() or not bin_.exists():
+        return {"status": "not_downloaded"}
+
+    warm = bool(getattr(request.app.state, "tts_warm", False))
+    return {"status": "warm" if warm else "cold"}
 
 
 @router.get("/database-stats")

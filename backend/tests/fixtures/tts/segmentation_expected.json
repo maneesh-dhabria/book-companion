@@ -1,0 +1,22 @@
+{
+  "corpus": "First sentence here. Dr. Smith argued that 3.14 is a useful approximation. He noted [1] that the matter was open. Mrs. Jones disagreed; she preferred 2.71 instead. The result, however, was inconclusive. They published in J. of Math. anyway. Why was this? Because the data was thin! At St. Pauls Rd., the meeting ended... finally. He left, and so did she. Tomorrow is another day. Section 1.1 covers the basics. The proof goes Q.E.D. The next chapter \u2014 chapter four \u2014 addresses scale. Three plus four equals seven. Coffee was served at 9 a.m. sharp. The end.",
+  "expected": [
+    "First sentence here. ",
+    "Dr. Smith argued that 3.14 is a useful approximation. ",
+    "He noted [1] that the matter was open. ",
+    "Mrs. Jones disagreed; she preferred 2.71 instead. ",
+    "The result, however, was inconclusive. ",
+    "They published in J. of Math. ",
+    "anyway. ",
+    "Why was this? ",
+    "Because the data was thin! ",
+    "At St. Pauls Rd., the meeting ended... finally. ",
+    "He left, and so did she. ",
+    "Tomorrow is another day. ",
+    "Section 1.1 covers the basics. ",
+    "The proof goes Q.E.D. The next chapter \u2014 chapter four \u2014 addresses scale. ",
+    "Three plus four equals seven. ",
+    "Coffee was served at 9 a.m. sharp. ",
+    "The end."
+  ]
+}

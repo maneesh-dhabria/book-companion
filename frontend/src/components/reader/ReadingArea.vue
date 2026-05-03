@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import type { AnnotationLike } from '@/utils/highlightInjector'
 import MarkdownRenderer from './MarkdownRenderer.vue'
+import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 const props = withDefaults(
   defineProps<{
@@ -10,15 +11,44 @@ const props = withDefaults(
     hasNext: boolean
     annotations?: AnnotationLike[]
     highlightsInline?: boolean
+    sentenceOffsetsChars?: number[]
   }>(),
-  { annotations: () => [], highlightsInline: true },
+  { annotations: () => [], highlightsInline: true, sentenceOffsetsChars: () => [] },
 )
 
 const emit = defineEmits<{
   navigate: [direction: 'prev' | 'next']
 }>()
 
+const ttsPlayer = (() => {
+  try {
+    return useTtsPlayerStore()
+  } catch {
+    return null
+  }
+})()
+
 function onKeydown(e: KeyboardEvent) {
+  // FR-36/D25: when audio is active, arrow keys skip sentences instead of
+  // navigating sections. Space toggles play/pause regardless.
+  if (ttsPlayer?.isActive) {
+    if (e.key === 'ArrowLeft') {
+      ttsPlayer.prevSentence()
+      e.preventDefault()
+      return
+    }
+    if (e.key === 'ArrowRight') {
+      ttsPlayer.nextSentence()
+      e.preventDefault()
+      return
+    }
+    if (e.key === ' ') {
+      if (ttsPlayer.status === 'playing') ttsPlayer.pause()
+      else ttsPlayer.play()
+      e.preventDefault()
+      return
+    }
+  }
   if (e.key === 'ArrowLeft' && props.hasPrev) emit('navigate', 'prev')
   if (e.key === 'ArrowRight' && props.hasNext) emit('navigate', 'next')
 }
@@ -33,6 +63,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
       :content="content"
       :annotations="annotations"
       :highlights-inline="highlightsInline"
+      :sentence-offsets-chars="sentenceOffsetsChars"
     />
     <slot name="footer" />
   </article>

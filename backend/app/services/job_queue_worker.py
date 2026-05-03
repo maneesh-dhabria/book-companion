@@ -32,7 +32,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
-from app.db.models import ProcessingJob, ProcessingJobStatus
+from app.db.models import ProcessingJob, ProcessingJobStatus, ProcessingStep
 
 log = structlog.get_logger(__name__)
 
@@ -81,9 +81,7 @@ class JobQueueWorker:
             except Exception:  # noqa: BLE001 — keep the loop alive on any error
                 log.exception("queue_worker_tick_failed")
             try:
-                await asyncio.wait_for(
-                    self._stopping.wait(), timeout=self._poll_interval
-                )
+                await asyncio.wait_for(self._stopping.wait(), timeout=self._poll_interval)
             except TimeoutError:
                 pass
 
@@ -98,9 +96,7 @@ class JobQueueWorker:
             return False
         async with self._session_factory() as session:
             job_row = (
-                await session.execute(
-                    select(ProcessingJob).where(ProcessingJob.id == promoted_id)
-                )
+                await session.execute(select(ProcessingJob).where(ProcessingJob.id == promoted_id))
             ).scalar_one_or_none()
             if job_row is None:
                 return False
@@ -162,12 +158,144 @@ class JobQueueWorker:
                 {
                     "job_id": job.id,
                     "book_id": job.book_id,
-                    "last_event_at": (
-                        job.last_event_at.isoformat() if job.last_event_at else None
-                    ),
+                    "last_event_at": (job.last_event_at.isoformat() if job.last_event_at else None),
                 },
             )
-        await self._run_processing(job.id, job.book_id, job.request_params or {})
+        if job.step == ProcessingStep.AUDIO:
+            await self._run_audio_job(job.id, job.book_id, job.request_params or {})
+        else:
+            await self._run_processing(job.id, job.book_id, job.request_params or {})
+
+    async def _run_audio_job(
+        self,
+        job_id: int,
+        book_id: int,
+        request_params: dict[str, Any],
+    ) -> None:
+        """Execute an AUDIO ProcessingJob.
+
+        Builds AudioGenService inline (per-job re-instantiation, mirroring
+        summarize path). Resolves units from ``request_params['scope']`` +
+        ``section_ids`` against the live BookSection / Summary tables.
+        """
+        from app.config import Settings as _Settings
+        from app.db.repositories.audio_file_repo import AudioFileRepository
+        from app.db.repositories.section_repo import SectionRepository
+        from app.db.repositories.summary_repo import SummaryRepository
+        from app.services.audio_gen_service import AudioGenService
+        from app.services.tts import create_tts_provider
+
+        settings = _Settings()
+        event_bus = self._event_bus
+        voice = request_params.get("voice", "af_sarah")
+        scope = request_params.get("scope", "all")
+        explicit_ids = request_params.get("section_ids") or []
+
+        async with self._session_factory() as bg_session:
+            bg_job = (
+                await bg_session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
+            ).scalar_one_or_none()
+            if bg_job is None:
+                log.warning("audio_worker_run_missing_job", job_id=job_id)
+                return
+
+            try:
+                provider = create_tts_provider("kokoro", settings)
+                if provider is None:
+                    raise RuntimeError("Kokoro TTS provider unavailable")
+                self._active_provider = provider
+                self._active_job_id = job_id
+
+                from pathlib import Path as _Path
+
+                section_repo = SectionRepository(bg_session)
+                summary_repo = SummaryRepository(bg_session)
+                data_dir = _Path(settings.data.directory)
+                audio_repo = AudioFileRepository(bg_session, data_dir)
+                service = AudioGenService(
+                    session=bg_session,
+                    audio_repo=audio_repo,
+                    tts_provider=provider,
+                    data_dir=data_dir,
+                )
+
+                units = await self._resolve_audio_units(
+                    bg_session,
+                    section_repo,
+                    summary_repo,
+                    book_id=book_id,
+                    scope=scope,
+                    explicit_ids=explicit_ids,
+                )
+
+                async def emit(name: str, data: dict[str, Any]) -> None:
+                    if event_bus is not None:
+                        await event_bus.publish(str(job_id), name, data)
+
+                await service.run_job(job=bg_job, units=units, voice=voice, on_event=emit)
+                if event_bus is not None:
+                    await event_bus.close(str(job_id))
+            except Exception as e:  # noqa: BLE001
+                bg_job.status = ProcessingJobStatus.FAILED
+                bg_job.error_message = str(e)[-2048:]
+                await bg_session.commit()
+                if event_bus is not None:
+                    await event_bus.publish(
+                        str(job_id),
+                        "processing_failed",
+                        {"book_id": book_id, "error": str(e), "reason": "error"},
+                    )
+                    await event_bus.close(str(job_id))
+            finally:
+                self._active_provider = None
+                self._active_job_id = None
+
+    @staticmethod
+    async def _resolve_audio_units(
+        session,
+        section_repo,
+        summary_repo,
+        *,
+        book_id: int,
+        scope: str,
+        explicit_ids: list[int],
+    ) -> list:
+        """Translate (scope, section_ids) → list of (ContentType, id, source_md).
+
+        For ``scope='sections'`` and ``scope='all'`` we pull each section's
+        default summary (falling back to content_md). For ``scope='book'`` we
+        pull the book-level default summary as a single unit.
+        """
+        from app.db.models import ContentType
+        from app.db.repositories.book_repo import BookRepository
+
+        units = []
+        if scope == "book":
+            book_repo = BookRepository(session)
+            book = await book_repo.get_by_id(book_id)
+            if book is None or book.default_summary_id is None:
+                return []
+            summary = await summary_repo.get_by_id(book.default_summary_id)
+            if summary is None or not summary.summary_md:
+                return []
+            units.append((ContentType.BOOK_SUMMARY, book.id, summary.summary_md))
+            return units
+
+        sections = await section_repo.get_by_book_id(book_id)
+        if explicit_ids:
+            id_set = set(explicit_ids)
+            sections = [s for s in sections if s.id in id_set]
+        for section in sections:
+            source_md = None
+            if section.default_summary_id is not None:
+                summary = await summary_repo.get_by_id(section.default_summary_id)
+                if summary is not None and summary.summary_md:
+                    source_md = summary.summary_md
+            if source_md is None:
+                source_md = section.content_md or ""
+            if source_md.strip():
+                units.append((ContentType.SECTION_SUMMARY, section.id, source_md))
+        return units
 
     async def _run_processing(
         self,
@@ -197,9 +325,7 @@ class JobQueueWorker:
 
         async with self._session_factory() as bg_session:
             bg_job = (
-                await bg_session.execute(
-                    select(ProcessingJob).where(ProcessingJob.id == job_id)
-                )
+                await bg_session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
             ).scalar_one_or_none()
             if bg_job is None:
                 log.warning("queue_worker_run_missing_job", job_id=job_id)
@@ -224,9 +350,7 @@ class JobQueueWorker:
                 self._active_job_id = job_id
 
                 captioner = (
-                    ImageCaptioner(llm_provider=llm)
-                    if settings.images.captioning_enabled
-                    else None
+                    ImageCaptioner(llm_provider=llm) if settings.images.captioning_enabled else None
                 )
                 summarizer = SummarizerService(
                     db=bg_session, llm=llm, config=settings, captioner=captioner
@@ -286,15 +410,13 @@ class JobQueueWorker:
                 if failed_count > 0 and completed_count == 0:
                     bg_job.status = ProcessingJobStatus.FAILED
                     bg_job.error_message = (
-                        f"All {failed_count} sections failed to summarize. "
-                        f"Check logs for details."
+                        f"All {failed_count} sections failed to summarize. Check logs for details."
                     )
                 else:
                     bg_job.status = ProcessingJobStatus.COMPLETED
                     if failed_count > 0:
                         bg_job.error_message = (
-                            f"{completed_count} sections succeeded, "
-                            f"{failed_count} failed."
+                            f"{completed_count} sections succeeded, {failed_count} failed."
                         )
                 await bg_session.commit()
 

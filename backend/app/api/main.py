@@ -15,6 +15,8 @@ from sqlalchemy.exc import OperationalError
 from app.api.routes import (
     ai_threads,
     annotations,
+    audio,
+    audio_position,
     backup,
     book_summary,
     books,
@@ -29,6 +31,7 @@ from app.api.routes import (
     reading_state,
     search,
     sections,
+    spikes,
     summaries,
     summarize_presets,
     tags,
@@ -62,6 +65,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             await orphan_sweep(sweep_session)
     except Exception:  # noqa: BLE001 — startup sweep is best-effort
         pass
+
+    # FR-21b — orphan recovery for AUDIO jobs (worker-restart hardening).
+    try:
+        from app.services.audio_orphan_recovery import recover_orphan_audio_jobs
+
+        async with app.state.session_factory() as audio_sweep:
+            await recover_orphan_audio_jobs(audio_sweep)
+    except Exception:  # noqa: BLE001
+        pass
+
+    # FR-07 / D32 — Kokoro pre-warm.
+    from app.services.tts.prewarm import prewarm_kokoro
+
+    app.state.tts_warm = await prewarm_kokoro(settings)
 
     # Start backup scheduler if configured
     scheduler = None
@@ -203,6 +220,9 @@ def create_app() -> FastAPI:
     app.include_router(reading_state.router)
     app.include_router(summarize_presets.router)
     app.include_router(llm_status.router)
+    app.include_router(audio.router)
+    app.include_router(audio_position.router)
+    app.include_router(spikes.router)
     app.include_router(book_summary.router)
 
     register_db_busy_handler(app)

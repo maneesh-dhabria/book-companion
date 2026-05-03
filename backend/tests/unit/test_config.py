@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.config import LLMConfig, Settings
+from app.config import LLMConfig, Settings, TTSConfig
 
 # Paths where Settings looks for YAML config (mirrors app.config._load_yaml_config)
 _YAML_PATHS = [
@@ -131,3 +131,33 @@ def test_llm_config_rejects_cli_command():
 def test_llm_config_accepts_path_string():
     cfg = LLMConfig(config_dir="/tmp/some-claude-config")
     assert isinstance(cfg.config_dir, Path)
+
+
+def test_tts_config_defaults():
+    settings = Settings()
+    assert settings.tts.engine == "web-speech"
+    assert settings.tts.voice == ""
+    assert settings.tts.default_speed == 1.0
+    assert settings.tts.auto_advance is True
+    assert settings.tts.prewarm_on_startup is True
+    assert settings.tts.annotation_context == "span"
+
+
+def test_tts_config_env_override(monkeypatch):
+    monkeypatch.setenv("BOOKCOMPANION_TTS__ENGINE", "kokoro")
+    monkeypatch.setenv("BOOKCOMPANION_TTS__VOICE", "af_sarah")
+    settings = Settings()
+    assert settings.tts.engine == "kokoro"
+    assert settings.tts.voice == "af_sarah"
+
+
+def test_tts_config_invalid_engine_rejected():
+    with pytest.raises(ValidationError):
+        TTSConfig(engine="bogus")
+
+
+def test_tts_config_speed_bounds():
+    with pytest.raises(ValidationError):
+        TTSConfig(default_speed=0.4)
+    with pytest.raises(ValidationError):
+        TTSConfig(default_speed=2.1)

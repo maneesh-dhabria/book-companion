@@ -42,22 +42,39 @@ class AnnotationRepository:
         book_id: int,
         annotation_type: AnnotationType | None = None,
     ) -> list[Annotation]:
-        """List annotations for a book by joining through book_sections."""
-        from app.db.models import BookSection
+        """List annotations for a book — section annotations + book-summary annotations.
 
-        query = (
+        Section annotations join through ``book_sections``. Book-summary annotations
+        join through ``summaries`` (where ``content_type = BOOK_SUMMARY``). Both
+        result sets are ordered by ``created_at.desc()`` and concatenated (sections
+        first, book-summary annotations appended).
+        """
+        from app.db.models import BookSection, Summary
+
+        section_q = (
             select(Annotation)
-            .join(
-                BookSection,
-                BookSection.id == Annotation.content_id,
-            )
+            .join(BookSection, BookSection.id == Annotation.content_id)
             .where(BookSection.book_id == book_id)
         )
         if annotation_type:
-            query = query.where(Annotation.type == annotation_type)
-        query = query.order_by(Annotation.created_at.desc())
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+            section_q = section_q.where(Annotation.type == annotation_type)
+        section_q = section_q.order_by(Annotation.created_at.desc())
+
+        book_summary_q = (
+            select(Annotation)
+            .join(Summary, Summary.id == Annotation.content_id)
+            .where(
+                Summary.book_id == book_id,
+                Annotation.content_type == ContentType.BOOK_SUMMARY,
+            )
+        )
+        if annotation_type:
+            book_summary_q = book_summary_q.where(Annotation.type == annotation_type)
+        book_summary_q = book_summary_q.order_by(Annotation.created_at.desc())
+
+        section_result = await self.session.execute(section_q)
+        bs_result = await self.session.execute(book_summary_q)
+        return [*section_result.scalars().all(), *bs_result.scalars().all()]
 
     async def list_by_tag(self, tag_name: str) -> list[Annotation]:
         """List annotations that have a specific tag via taggable association."""
