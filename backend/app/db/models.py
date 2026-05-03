@@ -84,6 +84,7 @@ class ContentType(str, enum.Enum):
     SECTION_SUMMARY = "section_summary"
     BOOK_SUMMARY = "book_summary"
     ANNOTATIONS_PLAYLIST = "annotations_playlist"
+    ANNOTATION = "annotation"  # FR-21: runtime-only; never persisted
 
 
 class AnnotationType(str, enum.Enum):
