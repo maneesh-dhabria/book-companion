@@ -153,9 +153,7 @@ function formatSize(bytes: number): string {
 .select-input { padding: 0.5rem 0.75rem; border: 1px solid var(--color-border, #d1d5db); border-radius: 0.375rem; font-size: 0.875rem; }
 .empty-text { font-size: 0.875rem; color: var(--color-text-muted, #888); }
 
-.btn-primary { padding: 0.5rem 1rem; background: var(--color-accent, #2563eb); color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
-.btn-primary:hover { opacity: 0.9; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+/* T19: .btn-primary is now defined globally in main.css. */
 
 .btn-sm { padding: 0.25rem 0.625rem; border: 1px solid var(--color-border, #d1d5db); border-radius: 0.25rem; font-size: 0.75rem; background: white; cursor: pointer; }
 .btn-sm:hover { background: var(--color-bg-muted, #f3f4f6); }

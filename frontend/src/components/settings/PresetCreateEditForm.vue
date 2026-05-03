@@ -187,15 +187,7 @@ input[readonly] {
   gap: 8px;
   margin-top: 8px;
 }
-.btn-primary {
-  background: var(--color-accent, #4f46e5);
-  color: var(--color-text-on-accent, white);
-  border: none;
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* T19: .btn-primary is now defined globally in main.css. */
 button {
   padding: 6px 14px;
   border-radius: 4px;
