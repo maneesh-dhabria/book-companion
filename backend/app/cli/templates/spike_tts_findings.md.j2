@@ -1,0 +1,32 @@
+# TTS engine spike — {{ today_iso }}
+
+**Book:** {{ book_title }} (id={{ book_id }})
+**Section:** {{ section_title }} (id={{ section_id }})
+**Sample length:** {{ sample_chars }} chars
+
+## Methodology
+
+Generated the same passage with both engines:
+
+- **Kokoro** (local ONNX): `docs/spikes/clip-kokoro.mp3` (voice=`{{ kokoro_voice }}`).
+- **Web Speech** (browser): listen via `http://localhost:8765/spike-helper.html`.
+
+## Findings (edit these)
+
+- **Kokoro** sounded {{ kokoro_adjective | default("[adjective: e.g. richer, smoother]") }}.
+- **Web Speech** sounded {{ web_speech_adjective | default("[adjective: e.g. flatter, more synthetic]") }}.
+- Recommended default for this user: **{{ recommended_default | default("[kokoro|web-speech]") }}**.
+
+## Tradeoffs
+
+| Dimension       | Kokoro         | Web Speech     |
+|-----------------|----------------|----------------|
+| Voice quality   | (rate)         | (rate)         |
+| Latency         | ~200–500 ms    | ~50 ms         |
+| Disk per book   | ~3 MB / hour   | 0              |
+| Offline         | yes            | no (some OSs)  |
+| Auto cue / hl   | yes (offsets)  | yes (events)   |
+
+## Action
+
+Set `tts.engine` in Settings → Text-to-speech.

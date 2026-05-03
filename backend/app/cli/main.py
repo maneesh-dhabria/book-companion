@@ -139,6 +139,11 @@ app.add_typer(backup_app, name="backup", help="Backup and restore database. (Pha
 app.add_typer(references_app, name="references", help="External reference commands. (Phase 2)")
 app.add_typer(edit_app, name="edit", help="Edit metadata and summaries. (Phase 2)")
 
+# Audiobook mode (Phase F+G)
+from app.cli.commands.spike_cmd import spike_app
+
+app.add_typer(spike_app, name="spike", help="Spike commands (engine comparisons).")
+
 
 if __name__ == "__main__":
     app()

@@ -5,6 +5,7 @@ import subprocess
 from importlib.resources import files
 from pathlib import Path
 
+import typer
 from rich.console import Console
 
 from app.cli.deps import async_command, get_settings
@@ -42,7 +43,13 @@ def _run_migrations() -> None:
 
 
 @async_command
-async def init():
+async def init(
+    tts_engine: str = typer.Option(
+        "",
+        "--tts-engine",
+        help="Eagerly download model for the given TTS engine ('kokoro').",
+    ),
+):
     """First-time setup: create data directory, initialize database, download embedding model."""
     settings = get_settings()
     data_dir = Path(settings.data.directory)
@@ -90,7 +97,30 @@ async def init():
         console.print(f"  [yellow]⚠[/yellow] Model download failed: {e}")
         console.print("    Embedding model will be downloaded on first use.")
 
-    # 6. Print getting started
+    # 6. Optional TTS engine bootstrap (F6 / F7)
+    effective_tts_engine = tts_engine or getattr(settings.tts, "engine", "")
+    if effective_tts_engine == "kokoro":
+        console.print("\nChecking Kokoro prerequisites...")
+        if shutil.which("ffmpeg") is None:
+            console.print(
+                "  [red]✗[/red] ffmpeg not found on PATH.\n"
+                "    Install via [bold]brew install ffmpeg[/bold] (macOS) or your distro's package manager,\n"
+                "    then re-run [bold]bookcompanion init[/bold]."
+            )
+            raise typer.Exit(code=1)
+        console.print("  [green]✓[/green] ffmpeg: found")
+
+        if tts_engine == "kokoro":
+            console.print("Downloading Kokoro model (~330MB, one-time)...")
+            try:
+                from app.services.tts.kokoro_provider import KokoroProvider
+
+                KokoroProvider._ensure_model_downloaded(data_dir / "tts_model")
+                console.print("  [green]✓[/green] Kokoro model: ready")
+            except Exception as e:
+                console.print(f"  [yellow]⚠[/yellow] Kokoro download failed: {e}")
+
+    # 7. Print getting started
     console.print("\n[bold]Setup complete![/bold] Here's how to get started:\n")
     console.print("  1. Start the web UI:       bookcompanion serve")
     console.print("  2. Add your first book:    bookcompanion add ~/path/to/book.epub")

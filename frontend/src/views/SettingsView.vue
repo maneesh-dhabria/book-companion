@@ -8,6 +8,7 @@ import PresetSettings from '@/components/settings/PresetSettings.vue'
 import ReadingSettings from '@/components/settings/ReadingSettings.vue'
 import BackupSettings from '@/components/settings/BackupSettings.vue'
 import LlmSettings from '@/components/settings/LlmSettings.vue'
+import SettingsTtsPanel from '@/components/settings/SettingsTtsPanel.vue'
 import { useSettingsStore } from '@/stores/settings'
 
 const route = useRoute()
@@ -42,6 +43,7 @@ onMounted(() => {
         <ReadingSettings v-else-if="activeSection === 'reading'" />
         <BackupSettings v-else-if="activeSection === 'backup'" />
         <LlmSettings v-else-if="activeSection === 'llm'" />
+        <SettingsTtsPanel v-else-if="activeSection === 'tts'" />
       </div>
     </div>
   </div>
