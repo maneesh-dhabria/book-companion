@@ -1,5 +1,7 @@
 import { getCurrentInstance, onUnmounted, ref, type Ref } from 'vue'
 
+import { useAudioJobStore } from '@/stores/audioJob'
+
 export interface JobProgress {
   current: number
   total: number
@@ -104,12 +106,30 @@ export function useBufferedJobStream(
       // Audio-job events (Phase B) — same shape as section_completed, different name.
       case 'section_audio_completed':
         s.progress.current = (s.progress.current ?? 0) + 1
+        if (typeof ev.data.section_id === 'number') {
+          useAudioJobStore().recordContentCompletion(
+            'section_summary',
+            ev.data.section_id,
+          )
+        }
         break
       case 'section_audio_failed':
         s.failures = (s.failures ?? 0) + 1
+        if (typeof ev.data.section_id === 'number') {
+          useAudioJobStore().recordContentCompletion(
+            'section_summary',
+            ev.data.section_id,
+          )
+        }
         break
       case 'section_audio_already_stale':
         s.progress.current = (s.progress.current ?? 0) + 1
+        if (typeof ev.data.section_id === 'number') {
+          useAudioJobStore().recordContentCompletion(
+            'section_summary',
+            ev.data.section_id,
+          )
+        }
         break
       case 'section_retry':
         s.retrying_section_id = ev.data.section_id ?? null
