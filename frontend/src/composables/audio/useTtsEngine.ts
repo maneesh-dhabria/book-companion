@@ -48,6 +48,18 @@ export function useTtsEngine(): UseTtsEngineApi {
   return {
     async load(args: LoadArgs) {
       const store = useTtsPlayerStore()
+      // Terminate the previous engine so prior audio + queued utterances stop
+      // before we attach a new one. Without this, switching sections leaves
+      // the prior <audio> buffering and prior speechSynthesis utterances
+      // queued, producing overlapping playback.
+      if (lastEngine) {
+        try {
+          lastEngine.terminate()
+        } catch {
+          /* ignore */
+        }
+        lastEngine = null
+      }
       let lookup: AudioLookupResponse
       try {
         lookup = await audioApi.lookup({

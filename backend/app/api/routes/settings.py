@@ -2,7 +2,7 @@
 
 import asyncio
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,25 +97,24 @@ async def put_tts_settings(
 
 
 @router.get("/tts/status")
-async def get_tts_status(settings: Settings = Depends(get_settings)):
+async def get_tts_status(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+):
     """Return the engine warm-up state for the UI status chip."""
-    from app.api.deps import get_settings as _gs  # noqa: F401
-
     if settings.tts.engine != "kokoro":
         return {"status": "n/a"}
 
     from pathlib import Path as _Path
 
-    md = _Path(settings.data.directory) / "tts_model"
+    md = _Path(settings.data.directory) / "models" / "tts"
     onnx = md / "kokoro-v1.0.onnx"
     bin_ = md / "voices-v1.0.bin"
     if not onnx.exists() or not bin_.exists():
         return {"status": "not_downloaded"}
 
-    # Read warm flag from app.state via a lazy module import (avoid request dep)
-    from app.api.routes import audio  # noqa: F401
-
-    return {"status": "warm"}  # post-prewarm; cold reported by the caller
+    warm = bool(getattr(request.app.state, "tts_warm", False))
+    return {"status": "warm" if warm else "cold"}
 
 
 @router.get("/database-stats")

@@ -185,7 +185,15 @@ export class Mp3Engine implements TtsEngine {
     this.audio.removeEventListener('timeupdate', this.onTimeUpdate)
     this.audio.removeEventListener('ended', this.onEnded)
     this.audio.removeEventListener('error', this.onAudioError)
-    this.audio.pause()
+    try {
+      this.audio.pause()
+      // Release the underlying media handle so the browser stops buffering
+      // and the element is GC-eligible before the next engine is created.
+      this.audio.removeAttribute('src')
+      this.audio.load()
+    } catch {
+      /* ignore */
+    }
   }
 
   _fakeTime(t: number): void {

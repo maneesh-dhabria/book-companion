@@ -125,7 +125,8 @@ class KokoroProvider(TTSProvider):
         sanitized = sanitize(text)
         if len(sanitized.text) > MAX_SANITIZED_CHARS:
             raise TooLargeError(
-                f"post-sanitizer text {len(sanitized.text)} chars exceeds cap of {MAX_SANITIZED_CHARS}"
+                f"post-sanitizer text {len(sanitized.text)} chars "
+                f"exceeds cap of {MAX_SANITIZED_CHARS}"
             )
         sentences = self._split_by_offsets(sanitized.text, sanitized.sentence_offsets_chars)
         if not sentences:

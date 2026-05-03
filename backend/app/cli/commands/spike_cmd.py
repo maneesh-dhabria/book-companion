@@ -72,7 +72,7 @@ async def spike_tts(
     try:
         from app.services.tts.kokoro_provider import KokoroProvider
 
-        model_dir = Path(settings.data.directory) / "tts_model"
+        model_dir = Path(settings.data.directory) / "models" / "tts"
         provider = KokoroProvider(model_dir=model_dir)
         result = provider.synthesize(sample_text, voice=voice)
         clip_path.write_bytes(result.audio_bytes)

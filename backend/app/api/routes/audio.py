@@ -322,6 +322,10 @@ async def audio_lookup(
         voice=voice,
         current_source_md=source_md,
     )
+    # Frontend AudioLookupResponse expects:
+    #   stale: { reason: 'source_changed' | 'sanitizer_upgraded' | 'segmenter_drift' } | null
+    #   source_hash: string | null  (the canonical/current hash)
+    stale_obj = {"reason": result.stale_reason} if result.stale and result.stale_reason else None
     return {
         "pregenerated": result.pregenerated,
         "sanitized_text": result.sanitized_text,
@@ -330,12 +334,13 @@ async def audio_lookup(
         "duration_seconds": result.duration_seconds,
         "voice": result.voice,
         "sentence_offsets_seconds": result.sentence_offsets_seconds,
+        "source_hash": result.source_hash_current,
+        # Internal/diagnostic fields retained for non-UI consumers (CLI, tests):
         "source_hash_stored": result.source_hash_stored,
         "source_hash_current": result.source_hash_current,
         "sanitizer_version_stored": result.sanitizer_version_stored,
         "sanitizer_version_current": result.sanitizer_version_current,
-        "stale": result.stale,
-        "stale_reason": result.stale_reason,
+        "stale": stale_obj,
     }
 
 

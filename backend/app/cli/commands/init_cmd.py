@@ -104,7 +104,8 @@ async def init(
         if shutil.which("ffmpeg") is None:
             console.print(
                 "  [red]✗[/red] ffmpeg not found on PATH.\n"
-                "    Install via [bold]brew install ffmpeg[/bold] (macOS) or your distro's package manager,\n"
+                "    Install via [bold]brew install ffmpeg[/bold] (macOS) or "
+                "your distro's package manager,\n"
                 "    then re-run [bold]bookcompanion init[/bold]."
             )
             raise typer.Exit(code=1)
@@ -115,7 +116,7 @@ async def init(
             try:
                 from app.services.tts.kokoro_provider import KokoroProvider
 
-                KokoroProvider._ensure_model_downloaded(data_dir / "tts_model")
+                KokoroProvider._ensure_model_downloaded(data_dir / "models" / "tts")
                 console.print("  [green]✓[/green] Kokoro model: ready")
             except Exception as e:
                 console.print(f"  [yellow]⚠[/yellow] Kokoro download failed: {e}")

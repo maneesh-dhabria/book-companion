@@ -14,17 +14,18 @@ console = Console()
 
 
 def _split_sentences(sanitized_text: str, offsets: list[int]) -> list[str]:
-    """Slice sanitized text by ``sentence_offsets_chars`` (cumulative char positions)."""
-    sentences: list[str] = []
-    prev = 0
-    for off in offsets:
-        if off <= prev:
-            continue
-        sentences.append(sanitized_text[prev:off])
-        prev = off
-    if prev < len(sanitized_text):
-        sentences.append(sanitized_text[prev:])
-    return [s.strip() for s in sentences if s.strip()]
+    """Slice sanitized text by ``sentence_offsets_chars``.
+
+    ``sentence_offsets_chars`` are sentence START indices (matches
+    ``markdown_to_speech.sanitize`` and ``audio_gen_service._split_by_offsets``).
+    """
+    if not offsets:
+        return [s for s in [sanitized_text.strip()] if s]
+    out: list[str] = []
+    for i, start in enumerate(offsets):
+        end = offsets[i + 1] if i + 1 < len(offsets) else len(sanitized_text)
+        out.append(sanitized_text[start:end].strip())
+    return [s for s in out if s]
 
 
 @async_command
@@ -88,7 +89,7 @@ async def _run_local_playback(book_id: int, voice: str) -> None:
 
     san = sanitize(summary.summary_md)
     sentences = _split_sentences(san.text, list(san.sentence_offsets_chars))
-    provider = KokoroProvider(model_dir=Path(settings.data.directory) / "tts_model")
+    provider = KokoroProvider(model_dir=Path(settings.data.directory) / "models" / "tts")
 
     console.print(f"\n[bold]Listening to:[/bold] {book.title}")
     console.print(f"[dim]{len(sentences)} sentence(s); space=pause, q=quit[/dim]\n")
