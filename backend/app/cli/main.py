@@ -140,9 +140,13 @@ app.add_typer(references_app, name="references", help="External reference comman
 app.add_typer(edit_app, name="edit", help="Edit metadata and summaries. (Phase 2)")
 
 # Audiobook mode (Phase F+G)
+from app.cli.commands.listen_cmd import listen as listen_cmd_fn
+from app.cli.commands.maintenance_cmd import maintenance_app
 from app.cli.commands.spike_cmd import spike_app
 
 app.add_typer(spike_app, name="spike", help="Spike commands (engine comparisons).")
+app.command("listen")(listen_cmd_fn)
+app.add_typer(maintenance_app, name="maintenance", help="Periodic maintenance commands.")
 
 
 if __name__ == "__main__":
