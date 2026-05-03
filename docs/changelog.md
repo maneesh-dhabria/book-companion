@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-05-03 — Audiobook Mode (TTS reading + on-device audio generation)
+
+- New **Audio** tab on every book — see at a glance which sections have audio (no-audio / partial / full / generating), and play / download / delete per row. Coverage bar and per-row Play / Download / Delete actions.
+- Click **Generate audio** on the Audio tab to queue an MP3 generation job for the whole book. Cost preview shows estimated minutes + disk before you confirm; defaults include section summaries, the book summary, and the annotations playlist.
+- **Listen while you read**: the Section Reader now has a Play button in the header. Choose between two engines:
+  - **Web Speech** (browser, free, ~50 ms to first audio) — uses your OS voices.
+  - **Kokoro** (local, higher quality, requires `ffmpeg` + `espeak-ng`) — pre-generates ID3-tagged MP3s on disk, plays back on click within 2 s.
+- Sticky **Playbar** at the bottom of the reader: play/pause, ±10 s seek, prev/next sentence, speed, voice. The current sentence highlights in the body as it plays.
+- **Resume affordance**: you'll see "resume from sentence N" when you reopen a section you'd partially listened to (per-browser; cross-browser shows a hint).
+- **Annotations playlist**: from the Annotations tab, click "Play as audio" to hear all of a book's highlights + notes back to back. An audible cue (♪) separates highlight from note.
+- **Sections tab** gets per-section audio rows with status pills (none / ready / stale / generating) and Play / Regenerate / Delete actions.
+- New **Settings → Text-to-Speech** panel — pick engine + voice, sample any voice with one click, see Kokoro's warm/cold/not-downloaded/download-failed status, read your spike findings inline. Default speed and auto-advance toggles included.
+- **Library banner** when 2+ books have stale audio after a sanitizer or summary update — one-click "Regenerate all" or 24 h dismiss.
+- **Stale detection**: audio is auto-marked stale when the underlying summary changes, the sanitizer is upgraded, or the segmenter drift is detected — with a clear banner + "Regenerate" CTA in the player.
+- **Auto-advance**: when a section ends, playback continues into the next section (Web Speech fallback if no MP3 is pre-generated). Toggleable in Settings.
+- **Lock-screen integration**: when a Kokoro MP3 is playing, your OS lock screen shows the book/section title, artist, cover art, and play/pause/seek controls. Book-summary playback also exposes a chapter list.
+- **Per-AudioFile size cap (50,000 chars post-sanitizer)**: oversized sections are skipped with a `too_large` reason instead of hanging the worker.
+- **Mid-listen banners** when a section's summary is regenerated while you're listening, or its source text changes — never silently play stale content.
+- New CLI commands:
+  - `bookcompanion listen <book_id>` — local-device playback of the book summary.
+  - `bookcompanion listen --generate <book_id>` — queues the same audio job as the UI and streams progress.
+  - `bookcompanion spike tts --book-id N --section-id M` — generate a Kokoro clip + a findings template for engine comparison.
+  - `bookcompanion maintenance audio-positions-sweep` — weekly cleanup for orphaned resume positions.
+  - `bookcompanion init --tts-engine kokoro` — eagerly downloads the Kokoro model (~338 MB, one-time, from GitHub Releases) and gates on `ffmpeg` + `espeak-ng`.
+- **Optional install extra** for the local engine: `pip install bookcompanion[kokoro]` adds `kokoro-onnx` and `soundfile`. Default install stays lean for Web-Speech-only users.
+- Auto-detection: on `bookcompanion serve`, the configured TTS engine warms up at startup; you can swap voices without restart.
+
+**References:**
+
+- [Requirements](requirements/2026-05-02-audiobook-mode-requirements.md)
+- [Spec](specs/2026-05-02-audiobook-mode-spec.md)
+- [Implementation plan](plans/2026-05-02-audiobook-mode-plan.md)
+- [Wireframes](wireframes/2026-05-02-audiobook-mode/)
+- [/verify reports](features/2026-05-02-audiobook-mode/verify/)
+- [MSF analysis](msf/2026-05-02-audiobook-mode-msf-analysis.md)
+
 ## 2026-05-02 — Cross-Surface UX Cohesion Bundle
 
 - Book Detail now has a proper tab strip — Overview / Summary / Sections — with `?tab=` deep-links. The legacy `/books/:id/summary` route redirects to `?tab=summary` automatically.
