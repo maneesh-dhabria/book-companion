@@ -36,6 +36,8 @@ export interface LoadArgs {
   contentType: AudioContentType
   contentId: number
   voice?: string
+  nextContentId?: number
+  autoAdvance?: boolean
 }
 
 export interface UseTtsEngineApi {
@@ -79,8 +81,18 @@ export function useTtsEngine(): UseTtsEngineApi {
       engine.onSentenceChange((idx) => {
         store.sentenceIndex = idx
       })
+      const api: UseTtsEngineApi = this
       engine.onEnd(() => {
         store.status = 'ended'
+        if (args.autoAdvance && args.nextContentId) {
+          void api.load({
+            bookId: args.bookId,
+            contentType: args.contentType,
+            contentId: args.nextContentId,
+            voice: args.voice,
+            autoAdvance: args.autoAdvance,
+          })
+        }
       })
       store.engine = engine.kind
       store.voice = lookup.voice ?? args.voice ?? null

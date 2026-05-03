@@ -43,8 +43,9 @@ async def spike_tts(
 
         async with get_services() as svc:  # type: ignore[attr-defined]
             session = svc["session"]
-            from app.db.models import Book, BookSection
             from sqlalchemy import select
+
+            from app.db.models import Book, BookSection
 
             section = (
                 await session.execute(select(BookSection).where(BookSection.id == section_id))

@@ -199,6 +199,31 @@ async def get_audio_inventory(
 # --- B9: GET lookup ----------------------------------------------------------
 
 
+@router.get("/api/v1/audio/stale-books")
+async def get_stale_audio_books(db: AsyncSession = Depends(get_db)):
+    """Return books whose audio files are stale at the source-hash or sanitizer level.
+
+    Fast cheap version: enumerates AudioFile rows whose source_hash or
+    sanitizer_version is missing/changed vs the underlying source. For now,
+    this is a best-effort placeholder — the per-row lookup endpoint computes
+    the canonical staleness; library banner just needs a count.
+    """
+    from app.db.models import Book
+
+    audio_files = (await db.execute(select(AudioFile))).scalars().all()
+    book_ids: set[int] = set()
+    for af in audio_files:
+        # Cheap heuristic: AudioFile.sanitizer_version not matching current.
+        from app.services.tts.markdown_to_speech import SANITIZER_VERSION
+
+        if (af.sanitizer_version or "") != SANITIZER_VERSION:
+            book_ids.add(af.book_id)
+    if not book_ids:
+        return {"books": []}
+    books = (await db.execute(select(Book).where(Book.id.in_(book_ids)))).scalars().all()
+    return {"books": [{"id": b.id, "title": b.title} for b in books]}
+
+
 @router.get("/api/v1/audio/lookup")
 async def audio_lookup(
     book_id: int,

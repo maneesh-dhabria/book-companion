@@ -31,6 +31,7 @@ from app.services.tts.markdown_to_speech import (
 from app.services.tts.provider import (
     FfmpegEncodeError,
     KokoroModelDownloadError,
+    TooLargeError,
     TTSProvider,
 )
 
@@ -298,6 +299,21 @@ class AudioGenService:
                         "index": i,
                         "total": total,
                         "reason": "empty_after_sanitize",
+                        "last_event_at": progress["last_event_at"],
+                    },
+                )
+            except TooLargeError:
+                progress["last_event_at"] = _time.time_ns()
+                self._flag_progress(job)
+                await on_event(
+                    "section_audio_failed",
+                    {
+                        "job_id": job.id,
+                        "kind": kind.value,
+                        "ref": ref,
+                        "index": i,
+                        "total": total,
+                        "reason": "too_large",
                         "last_event_at": progress["last_event_at"],
                     },
                 )

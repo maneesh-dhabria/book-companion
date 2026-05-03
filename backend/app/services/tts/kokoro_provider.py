@@ -23,9 +23,12 @@ from app.services.tts.provider import (
     FfmpegEncodeError,
     KokoroModelDownloadError,
     SynthesisResult,
+    TooLargeError,
     TTSProvider,
     VoiceInfo,
 )
+
+MAX_SANITIZED_CHARS = 50_000
 
 logger = structlog.get_logger(__name__)
 
@@ -120,6 +123,10 @@ class KokoroProvider(TTSProvider):
 
     def synthesize(self, text: str, voice: str, speed: float = 1.0) -> SynthesisResult:
         sanitized = sanitize(text)
+        if len(sanitized.text) > MAX_SANITIZED_CHARS:
+            raise TooLargeError(
+                f"post-sanitizer text {len(sanitized.text)} chars exceeds cap of {MAX_SANITIZED_CHARS}"
+            )
         sentences = self._split_by_offsets(sanitized.text, sanitized.sentence_offsets_chars)
         if not sentences:
             raise EmptySanitizedTextError("no sentences after sanitization")

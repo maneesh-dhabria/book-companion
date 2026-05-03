@@ -49,6 +49,13 @@ class EmptySanitizedTextError(TTSProviderError):
     """
 
 
+class TooLargeError(TTSProviderError):
+    """Raised when the post-sanitizer text exceeds the per-AudioFile cap (NFR-13)."""
+
+    def __init__(self, message: str = "post-sanitizer text exceeds 50,000 chars"):
+        super().__init__(message)
+
+
 class TTSProvider(ABC):
     name: ClassVar[str] = ""
 

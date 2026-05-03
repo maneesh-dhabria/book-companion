@@ -6,12 +6,26 @@ import type {
 } from './types'
 import type { TtsErrorKind } from '@/stores/ttsPlayer'
 
+export interface MediaChapter {
+  title: string
+  startTime: number
+}
+
+export interface MediaInfo {
+  title?: string
+  artist?: string
+  album?: string
+  artwork?: { src: string; sizes?: string; type?: string }[]
+  chapterInfo?: MediaChapter[]
+}
+
 export interface Mp3EngineOpts {
   url: string
   sentenceOffsetsSeconds: number[]
   durationSeconds: number
   sanitizedText: string
   sentenceOffsetsChars: number[]
+  media?: MediaInfo
 }
 
 function sliceSentences(text: string, offsets: number[]): string[] {
@@ -36,8 +50,10 @@ export class Mp3Engine implements TtsEngine {
   private sentenceCb: SentenceChangeHandler | null = null
   private endCb: EndHandler | null = null
   private errorCb: ErrorHandler | null = null
+  private media?: MediaInfo
 
   constructor(opts: Mp3EngineOpts) {
+    this.media = opts.media
     this.sentences = sliceSentences(opts.sanitizedText, opts.sentenceOffsetsChars)
     this.totalSentences = this.sentences.length
     this.durationSeconds = opts.durationSeconds
@@ -79,9 +95,59 @@ export class Mp3Engine implements TtsEngine {
   async play(): Promise<void> {
     try {
       await this.audio.play()
+      this.applyMediaSession()
     } catch {
       this.errorCb?.('mp3_fetch_failed')
     }
+  }
+
+  private applyMediaSession(): void {
+    const ms = (typeof navigator !== 'undefined' ? navigator.mediaSession : undefined) as
+      | (MediaSession & {
+          metadata: MediaMetadata | null
+          setActionHandler?: (
+            action: string,
+            handler: ((details?: unknown) => void) | null,
+          ) => void
+          setPositionState?: (state: {
+            duration?: number
+            position?: number
+            playbackRate?: number
+          }) => void
+        })
+      | undefined
+    if (!ms || typeof MediaMetadata === 'undefined') return
+    const m = this.media
+    if (!m) return
+    const meta = new MediaMetadata({
+      title: m.title ?? '',
+      artist: m.artist ?? '',
+      album: m.album ?? '',
+      artwork: m.artwork ?? [],
+    })
+    if (m.chapterInfo) {
+      ;(meta as unknown as { chapterInfo: MediaChapter[] }).chapterInfo = m.chapterInfo
+    }
+    ms.metadata = meta
+    ms.playbackState = 'playing'
+    ms.setActionHandler?.('play', () => {
+      void this.play()
+    })
+    ms.setActionHandler?.('pause', () => this.pause())
+    ms.setActionHandler?.('previoustrack', () => this.prevSentence())
+    ms.setActionHandler?.('nexttrack', () => this.nextSentence())
+    ms.setActionHandler?.('seekto', (d: unknown) => {
+      const time = (d as { seekTime?: number } | undefined)?.seekTime
+      if (typeof time === 'number') {
+        this.audio.currentTime = time
+        this.onTimeUpdate()
+      }
+    })
+    ms.setPositionState?.({
+      duration: this.durationSeconds,
+      position: this.audio.currentTime,
+      playbackRate: 1,
+    })
   }
 
   pause(): void {

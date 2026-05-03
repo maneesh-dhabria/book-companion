@@ -50,32 +50,35 @@ async def listen(
 async def _run_local_playback(book_id: int, voice: str) -> None:
     settings = get_settings()
     try:
-        import sounddevice  # type: ignore[import-not-found]
+        import sounddevice as _sd  # type: ignore[import-not-found]  # noqa: F401
     except Exception as e:
         console.print(f"[red]✗[/red] sounddevice not installed: {e}")
         console.print("  Install via [bold]uv add sounddevice[/bold] and re-run.")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     async with get_services() as svc:
-        from app.db.models import Book, Summary, SummaryContentType
         from sqlalchemy import select
 
+        from app.db.models import Book, Summary, SummaryContentType
+
         session = svc["session"]
-        book = (
-            await session.execute(select(Book).where(Book.id == book_id))
-        ).scalar_one_or_none()
+        book = (await session.execute(select(Book).where(Book.id == book_id))).scalar_one_or_none()
         if book is None:
             console.print(f"[red]✗[/red] Book {book_id} not found.")
             raise typer.Exit(code=1)
         # Pull default book summary
         summary = (
-            await session.execute(
-                select(Summary)
-                .where(Summary.book_id == book_id)
-                .where(Summary.content_type == SummaryContentType.BOOK)
-                .order_by(Summary.id.desc())
+            (
+                await session.execute(
+                    select(Summary)
+                    .where(Summary.book_id == book_id)
+                    .where(Summary.content_type == SummaryContentType.BOOK)
+                    .order_by(Summary.id.desc())
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if summary is None or not summary.summary_md:
             console.print(f"[yellow]⚠[/yellow] No book summary for {book.title}.")
             raise typer.Exit(code=1)
@@ -98,7 +101,8 @@ async def _run_local_playback(book_id: int, voice: str) -> None:
             continue
         # The provider returns MP3 bytes via ffmpeg; for sounddevice we'd need PCM.
         # As a v1 minimum, write to a temp file and delegate playback to system afplay.
-        import tempfile, subprocess  # noqa: E401
+        import subprocess
+        import tempfile  # noqa: E401
 
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             f.write(result.audio_bytes)
@@ -106,7 +110,7 @@ async def _run_local_playback(book_id: int, voice: str) -> None:
         try:
             subprocess.run(["afplay", mp3_path], check=False)
         except FileNotFoundError:
-            sounddevice  # touch import so static check stays happy
+            pass
         finally:
             Path(mp3_path).unlink(missing_ok=True)
 
@@ -123,10 +127,10 @@ async def _run_generate(book_id: int, scope: str, voice: str) -> None:
         r = httpx.post(f"{base}/api/v1/books/{book_id}/audio", json=payload, timeout=10.0)
     except Exception as e:
         console.print(f"[red]✗[/red] Backend unreachable at {base}: {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
     if r.status_code >= 400:
         console.print(f"[red]✗[/red] Queue failed: {r.status_code} {r.text}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     job = r.json()
     job_id = job["job_id"]
     total = job["total_units"]

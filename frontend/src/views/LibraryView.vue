@@ -11,6 +11,7 @@ import BookTable from '@/components/library/BookTable.vue'
 import ViewTabs from '@/components/library/ViewTabs.vue'
 import BulkToolbar from '@/components/library/BulkToolbar.vue'
 import ContinueBanner from '@/components/reader/ContinueBanner.vue'
+import RegenerateStaleAudioBanner from '@/components/library/RegenerateStaleAudioBanner.vue'
 
 const store = useBooksStore()
 const route = useRoute()
@@ -61,6 +62,7 @@ onMounted(() => {
 <template>
   <div class="library-page">
     <ContinueBanner />
+    <RegenerateStaleAudioBanner />
     <ViewTabs />
     <div class="library-search-row">
       <input
