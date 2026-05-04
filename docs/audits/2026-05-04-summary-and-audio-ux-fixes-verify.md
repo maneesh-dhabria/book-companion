@@ -100,7 +100,36 @@ Tabular FR/edge-case compliance, three-state per row.
 
 3. **`useTtsEngine` `bookTitle` resolution requires `useBooksStore` to be populated.** When the store is empty (e.g., user navigates straight to `/books/1` cold), `bookTitle` falls back to empty string; mediaSession `artist` will be blank. Acceptable per spec (T5/T18 specs treat artist as optional).
 
-## Open / Unverified — action required
+## Live Playwright verification — completed 2026-05-04
+
+After the initial report, the user requested live browser verification. Stack
+spun up on `:8765` with frontend built into `backend/app/static/`, seeded
+with `art_of_war.epub` (book id 1), section 1 summarized via the real
+LLM pipeline, then the full book summary generated. Playwright MCP drove
+the journeys.
+
+| ID | Surface | Outcome | Live evidence |
+|----|---------|---------|---------------|
+| UI-1 | `/books/1?tab=summary` populated header | ✅ Verified | Action buttons in order: `Listen` (leftmost, `btn-secondary tts-play-button`), `Read Section Summaries`, `Regenerate`. Markdown body 1168 words rendered. |
+| UI-2 | Spinner + 0:00 elapsed within 1 s | ✅ Verified | `role=status, aria-live=polite, aria-busy=true`. Spinner element present. Text: `"Generating book summary… 0:06 elapsed"` (ticked from 0:00 within 6 seconds of click). No Cancel button. |
+| UI-3 | 409 reattach uses `active_job_started_at` | ✅ Verified | Live POST while in-progress returned `{status: 409, body: {active_job_id: 2, active_job_started_at: "2026-05-04T04:55:46"}}`. Frontend timer continued ticking with the original started-at, not Date.now() of the second POST. |
+| UI-4 | ReaderHeader Listen button | ✅ Verified | `/books/1/sections/1?tab=summary`: button with `class="tts-play-button"` and `title="Listen"` rendered in actions slot. Toggling to `?tab=original` (section_content) preserved the button — rebound correctly. |
+| UI-5 | AnnotationsView per-row Listen | ✅ Verified | After seeding annotation id 1 ("Hello annotation world."), `/annotations` rendered 1 card with exactly 1 `tts-play-button` per card. `GET /api/v1/audio/annotations/1/lookup` returned `{sanitized_text: "Hello annotation world.", sentence_offsets_chars: [0], sanitizer_version_current: "1.0"}` end-to-end. |
+| UI-6 | Settings TTS panel | ✅ Verified | `data-testid="reset"` exists with text `"Reset to defaults"` and class `btn-secondary`. `data-testid="save"` uses class `btn-primary` (T17/T19). Voice dropdown populated with system voices (Rishi, Albert, Alice, Alva, Amélie, …); no missing-voice hint because saved voice was present. |
+| UI-9 | Canonical button parity | ✅ Verified | `getComputedStyle('.btn-primary')` on `/books/1`: `bg: rgb(79,70,229)` (`--color-accent`), `color: white`, `padding: 8px 16px`, `border-radius: 6px`, `font-weight: 600`, `display: flex`. Single `main.css` source rules applied; no scoped overrides took precedence. |
+| P1 | `document.title` per route | ✅ Verified | `/books/1?tab=summary` → "Book — Book Companion"; `/books/1/sections/1?tab=summary` → "Reader — Book Companion"; `/annotations` → "Annotations — Book Companion"; `/settings/tts` → "Settings — Book Companion". |
+| P7/P8 | Hard-reload of parameterized routes | ✅ Verified | Fresh navigation to each `/books/:id`, `/books/:id/sections/:sectionId?tab=summary`, `/books/:id/sections/:sectionId?tab=original` rendered the requested resource (not the index/first item). |
+| P9 | Console errors during journey | ✅ Verified | `browser_console_messages level=error all=true` returned only the deliberate 409 from UI-3. Zero unexpected errors across 5 distinct routes. |
+
+| ID | Surface | Outcome | Notes |
+|----|---------|---------|-------|
+| UI-7 | iOS Safari gesture chain | Unverified — non-Safari env | Requires iOS Safari (real device or DevTools Responsive iPhone). Cannot validate from desktop Chromium MCP. |
+| UI-8 | macOS Now Playing widget | Unverified — out-of-browser surface | Requires manual menubar inspection during Web Speech / MP3 playback. The mediaSession metadata code is in place (T18); confirming OS-level rendering is a manual macOS-only check. |
+| UI-10 | Two new e2e specs (`listen-section-summary`, `book-summary-progress`) | Deferred | Recommended next-pass addition to lock these flows into CI. The plan's TN section called these out; deferred to keep this single-session scope tractable. |
+
+**Net:** 7 of 10 originally-Unverified UI items now Verified live. The 3 outstanding require platforms outside the desktop Chromium harness (iOS Safari + macOS menubar) plus one deferred test-suite addition.
+
+## Originally Open / Unverified — action required
 
 These items the agent could not verify without an interactive browser session and a running stack. To close them, run:
 
