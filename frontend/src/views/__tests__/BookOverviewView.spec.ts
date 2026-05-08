@@ -135,6 +135,59 @@ describe('BookOverviewView', () => {
     expect(settings.popoverOpen).toBe(true)
   })
 
+  it('Read CTA skips front-matter sections[0] and links to first chapter (FR-B02)', async () => {
+    const BOOK_FM = {
+      id: 1,
+      title: 'Front-matter book',
+      authors: [],
+      status: 'PARSED',
+      sections: [
+        { id: 10, title: 'Copyright', section_type: 'copyright', has_summary: false },
+        { id: 11, title: 'Ch1', section_type: 'chapter', has_summary: false },
+      ],
+    }
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.endsWith('/books/1')) return new Response(JSON.stringify(BOOK_FM))
+      return new Response('{"tags":[],"summary_md":null}')
+    })
+    const router = makeRouter()
+    router.push('/1')
+    await router.isReady()
+    const w = mount(BookOverviewView, { global: { plugins: [router] } })
+    await flushPromises()
+    const read = w.find('[data-action="read"]')
+    expect(read.exists()).toBe(true)
+    expect(read.attributes('href')).toBe('/1/sections/11')
+  })
+
+  it('Read CTA renders disabled button with tooltip when no chapter exists (FR-B02)', async () => {
+    const BOOK_NO_CHAPTER = {
+      id: 1,
+      title: 'No chapter',
+      authors: [],
+      status: 'PARSING',
+      sections: [
+        { id: 10, title: 'Copyright', section_type: 'copyright', has_summary: false },
+      ],
+    }
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.endsWith('/books/1')) return new Response(JSON.stringify(BOOK_NO_CHAPTER))
+      return new Response('{"tags":[],"summary_md":null}')
+    })
+    const router = makeRouter()
+    router.push('/1')
+    await router.isReady()
+    const w = mount(BookOverviewView, { global: { plugins: [router] } })
+    await flushPromises()
+    const read = w.find('[data-action="read"]')
+    expect(read.exists()).toBe(true)
+    expect(read.element.tagName).toBe('BUTTON')
+    expect(read.attributes('disabled')).toBeDefined()
+    expect(read.attributes('title')).toBe('No chapter to open yet')
+  })
+
   it('omits SummarizationProgress when summarizable is 0', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
       const u = String(url)

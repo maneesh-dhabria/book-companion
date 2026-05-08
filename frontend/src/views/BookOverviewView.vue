@@ -60,6 +60,16 @@
             >
               Read
             </router-link>
+            <button
+              v-else
+              type="button"
+              class="btn-primary"
+              data-action="read"
+              disabled
+              title="No chapter to open yet"
+            >
+              Read
+            </button>
             <OverflowMenu
               data-action="overflow"
               :edit-route="{ name: 'book-edit-structure', params: { id: String(book.id) } }"
@@ -154,6 +164,7 @@ import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.v
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
+import { firstChapter } from '@/stores/reader'
 
 interface SectionRow {
   id: number
@@ -196,7 +207,9 @@ const bookTags = ref<BookTag[]>([])
 const defaultSummary = ref<string | null>(null)
 
 const bookId = computed(() => Number(route.params.id))
-const firstSection = computed(() => (book.value?.sections || [])[0] ?? null)
+const firstSection = computed(() =>
+  firstChapter(book.value?.sections ?? null, book.value?.status ?? null),
+)
 const suggestedTags = computed<string[]>(() => book.value?.suggested_tags || [])
 
 const showModal = ref(false)
