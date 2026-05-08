@@ -24,7 +24,7 @@ describe('ResumeAffordance', () => {
     })
     const wrap = mount(ResumeAffordance, {
       props: {
-        contentType: 'section_summary',
+        bookId: 1, contentType: 'section_summary',
         contentId: 42,
         audioStatus: 'complete',
         totalSentences: 47,
@@ -39,7 +39,7 @@ describe('ResumeAffordance', () => {
     vi.mocked(audioPositionApi.get).mockResolvedValueOnce(null)
     const wrap = mount(ResumeAffordance, {
       props: {
-        contentType: 'section_summary',
+        bookId: 1, contentType: 'section_summary',
         contentId: 42,
         audioStatus: 'complete',
         totalSentences: 47,
@@ -58,7 +58,7 @@ describe('ResumeAffordance', () => {
     })
     const wrap = mount(ResumeAffordance, {
       props: {
-        contentType: 'section_summary',
+        bookId: 1, contentType: 'section_summary',
         contentId: 42,
         audioStatus: 'complete',
         totalSentences: 47,

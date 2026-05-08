@@ -4,6 +4,7 @@ import type {
   ErrorHandler,
   SentenceChangeHandler,
   TtsEngine,
+  WaitingForVoicesHandler,
 } from './types'
 import type { TtsErrorKind } from '@/stores/ttsPlayer'
 
@@ -58,6 +59,9 @@ export class Mp3Engine implements TtsEngine {
   private media?: MediaInfo
   private contentType?: string
   private bookTitle?: string
+  private watchdogTimer: ReturnType<typeof setTimeout> | null = null
+  private watchdogPlayingHandler: (() => void) | null = null
+  private errorEmitted = false
 
   constructor(opts: Mp3EngineOpts) {
     this.media = opts.media
@@ -69,10 +73,13 @@ export class Mp3Engine implements TtsEngine {
     this.offsets = opts.sentenceOffsetsSeconds.length > 0 ? opts.sentenceOffsetsSeconds : [0]
     const audio = typeof Audio !== 'undefined' ? new Audio(opts.url) : ({
       currentTime: 0,
+      paused: true,
+      ended: false,
       play: () => Promise.resolve(),
       pause: () => undefined,
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
+      dispatchEvent: () => true,
     } as unknown as HTMLAudioElement)
     this.audio = audio
     this.audio.preload = 'auto'
@@ -98,14 +105,60 @@ export class Mp3Engine implements TtsEngine {
   }
 
   private onAudioError = (): void => {
+    this.errorEmitted = true
     this.errorCb?.('mp3_fetch_failed')
   }
 
-  async play(): Promise<void> {
+  startWatchdog(timeoutMs: number, onTimeout: () => void): void {
+    this.cancelWatchdog()
+    const playingHandler = () => {
+      this.cancelWatchdog()
+    }
+    this.watchdogPlayingHandler = playingHandler
     try {
+      this.audio.addEventListener('playing', playingHandler, { once: true })
+    } catch {
+      /* ignore */
+    }
+    this.watchdogTimer = setTimeout(() => {
+      this.watchdogTimer = null
+      if (this.errorEmitted) return
+      if (this.audio.paused && !this.audio.ended) {
+        onTimeout()
+      }
+    }, timeoutMs)
+  }
+
+  cancelWatchdog(): void {
+    if (this.watchdogTimer !== null) {
+      clearTimeout(this.watchdogTimer)
+      this.watchdogTimer = null
+    }
+    if (this.watchdogPlayingHandler) {
+      try {
+        this.audio.removeEventListener('playing', this.watchdogPlayingHandler)
+      } catch {
+        /* ignore */
+      }
+      this.watchdogPlayingHandler = null
+    }
+  }
+
+  onWaitingForVoices(_cb: WaitingForVoicesHandler): void {
+    // MP3 engine never waits on voices; no-op by design.
+    void _cb
+  }
+
+  async play(): Promise<void> {
+    // Idempotent: if already playing, no-op.
+    if (!this.audio.paused && !this.audio.ended) return
+    try {
+      this.startWatchdog(1000, () => this.errorCb?.('engine_unavailable'))
       await this.audio.play()
       this.applyMediaSession()
     } catch {
+      this.cancelWatchdog()
+      this.errorEmitted = true
       this.errorCb?.('mp3_fetch_failed')
     }
   }
@@ -127,8 +180,6 @@ export class Mp3Engine implements TtsEngine {
       | undefined
     if (!ms || typeof MediaMetadata === 'undefined') return
     const m = this.media ?? {}
-    // FR-19b / plan T18: title varies by contentType. Falls back to media.title
-    // for callers that pre-supplied one.
     const fallbackTitle = titleForContentType(this.contentType)
     const meta = new MediaMetadata({
       title: m.title ?? fallbackTitle,
@@ -162,14 +213,17 @@ export class Mp3Engine implements TtsEngine {
   }
 
   pause(): void {
+    this.cancelWatchdog()
     this.audio.pause()
   }
 
   nextSentence(): void {
+    this.cancelWatchdog()
     this.seek(Math.min(this.idx + 1, this.totalSentences - 1))
   }
 
   prevSentence(): void {
+    this.cancelWatchdog()
     this.seek(Math.max(this.idx - 1, 0))
   }
 
@@ -193,13 +247,12 @@ export class Mp3Engine implements TtsEngine {
   }
 
   terminate(): void {
+    this.cancelWatchdog()
     this.audio.removeEventListener('timeupdate', this.onTimeUpdate)
     this.audio.removeEventListener('ended', this.onEnded)
     this.audio.removeEventListener('error', this.onAudioError)
     try {
       this.audio.pause()
-      // Release the underlying media handle so the browser stops buffering
-      // and the element is GC-eligible before the next engine is created.
       this.audio.removeAttribute('src')
       this.audio.load()
     } catch {

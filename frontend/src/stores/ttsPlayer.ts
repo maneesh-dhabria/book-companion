@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
+import { useTtsEngine } from '@/composables/audio/useTtsEngine'
+import type { AudioContentType } from '@/api/audio'
+
 export type TtsContentType =
   | 'section_summary'
   | 'book_summary'
@@ -8,7 +11,14 @@ export type TtsContentType =
   | 'annotation'
   | 'annotations_playlist'
 
-export type TtsStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended' | 'error'
+export type TtsStatus =
+  | 'idle'
+  | 'loading'
+  | 'starting'
+  | 'playing'
+  | 'paused'
+  | 'ended'
+  | 'error'
 
 export type TtsEngineKind = 'mp3' | 'web-speech'
 
@@ -31,6 +41,7 @@ export type ActiveEngineReason =
   | 'kokoro_unavailable'
 
 export interface OpenContentArgs {
+  bookId: number
   contentType: TtsContentType
   contentId: number
   sentenceIndex?: number
@@ -38,6 +49,7 @@ export interface OpenContentArgs {
 
 export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
   const isActive = ref(false)
+  const bookId = ref<number | null>(null)
   const contentType = ref<TtsContentType | null>(null)
   const contentId = ref<number | null>(null)
   const sentenceIndex = ref(0)
@@ -61,6 +73,7 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
   const isError = computed(() => status.value === 'error')
 
   function open(args: OpenContentArgs) {
+    bookId.value = args.bookId
     contentType.value = args.contentType
     contentId.value = args.contentId
     sentenceIndex.value = args.sentenceIndex ?? 0
@@ -71,7 +84,13 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
   }
 
   function close() {
+    try {
+      useTtsEngine().terminate()
+    } catch {
+      /* ignore */
+    }
     isActive.value = false
+    bookId.value = null
     contentType.value = null
     contentId.value = null
     sentenceIndex.value = 0
@@ -90,26 +109,30 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
 
   function play() {
     status.value = 'playing'
+    void useTtsEngine()
+      .playActive()
+      .catch(() => {
+        // Engine errors flow through the wired onError -> setError path.
+        // The .catch here is purely to silence unhandled-rejection warnings.
+      })
   }
 
   function pause() {
     status.value = 'paused'
+    useTtsEngine().pauseActive()
   }
 
   function nextSentence() {
-    if (totalSentences.value === 0) {
-      sentenceIndex.value += 1
-      return
-    }
-    if (sentenceIndex.value < totalSentences.value - 1) {
-      sentenceIndex.value += 1
-    }
+    // No pre-update; engine.onSentenceChange will set sentenceIndex.
+    useTtsEngine().nextActive()
   }
 
   function prevSentence() {
-    if (sentenceIndex.value > 0) {
-      sentenceIndex.value -= 1
-    }
+    useTtsEngine().prevActive()
+  }
+
+  function seek(idx: number) {
+    useTtsEngine().seekActive(idx)
   }
 
   function setError(kind: TtsErrorKind) {
@@ -117,21 +140,36 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
     errorKind.value = kind
   }
 
-  function retry() {
-    if (contentType.value === null || contentId.value === null) {
+  async function retry() {
+    if (
+      contentType.value === null ||
+      contentId.value === null ||
+      bookId.value === null
+    ) {
       errorKind.value = null
       return
     }
     const at = sentenceIndex.value
-    open({
-      contentType: contentType.value,
-      contentId: contentId.value,
-      sentenceIndex: at,
-    })
+    const ct = contentType.value
+    const ci = contentId.value
+    const bid = bookId.value
+    open({ bookId: bid, contentType: ct, contentId: ci, sentenceIndex: at })
+    try {
+      // 'annotation' is a runtime-only TtsContentType; retry only fires for
+      // persisted content types, but guard for type-safety.
+      await useTtsEngine().load({
+        bookId: bid,
+        contentType: ct as AudioContentType,
+        contentId: ci,
+      })
+    } catch {
+      // load() already calls setError on its own catch; nothing to do.
+    }
   }
 
   return {
     isActive,
+    bookId,
     contentType,
     contentId,
     sentenceIndex,
@@ -158,6 +196,7 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
     pause,
     nextSentence,
     prevSentence,
+    seek,
     setError,
     retry,
   }

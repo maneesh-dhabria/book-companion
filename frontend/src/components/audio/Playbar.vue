@@ -28,6 +28,7 @@ function formatTime(s: number): string {
 }
 
 function onPlayPause() {
+  if (store.status === 'starting') return
   if (store.status === 'playing') {
     store.pause()
   } else {
@@ -67,8 +68,12 @@ function onRetry() {
       Summary updated since this audio was generated — regenerate to apply.
     </div>
     <template v-if="store.status === 'error'">
-      <span class="text-sm text-red-600 dark:text-red-400">
-        Audio error: {{ store.errorKind }}
+      <span
+        data-testid="audio-error-message"
+        class="text-sm text-red-600 dark:text-red-400"
+        :title="`errorKind: ${store.errorKind ?? 'unknown'}`"
+      >
+        Audio couldn't start. Try again or check your settings.
       </span>
       <button
         data-testid="retry"
@@ -92,10 +97,36 @@ function onRetry() {
         type="button"
         data-testid="play-pause"
         class="btn-primary btn-icon"
-        :aria-label="store.status === 'playing' ? 'Pause' : 'Play'"
+        :aria-label="
+          store.status === 'starting'
+            ? 'Starting'
+            : store.status === 'playing'
+              ? 'Pause'
+              : 'Play'
+        "
+        :disabled="store.status === 'starting' || undefined"
+        :aria-disabled="store.status === 'starting' ? 'true' : undefined"
         @click="onPlayPause"
       >
-        {{ store.status === 'playing' ? '⏸' : '▶' }}
+        <svg
+          v-if="store.status === 'starting'"
+          class="h-4 w-4 animate-spin"
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+        >
+          <circle
+            cx="10"
+            cy="10"
+            r="8"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-dasharray="40"
+          />
+        </svg>
+        <template v-else>
+          {{ store.status === 'playing' ? '⏸' : '▶' }}
+        </template>
       </button>
       <button
         type="button"

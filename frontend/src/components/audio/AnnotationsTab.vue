@@ -40,7 +40,7 @@ async function load() {
 }
 
 function onPlayAll() {
-  ttsPlayer?.open({ contentType: 'annotations_playlist', contentId: props.bookId })
+  ttsPlayer?.open({ bookId: props.bookId, contentType: 'annotations_playlist', contentId: props.bookId })
 }
 
 onMounted(load)

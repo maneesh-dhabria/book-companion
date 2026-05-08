@@ -12,7 +12,7 @@ beforeEach(() => {
 describe('TtsPlayButton', () => {
   it('renders enabled when section has summary', () => {
     const wrap = mount(TtsPlayButton, {
-      props: { contentType: 'section_summary', contentId: 42, hasSummary: true },
+      props: { bookId: 1, contentType: 'section_summary', contentId: 42, hasSummary: true },
     })
     const btn = wrap.find('button')
     expect(btn.attributes('disabled')).toBeUndefined()
@@ -20,7 +20,7 @@ describe('TtsPlayButton', () => {
 
   it('renders disabled with tooltip when no summary', () => {
     const wrap = mount(TtsPlayButton, {
-      props: { contentType: 'section_summary', contentId: 42, hasSummary: false },
+      props: { bookId: 1, contentType: 'section_summary', contentId: 42, hasSummary: false },
     })
     const btn = wrap.find('button')
     expect(btn.attributes('aria-disabled')).toBe('true')
@@ -31,7 +31,7 @@ describe('TtsPlayButton', () => {
     const store = useTtsPlayerStore()
     const spy = vi.spyOn(store, 'open')
     const wrap = mount(TtsPlayButton, {
-      props: { contentType: 'section_summary', contentId: 42, hasSummary: true },
+      props: { bookId: 1, contentType: 'section_summary', contentId: 42, hasSummary: true },
     })
     await wrap.find('button').trigger('click')
     expect(spy).toHaveBeenCalledWith(
