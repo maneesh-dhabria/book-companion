@@ -123,6 +123,34 @@ describe('Playbar', () => {
     expect(ts.text()).toMatch(/\d+:\d{2} \/ \d+:\d{2}/)
   })
 
+  it('renders SentenceProgressBar with segments (FR-E02)', () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.engine = 'mp3'
+    store.totalSentences = 5
+    store.sentenceIndex = 2
+    const wrap = mount(Playbar)
+    const bar = wrap.find('[data-testid="sentence-progress-bar"]')
+    expect(bar.exists()).toBe(true)
+    const segs = wrap.findAll('[data-testid="sentence-progress-bar"] [data-segment]')
+    expect(segs.length).toBe(5)
+    expect(segs[0].attributes('data-state')).toBe('done')
+    expect(segs[1].attributes('data-state')).toBe('done')
+    expect(segs[2].attributes('data-state')).toBe('current')
+    expect(segs[3].attributes('data-state')).toBe('upcoming')
+    expect(segs[4].attributes('data-state')).toBe('upcoming')
+  })
+
+  it('SentenceProgressBar also renders on Web Speech (FR-E02)', () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.engine = 'web-speech'
+    store.totalSentences = 3
+    store.sentenceIndex = 0
+    const wrap = mount(Playbar)
+    expect(wrap.find('[data-testid="sentence-progress-bar"]').exists()).toBe(true)
+  })
+
   it('Limited-controls badge has tooltip + settings link (FR-E03)', () => {
     const store = useTtsPlayerStore()
     store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })

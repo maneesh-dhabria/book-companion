@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import EngineChip from '@/components/audio/EngineChip.vue'
+import SentenceProgressBar from '@/components/audio/SentenceProgressBar.vue'
 import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 const store = useTtsPlayerStore()
@@ -56,10 +57,16 @@ function onRetry() {
 <template>
   <div
     v-if="store.isActive"
-    class="bc-playbar fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+    class="bc-playbar fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex flex-col gap-1 rounded-2xl bg-white px-4 py-3 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
     role="region"
     aria-label="Audio player"
   >
+    <SentenceProgressBar
+      v-if="store.totalSentences > 0 && store.status !== 'error'"
+      :total-sentences="store.totalSentences"
+      :current-index="store.sentenceIndex"
+    />
+    <div class="bc-playbar-row flex items-center gap-3">
     <div
       v-if="store.pendingRegenBanner && (store.status === 'paused' || store.status === 'idle' || store.status === 'ended')"
       data-testid="mid-listen-regen"
@@ -185,6 +192,7 @@ function onRetry() {
         ✕
       </button>
     </template>
+    </div>
   </div>
 </template>
 
