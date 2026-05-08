@@ -176,7 +176,7 @@ onUnmounted(() => {
 .handle-pill {
   width: 2rem;
   height: 0.25rem;
-  background: var(--color-border, #d1d5db);
+  background: var(--color-border-strong, #64748b);
   border-radius: 0.125rem;
 }
 

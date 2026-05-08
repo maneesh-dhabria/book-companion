@@ -57,17 +57,17 @@ onBeforeUnmount(() => {
     <span :data-status="status" class="inline-flex items-center gap-1.5">
       <span
         v-if="status === 'warm'"
-        class="inline-block h-2 w-2 rounded-full bg-emerald-500"
+        class="inline-block h-2 w-2 rounded-full bg-emerald-700 dark:bg-emerald-500"
         aria-hidden="true"
       />
       <span
         v-else-if="status === 'cold'"
-        class="inline-block h-2 w-2 rounded-full bg-slate-400"
+        class="inline-block h-2 w-2 rounded-full bg-slate-500 dark:bg-slate-400"
         aria-hidden="true"
       />
       <span
         v-else
-        class="inline-block h-2 w-2 rounded-full bg-amber-500"
+        class="inline-block h-2 w-2 rounded-full bg-amber-700 dark:bg-amber-500"
         aria-hidden="true"
       />
       <span class="text-slate-700">{{ LABELS[status] }}</span>

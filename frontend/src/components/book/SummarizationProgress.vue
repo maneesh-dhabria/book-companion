@@ -114,11 +114,11 @@ async function onClick() {
 }
 
 .badge.complete {
-  background: #059669;
+  background: #047857;
 }
 
 .badge.failures {
-  background: #f59e0b;
+  background: #b45309;
 }
 
 .btn {
