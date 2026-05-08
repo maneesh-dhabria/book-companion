@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 
 import Playbar from '@/components/audio/Playbar.vue'
+import KeyboardShortcutsOverlay from '@/components/app/KeyboardShortcutsOverlay.vue'
 import CommandPalette from '@/components/search/CommandPalette.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import PersistentProcessingIndicator from '@/components/job/PersistentProcessingIndicator.vue'
@@ -71,6 +72,7 @@ onUnmounted(() => {
     <ToastContainer />
     <PersistentProcessingIndicator />
     <Playbar />
+    <KeyboardShortcutsOverlay />
   </div>
 </template>
 

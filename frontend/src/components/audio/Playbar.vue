@@ -96,6 +96,7 @@ function onRetry() {
         type="button"
         class="btn-secondary btn-icon"
         :aria-label="'Previous sentence'"
+        title="Previous sentence (←)"
         @click="onPrev"
       >
         ⏮
@@ -111,6 +112,7 @@ function onRetry() {
               ? 'Pause'
               : 'Play'
         "
+        :title="store.status === 'playing' ? 'Pause (Space)' : 'Play (Space)'"
         :disabled="store.status === 'starting' || undefined"
         :aria-disabled="store.status === 'starting' ? 'true' : undefined"
         @click="onPlayPause"
@@ -139,6 +141,7 @@ function onRetry() {
         type="button"
         class="btn-secondary btn-icon"
         aria-label="Next sentence"
+        title="Next sentence (→)"
         @click="onNext"
       >
         ⏭
