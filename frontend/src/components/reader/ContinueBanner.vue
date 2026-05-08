@@ -93,6 +93,7 @@ function handleContinue() {
 <template>
   <div v-if="visible" class="continue-banner" data-testid="continue-banner">
     <div class="banner-content">
+      <span class="banner-icon" aria-hidden="true">📖</span>
       <span class="banner-text">
         <template v-if="needsFallback">
           <strong>{{ store.continueReading!.bookTitle }}</strong>

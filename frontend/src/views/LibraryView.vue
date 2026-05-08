@@ -12,6 +12,10 @@ import ViewTabs from '@/components/library/ViewTabs.vue'
 import BulkToolbar from '@/components/library/BulkToolbar.vue'
 import ContinueBanner from '@/components/reader/ContinueBanner.vue'
 import RegenerateStaleAudioBanner from '@/components/library/RegenerateStaleAudioBanner.vue'
+import ResumeAffordance from '@/components/audio/ResumeAffordance.vue'
+import { useResumeBannerStore } from '@/stores/resumeBanner'
+
+const resumeBanner = useResumeBannerStore()
 
 const store = useBooksStore()
 const route = useRoute()
@@ -56,12 +60,22 @@ onMounted(() => {
   if (searchInput.value) store.setSearch(searchInput.value)
   if (!activeTag.value && !searchInput.value) store.fetchBooks()
   store.loadViews()
+  resumeBanner.load()
 })
 </script>
 
 <template>
   <div class="library-page">
-    <ContinueBanner />
+    <ContinueBanner v-if="resumeBanner.chosen === 'reading'" />
+    <ResumeAffordance
+      v-else-if="resumeBanner.chosen === 'listening' && resumeBanner.lastAudioContentType && resumeBanner.lastAudioContentId && resumeBanner.lastAudioBookId"
+      data-testid="library-resume-affordance"
+      :book-id="resumeBanner.lastAudioBookId"
+      :content-type="resumeBanner.lastAudioContentType"
+      :content-id="resumeBanner.lastAudioContentId"
+      :total-sentences="resumeBanner.lastAudioTotalSentences ?? 0"
+      audio-status="complete"
+    />
     <RegenerateStaleAudioBanner />
     <ViewTabs />
     <div class="library-search-row">
