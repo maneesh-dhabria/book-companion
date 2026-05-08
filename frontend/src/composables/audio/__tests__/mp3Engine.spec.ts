@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Mp3Engine } from '@/composables/audio/mp3Engine'
 
@@ -11,6 +11,10 @@ function makeEngine() {
     sentenceOffsetsChars: [0, 7, 15],
   })
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('Mp3Engine', () => {
   it('slices text by offsets', () => {
@@ -52,5 +56,56 @@ describe('Mp3Engine', () => {
     eng.onError(errSpy)
     eng._fakeError()
     expect(errSpy).toHaveBeenCalledWith('mp3_fetch_failed')
+  })
+
+  it('startWatchdog fires onTimeout when audio.paused stays true at 1000ms', async () => {
+    vi.useFakeTimers()
+    const eng = makeEngine()
+    Object.defineProperty(eng.audio, 'paused', { value: true, configurable: true })
+    Object.defineProperty(eng.audio, 'ended', { value: false, configurable: true })
+    const cb = vi.fn()
+    eng.startWatchdog(1000, cb)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(cb).toHaveBeenCalledTimes(1)
+  })
+
+  it('watchdog cancelled when audio fires "playing" event', async () => {
+    vi.useFakeTimers()
+    const eng = makeEngine()
+    const cb = vi.fn()
+    eng.startWatchdog(1000, cb)
+    eng.audio.dispatchEvent(new Event('playing'))
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('cancelWatchdog stops the timer', async () => {
+    vi.useFakeTimers()
+    const eng = makeEngine()
+    const cb = vi.fn()
+    eng.startWatchdog(1000, cb)
+    eng.cancelWatchdog()
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('onWaitingForVoices is a no-op (registers but never invokes)', () => {
+    const eng = makeEngine()
+    const cb = vi.fn()
+    eng.onWaitingForVoices(cb)
+    // No assertion possible beyond "doesn't throw"; MP3 engine never waits on voices.
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('play() is idempotent — second call while playing is a no-op', async () => {
+    const eng = makeEngine()
+    Object.defineProperty(eng.audio, 'paused', { value: true, configurable: true, writable: true })
+    Object.defineProperty(eng.audio, 'ended', { value: false, configurable: true, writable: true })
+    const playSpy = vi.spyOn(eng.audio, 'play').mockImplementation(async () => {
+      Object.defineProperty(eng.audio, 'paused', { value: false, configurable: true, writable: true })
+    })
+    await eng.play()
+    await eng.play()
+    expect(playSpy).toHaveBeenCalledTimes(1)
   })
 })

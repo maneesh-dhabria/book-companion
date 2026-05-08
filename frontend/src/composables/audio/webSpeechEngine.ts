@@ -4,6 +4,7 @@ import type {
   ErrorHandler,
   SentenceChangeHandler,
   TtsEngine,
+  WaitingForVoicesHandler,
 } from './types'
 import type { TtsErrorKind } from '@/stores/ttsPlayer'
 
@@ -17,6 +18,9 @@ export interface WebSpeechEngineOpts {
   /** Used by T18 for mediaSession.artist. Optional today. */
   bookTitle?: string
 }
+
+const VOICE_WAIT_MS = 1500
+const WATCHDOG_MS = 1000
 
 function sliceSentences(text: string, offsets: number[]): string[] {
   if (offsets.length === 0) return [text]
@@ -41,7 +45,12 @@ export class WebSpeechEngine implements TtsEngine {
   private sentenceCb: SentenceChangeHandler | null = null
   private errorCb: ErrorHandler | null = null
   private endCb: EndHandler | null = null
+  private waitingCb: WaitingForVoicesHandler | null = null
   private terminated = false
+  private isSpeaking = false
+  private errorEmitted = false
+  private watchdogTimer: ReturnType<typeof setTimeout> | null = null
+  private voiceWaitCleanup: (() => void) | null = null
   private contentType?: string
   private bookTitle?: string
   private mediaSessionApplied = false
@@ -76,14 +85,42 @@ export class WebSpeechEngine implements TtsEngine {
     return window.speechSynthesis
   }
 
+  startWatchdog(timeoutMs: number, onTimeout: () => void): void {
+    this.cancelWatchdog()
+    this.watchdogTimer = setTimeout(() => {
+      this.watchdogTimer = null
+      const synth = this.getSynth()
+      const speaking = !!synth?.speaking
+      const pending = !!synth?.pending
+      if (!speaking && !pending) {
+        onTimeout()
+      }
+    }, timeoutMs)
+  }
+
+  cancelWatchdog(): void {
+    if (this.watchdogTimer !== null) {
+      clearTimeout(this.watchdogTimer)
+      this.watchdogTimer = null
+    }
+  }
+
+  onWaitingForVoices(cb: WaitingForVoicesHandler): void {
+    this.waitingCb = cb
+  }
+
+  private clearVoiceWait(): void {
+    if (this.voiceWaitCleanup) {
+      const cleanup = this.voiceWaitCleanup
+      this.voiceWaitCleanup = null
+      cleanup()
+    }
+  }
+
   private speakAt(idx: number): void {
+    if (this.terminated) return
     const synth = this.getSynth()
     if (!synth) {
-      this.emitError('engine_unavailable')
-      return
-    }
-    const voices = synth.getVoices()
-    if (!voices || voices.length === 0) {
       this.emitError('engine_unavailable')
       return
     }
@@ -92,13 +129,57 @@ export class WebSpeechEngine implements TtsEngine {
       this.endCb?.()
       return
     }
+    const voices = synth.getVoices()
+    if (!voices || voices.length === 0) {
+      // Voices not loaded yet; wait for voiceschanged or timeout.
+      if (this.voiceWaitCleanup) return // already waiting
+      this.waitingCb?.(true)
+      const listener = () => {
+        this.clearVoiceWait()
+        this.speakAt(idx)
+      }
+      const timer = setTimeout(() => {
+        this.clearVoiceWait()
+        this.emitError('engine_unavailable')
+      }, VOICE_WAIT_MS)
+      this.voiceWaitCleanup = () => {
+        try {
+          synth.removeEventListener('voiceschanged', listener)
+        } catch {
+          /* ignore */
+        }
+        clearTimeout(timer)
+        this.waitingCb?.(false)
+      }
+      try {
+        synth.addEventListener('voiceschanged', listener, { once: true })
+      } catch {
+        // Some test stubs / older browsers may not support addEventListener;
+        // fall through to timeout.
+      }
+      return
+    }
     const utt = new SpeechSynthesisUtterance(text)
     utt.rate = this.rate
     if (this.voiceName) {
       const v = voices.find((vc) => vc.name === this.voiceName)
       if (v) utt.voice = v
     }
+    utt.onstart = () => {
+      this.cancelWatchdog()
+      if (this.errorEmitted) {
+        // A timeout already fired; cancel the late-arriving audio.
+        try {
+          synth.cancel()
+        } catch {
+          /* ignore */
+        }
+        return
+      }
+      this.isSpeaking = true
+    }
     utt.onend = () => {
+      this.isSpeaking = false
       if (this.terminated) return
       const next = this.idx + 1
       if (next >= this.totalSentences) {
@@ -109,12 +190,17 @@ export class WebSpeechEngine implements TtsEngine {
       this.sentenceCb?.(this.idx)
       this.speakAt(this.idx)
     }
-    utt.onerror = () => this.emitError('utterance_failed')
+    utt.onerror = () => {
+      this.isSpeaking = false
+      this.emitError('utterance_failed')
+    }
     this.currentUtterance = utt
+    this.startWatchdog(WATCHDOG_MS, () => this.emitError('engine_unavailable'))
     synth.speak(utt)
   }
 
   private emitError(kind: TtsErrorKind): void {
+    this.errorEmitted = true
     this.errorCb?.(kind)
   }
 
@@ -122,6 +208,11 @@ export class WebSpeechEngine implements TtsEngine {
     const synth = this.getSynth()
     if (!synth) {
       this.emitError('engine_unavailable')
+      return
+    }
+    if (this.isSpeaking) {
+      // Already mid-utterance: resume if paused, otherwise no-op.
+      if (synth.paused) synth.resume()
       return
     }
     this.applyMediaSession()
@@ -134,12 +225,17 @@ export class WebSpeechEngine implements TtsEngine {
   }
 
   pause(): void {
+    this.cancelWatchdog()
+    this.clearVoiceWait()
     this.getSynth()?.pause()
   }
 
   nextSentence(): void {
     if (this.idx + 1 >= this.totalSentences) return
+    this.cancelWatchdog()
+    this.clearVoiceWait()
     this.idx += 1
+    this.isSpeaking = false
     this.getSynth()?.cancel()
     this.sentenceCb?.(this.idx)
     this.speakAt(this.idx)
@@ -147,7 +243,10 @@ export class WebSpeechEngine implements TtsEngine {
 
   prevSentence(): void {
     if (this.idx === 0) return
+    this.cancelWatchdog()
+    this.clearVoiceWait()
     this.idx -= 1
+    this.isSpeaking = false
     this.getSynth()?.cancel()
     this.sentenceCb?.(this.idx)
     this.speakAt(this.idx)
@@ -155,7 +254,10 @@ export class WebSpeechEngine implements TtsEngine {
 
   seek(idx: number): void {
     if (idx < 0 || idx >= this.totalSentences) return
+    this.cancelWatchdog()
+    this.clearVoiceWait()
     this.idx = idx
+    this.isSpeaking = false
     this.getSynth()?.cancel()
     this.sentenceCb?.(this.idx)
     this.speakAt(this.idx)
@@ -175,6 +277,9 @@ export class WebSpeechEngine implements TtsEngine {
 
   terminate(): void {
     this.terminated = true
+    this.cancelWatchdog()
+    this.clearVoiceWait()
+    this.isSpeaking = false
     this.getSynth()?.cancel()
     this.currentUtterance = null
   }

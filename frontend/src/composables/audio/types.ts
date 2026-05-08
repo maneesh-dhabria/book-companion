@@ -14,6 +14,10 @@ export interface EndHandler {
   (): void
 }
 
+export interface WaitingForVoicesHandler {
+  (waiting: boolean): void
+}
+
 export interface TtsEngine {
   kind: EngineKind
   sentences: string[]
@@ -27,6 +31,9 @@ export interface TtsEngine {
   onSentenceChange(cb: SentenceChangeHandler): void
   onEnd(cb: EndHandler): void
   onError(cb: ErrorHandler): void
+  startWatchdog(timeoutMs: number, onTimeout: () => void): void
+  cancelWatchdog(): void
+  onWaitingForVoices(cb: WaitingForVoicesHandler): void
   terminate(): void
   /** Test-only hook: simulate a fatal engine error. Real engines forward
    * underlying errors through `onError` automatically. */
