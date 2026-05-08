@@ -1,0 +1,184 @@
+[
+  {
+    "scope": "screen", "target": "02_book_summary", "heuristic": "A1",
+    "severity": "high",
+    "finding": "Book-detail tag pills are effectively invisible in dark mode — they look like loading skeletons.",
+    "evidence": "Computed text rgb(30,41,59) on bg rgba(99,102,241,0.12) over body rgb(30,30,46) → measured contrast ≈1.1:1 (WCAG AA requires 4.5:1). Visible in 02_book_summary_above_fold.png as 4 dim rectangles to the right of the cover where tag labels should be readable.",
+    "suggested_fix": "Add a dark variant on the tag chip: text token slate-100/200 and bg indigo-500/25 (or use the same .badge token used elsewhere). Verify the chip in both themes hits ≥4.5:1."
+  },
+  {
+    "scope": "screen", "target": "02_book_summary", "heuristic": "N5",
+    "severity": "high",
+    "finding": "Primary CTA \"Read\" on BookSummaryPage routes to section 1, which is the Copyright/front-matter page — not the first real chapter.",
+    "evidence": "Probed `a[href*=/sections/]` → href = /books/1/sections/1 (section 1 = \"Copyright\"). Library's \"Continue reading\" banner shows the same: \"You were reading Understanding Michael Porter, Copyright\". Same anti-value for any book whose section 1 is front-matter.",
+    "suggested_fix": "When no read-position exists, default Read to the first section whose `section_type` is `chapter` or `introduction` (not `copyright`/`acknowledgments`/`about_author`). When a read-position exists, only persist positions where the user actually scrolled or played — front-matter visited for <Ns shouldn't count."
+  },
+  {
+    "scope": "screen", "target": "02_book_summary", "heuristic": "A4",
+    "severity": "high",
+    "finding": "Two h1 elements on the page: banner says \"Book Companion\", main says \"Understanding Michael Porter\".",
+    "evidence": "Snapshot 02_book_summary.snapshot.md lines 25 (banner h1 \"Book Companion\") and 37 (main h1 \"Understanding Michael Porter\"). Same pattern on /books/1/sections/3 (banner h1 = book title, but main has no h1 — different problem).",
+    "suggested_fix": "Demote the banner heading to a non-h1 element (`role=\"img\"` for a wordmark, or a `<span class=\"sr-only\">` link). Reserve h1 for the page's primary subject (book title on /books/:id, section title on /books/:id/sections/:id)."
+  },
+  {
+    "scope": "screen", "target": "02_book_summary_overview", "heuristic": "F1",
+    "severity": "medium",
+    "finding": "Overview tab is a single sentence telling the user to use other tabs — wastes the default landing surface.",
+    "evidence": "02_book_summary_above_fold.png: Overview tabpanel content is one paragraph: \"Use the Summary tab to read or generate a book-level summary, or the Sections tab to browse chapters.\" After cover/title hero, the entire fold below the tab strip is empty.",
+    "suggested_fix": "Replace with an at-a-glance dashboard: last-read section + Continue, top 3-5 concepts (link to /concepts), most recent annotations, eval pass-rate badge, summary preset in use. Each tile should answer a user decision (resume vs start over, what's hot, what to clean up)."
+  },
+  {
+    "scope": "screen", "target": "03_book_sections_tab", "heuristic": "F1",
+    "severity": "medium",
+    "finding": "Sections list surfaces \"Chars\" (raw character count) and \"Compression\" (%) columns that don't anchor any user decision.",
+    "evidence": "03_book_sections_tab.png: columns # | Title | Type | Chars | Summary | Compression. Values like 23,107 / ~20% are model/system metrics. User can't decide \"read this vs that\" from char count or compression ratio.",
+    "suggested_fix": "Replace Chars with \"Read time\" (≈ chars/1100 words/min). Move Compression into a hover detail or remove from the list view entirely. Keep Type as a leading icon (chapter/introduction/glossary) rather than a literal column to reduce noise."
+  },
+  {
+    "scope": "screen", "target": "03_book_sections_tab", "heuristic": "G1",
+    "severity": "medium",
+    "finding": "Front-matter (Copyright, Acknowledgments), chapters, and back-matter (About the Author, Notes, Glossary) are interleaved in one flat list with no grouping.",
+    "evidence": "03_book_sections_tab.png rows 1-2 are copyright/acknowledgments, rows 3-13 are introduction+chapters, rows 14-17 are FAQ/glossary/notes/about_author. Visually identical rows.",
+    "suggested_fix": "Group rows under \"Front matter\" / \"Chapters\" / \"Back matter\" subheaders (collapsed by default for front/back), or filter front/back behind a \"Show all sections\" toggle. Ensures the chapter list is the dominant scannable region."
+  },
+  {
+    "scope": "screen", "target": "03_book_sections_tab", "heuristic": "C3",
+    "severity": "medium",
+    "finding": "Section rows have no visible affordance — no hover state, no row-level Listen/Read/Edit action.",
+    "evidence": "03_book_sections_tab.png: rows are flat text on flat bg, no chevron, no hover style visible in the static capture, no inline action buttons. To open a section the user has to guess that the title (or row?) is clickable.",
+    "suggested_fix": "Make the row a button-card with hover bg, cursor-pointer, and inline icons (▶ Listen, 📖 Read, ⋯ More) revealed on hover. Add a chevron at the end."
+  },
+  {
+    "scope": "screen", "target": "08_book_summary_tab_full", "heuristic": "V6",
+    "severity": "high",
+    "finding": "Book Summary tab is one continuous wall of markdown with no in-page anchors, sticky outline, or jump-to-section affordance.",
+    "evidence": "08_book_summary_tab_full.png: full-page screenshot shows a single uninterrupted column of bullets and headings spanning many viewport heights. No TOC, no sticky sub-nav, no \"back to top\".",
+    "suggested_fix": "Render a sticky right-hand outline (h2/h3 from the markdown) that scrolls with the document. Add anchor IDs and a back-to-top FAB. Optionally wrap long sub-sections in an \"Expand\" disclosure for progressive disclosure (J3)."
+  },
+  {
+    "scope": "screen", "target": "08_book_summary_tab_full", "heuristic": "S4",
+    "severity": "medium",
+    "finding": "Summary tab has no metadata strip — preset used, generated-at, eval status, default-summary-id are not surfaced where the user is reading the summary.",
+    "evidence": "08_book_summary_tab_full.png: summary content begins immediately under the tab strip — no \"Generated 2 days ago · practitioner_bullets · 14/16 evals passed · Regenerate\" header.",
+    "suggested_fix": "Add a metadata strip above the markdown: preset chip, generated-at relative time, eval pass-rate badge, \"Regenerate\" / \"Switch preset\" / \"Compare versions\" actions."
+  },
+  {
+    "scope": "screen", "target": "04_book_audio_tab", "heuristic": "S1",
+    "severity": "medium",
+    "finding": "Audio empty state offers \"Generate audio\" with no preview of cost, time, engine choice, or what content it will read.",
+    "evidence": "04_book_audio_tab.png: text \"No audio yet for this book.\" + button \"Generate audio\". No copy explaining: which engine (Web Speech vs Kokoro), how long ~338MB / N minutes synthesis takes, whether it covers content or summaries, whether Kokoro requires the optional install.",
+    "suggested_fix": "Empty state should show: a 2-3 line description (\"We'll synthesize all 12 chapter summaries with Kokoro / fall back to Web Speech\"), engine selection chip, estimated synthesis time (chars / engine throughput), and what it produces (summaries vs content). Add a \"What's the difference?\" link explaining engines."
+  },
+  {
+    "scope": "screen", "target": "05_section_detail_above_fold", "heuristic": "V5",
+    "severity": "medium",
+    "finding": "Section toolbar packs 7 disparate controls (←, Original/Summary toggle, →, Listen, ☰, ⚙) into one row with no separators, mixing navigation, mode-switch, action, and chrome.",
+    "evidence": "05_section_detail.snapshot.md lines 37-57: in one flex row: prev arrow, Original|Summary segmented control, next arrow, Listen, ☰, settings cog. No visual grouping; all live at the same elevation.",
+    "suggested_fix": "Split into 3 groups with subtle dividers: (1) prev/next + section picker breadcrumb dropdown — nav, (2) Original|Summary segmented — mode, (3) Listen + Reader settings — actions. The section drawer ☰ should be either a left-edge rail toggle or relocated to the breadcrumb row."
+  },
+  {
+    "scope": "screen", "target": "05_section_detail_above_fold", "heuristic": "A2",
+    "severity": "medium",
+    "finding": "Prev/Next arrow buttons are single-character glyph-only targets that fall under the 24×24 minimum.",
+    "evidence": "05_section_detail.snapshot.md refs e38/e42: button content \"←\" / \"→\" with no padding visible in screenshot 05_section_detail_above_fold.png (icons crammed beside the segmented control).",
+    "suggested_fix": "Increase hit area to ≥40×40 px, add aria-label \"Previous section\" / \"Next section\" (currently they're literally text \"←\"), and add a tooltip showing the destination section title."
+  },
+  {
+    "scope": "screen", "target": "05_section_detail_above_fold", "heuristic": "C5",
+    "severity": "medium",
+    "finding": "Three icon-only chrome buttons (☰, ⚙, ⋯) provide no visible label or hint; their function is unrecoverable without trial.",
+    "evidence": "05 snapshot e44 \"☰\" (no aria-label visible in snapshot), e46 \"Reader settings\" (good), e54 \"More actions\" on book page (good). The ☰ is the worst — no aria-label exposed.",
+    "suggested_fix": "Add aria-label and tooltip to ☰ (likely \"Sections drawer\" or similar). Pair the icon with a text label on hover for first-time discoverability, or expand to icon+label at the larger viewport (sidebar has space)."
+  },
+  {
+    "scope": "screen", "target": "07_audio_playing", "heuristic": "N9",
+    "severity": "medium",
+    "finding": "\"Limited controls\" amber badge tells the user something is wrong but doesn't say WHAT is limited or HOW to upgrade.",
+    "evidence": "07_audio_playing.png + DOM: span data-testid=limited-controls says only \"Limited controls\". Adjacent chip \"Web Speech\" hints at the cause but no link/tooltip explains the diff vs Kokoro or how to enable.",
+    "suggested_fix": "Make the badge a button or include a tooltip: \"Web Speech can't seek or scrub. Install the Kokoro engine for full controls →\" linking to /settings or a docs popover."
+  },
+  {
+    "scope": "screen", "target": "07_audio_playing", "heuristic": "F2",
+    "severity": "medium",
+    "finding": "\"0:00 / 0:00\" timestamp is shown beside the sentence counter, but Web Speech can't compute duration — the field is dead pixels.",
+    "evidence": "07_audio_playing.png + DOM span: \"0:00 / 0:00\" rendered next to \"sentence 1 of 17\". Web Speech API does not expose total duration prior to synthesis.",
+    "suggested_fix": "Hide the time display when engine is Web Speech, or replace it with a qualitative chip (\"≈4 min\" estimated from chars/wpm). The sentence counter alone is more useful than a fake clock."
+  },
+  {
+    "scope": "screen", "target": "07_audio_playing", "heuristic": "N7",
+    "severity": "low",
+    "finding": "No keyboard shortcut hints surfaced for the audio player (space, ←/→ skip).",
+    "evidence": "07_audio_playing.png: player chrome has only icons, no \"Space\" hint or shortcut row. No help overlay reachable from /books/* per snapshots.",
+    "suggested_fix": "Add tooltips with shortcut hints (\"Play (Space)\", \"Previous sentence (←)\"). Add a `?` keyboard-shortcuts overlay reachable from the player and section detail."
+  },
+  {
+    "scope": "screen", "target": "01_library", "heuristic": "C5",
+    "severity": "medium",
+    "finding": "Library view-mode toggle uses three glyphs (▦, ☰, ▤) without text labels or tooltips; the third glyph in particular is opaque.",
+    "evidence": "01_library.snapshot.md refs e45/e46/e47: button \"▦\", \"☰\", \"▤\" — no aria-label rendered in the snapshot, no inline tooltip.",
+    "suggested_fix": "Replace with labelled icon buttons (Tabler/Lucide grid / list / compact icons) and aria-label \"Grid view\" / \"List view\" / \"Compact view\". Persist selection in localStorage and indicate active state with bg-token, not just color."
+  },
+  {
+    "scope": "screen", "target": "01_library", "heuristic": "N6",
+    "severity": "low",
+    "finding": "Each book card has a checkbox in the top-right but no visible explanation of what bulk actions are enabled by selecting books.",
+    "evidence": "01_library.snapshot.md refs e59/e70/e83: each book link contains a checkbox child with no nearby \"Select N\" toolbar or hint copy.",
+    "suggested_fix": "Hide the checkbox until the user enters bulk-edit mode (toolbar button \"Select\"). When active, show a sticky action bar with the available bulk verbs (Delete, Re-summarize, Export, Tag)."
+  },
+  {
+    "scope": "screen", "target": "01_library", "heuristic": "N1",
+    "severity": "medium",
+    "finding": "Continue-reading banner names \"Copyright\" as the last position — same as the Read CTA bug — but here it's even more visible because it's the first thing users see.",
+    "evidence": "01_library.png: banner reads \"You were reading Understanding Michael Porter, Copyright\". Snapshot e30/e31. Implies the user spent time on Copyright; in reality the read-position tracker likely fires on first render of section 1.",
+    "suggested_fix": "Don't persist a read-position until the user has scrolled past N% of the section or remained for >Ns. Skip front-matter section_types when picking \"first chapter\" defaults."
+  },
+  {
+    "scope": "component", "target": "primary-button", "heuristic": "C2",
+    "severity": "low",
+    "finding": "Primary button (Read, Continue, Generate audio, Upload) appears consistent in shape but contrast on the muted blue against the dark slate is borderline for the white text.",
+    "evidence": "Visible in 02 (Read), 04 (Generate audio), 01 (Upload) — same pale lavender/blue fill (looks like indigo-300/400) with white text. Sample contrast indigo-300 (#a5b4fc) on white text ≈3.0:1 — fails AA for normal text but passes for large text.",
+    "suggested_fix": "Use a deeper indigo (indigo-500/600) for primary fill in dark mode or switch to white-bg + indigo-text for the secondary variant. Confirm ≥4.5:1 with the actual button-text size."
+  },
+  {
+    "scope": "component", "target": "engine-chip", "heuristic": "A1",
+    "severity": "medium",
+    "finding": "Audio-player engine chip (\"Web Speech\") uses light-mode-only styling (bg-slate-100 text-slate-700) and is not adapted for dark theme.",
+    "evidence": "DOM: `class=\"... bg-slate-100 text-slate-700\"` with no `dark:` variant. Visible in 07_audio_playing.png as a light-on-light pill on the dark-mode-aware playbar.",
+    "suggested_fix": "Add `dark:bg-slate-700 dark:text-slate-100` to `.bc-engine-chip` (or use the design-token chip class already used for the \"All N sections summarized\" badge)."
+  },
+  {
+    "scope": "component", "target": "section-row", "heuristic": "C3",
+    "severity": "medium",
+    "finding": "Section rows in the Sections tab lack hover/focus affordance and inline actions — same finding as 03/C3 but applies to the component class.",
+    "evidence": "03_book_sections_tab.png. Same evidence as the per-screen finding.",
+    "suggested_fix": "See section-row fix above; treat as a single component change."
+  },
+  {
+    "scope": "journey", "target": "J1_library_to_book", "heuristic": "J1",
+    "severity": "low",
+    "finding": "Library → Book Summary fits comfortably in the daily-flow click budget (1 click).",
+    "evidence": "1 click from /, 0 keystrokes, 0 modal interrupts. Threshold ≤6 — passes.",
+    "suggested_fix": "No action — journey is efficient. Issue is at the destination (see findings above)."
+  },
+  {
+    "scope": "journey", "target": "J2_book_to_section", "heuristic": "J2",
+    "severity": "medium",
+    "finding": "BookSummaryPage has competing primary affordances (Read, ⋯, tabs Overview/Summary/Sections/Audio/Annotations) with no clear single primary CTA per user intent.",
+    "evidence": "02_book_summary_above_fold.png: Read button is filled-primary, tab strip below is the actual workhorse. User's intent (\"read summary\") is split across Read CTA, Overview tab, Summary tab. Tab-strip is the right control but Read CTA pulls focus to a different journey (back to original text).",
+    "suggested_fix": "Demote \"Read\" to a secondary action (text+icon), elevate Summary tab to default. Or rename Read → \"Read original\" and add a primary \"Read summary\" / \"Listen\" pair in the same row to make the choice explicit."
+  },
+  {
+    "scope": "journey", "target": "J3_audio_playback", "heuristic": "J5",
+    "severity": "low",
+    "finding": "Audio playback does not surface progress through the section beyond \"sentence 1 of 17\".",
+    "evidence": "07_audio_playing.png: only sentence counter shown; no progress bar, no estimated remaining time, no chapter-level progress.",
+    "suggested_fix": "Add a thin sentence-progress bar (17 segments, completed shaded). On Kokoro, replace 0:00/0:00 with real time. On Web Speech, use chars-elapsed estimate (rounded to 0:30s)."
+  },
+  {
+    "scope": "journey", "target": "J3_audio_playback", "heuristic": "J6",
+    "severity": "medium",
+    "finding": "Closing the audio player (✕) is not paired with persisting position; if the user navigates away, where they were in playback is invisible until they return.",
+    "evidence": "DOM contains data-testid play-pause, no `aria-current` or persistent indicator on the section row in the Sections tab. ttsPlayer store likely persists internally per CLAUDE.md (#23), but the UI doesn't echo \"Resume from sentence 5\" anywhere outside the player.",
+    "suggested_fix": "After ✕ or page transition, show a docked \"Resume listening — Introduction · sentence 5 of 17\" bar at the bottom of the next page. Mirrors the \"Continue reading\" banner pattern."
+  }
+]

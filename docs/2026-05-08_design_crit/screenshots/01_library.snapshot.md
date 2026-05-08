@@ -1,0 +1,97 @@
+- generic [ref=e3]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Book Companion home" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - text: BC
+    - generic [ref=e6]:
+      - link "📚 Library" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: 📚
+        - generic [ref=e9]: Library
+      - link "💡 Concepts" [ref=e10] [cursor=pointer]:
+        - /url: /concepts
+        - generic [ref=e11]: 💡
+        - generic [ref=e12]: Concepts
+      - link "💬 Annotations" [ref=e13] [cursor=pointer]:
+        - /url: /annotations
+        - generic [ref=e14]: 💬
+        - generic [ref=e15]: Annotations
+      - link "⚙️ Settings" [ref=e16] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e17]: ⚙️
+        - generic [ref=e18]: Settings
+  - generic [ref=e19]:
+    - banner [ref=e20]:
+      - heading "Library" [level=1] [ref=e21]:
+        - link "Library" [ref=e22] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e23]:
+        - textbox "Search... (⌘K)" [ref=e24] [cursor=pointer]
+        - link "Upload" [ref=e25] [cursor=pointer]:
+          - /url: /upload
+    - main [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - text: You were reading
+              - strong [ref=e31]: Understanding Michael Porter
+              - text: ","
+              - strong [ref=e32]: Copyright
+            - button "Continue" [ref=e33] [cursor=pointer]
+          - button "Dismiss" [ref=e34] [cursor=pointer]: ×
+        - button "+ New View" [ref=e36] [cursor=pointer]
+        - searchbox "Search library by title" [ref=e38]
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - combobox [ref=e41]:
+              - option "All Statuses" [selected]
+              - option "parsed"
+              - option "summarizing"
+              - option "completed"
+            - combobox [ref=e42]:
+              - option "All Formats" [selected]
+              - option "EPUB"
+              - option "PDF"
+              - option "MOBI"
+            - combobox [ref=e43]:
+              - option "Recent" [selected]
+              - option "Title A-Z"
+              - option "Date Added"
+          - generic [ref=e44]:
+            - button "▦" [ref=e45] [cursor=pointer]
+            - button "☰" [ref=e46] [cursor=pointer]
+            - button "▤" [ref=e47] [cursor=pointer]
+        - generic [ref=e48]:
+          - link "Understanding Michael Porter Understanding Michael Porter Magretta, Joan parsed 17 sections" [ref=e49] [cursor=pointer]:
+            - /url: /books/1
+            - img "Understanding Michael Porter" [ref=e51]
+            - generic [ref=e52]:
+              - heading "Understanding Michael Porter" [level=3] [ref=e53]
+              - paragraph [ref=e54]: Magretta, Joan
+              - generic [ref=e55]:
+                - generic [ref=e56]: parsed
+                - generic [ref=e57]: 17 sections
+            - checkbox [ref=e59]
+          - link "Playing to Win_ How Strategy Really Works Playing to Win_ How Strategy Really Works A.G. Lafley parsed 25 sections" [ref=e60] [cursor=pointer]:
+            - /url: /books/3
+            - img "Playing to Win_ How Strategy Really Works" [ref=e62]
+            - generic [ref=e63]:
+              - heading "Playing to Win_ How Strategy Really Works" [level=3] [ref=e64]
+              - paragraph [ref=e65]: A.G. Lafley
+              - generic [ref=e66]:
+                - generic [ref=e67]: parsed
+                - generic [ref=e68]: 25 sections
+            - checkbox [ref=e70]
+          - link "Cover for The Art of War The Art of War active 6th century B.C. Sunzi parsed 27 sections" [ref=e71] [cursor=pointer]:
+            - /url: /books/2
+            - img "Cover for The Art of War" [ref=e73]:
+              - generic [ref=e75]: T
+            - generic [ref=e76]:
+              - heading "The Art of War" [level=3] [ref=e77]
+              - paragraph [ref=e78]: active 6th century B.C. Sunzi
+              - generic [ref=e79]:
+                - generic [ref=e80]: parsed
+                - generic [ref=e81]: 27 sections
+            - checkbox [ref=e83]
+  - region "Notifications"

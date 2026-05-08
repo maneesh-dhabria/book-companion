@@ -1,0 +1,148 @@
+- generic [ref=e3]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Book Companion home" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - text: BC
+    - generic [ref=e6]:
+      - link "📚 Library" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: 📚
+        - generic [ref=e9]: Library
+      - link "💡 Concepts" [ref=e10] [cursor=pointer]:
+        - /url: /concepts
+        - generic [ref=e11]: 💡
+        - generic [ref=e12]: Concepts
+      - link "💬 Annotations" [ref=e13] [cursor=pointer]:
+        - /url: /annotations
+        - generic [ref=e14]: 💬
+        - generic [ref=e15]: Annotations
+      - link "⚙️ Settings" [ref=e16] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e17]: ⚙️
+        - generic [ref=e18]: Settings
+  - generic [ref=e19]:
+    - banner [ref=e20]:
+      - heading "Understanding Michael Porter" [level=1] [ref=e21]:
+        - link "Understanding Michael Porter" [ref=e22] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e23]:
+        - textbox "Search... (⌘K)" [ref=e24] [cursor=pointer]
+        - link "Upload" [ref=e25] [cursor=pointer]:
+          - /url: /upload
+    - main [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - link "Library" [ref=e30] [cursor=pointer]:
+              - /url: /
+            - generic [ref=e31]: /
+            - link "Understanding Michael Porter" [ref=e32] [cursor=pointer]:
+              - /url: /books/1
+            - generic [ref=e33]: /
+            - button "Introduction ▼" [ref=e53] [cursor=pointer]:
+              - text: Introduction
+              - generic [ref=e36]: ▼
+            - button "+ Add tag" [ref=e56] [cursor=pointer]
+          - generic [ref=e37]:
+            - button "←" [ref=e38] [cursor=pointer]
+            - generic [ref=e39]:
+              - button "Original" [ref=e40] [cursor=pointer]
+              - button "Summary" [ref=e41] [cursor=pointer]
+            - button "→" [ref=e42] [cursor=pointer]
+            - generic [ref=e43]:
+              - button "Listen" [ref=e57] [cursor=pointer]:
+                - img [ref=e58]
+                - generic [ref=e60]: Listen
+              - button "☰" [ref=e44] [cursor=pointer]
+              - button "Reader settings" [ref=e46] [cursor=pointer]: ⚙
+        - article [ref=e61]:
+          - list [ref=e63]:
+            - listitem [ref=e64]:
+              - paragraph [ref=e65]:
+                - strong [ref=e66]: Porter’s central question
+                - text: ": Why are some companies more profitable than others? This led to related questions about why some industries and countries outperform others — all aimed at giving managers actionable frameworks for competitive success"
+            - listitem [ref=e67]:
+              - paragraph [ref=e68]:
+                - strong [ref=e69]: The book’s purpose
+                - text: ": A book-length executive summary of Porter’s work on competition and strategy, distilling thousands of pages into digestible, applicable form"
+              - list [ref=e70]:
+                - listitem [ref=e71]: Written by Joan Magretta, who worked with Porter as HBS strategy editor and Bain & Company partner
+                - listitem [ref=e72]: Porter reviewed every chapter and provided access to unpublished material
+            - listitem [ref=e73]:
+              - paragraph [ref=e74]:
+                - strong [ref=e75]: Core strategic principle
+                - text: ": “The essence of strategy is choosing what not to do”"
+              - list [ref=e76]:
+                - listitem [ref=e77]: This single idea accounts for more strategy failures than any other cause
+                - listitem [ref=e78]: The book is a “how-to-think-about” guide, not a step-by-step manual
+            - listitem [ref=e79]:
+              - paragraph [ref=e80]:
+                - strong [ref=e81]: Porter’s “frameworks” methodology
+                - text: ": A distinct approach bridging economic theory and business practice"
+              - list [ref=e82]:
+                - listitem [ref=e83]: Case studies captured complexity but couldn’t generalize; economic models were too abstract and assumed all firms were the same
+                - listitem [ref=e84]: Porter’s frameworks extract “fundamental, unchangeable relationships about the matter of competition” — analogous to physics (higher profitability requires higher price or lower cost)
+                - listitem [ref=e85]: Frameworks are intuitive to managers in context of their own industry while remaining rigorous enough for academic validation
+            - listitem [ref=e86]:
+              - paragraph [ref=e87]:
+                - strong [ref=e88]: Why Porter’s work endures vs. management fads
+                - text: ": His frameworks address timeless principles rather than momentary phenomena"
+              - list [ref=e89]:
+                - listitem [ref=e90]: No catchy metaphors — instead, rigorous mapping between strategy and financial performance
+                - listitem [ref=e91]: Most cited scholar in economics and business; most widely used frameworks in practice
+            - listitem [ref=e92]:
+              - paragraph [ref=e93]:
+                - strong [ref=e94]: "Book structure — Part 1: What Is Competition?"
+                - text: (Chapters 1–3)
+              - list [ref=e95]:
+                - listitem [ref=e96]:
+                  - strong [ref=e97]: "Chapter 1 — Competition: The Right Mind-Set"
+                  - text: ": The most common strategic error is competing to “be the best,” which creates a zero-sum race to the bottom. Competing to be"
+                  - emphasis [ref=e98]: unique
+                  - text: drives sustained performance
+                - listitem [ref=e99]:
+                  - strong [ref=e100]: Chapter 2 — The Five Forces
+                  - text: ": Competition extends beyond direct rivals to a broader struggle over who captures industry profits. Use the framework for insight into industry dynamics, not just to label industries “attractive” or “unattractive”"
+                - listitem [ref=e101]:
+                  - strong [ref=e102]: Chapter 3 — Competitive Advantage via the Value Chain
+                  - text: ": Competitive advantage means creating value differently from rivals, linked precisely to how your value chain differs and your P&L outperforms the industry average"
+            - listitem [ref=e103]:
+              - paragraph [ref=e104]:
+                - strong [ref=e105]: "Book structure — Part 2: What Is Strategy?"
+                - text: (Chapters 4–7) — A good strategy must pass five tests
+              - list [ref=e106]:
+                - listitem [ref=e107]:
+                  - strong [ref=e108]: "Chapter 4 — Creating Value (Test 1: unique value proposition; Test 2: tailored value chain)"
+                  - text: ": A distinctive value proposition only becomes meaningful strategy if delivered through activities that differ from rivals’"
+                - listitem [ref=e109]:
+                  - strong [ref=e110]: Chapter 5 — Trade-offs (Test 3)
+                  - text: ": Accepting limits — saying no to some customers to better serve others. Trade-offs are the economic linchpin because they create cost/price differences and make imitation costly"
+                - listitem [ref=e111]:
+                  - strong [ref=e112]: Chapter 6 — Fit (Test 4)
+                  - text: ": How value chain activities reinforce one another. Good strategies depend on interdependent choices across many activities, not a single core competence. Challenges the “focus on core, outsource the rest” advice"
+                - listitem [ref=e113]:
+                  - strong [ref=e114]: Chapter 7 — Continuity (Test 5)
+                  - text: ": Companies can change too much and in the wrong ways. Continuity enables the development of tailoring, trade-offs, and fit over time. Paradoxically, strategic continuity improves adaptability and innovation"
+            - listitem [ref=e115]:
+              - paragraph [ref=e116]:
+                - strong [ref=e117]: Key misconceptions the book corrects
+                - text: ":"
+              - list [ref=e118]:
+                - listitem [ref=e119]: Competing to “be the best” leads to destructive convergence
+                - listitem [ref=e120]: Competitive advantage is not just “anything you’re good at” — it must link to value creation and P&L
+                - listitem [ref=e121]: Execution alone is not enough; strategy matters more in turbulent times
+                - listitem [ref=e122]:
+                  - text: Competitive advantages
+                  - emphasis [ref=e123]: can
+                  - text: be sustained — trade-offs and fit explain how
+                - listitem [ref=e124]: Success doesn’t come from one core competence but from many interconnected choices
+            - listitem [ref=e125]:
+              - paragraph [ref=e126]:
+                - strong [ref=e127]: Cautionary note on examples
+                - text: ": Case studies make ideas concrete but age quickly. The underlying principles remain valid even when specific company data changes. Strategy must be fact-based and quantitative, even though numbers become outdated"
+          - generic [ref=e128]:
+            - 'link "← Previous: Acknowledgments" [ref=e129] [cursor=pointer]':
+              - /url: /books/1/sections/2?tab=summary
+            - 'link "Next: Part One: What Is Competition? →" [ref=e130] [cursor=pointer]':
+              - /url: /books/1/sections/4?tab=summary
+  - region "Notifications"
