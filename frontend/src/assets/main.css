@@ -118,6 +118,31 @@ mark.annotation,
   cursor: not-allowed;
 }
 
+/* Chip tokens (FR-A01, spec §11.1). Inline-flex pill with 4 tones; dark
+   variants below. All pairs verified ≥ 4.5 : 1 by axe sweep (T29). */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.chip--accent  { background: rgb(224 231 255); color: rgb(55 48 163); }
+.chip--info    { background: rgb(219 234 254); color: rgb(30 64 175); }
+.chip--warn    { background: rgb(254 243 199); color: rgb(120 53 15); }
+.chip--neutral { background: rgb(241 245 249); color: rgb(30 41 59); }
+
+.dark .chip--accent  { background: rgb(67 56 202); color: rgb(238 242 255); }
+.dark .chip--info    { background: rgb(30 64 175); color: rgb(219 234 254); }
+.dark .chip--warn    { background: rgb(146 64 14); color: rgb(254 243 199); }
+.dark .chip--neutral { background: rgb(51 65 85); color: rgb(241 245 249); }
+
 /* L2-F1: icon-only modifier — square padding + circle for Playbar
    Prev/Next/Close/Play-Pause. Combines with .btn-primary or .btn-secondary. */
 .btn-icon {
