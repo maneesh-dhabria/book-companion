@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
 import { FRONT_MATTER_TYPES, SUMMARIZABLE_TYPES } from '@/stores/reader'
 import { formatReadTime } from '@/utils/readTime'
+import { useBookAudioMap } from '@/composables/useBookAudioMap'
+import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 interface SectionRow {
   id: number
@@ -12,7 +14,8 @@ interface SectionRow {
   section_type: string
   content_char_count?: number | null
   has_summary: boolean
-  default_summary?: { summary_char_count: number } | null
+  default_summary?: { summary_char_count: number; id?: number } | null
+  default_summary_id?: number | null
   last_failure_type?: string | null
 }
 
@@ -26,9 +29,18 @@ const props = withDefaults(
   { compact: false, currentSectionId: null },
 )
 
+const emit = defineEmits<{
+  'more-actions': [sectionId: number]
+}>()
+
 const router = useRouter()
 const route = useRoute()
 const jobStore = useSummarizationJobStore()
+const ttsPlayer = useTtsPlayerStore()
+
+// FR-C20 — batch audio-availability map. Skipped in compact mode (the
+// reader-TOC dropdown doesn't render the Listen affordance).
+const audio = !props.compact ? useBookAudioMap(props.bookId) : null
 
 type LiveStatus = 'pending' | 'completed' | 'failed' | 'retrying'
 const liveStatuses = ref<Record<number, LiveStatus>>({})
@@ -58,7 +70,6 @@ const groupedSections = computed<Record<GroupKey, SectionRow[]>>(() => {
 
 const groupOrder: GroupKey[] = ['front', 'chapters', 'back']
 
-// FR-C16 — collapsible group state, persisted per book in localStorage.
 const expandKey = computed(() => `bc.sections.expand.${props.bookId}`)
 
 function loadExpanded(): Record<GroupKey, boolean> {
@@ -117,23 +128,62 @@ function readTime(s: SectionRow): string {
   return formatReadTime(s.content_char_count ?? 0)
 }
 
-function onRowClick(s: SectionRow) {
-  const query: Record<string, string> = {}
-  if (props.currentSectionId !== null && route.query.tab) {
-    query.tab = String(route.query.tab)
-  }
-  router.push({
-    name: 'section-detail',
+function summaryRoute(s: SectionRow) {
+  return {
+    name: 'section-detail' as const,
     params: { id: String(props.bookId), sectionId: String(s.id) },
-    query,
-  })
+    query: { tab: 'summary' },
+  }
+}
+
+function readRoute(s: SectionRow) {
+  return {
+    name: 'section-detail' as const,
+    params: { id: String(props.bookId), sectionId: String(s.id) },
+  }
+}
+
+function onRowClick(e: MouseEvent, s: SectionRow) {
+  // Cmd/Ctrl-click → open in new tab (FR-C17a).
+  if (e.metaKey || e.ctrlKey) {
+    const href = router.resolve(summaryRoute(s)).href
+    window.open(href, '_blank', 'noopener,noreferrer')
+    return
+  }
+  navigateRow(s)
+}
+
+function onRowAuxClick(e: MouseEvent, s: SectionRow) {
+  // Middle-click also opens in new tab.
+  if (e.button === 1) {
+    e.preventDefault()
+    const href = router.resolve(summaryRoute(s)).href
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }
+}
+
+function navigateRow(s: SectionRow) {
+  // Reader-TOC context (currentSectionId set) preserves the existing
+  // ?tab query so the user stays in the same tab they were reading.
+  // Book-overview context navigates to ?tab=summary by default.
+  if (props.currentSectionId !== null) {
+    const query: Record<string, string> = {}
+    if (route.query.tab) query.tab = String(route.query.tab)
+    router.push({
+      name: 'section-detail',
+      params: { id: String(props.bookId), sectionId: String(s.id) },
+      query,
+    })
+  } else {
+    router.push(summaryRoute(s))
+  }
 }
 
 function onRowKeydown(e: KeyboardEvent, idx: number, list: SectionRow[]) {
   const target = e.currentTarget as HTMLElement
-  const tbody = target.parentElement
-  if (!tbody) return
-  const rows = tbody.querySelectorAll<HTMLElement>('tr[role="link"]')
+  const container = target.parentElement
+  if (!container) return
+  const rows = container.querySelectorAll<HTMLElement>('[role="link"], [role="button"][data-row]')
   if (e.key === 'ArrowDown') {
     e.preventDefault()
     rows[idx + 1]?.focus()
@@ -142,8 +192,35 @@ function onRowKeydown(e: KeyboardEvent, idx: number, list: SectionRow[]) {
     rows[idx - 1]?.focus()
   } else if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault()
-    onRowClick(list[idx])
+    navigateRow(list[idx])
   }
+}
+
+function canListen(s: SectionRow): boolean {
+  // FR-C20 — Listen disabled iff no MP3 AND no summary. When the audio
+  // batch lookup failed (e.g. backend down), allow Listen for everything
+  // (degraded fallback).
+  if (!audio) return false
+  if (audio.failed.value) return true
+  const hasMp3 = audio.map.value[s.id]?.has_mp3 ?? false
+  return hasMp3 || s.has_summary || !!s.default_summary_id
+}
+
+function onListen(s: SectionRow) {
+  // Wire to the existing TTS player store so the section's summary plays.
+  ttsPlayer.open({
+    bookId: props.bookId,
+    contentType: 'section_summary',
+    contentId: s.id,
+  })
+}
+
+function onRead(s: SectionRow) {
+  router.push(readRoute(s))
+}
+
+function onMore(s: SectionRow) {
+  emit('more-actions', s.id)
 }
 
 if (!props.compact) {
@@ -178,7 +255,8 @@ if (!props.compact) {
 </script>
 
 <template>
-  <table class="section-list-table" :class="{ compact }">
+  <!-- Compact mode (reader-TOC dropdown): keep the dense table layout. -->
+  <table v-if="compact" class="section-list-table compact">
     <thead>
       <tr>
         <th>#</th>
@@ -187,14 +265,14 @@ if (!props.compact) {
         <th>Summary</th>
       </tr>
     </thead>
-    <tbody v-if="compact">
+    <tbody>
       <tr
         v-for="(s, idx) in sortedSections"
         :key="s.id"
         role="link"
         tabindex="0"
         :class="{ 'is-current': s.id === currentSectionId }"
-        @click="onRowClick(s)"
+        @click="navigateRow(s)"
         @keydown="onRowKeydown($event, idx, sortedSections)"
       >
         <td>{{ s.order_index + 1 }}</td>
@@ -205,114 +283,238 @@ if (!props.compact) {
         </td>
       </tr>
     </tbody>
-    <template v-else>
-      <template v-for="g in groupOrder" :key="g">
-        <thead v-if="groupedSections[g].length > 0" class="section-group-head">
-          <tr
-            class="section-group-row"
-            :data-group="g"
-            tabindex="0"
-            role="button"
-            :aria-expanded="expanded[g]"
-            @click="toggleGroup(g)"
-            @keydown.enter.prevent="toggleGroup(g)"
-            @keydown.space.prevent="toggleGroup(g)"
-          >
-            <th colspan="4">
-              <span class="chev" :class="{ open: expanded[g] }">▸</span>
-              {{ GROUP_LABEL[g] }}
-              <span class="group-count">({{ groupedSections[g].length }})</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody v-if="expanded[g]" :data-group-body="g">
-          <tr
-            v-for="(s, idx) in groupedSections[g]"
-            :key="s.id"
-            role="link"
-            tabindex="0"
-            :class="{ 'is-current': s.id === currentSectionId }"
-            @click="onRowClick(s)"
-            @keydown="onRowKeydown($event, idx, groupedSections[g])"
-          >
-            <td>{{ s.order_index + 1 }}</td>
-            <td>{{ s.title }}</td>
-            <td>{{ readTime(s) }}</td>
-            <td :data-summary-kind="summaryStatus(s).kind">
-              {{ summaryStatus(s).label }}
-            </td>
-          </tr>
-        </tbody>
-      </template>
-    </template>
   </table>
+
+  <!-- Default (book-overview Sections tab): div-grid stack, hover actions. -->
+  <div v-else class="section-list" role="table" aria-label="Sections">
+    <div class="section-list-header" role="row">
+      <span class="col-index">#</span>
+      <span class="col-title">Title</span>
+      <span class="col-time">Read time</span>
+      <span class="col-summary">Summary</span>
+    </div>
+    <template v-for="g in groupOrder" :key="g">
+      <div
+        v-if="groupedSections[g].length > 0"
+        class="section-group-row"
+        :data-group="g"
+        role="button"
+        tabindex="0"
+        :aria-expanded="expanded[g]"
+        @click="toggleGroup(g)"
+        @keydown.enter.prevent="toggleGroup(g)"
+        @keydown.space.prevent="toggleGroup(g)"
+      >
+        <span class="chev" :class="{ open: expanded[g] }">▸</span>
+        {{ GROUP_LABEL[g] }}
+        <span class="group-count">({{ groupedSections[g].length }})</span>
+      </div>
+      <div v-if="expanded[g]" :data-group-body="g">
+        <div
+          v-for="(s, idx) in groupedSections[g]"
+          :key="s.id"
+          class="section-row group"
+          data-row
+          role="button"
+          tabindex="0"
+          :aria-label="`Open summary of ${s.title}`"
+          :class="{ 'is-current': s.id === currentSectionId }"
+          @click="onRowClick($event, s)"
+          @auxclick="onRowAuxClick($event, s)"
+          @keydown="onRowKeydown($event, idx, groupedSections[g])"
+        >
+          <span class="col-index">{{ s.order_index + 1 }}</span>
+          <span class="col-title">{{ s.title }}</span>
+          <span class="col-time">{{ readTime(s) }}</span>
+          <span class="col-summary" :data-summary-kind="summaryStatus(s).kind">
+            {{ summaryStatus(s).label }}
+          </span>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="row-action"
+              data-action="listen"
+              :disabled="!canListen(s)"
+              :title="canListen(s) ? 'Listen' : 'Generate a summary or audio first'"
+              @click.stop="onListen(s)"
+              @auxclick.stop
+            >
+              ▶
+            </button>
+            <button
+              type="button"
+              class="row-action"
+              data-action="read"
+              title="Read original"
+              @click.stop="onRead(s)"
+              @auxclick.stop
+            >
+              📖
+            </button>
+            <button
+              type="button"
+              class="row-action"
+              data-action="more"
+              title="More"
+              @click.stop="onMore(s)"
+              @auxclick.stop
+            >
+              ⋯
+            </button>
+          </div>
+          <span class="row-chev" aria-hidden="true">›</span>
+        </div>
+      </div>
+    </template>
+  </div>
 </template>
 
 <style scoped>
-.section-list-table {
+/* Compact (reader-TOC dropdown) — table layout preserved. */
+.section-list-table.compact {
   width: 100%;
   border-collapse: collapse;
+  max-width: 360px;
 }
-.section-list-table th,
-.section-list-table td {
+.section-list-table.compact th,
+.section-list-table.compact td {
   text-align: left;
-  padding: 8px 12px;
+  padding: 4px 8px;
+  font-size: 13px;
   border-bottom: 1px solid var(--color-border);
-  font-size: 14px;
 }
-.section-list-table thead:first-of-type th {
+.section-list-table.compact th {
   font-weight: 600;
   color: var(--color-text-secondary);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.section-list-table tr[role='link'] {
+.section-list-table.compact tr[role='link'] {
   cursor: pointer;
 }
-.section-list-table tr[role='link']:focus {
+.section-list-table.compact tr[role='link']:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
 }
-.section-list-table tr[role='link']:hover {
+.section-list-table.compact tr[role='link']:hover {
   background: var(--color-bg-tertiary);
 }
-.section-list-table tr.is-current {
+.section-list-table.compact tr.is-current {
   background: rgba(79, 70, 229, 0.08);
 }
-.section-group-head th {
+
+/* Default (book-overview Sections tab) — div-grid stack. */
+.section-list {
+  display: flex;
+  flex-direction: column;
+}
+.section-list-header,
+.section-row {
+  display: grid;
+  grid-template-columns: 3rem 1fr 6rem 4rem auto 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  font-size: 0.9rem;
+}
+.section-list-header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+  border-bottom: 1px solid var(--color-border-strong, #cbd5e1);
+}
+.section-row {
+  cursor: pointer;
+  position: relative;
+}
+.section-row:hover {
   background: var(--color-bg-secondary, #f8fafc);
-  text-transform: none;
-  letter-spacing: 0;
+}
+.section-row:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: -2px;
+}
+.section-row.is-current {
+  background: rgba(79, 70, 229, 0.08);
+}
+.col-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.col-time,
+.col-summary {
   font-size: 0.85rem;
+}
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.section-row:hover .row-actions,
+.section-row:focus-within .row-actions {
+  opacity: 1;
+}
+.row-action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  color: var(--color-text-secondary, #475569);
+}
+.row-action:hover:not(:disabled) {
+  background: var(--color-bg-tertiary, #e2e8f0);
+}
+.row-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.row-action:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 1px;
+}
+.row-chev {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 1.1rem;
+}
+
+.section-group-row {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-secondary, #f8fafc);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1f2937);
   cursor: pointer;
   user-select: none;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
 }
-.section-group-row:focus {
-  outline: 2px solid var(--color-accent);
+.section-group-row:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
   outline-offset: -2px;
 }
 .chev {
   display: inline-block;
   transition: transform 0.15s ease;
   margin-right: 0.4rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted, #94a3b8);
 }
 .chev.open {
   transform: rotate(90deg);
 }
 .group-count {
   margin-left: 0.4rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted, #94a3b8);
   font-weight: 400;
-}
-.section-list-table.compact th,
-.section-list-table.compact td {
-  padding: 4px 8px;
-  font-size: 13px;
-}
-.section-list-table.compact {
-  max-width: 360px;
 }
 [data-summary-kind='done'] {
   color: var(--color-success);
