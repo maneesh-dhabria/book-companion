@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import BookSummaryTab from '../BookSummaryTab.vue'
@@ -63,6 +63,29 @@ describe('BookSummaryTab', () => {
     expect(wrapper.find('.markdown-body').exists()).toBe(true)
     expect(wrapper.text()).toContain('Read Section Summaries')
     expect(wrapper.text()).toContain('Regenerate')
+  })
+
+  it('Read Section Summaries skips front-matter and routes to first chapter (FR-B03)', async () => {
+    const router = makeRouter()
+    const wrapper = mount(BookSummaryTab, {
+      props: {
+        book: baseBook({
+          status: 'PARSED',
+          default_summary: { summary_md: '# Title', generated_at: '2026-05-01T00:00:00Z' },
+          sections: [
+            { id: 50, order_index: 0, section_type: 'copyright', has_summary: false },
+            { id: 51, order_index: 1, section_type: 'chapter', has_summary: true, default_summary_id: 99 },
+          ],
+        }) as never,
+      },
+      global: { plugins: [createPinia(), router] },
+    })
+    const buttons = wrapper.findAll('button.btn-secondary')
+    const cta = buttons.find((b) => b.text().includes('Read Section Summaries'))
+    expect(cta).toBeDefined()
+    await cta!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/books/3/sections/51')
   })
 
   it('Failed state: shows error and Retry CTA', () => {

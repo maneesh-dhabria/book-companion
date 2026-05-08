@@ -4,10 +4,14 @@ import { useRouter } from 'vue-router'
 
 import TtsPlayButton from '@/components/audio/TtsPlayButton.vue'
 import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
+import { firstChapter } from '@/stores/reader'
+import { useUiStore } from '@/stores/ui'
+import type { Section } from '@/types'
 
 interface SectionLike {
   id: number
   order_index?: number
+  section_type?: string
   has_summary?: boolean
   default_summary?: { id?: number } | null
   default_summary_id?: number | null
@@ -16,6 +20,7 @@ interface SectionLike {
 
 interface BookLike {
   id: number
+  status?: string | null
   sections?: SectionLike[]
   default_summary?: { summary_md?: string; generated_at?: string; created_at?: string } | null
   last_summary_failure?: { code?: string; stderr?: string; at?: string } | null
@@ -31,6 +36,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const ui = useUiStore()
 
 const summarizedCount = computed(
   () =>
@@ -163,9 +169,15 @@ async function startGenerate() {
 
 function readSectionSummaries() {
   const sections = (props.book.sections || []).slice()
-  if (sections.length === 0) return
   sections.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-  const first = sections[0]
+  const first = firstChapter(
+    sections as unknown as ReadonlyArray<Section>,
+    props.book.status ?? null,
+  )
+  if (!first) {
+    ui.showToast('No chapter to open yet', 'info')
+    return
+  }
   router.push({
     path: `/books/${props.book.id}/sections/${first.id}`,
     query: { tab: 'summary' },
