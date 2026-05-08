@@ -28,6 +28,20 @@ export const SUMMARIZABLE_TYPES: ReadonlySet<string> = new Set([
   'conclusion',
 ])
 
+// Pick first user-meaningful section: prefer SUMMARIZABLE_TYPES, fall back to
+// sections[0] only when the book is fully PARSED, else null. See FR-B01.
+export function firstChapter(
+  sections: ReadonlyArray<Section> | null | undefined,
+  bookStatus: string | null | undefined,
+): Section | null {
+  if (!sections || sections.length === 0) return null
+  for (const s of sections) {
+    if (SUMMARIZABLE_TYPES.has(s.section_type)) return s
+  }
+  if (bookStatus === 'PARSED') return sections[0]
+  return null
+}
+
 // Test-only seam — overrides the dynamic `@/router` import resolution
 // so unit tests can wire in a memory-history router. Production code
 // path is unaffected because this stays null.
