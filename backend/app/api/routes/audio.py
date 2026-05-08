@@ -594,3 +594,141 @@ def _mp3_response(audio_bytes: bytes):
     from fastapi.responses import Response
 
     return Response(content=audio_bytes, media_type="audio/mpeg")
+
+
+# --- Batch lookups for the BookOverviewView (FR-C20, FR-E07a) ------------------
+
+
+class AudioByBookEntry(BaseModel):
+    section_id: int
+    has_mp3: bool
+    engine: str | None = None
+
+
+class AudioByBookResponse(BaseModel):
+    book_id: int
+    sections: list[AudioByBookEntry]
+
+
+class AudioPositionByBookResponse(BaseModel):
+    content_type: str
+    content_id: int
+    sentence_index: int
+    updated_at: str
+
+
+@router.get("/api/v1/audio/sections/by-book/{book_id}", response_model=AudioByBookResponse)
+async def get_audio_sections_by_book(
+    book_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Batch audio-availability map for the Sections tab (FR-C20).
+
+    Returns one entry per section, with `has_mp3` and the engine that generated
+    the most recent MP3 (or null). Used by `useBookAudioMap` composable.
+    """
+    book = await db.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="book not found")
+
+    sections = (
+        (
+            await db.execute(
+                select(BookSection.id)
+                .where(BookSection.book_id == book_id)
+                .order_by(BookSection.order_index)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    audio_rows = (
+        await db.execute(
+            select(AudioFile.content_id, AudioFile.engine).where(
+                AudioFile.book_id == book_id,
+                AudioFile.content_type.in_(
+                    [ContentType.SECTION_SUMMARY.value, ContentType.SECTION_CONTENT.value]
+                ),
+            )
+        )
+    ).all()
+    audio_by_id: dict[int, str] = {}
+    for content_id, engine in audio_rows:
+        # Latest write wins; rows are unique on (book, content_type, content_id, voice)
+        # but multiple voices/types can collide on content_id. The first hit is fine
+        # for the boolean availability check; engine is best-effort.
+        audio_by_id.setdefault(content_id, engine)
+
+    entries = [
+        AudioByBookEntry(
+            section_id=sid,
+            has_mp3=sid in audio_by_id,
+            engine=audio_by_id.get(sid),
+        )
+        for sid in sections
+    ]
+    return AudioByBookResponse(book_id=book_id, sections=entries)
+
+
+@router.get(
+    "/api/v1/audio/positions/by-book/{book_id}",
+    response_model=AudioPositionByBookResponse,
+)
+async def get_audio_position_by_book(
+    book_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Most-recent audio_position for any audio belonging to this book (FR-E07a).
+
+    404 when no audio_position exists for any of the book's section-typed audio
+    or its `book_summary` audio. `annotations_playlist` rows are excluded.
+    """
+    book = await db.get(Book, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="book not found")
+
+    from app.db.models import AudioPosition
+
+    # Section-typed audio: join through book_sections.
+    section_ids_subq = select(BookSection.id).where(BookSection.book_id == book_id)
+    section_row = (
+        await db.execute(
+            select(AudioPosition)
+            .where(
+                AudioPosition.content_type.in_(
+                    [ContentType.SECTION_SUMMARY.value, ContentType.SECTION_CONTENT.value]
+                ),
+                AudioPosition.content_id.in_(section_ids_subq),
+            )
+            .order_by(AudioPosition.updated_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    # book_summary audio: keyed directly on book id.
+    book_summary_row = (
+        await db.execute(
+            select(AudioPosition)
+            .where(
+                AudioPosition.content_type == ContentType.BOOK_SUMMARY.value,
+                AudioPosition.content_id == book_id,
+            )
+            .order_by(AudioPosition.updated_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    candidates = [r for r in (section_row, book_summary_row) if r is not None]
+    if not candidates:
+        raise HTTPException(status_code=404, detail="no audio position for book")
+
+    candidates.sort(key=lambda r: r.updated_at, reverse=True)
+    winner = candidates[0]
+    ct = winner.content_type.value if hasattr(winner.content_type, "value") else winner.content_type
+    return AudioPositionByBookResponse(
+        content_type=ct,
+        content_id=winner.content_id,
+        sentence_index=winner.sentence_index,
+        updated_at=winner.updated_at.isoformat() if winner.updated_at else "",
+    )
