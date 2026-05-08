@@ -61,6 +61,20 @@ verify-all:  ## fast + ladder + slow (delegates to ./test.sh all)
 	./test.sh all
 .PHONY: verify-all
 
+test-e2e-contrast:  ## Run Playwright dark-mode contrast sweep (FR-A06, FR-A07)
+	@:$(WINDOWS_BAIL)
+	cd $(FRONTEND) && npx playwright test e2e/dark-mode-contrast.spec.ts
+.PHONY: test-e2e-contrast
+
+chip-regression-grep:  ## Fail if pre-token chip glyphs / colour pairs reappear (G3)
+	@:$(WINDOWS_BAIL)
+	@! grep -RnE "▦|☰\s*</|▤" $(FRONTEND)/src 2>/dev/null \
+	  || (echo "✗ Found pre-Lucide view-toggle glyphs (▦|☰|▤) — use lucide-vue-next icons instead." && exit 1)
+	@! grep -RnE "bg-(blue|amber|green|red|yellow)-(100|200)\s+text-(blue|amber|green|red|yellow)-(700|800|900)" $(FRONTEND)/src 2>/dev/null \
+	  || (echo "✗ Found ad-hoc chip colour pairs — use chip-token classes (chip / chip--accent / chip--info / chip--warn / chip--neutral)." && exit 1)
+	@echo "✓ chip-regression-grep: clean."
+.PHONY: chip-regression-grep
+
 serve-fresh:  ## Build wheel, install into /tmp/bc, run it (delegates to ./test.sh serve)
 	@:$(WINDOWS_BAIL)
 	BC_PORT=$(PORT) ./test.sh serve
