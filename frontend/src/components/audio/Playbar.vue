@@ -147,16 +147,32 @@ function onRetry() {
 
       <span
         v-if="store.engine === 'web-speech'"
-        data-testid="limited-controls"
-        class="chip chip--warn"
+        class="limited-wrap"
+        tabindex="0"
       >
-        Limited controls
+        <span
+          data-testid="limited-controls"
+          class="chip chip--warn"
+        >
+          Limited controls
+        </span>
+        <span
+          data-testid="limited-controls-tooltip"
+          role="tooltip"
+          class="limited-tooltip"
+        >
+          Web Speech can't seek/scrub. <a href="/settings#audio">Install Kokoro for full controls →</a>
+        </span>
       </span>
 
       <span class="text-sm text-slate-600 dark:text-slate-300">
         sentence {{ store.sentenceIndex + 1 }} of {{ store.totalSentences }}
       </span>
-      <span class="text-sm text-slate-500 dark:text-slate-400">
+      <span
+        v-if="store.engine !== 'web-speech'"
+        data-testid="timestamp"
+        class="text-sm text-slate-500 dark:text-slate-400"
+      >
         {{ formatTime(currentTime) }} / {{ formatTime(totalSeconds) }}
       </span>
 
@@ -171,3 +187,35 @@ function onRetry() {
     </template>
   </div>
 </template>
+
+<style scoped>
+.limited-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.limited-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(15 23 42);
+  color: rgb(241 245 249);
+  font-size: 0.75rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease-in;
+  z-index: 50;
+}
+.limited-wrap:hover .limited-tooltip,
+.limited-wrap:focus-within .limited-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+}
+.limited-tooltip a {
+  color: rgb(165 180 252);
+  text-decoration: underline;
+}
+</style>

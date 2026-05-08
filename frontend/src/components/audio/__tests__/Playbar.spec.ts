@@ -101,4 +101,40 @@ describe('Playbar', () => {
     const errSpan = wrap.find('[data-testid="audio-error-message"]')
     expect(errSpan.attributes('title') ?? '').toContain('engine_unavailable')
   })
+
+  it('hides timestamp on Web Speech (FR-E01)', () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.engine = 'web-speech'
+    const wrap = mount(Playbar)
+    expect(wrap.find('[data-testid="timestamp"]').exists()).toBe(false)
+  })
+
+  it('shows timestamp on Kokoro/mp3 engine (FR-E01)', () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.engine = 'mp3'
+    store.totalSentences = 5
+    store.sentenceIndex = 0
+    store.sentenceOffsets = [0, 10, 20, 30, 40, 50]
+    const wrap = mount(Playbar)
+    const ts = wrap.find('[data-testid="timestamp"]')
+    expect(ts.exists()).toBe(true)
+    expect(ts.text()).toMatch(/\d+:\d{2} \/ \d+:\d{2}/)
+  })
+
+  it('Limited-controls badge has tooltip + settings link (FR-E03)', () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.engine = 'web-speech'
+    const wrap = mount(Playbar)
+    const badge = wrap.find('[data-testid="limited-controls"]')
+    expect(badge.exists()).toBe(true)
+    const tooltip = wrap.find('[data-testid="limited-controls-tooltip"]')
+    expect(tooltip.exists()).toBe(true)
+    expect(tooltip.text()).toContain("Web Speech can't seek/scrub")
+    const link = tooltip.find('a')
+    expect(link.exists()).toBe(true)
+    expect(link.attributes('href')).toBe('/settings#audio')
+  })
 })
