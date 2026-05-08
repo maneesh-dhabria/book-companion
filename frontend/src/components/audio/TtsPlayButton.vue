@@ -11,8 +11,8 @@ import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 const props = defineProps<{
   contentType: PreloadContentType
   contentId: number
+  bookId: number
   hasSummary?: boolean
-  bookId?: number
 }>()
 
 const store = useTtsPlayerStore()
@@ -57,7 +57,7 @@ async function triggerPreload(): Promise<void> {
   if (props.hasSummary === false) return
   try {
     const result = await preloadCache.preload({
-      bookId: props.bookId ?? 0,
+      bookId: props.bookId,
       contentType: props.contentType,
       contentId: props.contentId,
     })
@@ -75,13 +75,12 @@ async function onClick(): Promise<void> {
   try {
     if (props.contentType !== 'annotation') {
       store.open({
+        bookId: props.bookId,
         contentType: props.contentType,
         contentId: props.contentId,
       })
-    }
-    if (props.contentType !== 'annotation') {
       await engine.load({
-        bookId: props.bookId ?? 0,
+        bookId: props.bookId,
         contentType: props.contentType,
         contentId: props.contentId,
       })
@@ -91,7 +90,7 @@ async function onClick(): Promise<void> {
       // path). Engine wiring for single-annotation playback ships in a
       // follow-up — for today, ensure the preload runs.
       await preloadCache.preload({
-        bookId: props.bookId ?? 0,
+        bookId: props.bookId,
         contentType: 'annotation',
         contentId: props.contentId,
       })

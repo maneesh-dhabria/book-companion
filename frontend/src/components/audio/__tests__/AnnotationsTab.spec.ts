@@ -61,6 +61,7 @@ describe('AnnotationsTab', () => {
     await flushPromises()
     await wrap.find('button[data-testid="play-all-annotations"]').trigger('click')
     expect(spy).toHaveBeenCalledWith({
+      bookId: 1,
       contentType: 'annotations_playlist',
       contentId: 1,
     })

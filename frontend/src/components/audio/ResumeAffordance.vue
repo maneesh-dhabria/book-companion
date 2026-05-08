@@ -7,6 +7,7 @@ import { useAudioApiError } from '@/composables/audio/useAudioApiError'
 import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 const props = defineProps<{
+  bookId: number
   contentType: AudioContentType
   contentId: number
   audioStatus: 'complete' | 'partial' | 'none'
@@ -39,6 +40,7 @@ onMounted(async () => {
 function resume() {
   if (!position.value) return
   store.open({
+    bookId: props.bookId,
     contentType: props.contentType,
     contentId: props.contentId,
     sentenceIndex: position.value.sentence_index,
@@ -47,6 +49,7 @@ function resume() {
 
 function startFromBeginning() {
   store.open({
+    bookId: props.bookId,
     contentType: props.contentType,
     contentId: props.contentId,
     sentenceIndex: 0,
