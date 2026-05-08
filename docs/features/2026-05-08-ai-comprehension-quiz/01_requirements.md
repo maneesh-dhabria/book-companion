@@ -1,8 +1,8 @@
 # AI Comprehension Quiz — Requirements
 
 **Date:** 2026-05-08
-**Last updated:** 2026-05-08
-**Status:** Draft
+**Last updated:** 2026-05-08 (Loop 1 review applied)
+**Status:** In Review
 **Tier:** 3 — Feature
 
 ## Problem
@@ -29,6 +29,7 @@ The single user of this personal tool — a non-fiction reader who imports books
 - **The agent varies question shape (MCQ + open-ended) and depth** so the user is challenged across Bloom levels, not just on fact recall — measured by: spot-check sample of generated questions shows ≥30% above "Remember" level (Understand, Apply, Analyze, Evaluate).
 - **The agent does not repeat questions** the user has already been asked for the same book — measured by: zero duplicate question stems across all sessions for any single book in user testing.
 - **Open-ended answers receive useful qualitative feedback** that the user can learn from — measured by: feedback text references at least one concept from the source content and identifies what (if anything) was missing.
+- **The user has a visible sense of how the session is going** without numeric scoring — measured by: a per-session self-assessment tally (Got it / Partial / Missed) is visible in the tab header from the second question onward.
 - **The user can choose between two scopes** before each session: quiz over all summaries (book + every chapter summary) or go deep on a chosen subset of chapters using full chapter content — measured by: both scopes are reachable in ≤2 clicks from the Quiz tab.
 
 ### Non-Goals (explicit scope cuts)
@@ -61,6 +62,8 @@ The single user of this personal tool — a non-fiction reader who imports books
 | "It asked me the same thing again." | No dedup. | Persist all asked-question stems per book; pass recent N (or all, if budget allows) to the generation prompt as a "do not ask again" list. |
 | "It hallucinated a fact that's not in the book." | LLM grounding drift. | Prompt instructs the agent to ground every question in a specific snippet of the provided content. Surface the source snippet with each question (citation). |
 | "I gave a half-right open-ended answer and the feedback was vague." | Qualitative-only feedback can be wishy-washy. | Feedback prompt template demands: (a) what was correct, (b) what was missing, (c) the concept's actual answer per the source. |
+| "I have no idea how I'm doing in this session." | No score, no progress signal — a known motivation-collapse failure mode. | One-click self-assessment after each feedback turn (Got it / Partial / Missed); running tally shown in the tab header. Qualitative, not numeric. |
+| "It's MCQ — and the citation chip on the question already tells me the answer." | Citation visibility leaks the answer for fact-recall MCQs. | Citation appears **after** the user answers for MCQ; appears **with** the question for open-ended (where it helps the user know which content to draw from). |
 | "I want to go deeper on chapter 7 but the agent keeps asking surface questions about the whole book." | Scope confusion. | Two explicit scopes: **All Summaries** vs **Multiple Chapters (full content)**. User picks before starting and can switch mid-session. |
 | "I closed the tab and lost my progress." | Session state ephemeral. | Quiz history persists per book. Re-opening the tab shows past Q&A and the "next question" continues from where the asked-question dedup left off. |
 | "There's no LLM CLI installed." | Tool depends on Claude/Codex on `$PATH`. | Tab disabled with the same banner pattern used by Summarize/Eval features when no provider is detected (CLAUDE.md gotcha #6). |
@@ -105,6 +108,9 @@ User flow at the behavior level (not architecture):
 │   - what was missing                         │
 │   - the actual answer with reference         │
 │                                              │
+│  Self-assessment: [ Got it ] [ Partial ]     │
+│                   [ Missed ]   (one click)   │
+│                                              │
 │  [ Next Question ]   [ Stop ]   [ Override ] │
 └─────────────────────────────────────────────┘
         │
@@ -126,9 +132,10 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 5. User leaves *All Summaries* selected and clicks **Start Quiz**.
 6. After a brief generation pause, the agent posts: *"System 1 vs System 2 — give me one example, from the book, of System 1 making a snap judgment that System 2 would override on reflection."* (open-ended, with a small "Source: Chapter 1" citation chip).
 7. User types an answer.
-8. Agent responds with qualitative feedback: what was right, what they missed (citing the priming/anchoring example), and the concept the book actually uses.
-9. User clicks **Next Question**. Agent asks an MCQ on a different concept (e.g., loss aversion), with 4 options.
-10. User picks. Agent confirms correct/incorrect and explains the reasoning the book gives.
+8. Agent responds with qualitative feedback: what was right, what they missed (citing the priming/anchoring example), and the concept the book actually uses. The source-citation chip appears with the feedback (open-ended question — citation was already visible with the question for context).
+9. User clicks **Partial** in the self-assessment (one click), then **Next Question**. The header counter ticks to "Q1: 1 partial".
+10. Agent asks an MCQ on a different concept (e.g., loss aversion), with 4 options. No citation chip yet — it would leak the answer.
+11. User picks. Agent confirms correct/incorrect and reveals the source citation alongside the explanation. User clicks **Got it**.
 11. User does this for ~10 questions, then clicks **Stop**.
 12. Session is saved. Asked-question stems are persisted under this book.
 13. Three days later, user reopens the Quiz tab → sees past Q&A history → starts a new session → the agent does **not** repeat any of the prior questions.
@@ -139,7 +146,7 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 
 **Mid-session scope change.** User starts in *All Summaries*, realizes they want depth on chapter 4. They click a "Change scope" control, switch to *Multiple Chapters → Chapter 4*, and the next generation uses the new scope. Asked-question history continues to accumulate against the same per-book pool.
 
-**Override unfair feedback.** Agent says the user's open-ended answer "missed the role of cognitive ease" — but the user's answer actually addressed it. User clicks **Override** and types a one-line note ("I did mention cognitive ease"). The override is saved with the feedback turn so future review of history shows the disagreement.
+**Override unfair feedback.** Agent says the user's open-ended answer "missed the role of cognitive ease" — but the user's answer actually addressed it. User clicks **Override** and types a one-line note ("I did mention cognitive ease"). The note is appended to the feedback turn; the original agent feedback **stays visible** (not deleted); the turn is flagged in history so the disagreement is preserved. No re-grading happens — the user's self-assessment click (Got it / Partial / Missed) is the authoritative signal for the session tally.
 
 ### Error Journeys
 
@@ -179,6 +186,10 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | D9 | LLM provider: reuse existing auto-detected provider; no new subprocess pattern | (a) reuse `LLMProvider` ABC, (b) new streaming-only provider | The summarize and AI-chat features already work this way; building a parallel pattern is overhead without benefit. Streaming token-by-token is a stretch goal — single-question latency is acceptable since the user expects a thinking pause. |
 | D10 | Quiz history is shown in the same tab (collapsible "Past Q&A" panel), not a separate route | (a) inline in tab, (b) `/books/:id/quiz/history` route, (c) sidebar drawer | Inline keeps the surface focused and discoverable. Separate route adds navigation cost for a single-user tool. |
 | D11 | If the user closes the tab mid-question (before answering), the unanswered question is **not** added to dedup history | (a) drop, (b) keep | Allowing re-generation is the kinder default — the user might reopen the tab fresh and want the same question they didn't get to. |
+| D12 | One-click self-assessment after every feedback turn: **Got it / Partial / Missed**; running tally visible in the tab header | (a) numeric score (excluded by D4), (b) qualitative-only with no signal, (c) one-click self-assessment | Restores a progress signal without reintroducing scoring. Self-assessment is authoritative (cheaper and less biased than LLM-judging the user's answer). Tally seeds the v2 retention layer if/when SR is added. |
+| D13 | Dedup mechanism caps at the most-recent ~50 asked-question stems (verbatim) plus an agent-summarized "themes already covered" line for older ones | (a) pass everything (breaks at scale), (b) recent N only (loses older coverage), (c) hybrid: recent N verbatim + themed summary of older | Pure recent-N drops semantic awareness of older questions; a themed summary line is cheap, keeps the dedup signal alive at scale, and is invisible to the user. The exact N is set in `02_spec.md` based on prompt budget. |
+| D14 | Source citation appears **after** the user answers for MCQ; **with** the question for open-ended | (a) always pre-answer, (b) always post-answer, (c) shape-conditional | MCQ pre-citation leaks the answer for any fact-grounded question. Open-ended pre-citation tells the user which content to draw from without giving the answer (the synthesis is still on them). Different shapes need different visibility rules. |
+| D15 | **Override** appends a free-text user note to the feedback turn; the original agent feedback stays visible; the turn is flagged in history | (a) replace feedback with note, (b) append note + flag, (c) defer | Preserving the disagreement (rather than deleting it) is the right call for a personal tool — the user may want to revisit "why I disagreed with the agent here" later. Override does **not** change the self-assessment tally; that signal stays user-driven. |
 
 ## Success Metrics
 
@@ -189,6 +200,7 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | Question repetition rate | N/A | 0 exact-stem duplicates per book; ≤5% near-duplicate (semantic) rate flagged via spot-check | Stem-equality check across `QuizQuestion` rows for a book; spot-check 50 questions per book using embedding cosine similarity ≥0.88 as "near dupe". |
 | Feedback usefulness | N/A | ≥80% of feedback turns reference at least one specific concept from the source content | Manual review of a sample. Heuristic check (is at least one source citation chip present?) as proxy. |
 | Session completion (qualitative) | N/A | User reaches ≥5 questions before clicking Stop in a typical session | Count `QuizQuestion` rows per `QuizSession`. Below 3 suggests friction. |
+| Self-assessment recorded | N/A | ≥90% of feedback turns receive a Got it / Partial / Missed click before the user moves to the next question | Count of feedback turns with non-null self-assessment / total feedback turns per session. Below 70% suggests the click is friction or invisible. |
 | Return rate | N/A | At least 1 in 3 books with a started session has ≥2 sessions over its lifetime | Books with `count(QuizSession) ≥ 2` / books with `count(QuizSession) ≥ 1`. |
 | LLM hallucination rate | N/A | <5% of generated questions reference a fact not present in the source content | Spot-check a sample manually; require source citation in every question to make this auditable. |
 
@@ -217,13 +229,20 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 
 | # | Question |
 |---|---|
-| 1 | What's the length cap (in tokens or characters) for the **Multiple Chapters (full content)** scope before we block the Start button? Needs a number — guidance from `LLMProvider` per-call context budget vs. typical chapter sizes. |
-| 2 | When the asked-question dedup list grows large (e.g., 100+ stems for a heavily-quizzed book), do we pass all of it to the prompt, the most-recent N, or summarize older stems? Affects prompt budget. |
+| 1 | What's the length cap (in tokens or characters) for the **Multiple Chapters (full content)** scope before we block the Start button? Needs a number — guidance from `LLMProvider` per-call context budget vs. typical chapter sizes. (Spec to pin.) |
+| 2 | What is the exact verbatim-stem cap N for D13's dedup hybrid (recent N + themed summary)? Spec to pin based on per-call prompt budget. |
 | 3 | Should the user be able to **delete** a past question from history (so it can be re-generated)? Useful for "I want a do-over" but adds UI surface. |
-| 4 | Does the source citation appear inline with the question (e.g., chip) or only in feedback after the user answers (to avoid leaking the answer)? Likely the latter for MCQ on facts; the former for synthesis questions. |
-| 5 | When a book is re-imported and section IDs change, does asked-question history survive the reseat? (Cross-reference CLAUDE.md gotcha #13 — re-import preserves section IDs by `order_index`, so history should survive — confirm.) |
-| 6 | For the **Multiple Chapters** scope, do we offer "All Chapters" as an explicit shortcut, or is that scope intentionally unavailable (since "All Summaries" already covers breadth)? |
-| 7 | Is there value in a one-line **session theme** input (e.g., "focus on prospect theory") on top of scope, or does scope alone suffice for v1? |
+| 4 | When a book is re-imported and section IDs change, does asked-question history survive the reseat? (Cross-reference CLAUDE.md gotcha #13 — re-import preserves section IDs by `order_index`, so history should survive — confirm.) |
+| 5 | For the **Multiple Chapters** scope, do we offer "All Chapters" as an explicit shortcut, or is that scope intentionally unavailable (since "All Summaries" already covers breadth)? |
+| 6 | Is there value in a one-line **session theme** input (e.g., "focus on prospect theory") on top of scope, or does scope alone suffice for v1? |
+
+---
+
+## Review Log
+
+| Loop | Findings | Changes Made |
+|---|---|---|
+| 1 | (a) No progress signal in session (motivation-collapse risk). (b) Dedup overflow behavior unspecified. (c) Citation timing was an Open Question — should be a Decision (MCQ leak risk). (d) Override behavior under-specified. (e) Tab discoverability not addressed. | (a) Added Goal + Friction row + D12 + Success Metric for one-click self-assessment counter. (b) Added D13: hybrid dedup (recent N verbatim + themed summary of older). (c) Added D14: shape-conditional citation timing (post-answer MCQ; pre-answer open-ended). (d) Added D15: override appends note, feedback stays, turn flagged. (e) Skipped — single-user personal tool; the user knows where the tab is. |
 
 ---
 
