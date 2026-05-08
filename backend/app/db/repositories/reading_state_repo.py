@@ -1,11 +1,12 @@
 """Reading state repository — thin query builder for reading_state table."""
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import ReadingState
+from app.db.models import BookSection, ReadingState
+from app.services.parser.section_classifier import FRONT_MATTER_TYPES
 
 
 class ReadingStateRepository:
@@ -52,12 +53,25 @@ class ReadingStateRepository:
         return result.scalar_one_or_none()
 
     async def get_latest_other_device(self, current_user_agent: str) -> ReadingState | None:
-        """Get the most recent reading state from a different device."""
+        """Get the most recent reading state from a different device.
+
+        Skips rows whose target section is front-matter (copyright, cover, …) so
+        the "Continue where you left off" banner never lands on a non-readable
+        page (FR-B05a). Rows with `section_id IS NULL` (book-level resume) pass
+        through.
+        """
         result = await self.session.execute(
             select(ReadingState)
+            .outerjoin(BookSection, BookSection.id == ReadingState.section_id)
             .options(selectinload(ReadingState.book), selectinload(ReadingState.section))
             .where(ReadingState.user_agent != current_user_agent)
             .where(ReadingState.book_id.isnot(None))
+            .where(
+                or_(
+                    ReadingState.section_id.is_(None),
+                    BookSection.section_type.notin_(FRONT_MATTER_TYPES),
+                )
+            )
             .order_by(ReadingState.updated_at.desc())
             .limit(1)
         )
