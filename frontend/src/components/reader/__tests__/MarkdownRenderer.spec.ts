@@ -38,6 +38,38 @@ describe('MarkdownRenderer', () => {
     expect(w.html()).toMatch(/<span[^>]*>here<\/span>/)
   })
 
+  it('emits stable id slugs on h2 and h3, with collisions suffixed (FR-C07)', () => {
+    const w = mount(MarkdownRenderer, {
+      props: {
+        content: '## Foo\n\n## Foo\n\n### Foo Bar\n\n### Foo Bar',
+      },
+    })
+    const html = w.html()
+    expect(html).toMatch(/<h2[^>]*id="foo"/)
+    expect(html).toMatch(/<h2[^>]*id="foo-1"/)
+    expect(html).toMatch(/<h3[^>]*id="foo-bar"/)
+    expect(html).toMatch(/<h3[^>]*id="foo-bar-1"/)
+  })
+
+  it('falls back to section-N when heading has no slugifiable text (FR-C07)', () => {
+    const w = mount(MarkdownRenderer, {
+      props: { content: '## ✨\n\n## More text' },
+    })
+    const html = w.html()
+    expect(html).toMatch(/<h2[^>]*id="section-0"/)
+    expect(html).toMatch(/<h2[^>]*id="more-text"/)
+  })
+
+  it('does NOT emit ids on h1, h4, h5, h6 (only h2/h3 per FR-C07)', () => {
+    const w = mount(MarkdownRenderer, {
+      props: { content: '# Title\n\n## Sub\n\n#### Deep' },
+    })
+    const html = w.html()
+    expect(html).not.toMatch(/<h1[^>]*id=/)
+    expect(html).not.toMatch(/<h4[^>]*id=/)
+    expect(html).toMatch(/<h2[^>]*id="sub"/)
+  })
+
   it('empties alt for decorative image placeholder', () => {
     const w = mount(MarkdownRenderer, {
       props: { content: '![image](https://example.com/foo.png)' },
