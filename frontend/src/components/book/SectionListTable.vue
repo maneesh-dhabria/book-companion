@@ -38,9 +38,10 @@ const route = useRoute()
 const jobStore = useSummarizationJobStore()
 const ttsPlayer = useTtsPlayerStore()
 
-// FR-C20 — batch audio-availability map. Skipped in compact mode (the
-// reader-TOC dropdown doesn't render the Listen affordance).
-const audio = !props.compact ? useBookAudioMap(props.bookId) : null
+// FR-C20 — batch audio-availability map. Used by both modes:
+// non-compact for the row Listen affordance (T19); compact for the
+// 🎧 chip in TOCDropdown rows (T21, FR-D04). Cache dedups the fetch.
+const audio = useBookAudioMap(props.bookId)
 
 type LiveStatus = 'pending' | 'completed' | 'failed' | 'retrying'
 const liveStatuses = ref<Record<number, LiveStatus>>({})
@@ -200,10 +201,13 @@ function canListen(s: SectionRow): boolean {
   // FR-C20 — Listen disabled iff no MP3 AND no summary. When the audio
   // batch lookup failed (e.g. backend down), allow Listen for everything
   // (degraded fallback).
-  if (!audio) return false
   if (audio.failed.value) return true
   const hasMp3 = audio.map.value[s.id]?.has_mp3 ?? false
   return hasMp3 || s.has_summary || !!s.default_summary_id
+}
+
+function hasMp3(s: SectionRow): boolean {
+  return audio.map.value[s.id]?.has_mp3 ?? false
 }
 
 function onListen(s: SectionRow) {
@@ -262,7 +266,7 @@ if (!props.compact) {
         <th>#</th>
         <th>Title</th>
         <th>Read time</th>
-        <th>Summary</th>
+        <th>Status</th>
       </tr>
     </thead>
     <tbody>
@@ -278,8 +282,25 @@ if (!props.compact) {
         <td>{{ s.order_index + 1 }}</td>
         <td>{{ s.title }}</td>
         <td>{{ readTime(s) }}</td>
-        <td :data-summary-kind="summaryStatus(s).kind">
-          {{ summaryStatus(s).label }}
+        <td class="compact-chips">
+          <span
+            class="chip chip--neutral"
+            data-chip="mode"
+            :title="s.has_summary ? 'Summary available' : 'Original only'"
+          >{{ s.has_summary ? '📋' : '📖' }}</span>
+          <span
+            class="chip"
+            :class="summaryStatus(s).kind === 'done' ? 'chip--accent' : 'chip--neutral'"
+            data-chip="summary"
+            :data-summary-kind="summaryStatus(s).kind"
+            :title="summaryStatus(s).kind === 'done' ? 'Summarized' : 'Not summarized'"
+          >{{ summaryStatus(s).label }}</span>
+          <span
+            v-if="hasMp3(s)"
+            class="chip chip--info"
+            data-chip="audio"
+            title="Audio available"
+          >🎧</span>
         </td>
       </tr>
     </tbody>

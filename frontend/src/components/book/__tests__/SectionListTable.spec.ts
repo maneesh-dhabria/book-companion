@@ -299,4 +299,38 @@ describe('SectionListTable (compact / reader-TOC dropdown)', () => {
     const rows = w.findAll('tbody tr[role="link"]')
     expect(rows[2].text()).toContain('✕')
   })
+
+  it('compact mode renders 3 status chips per row (FR-D04)', async () => {
+    vi.spyOn(audioApi, 'sectionsByBook').mockResolvedValue({
+      book_id: 1,
+      sections: [{ section_id: 2, has_mp3: true, engine: 'kokoro' }],
+    })
+    _resetBookAudioMapCache()
+    const w = mount(SectionListTable, {
+      props: { sections, bookId: 1, compact: true },
+      global: { plugins: [makeRouter()] },
+    })
+    await flushPromises()
+    const rows = w.findAll('tbody tr[role="link"]')
+    // Chapter 1 (id 2): has_summary, has_mp3 → 📋 + ✓ + 🎧
+    const ch1 = rows[1]
+    expect(ch1.find('[data-chip="mode"]').text()).toContain('📋')
+    expect(ch1.find('[data-chip="summary"]').text()).toContain('✓')
+    expect(ch1.find('[data-chip="audio"]').text()).toContain('🎧')
+    // Chapter 2 (id 3): no summary, no MP3 → 📖 + ✕ + (no audio chip)
+    const ch2 = rows[2]
+    expect(ch2.find('[data-chip="mode"]').text()).toContain('📖')
+    expect(ch2.find('[data-chip="summary"]').text()).toContain('✕')
+    expect(ch2.find('[data-chip="audio"]').exists()).toBe(false)
+  })
+
+  it('compact-mode chips use the chip token classes (FR-A01)', async () => {
+    const w = mount(SectionListTable, {
+      props: { sections, bookId: 1, compact: true },
+      global: { plugins: [makeRouter()] },
+    })
+    await flushPromises()
+    const chip = w.find('[data-chip="mode"]')
+    expect(chip.classes()).toContain('chip')
+  })
 })
