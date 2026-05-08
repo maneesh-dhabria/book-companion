@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-05-08 — Design-Crit Followups (UX cohesion + a11y + audio polish)
+
+- **Cleaner book home page**: a new **Overview** dashboard shows 4 tiles at a glance — Continue reading (jumps to your last chapter or the first chapter if you haven't started), Summary, Top concepts, and Sections (with total read time). Frontmatter (Copyright, Acknowledgments, Title Page) no longer hijacks Read CTAs.
+- **Reader now shows summary outline alongside content** on large screens — a sticky TOC rail tracks h2/h3 anchors, with a Back-to-Top FAB and a preset/generated/eval metadata strip.
+- **Sections tab redesign**: 4 columns (#, Title, Read time, Summary), grouped into Front matter / Chapters / Back matter with collapsible separators that remember per-book expand state. Rows are now `role=button` with hover-revealed Listen / Read / More actions; cmd-click opens in a new tab. Listen is enabled when audio exists OR a summary exists, hooked into a shared per-book audio-availability cache.
+- **Reader header reorganized** into 3 visually grouped clusters (Section nav | Reading mode | Actions) with vertical dividers. Nav buttons are now 40×40 with adjacent-section titles in their aria-labels ("Previous section: Acknowledgments").
+- **Section TOC dropdown** rows now show 3 status chips: read mode (📋/📖), summary status (✓/✕), audio status (🎧 if MP3 exists).
+- **Audio polish**:
+  - Playbar timestamp (`0:00 / 0:00`) now hides on Web Speech (which can't seek/scrub), keeps on Kokoro.
+  - **Limited controls** badge now has a hover/focus tooltip linking to `/settings/tts#audio` to install Kokoro.
+  - New **sentence progress strip** above the Playbar — done sentences filled, current outlined, upcoming faded.
+  - **Audio tab empty state** now shows the default engine, generation estimate (`≈ X min on Kokoro` / Instant on Web Speech), scope, and a "What's the difference?" popover comparing engines.
+  - **Resume dock** now appears on the book overview page and per-section reader when an audio position exists for content other than what's currently playing.
+  - **`?`** anywhere opens a keyboard shortcuts overlay listing Space, →, ←, ?, Esc bindings. Playbar buttons gained matching `title=` tooltips (e.g. "Previous sentence (←)").
+- **Library page redesign**:
+  - View toggle (Grid / List / Table) replaces glyphs `▦ ☰ ▤` with Lucide icons. Selection persists to localStorage.
+  - New **Select** mode toggle hides bulk-action checkboxes by default and only shows them when explicitly entering Select mode (less visual noise on the default view).
+  - **Continue / Resume coordination**: home page now picks one of `<ContinueBanner>` (📖, reading more recent), `<ResumeAffordance>` (🎧, listening more recent), or neither, based on a deterministic timestamp tie-break.
+- **Accessibility**:
+  - All chip-style badges now use shared tokens (chip / accent / info / warn / neutral) with WCAG 2.2 AA contrast in both light + dark themes.
+  - Single `<h1>` per page across BookOverview, SectionDetail, Reader.
+  - Heading anchors on h2/h3 in markdown content with smooth-scroll router behavior — sharing `/books/1/sections/3#some-heading` jumps to the right place.
+  - New `make test-e2e-contrast` target runs an axe-core sweep across all theme × route combinations; a `make chip-regression-grep` CI gate blocks pre-token chip styles from sneaking back in.
+- New backend endpoints to support the above:
+  - `GET /api/v1/reading-state/resume-banner` — most-recent reading + audio activity across all devices.
+  - `GET /api/v1/audio/sections/by-book/{book_id}` — batch audio availability for the Sections tab.
+  - `GET /api/v1/audio/positions/by-book/{book_id}` — book-scoped audio resume position (404 when none).
+  - `GET /api/v1/reading-state/by-book/{book_id}` — per-device + per-book reading state for the Continue tile.
+  - `GET /api/v1/reading-state/continue` now filters out front-matter sections (so "Continue" never points at copyright/title pages).
+
+**References:**
+
+- [Requirements](requirements/2026-05-08-design-crit-followups.md)
+- [Spec](specs/2026-05-08-design-crit-followups-spec.md)
+- [Implementation plan](plans/2026-05-08-design-crit-followups-implementation-plan.md)
+- [/verify reports](features/2026-05-08-design-crit-followups/verify/)
+
 ## 2026-05-03 — Audiobook Mode (TTS reading + on-device audio generation)
 
 - New **Audio** tab on every book — see at a glance which sections have audio (no-audio / partial / full / generating), and play / download / delete per row. Coverage bar and per-row Play / Download / Delete actions.
