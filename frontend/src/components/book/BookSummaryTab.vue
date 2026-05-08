@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 
 import TtsPlayButton from '@/components/audio/TtsPlayButton.vue'
 import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
+import SummaryTOCRail from '@/components/book/SummaryTOCRail.vue'
+import BackToTopFab from '@/components/book/BackToTopFab.vue'
+import SummaryMetadataStrip from '@/components/book/SummaryMetadataStrip.vue'
 import { firstChapter } from '@/stores/reader'
 import { useUiStore } from '@/stores/ui'
 import type { Section } from '@/types'
@@ -22,7 +25,14 @@ interface BookLike {
   id: number
   status?: string | null
   sections?: SectionLike[]
-  default_summary?: { summary_md?: string; generated_at?: string; created_at?: string } | null
+  default_summary?: {
+    summary_md?: string
+    generated_at?: string
+    created_at?: string
+    preset_name?: string | null
+    eval_passed?: number | null
+    eval_total?: number | null
+  } | null
   last_summary_failure?: { code?: string; stderr?: string; at?: string } | null
 }
 
@@ -213,7 +223,25 @@ watch(
           </button>
         </div>
       </header>
-      <MarkdownRenderer :content="book.default_summary!.summary_md!" />
+      <SummaryMetadataStrip
+        :preset="book.default_summary?.preset_name ?? null"
+        :generated-at="book.default_summary?.generated_at ?? null"
+        :eval-passed="book.default_summary?.eval_passed ?? null"
+        :eval-total="book.default_summary?.eval_total ?? null"
+      />
+      <div class="book-summary-tab__layout">
+        <details class="book-summary-tab__outline" open>
+          <summary>Outline</summary>
+          <SummaryTOCRail :content="book.default_summary!.summary_md!" />
+        </details>
+        <div class="book-summary-tab__body">
+          <MarkdownRenderer :content="book.default_summary!.summary_md!" />
+          <BackToTopFab />
+        </div>
+        <aside class="book-summary-tab__rail">
+          <SummaryTOCRail :content="book.default_summary!.summary_md!" />
+        </aside>
+      </div>
     </template>
 
     <template v-else-if="state === 'inProgress'">
@@ -274,6 +302,39 @@ watch(
 .book-summary-tab__actions {
   display: flex;
   gap: 8px;
+}
+.book-summary-tab__layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+.book-summary-tab__rail {
+  display: none;
+}
+.book-summary-tab__outline {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+}
+.book-summary-tab__outline summary {
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+@media (min-width: 1024px) {
+  .book-summary-tab__layout {
+    grid-template-columns: 1fr 16rem;
+    align-items: start;
+  }
+  .book-summary-tab__rail {
+    display: block;
+  }
+  .book-summary-tab__outline {
+    display: none;
+  }
+}
+.book-summary-tab__body {
+  min-width: 0;
 }
 .book-summary-tab__empty,
 .book-summary-tab__failed,

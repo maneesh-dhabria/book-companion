@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 
 import Playbar from '@/components/audio/Playbar.vue'
 import CommandPalette from '@/components/search/CommandPalette.vue'
@@ -15,6 +15,13 @@ import TopBar from './TopBar.vue'
 
 const { isMobile } = useBreakpoint()
 const ttsPlayer = useTtsPlayerStore()
+
+// FR-C10 — when the global Playbar is mounted (TTS active), expose its
+// height as a CSS custom property so floating affordances (e.g. the
+// BackToTopFab) can offset above it.
+const shellStyle = computed(() => ({
+  '--playbar-height': ttsPlayer.isActive ? '84px' : '0px',
+}))
 
 // FR-13 / FR-14 / D19 (spec): a single global Space-toggle handler.
 // ReadingArea no longer owns Space (T10 deletes its branch).
@@ -51,7 +58,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ mobile: isMobile }">
+  <div class="app-shell" :class="{ mobile: isMobile }" :style="shellStyle">
     <IconRail v-if="!isMobile" data-testid="icon-rail-sidebar" />
     <div class="app-main" :class="{ 'with-rail': !isMobile }">
       <TopBar />
