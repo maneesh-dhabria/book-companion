@@ -44,9 +44,9 @@ useKeyboard([
 
 <template>
   <header class="top-bar">
-    <h1 class="top-bar-title">
+    <span class="top-bar-title">
       <router-link to="/" class="top-bar-title-link">{{ pageTitle }}</router-link>
-    </h1>
+    </span>
     <div class="top-bar-actions">
       <input
         type="text"

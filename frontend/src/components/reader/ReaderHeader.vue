@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Section } from '@/types'
 import ContentToggle from './ContentToggle.vue'
 import SectionTagRow from './SectionTagRow.vue'
 import TOCDropdown from './TOCDropdown.vue'
 
-defineProps<{
+const props = defineProps<{
   bookTitle: string
   bookId: number
   sections: Section[]
@@ -15,6 +16,11 @@ defineProps<{
   hasNext: boolean
 }>()
 
+const currentSectionTitle = computed(() => {
+  if (props.currentSectionId == null) return ''
+  return props.sections.find((s) => s.id === props.currentSectionId)?.title ?? ''
+})
+
 defineEmits<{
   toggleContent: []
   navigate: [direction: 'prev' | 'next']
@@ -23,6 +29,7 @@ defineEmits<{
 
 <template>
   <div class="reader-header">
+    <h1 v-if="currentSectionTitle" class="reader-h1">{{ currentSectionTitle }}</h1>
     <div class="reader-breadcrumb">
       <router-link to="/" class="breadcrumb-link">Library</router-link>
       <span class="breadcrumb-sep">/</span>
@@ -71,6 +78,12 @@ defineEmits<{
   border-bottom: 1px solid var(--color-border);
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.reader-h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.25rem 0;
+  flex-basis: 100%;
 }
 
 .reader-breadcrumb {
