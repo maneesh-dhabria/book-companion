@@ -1,7 +1,7 @@
 # AI Comprehension Quiz — Requirements
 
 **Date:** 2026-05-08
-**Last updated:** 2026-05-08 (Loop 2 — MSF dispositions applied)
+**Last updated:** 2026-05-08 (Loop 3 — creativity dispositions applied)
 **Status:** Approved
 **Tier:** 3 — Feature
 
@@ -33,10 +33,14 @@ The single user of this personal tool — a non-fiction reader who imports books
 - **Cumulative learning compounds across sessions** — measured by: a per-book lifetime tally aggregating self-assessments across all prior sessions is visible whenever the Quiz tab is open for a book with prior history.
 - **The user can choose between two scopes** before each session: quiz over all summaries (book + every chapter summary) or go deep on a chosen subset of chapters using full chapter content — measured by: both scopes are reachable in ≤2 clicks from the Quiz tab.
 - **The user can optionally name a theme** for a session (e.g., "prospect theory") so the agent biases questions toward that topic — measured by: when a theme is provided, ≥70% of questions in the session reference the theme or directly adjacent concepts.
+- **Concepts the user marked Missed are revisited** in subsequent sessions, so the loop produces durable learning rather than one-shot recall — measured by: ≥70% of "Missed" concepts from the prior session appear (with fresh question stems) in the warm-up phase of the next session.
+- **Annotated passages get tested** when the user has invested in annotations — measured by: for books with ≥10 annotations in scope, ≥40% of generated questions ground in or reference an annotated passage.
+- **The first question on a freshly-summarized book is instant**, not a 5–15s wait — measured by: ≥80% of "first question of first session" turns are served from a pre-generated queue with <500 ms perceived latency.
+- **Sessions are durable artifacts**, not transient — measured by: every completed session can be exported to a self-contained Markdown doc that includes Q&A, feedback, self-assessment, and override notes.
 
 ### Non-Goals (explicit scope cuts)
 
-- **NOT building a spaced-repetition card system** (Anki/FSRS-style daily review queue) in this iteration — because the immediate need is post-read comprehension testing, not long-term retention curves. Revisit after we see usage signal.
+- **NOT building a spaced-repetition card system** (Anki/FSRS-style daily review queue) in this iteration — because the immediate need is post-read comprehension testing, not long-term retention curves. The "Missed-concept warm-up" (D29) is a session-bound lite version, **not** a SR scheduler. Full SR revisits after we see usage signal.
 - **NOT scoring open-ended answers numerically** (no 1–5 grade, no "you got 7/10") — because the user wants qualitative feedback only; numeric grading invites gameability and adds LLM-judge bias for marginal value.
 - **NOT building a Socratic / coach mode** — because v1 stays simple (direct Q→A→feedback loop). Research shows Socratic prompting can hurt high performers; revisit only with clear signal.
 - **NOT exposing the quiz on the Reader (BookDetailView) sidebar** — because the user explicitly wants this anchored to the book overview page, where post-read reflection happens, not the reading flow itself.
@@ -84,6 +88,13 @@ The single user of this personal tool — a non-fiction reader who imports books
 | "The agent asked something it should have known I already covered." | LLM dedup drift; user sees an "Already asked" link with no context on what it does. | First time the link appears in a session, a one-line tooltip explains what clicking it does. |
 | "My past Q&A panel is overwhelming — 60+ turns." | Flat history list does not scale. | Past-Q&A panel groups by session with collapsible session headers; default expansion = most-recent session only (D26). |
 | "Did the agent's verdict overrule my self-assessment?" | Override and self-assessment-authority rules are non-obvious. | Persistent (not just first-session) microcopy near the self-assessment buttons makes it explicit that the user's click is authoritative. |
+| "I submitted an answer and now I'm staring at another blank screen wondering if I bombed it." | The agent's grading round-trip is a second cold-start latency moment, with extra anxiety. | Reassuring loading copy during answer-grading: "Reading your answer alongside the book…" (D28). |
+| "I just finished the book and the first question still takes forever to load." | Cold-start LLM subprocess for first generation. | A background queue of pre-drafted questions for the default scope is generated when summaries complete; the Quiz tab serves the first question instantly when the queue is warm (D27). |
+| "I came back to this book a week later and the agent immediately asked something completely new — but I forgot what I marked as 'Missed' last time." | No retention bridge between sessions; per-session focus loses prior gaps. | Session start checks for prior Missed/Partial concepts and opens with a 1–2 question warm-up using fresh stems on those concepts (D29). |
+| "I want to keep what I just learned somewhere outside the app." | Quiz sessions feel transient by default. | Each session has an "Export Session" action that produces a self-contained Markdown doc (Q&A + feedback + self-assessment + override notes) via the existing export infra (D30). |
+| "I just finished chapters 6–8 of this book — why do I have to go re-pick them in the scope picker?" | Last-used-scope memory (D22) doesn't always match user's actual recent context. | When recent reading activity exists for a book, Specific Chapters is auto-selected with the recently-read chapters checked, overriding the D22 default (D31). |
+| "All these questions are about the same kind of recall — I want something that makes me think harder." | MCQ + open-ended is a narrow shape pool; LLM defaults to recall. | Third question shape: "Spot the error" — agent presents a deliberately-wrong restatement of a concept; user identifies the flaw. Slots into D3's agent-picks-shape pool (D32). |
+| "I highlighted the parts of this book I cared most about — but the agent quizzes me on whatever it picks." | Annotation signal is unused even though it's the strongest indicator of user-defined importance. | When annotations exist within scope, the prompt biases generation toward annotated passages (D33). |
 
 ### Satisfaction Signals
 
@@ -92,6 +103,8 @@ The single user of this personal tool — a non-fiction reader who imports books
 - After a session, the user types something like "good question, hadn't thought about that" — direct evidence the agent is provoking actual thinking, not parroting summaries.
 - The user voluntarily switches scope from "All Summaries" to "Specific Chapters" — meaning the surface-level pass left them wanting depth.
 - The lifetime tally for a book trends toward more "Got it" over sessions — visible compound progress.
+- The user exports a quiz session into their own notes — direct evidence the artifact was worth keeping.
+- A book with annotations produces noticeably sharper questions (the user can tell the agent is testing what they cared about).
 
 ## Solution Direction
 
@@ -104,29 +117,43 @@ User flow at the behavior level (not architecture):
         │
         ▼
   Lifetime tally (if any) + Past Q&A panel (collapsible, grouped by session)
+  Each prior session has an [ Export ] action.
         │
         ▼
   Scope picker:  ( ) All Summaries
                  ( ) Specific Chapters → [ pick 1+ chapters ]
                                            [▓▓▓▓▓░░░░] 52% of budget used
   Optional theme input: [ "focus on prospect theory" ]
-  (Defaults reflect last-used scope for this book.)
+  (Defaults: recent reading activity → Specific Chapters w/ those chapters
+   pre-checked; otherwise last-used scope for this book.)
         │
         ▼
   [ Start Quiz ]
         │
         ▼
+  IF prior Missed/Partial concepts exist:
+     Warm-up: "Last time you marked these as Missed — let's revisit."
+     1–2 questions with fresh stems on those concepts.
+        │
+        ▼
   ─── Loading: "Reading the book to draft your question…" ──
+       (or instant from pre-generated queue, when warm)
         │
         ▼
 ┌─────────────────────────────────────────────┐
 │  Agent asks Question N                       │
-│   - shape: MCQ or open-ended (agent picks)   │
+│   - shape: MCQ / open-ended / spot-the-error │
+│           (agent picks)                      │
 │   - source citation per D14 rules            │
 │   - [Explain]   ← clarify w/o revealing ans  │
+│   - if annotations in scope: questions       │
+│     bias toward annotated passages           │
 │                                              │
 │  User answers (typed text or option click)   │
 │  OR clicks [Skip]   (not added to dedup)     │
+│                                              │
+│  ─── Loading: "Reading your answer           │
+│        alongside the book…" ──               │
 │                                              │
 │  Agent shows qualitative feedback:           │
 │   - what was correct                         │
@@ -143,6 +170,9 @@ User flow at the behavior level (not architecture):
         ▼
   Session continues. Asked questions accumulate in DB,
   feeding the dedup list. Per-session + lifetime tallies update.
+        │
+        ▼
+  On Stop: [ Export this session ] action available.
 ```
 
 Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeCodeCLIProvider` / `CodexCLIProvider`), invoked by a new `QuizService` that mirrors `AIThreadService`. Asked-question stems for the book are passed into every generation prompt as a "do not repeat" constraint.
@@ -164,11 +194,16 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 11. The next question feels off-topic. User clicks **Skip** — turn ends without an answer; the question is not added to dedup history. Agent generates the next question.
 12. User does this for ~10 questions, then clicks **Stop**. The session header reads: "Session: 6 Got it · 3 Partial · 1 Missed (1 skipped) · Lifetime: same".
 13. Session is saved with self-assessment tallies. Asked-question stems (excluding skipped) are persisted under this book. The tab remembers "All Summaries" as the last-used scope.
-14. Three days later, user reopens the Quiz tab → sees past Q&A history grouped by session (most recent expanded) + lifetime tally → scope picker pre-selects *All Summaries* → starts a new session → the agent does **not** repeat any prior questions.
+14. Three days later, user reopens the Quiz tab → sees past Q&A history grouped by session (most recent expanded) + lifetime tally → scope picker pre-selects *All Summaries* → clicks Start. Agent opens with: *"Last time you marked the **anchoring effect** as Missed and **availability heuristic** as Partial — let's revisit."* Two warm-up questions follow with fresh stems. Then normal flow resumes; the agent does **not** repeat any prior question stems verbatim.
+15. The user clicks **Export this session** at the end. A Markdown doc is downloaded containing the full Q&A, feedback, self-assessments, override notes, and the source citations.
 
 ### Alternate Journeys
 
-**Going deep on specific chapters.** After a first all-summaries pass, user picks **Specific Chapters**. The chapter picker shows a list of all chapters; as the user checks chapters 6–8, a budget bar fills to ~58%. They could add chapter 9 (would push to ~76%) but stop at 8. They optionally type the theme "prospect theory" and click **Start Quiz**. The agent now generates questions grounded in the **full content** of chapters 6–8 with a topical bias — questions are noticeably more specific (numbers, examples, edge cases the summary compressed away).
+**Going deep on specific chapters.** After a first all-summaries pass, user picks **Specific Chapters**. The chapter picker shows a list of all chapters; as the user checks chapters 6–8, a budget bar fills to ~58%. They could add chapter 9 (would push to ~76%) but stop at 8. They optionally type the theme "prospect theory" and click **Start Quiz**. The agent now generates questions grounded in the **full content** of chapters 6–8 with a topical bias — questions are noticeably more specific (numbers, examples, edge cases the summary compressed away). Because the user has annotated three passages in chapter 7, several questions test the very paragraphs they highlighted.
+
+**Auto-default from recent reading.** User finishes reading chapters 6–8 and immediately opens the Quiz tab. The scope picker defaults to **Specific Chapters** with chapters 6–8 already checked (driven by reading-state activity). User clicks Start without touching the picker.
+
+**Spot-the-error question.** Agent posts: *"Daniel Kahneman defines loss aversion as the tendency to weigh losses about half as heavily as equivalent gains. **What's wrong with this statement?**"* User identifies the inversion (losses are weighed *roughly twice* as heavily, not half). Agent confirms.
 
 **Single-chapter selection.** Specific Chapters allows one chapter. User picks just chapter 4; budget bar shows ~14%. Quiz proceeds with that scope.
 
@@ -206,6 +241,13 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | User reads asked-question history | Browsing past turns | Read-only render of question + answer + feedback + self-assessment + (if any) override note; show timestamp and scope used. Skipped turns appear with a "skipped" badge. |
 | Themes-covered panel | Past-Q&A view | Shows the agent-summarized themes from D13 rollup; user can click a theme to seed a new session's theme field. |
 | Concurrent sessions for the same book on different devices | Theoretical — single user but multi-device | Treat newer session's writes as authoritative; no merge conflict UI. (Personal tool — acceptable.) |
+| First session, queue cold | Pre-generation queue (D27) is empty (e.g., book pre-existed feature) | First question goes through normal generation w/ D16 loading state; queue fills in background while user works through Q1. |
+| First session, queue warm | Queue has pre-drafted questions for the default scope | Q1 served from queue with no perceptible wait; queue tops up in the background. |
+| Queue invalidated by scope change | User picks Specific Chapters or sets a theme | Queue (drafted for All Summaries / no theme) is bypassed; normal generation resumes; queue is not re-used until scope returns to default. |
+| Warm-up at session start | Prior session has ≥1 Missed or Partial turn AND those concepts exist in the current scope | 1–2 fresh-stem questions on those concepts run before the normal loop. Counted in tallies like any other turn. |
+| Warm-up skipped | No prior Missed/Partial OR concepts not in current scope | Skip warm-up silently; no UI noise. |
+| No annotations in scope | Annotation-seeded prompt biasing not applicable | Generation uses the source content alone; no UI-visible difference. |
+| Export action on a 0-question session | User stopped before answering anything | Export button is disabled or tooltip-explained ("Answer at least one question first"). |
 
 ## Design Decisions
 
@@ -237,6 +279,13 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | D24 | **Explain-this-question affordance:** every question turn includes an Explain control. Clicking sends a follow-up to the agent asking it to clarify the question (term, scope, intent) WITHOUT revealing the answer. The user must still answer (or Skip). | (a) no explain (force answer/skip), (b) explain with answer-leakage guard | Forcing a guess on a confusing question pollutes dedup with low-signal answers. The leakage guard is enforced via the explain prompt template (system instruction: "explain without giving the answer"). |
 | D25 | **Themes-already-covered visibility:** the past-Q&A panel includes a "Themes covered" section listing the agent-summarized themes from D13's rollup. Clicking a theme seeds the next session's theme field. | (a) internal-only (D13), (b) display-only, (c) display + click-to-seed | Surfacing the rollup gives the user transparency into what dedup considers covered AND a one-click path to deliberately revisit a theme — closing the loop with D19. |
 | D26 | **Past-Q&A grouping & pagination:** the panel groups history by `QuizSession`, with collapsible per-session headers. Default: most-recent session expanded, all older sessions collapsed. | (a) flat list, (b) grouped + most-recent expanded, (c) infinite scroll | Heavily-quizzed books accumulate dozens to hundreds of turns; a flat list is overwhelming. Session grouping mirrors the natural mental model of "what did I work on each visit." |
+| D27 | **Pre-generated question queue:** when summarization completes for a book, a background job drafts ~10–20 candidate questions for the default scope (All Summaries) and stores them. Quiz tab serves Q1 from the queue when warm; otherwise normal generation with D16. The queue is invalidated/bypassed when the user picks a non-default scope, sets a theme, or runs the warm-up phase. The queue tops up in the background as questions are consumed. | (a) generate on demand only, (b) pre-generate first 1–3 only, (c) full queue on summary completion | Cold-start latency is the single biggest first-impression risk. Pre-generation moves that wait off the user's critical path entirely for the most common (default) entry. Background top-up keeps subsequent sessions warm. Queue is scope-specific so it doesn't conflict with theme/Specific-Chapters customization. |
+| D28 | **Answer-grading loading copy:** after the user submits an answer, a labeled loading state ("Reading your answer alongside the book…") appears until the agent's feedback returns. | (a) silent spinner, (b) labeled loading copy, (c) skeleton feedback shape | The grading round-trip is a second blank-screen anxiety point. Pairs with D16 to cover both latency moments; same low-effort copy mitigation. |
+| D29 | **Missed-concept warm-up at session start:** before the normal loop, if the user's prior session(s) contain Missed and/or Partial concepts that are still in the current scope, the agent opens with 1–2 warm-up questions on those concepts using **fresh stems** (subject to D6 dedup). Warm-up turns count in the tallies; the user can Skip them. **This is NOT a SR scheduler** — concepts are picked from the most-recent prior session only, not on a curve. | (a) no warm-up (Non-Goal: full SR), (b) lite warm-up from last session, (c) full SR scheduler | Closes the J3 retention gap cheaply without the FSRS infrastructure that's correctly out of scope. "Most-recent prior session" is the simplest signal that still produces useful cross-session continuity. |
+| D30 | **Export session as Markdown:** every completed session has an "Export Session" action that produces a self-contained Markdown doc containing each turn's question + the user's answer + agent feedback + self-assessment + override note + source citation. Reuses the existing export infrastructure. | (a) no export, (b) Q+A only, (c) full session including feedback and overrides | Turns transient sessions into durable artifacts the user can fold into their own notes. Reuses an existing pattern (book/section export); marginal cost is the templating. |
+| D31 | **Auto-default scope from recent reading activity:** if the `/reading-state` data shows the user finished one or more chapters of this book within the last 48 hours AND those chapters are still un-quizzed in the most-recent session, the scope picker defaults to **Specific Chapters** with those chapters pre-checked. This **overrides** D22's last-used-scope default for that visit only. The user can change in one click. | (a) D22 last-used always wins, (b) recent activity overrides D22, (c) hint only | The "I just finished X, quiz me on it" context is the strongest signal we have. Overriding rather than hinting saves a click and matches the user's actual goal. The 48-hour window keeps it scoped. |
+| D32 | **"Spot the error" as a third question shape:** alongside MCQ and open-ended, the agent may pose a deliberately-wrong restatement of a concept and ask the user to identify the flaw. Agent picks shape per turn (D3 extended). | (a) MCQ + open only, (b) add spot-the-error, (c) more shapes (cloze, ordering, etc.) | Spot-the-error naturally pushes Bloom levels (Apply / Analyze) without prompting tricks. Slots into D3 with no UI surface change beyond the question rendering. Other shapes (cloze etc.) defer to v2. |
+| D33 | **Annotation-seeded question generation:** when the current scope contains user annotations, the generation prompt biases questions toward annotated passages. For Specific Chapters scope, annotations within selected chapters; for All Summaries, annotations across the book. If no annotations are in scope, behavior is unchanged. | (a) ignore annotations, (b) include as supplementary context, (c) bias toward (recommended) | Annotations are the strongest user-defined importance signal in the system. Quizzing on what the user cared about increases the perceived sharpness of the agent and makes annotations more valuable as a habit. |
 
 ## Success Metrics
 
@@ -253,6 +302,11 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | Skip rate | N/A | <15% of generated questions are skipped | Skipped turns / total turns per session. >25% suggests prompt quality or scope mismatch. |
 | Return rate | N/A | At least 1 in 3 books with a started session has ≥2 sessions over its lifetime | Books with `count(QuizSession) ≥ 2` / books with `count(QuizSession) ≥ 1`. |
 | LLM hallucination rate | N/A | <5% of generated questions reference a fact not present in the source content | Spot-check a sample manually; require source citation in every question to make this auditable. |
+| First-question latency on default-scope sessions | ~5–15 s cold start | <500 ms perceived for ≥80% of "first question of first session" turns | Server-side timer from Start click to question render; correlate with `queue_hit=true/false` field on the served question. |
+| Warm-up coverage | N/A | ≥70% of prior-session Missed concepts that are still in scope appear (with fresh stems) in the next session's warm-up | Cross-session join: prior `Missed` self-assessments → next session's warm-up turns; check concept overlap. |
+| Annotation-bias rate | N/A | For books with ≥10 annotations in scope, ≥40% of generated questions cite or paraphrase an annotated passage | Tag generated questions with the source span; check overlap with annotation spans. |
+| Export adoption | N/A | ≥1 in 4 completed sessions is exported within a week | Count of export-action invocations / completed sessions. |
+| Spot-the-error shape share | N/A | 5–25% of agent-picked shapes are spot-the-error (in this band; not zero, not dominant) | Count by shape per session, aggregate weekly. |
 
 ## Research Sources
 
@@ -276,6 +330,9 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | Socratic AI comprehension study | External — https://www.frontiersin.org/journals/education/articles/10.3389/feduc.2025.1506752/full | Socratic chatbots help low performers, hurt high performers. Reinforces D8 (direct mode only, defer Socratic). |
 | `CLAUDE.md` (this repo) | Existing code | Gotcha #6 (LLM provider may be `None`) — reuse the graceful-degradation banner pattern. Gotcha #5 (job completion semantics) — quiz generation jobs follow same partial-failure rules if we make them background tasks. |
 | `msf-findings.md` (this folder) | Existing artifact | MSF analysis surfacing R1–R14; all 14 dispositioned and folded into D16–D26 (or Friction-row notes) in Loop 2. |
+| `docs/creativity/2026-05-08-ai-comprehension-quiz-creativity-analysis.md` | Existing artifact | Creativity analysis surfacing C1–C7; all 7 dispositioned and folded into D27–D33 in Loop 3. |
+| `/reading-state/*` API and `ReadingState` model | Existing code | Per-chapter recency signal that drives D31's auto-default scope. CLAUDE.md gotcha #27 documents the cross-device semantics. |
+| `Annotation` model + `AnnotationsTab` | Existing code | Source of D33 annotation bias; annotations carry the book/section/span the user found important. |
 
 ## Open Questions
 
@@ -287,6 +344,9 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | 4 | When a book is re-imported and section IDs change, does asked-question history survive the reseat? (Cross-reference CLAUDE.md gotcha #13 — re-import preserves section IDs by `order_index`, so history should survive — confirm.) |
 | 5 | Is there a hard cap on consecutive Explain clicks per question (D24)? v1 has no cap; revisit if abuse is observed. |
 | 6 | Does the Specific Chapters mode permit selecting non-content sections (e.g., glossary, notes, appendix) or filter them out? Spec to decide based on `BookSection.section_type`. |
+| 7 | D27 queue invalidation rules: should the queue be reused if the user toggles back to default scope mid-session, or always discarded once any session begins? Spec to pin. |
+| 8 | D29 warm-up: when prior Missed concepts span multiple prior sessions, do we look back N sessions or only the most-recent one? Default in the doc is most-recent only. |
+| 9 | D33 annotation seeding: when annotations exist in the book but NOT within the selected scope (e.g., scope = chapter 3, annotations only in chapter 7), do we widen the prompt context to include those annotations as supplementary, or stay strict to scope? |
 
 ---
 
@@ -295,7 +355,8 @@ Question generation uses the existing `LLMProvider` subprocess pattern (`ClaudeC
 | Loop | Findings | Changes Made |
 |---|---|---|
 | 1 | (a) No progress signal in session (motivation-collapse risk). (b) Dedup overflow behavior unspecified. (c) Citation timing was an Open Question — should be a Decision (MCQ leak risk). (d) Override behavior under-specified. (e) Tab discoverability not addressed. | (a) Added Goal + Friction row + D12 + Success Metric for one-click self-assessment counter. (b) Added D13: hybrid dedup (recent N verbatim + themed summary of older). (c) Added D14: shape-conditional citation timing (post-answer MCQ; pre-answer open-ended). (d) Added D15: override appends note, feedback stays, turn flagged. (e) Skipped — single-user personal tool; the user knows where the tab is. |
-| 2 | MSF findings R1–R14 surfaced via `/msf-req`: cold-start loading risk, scope-copy ambiguity, no skip affordance, missing session-theme handle, chapter-picker UX, onboarding microcopy, scope memory, lifetime tally gap, no Explain affordance, themes-covered hidden, already-asked microcopy, history pagination, single-chapter rename, self-assessment authority visibility. | All 14 applied. Added D16 (loading state), D17 (scope copy), D18 (Skip), D19 (optional theme), D20 (chapter-picker w/ budget bar), D21 (first-session onboarding microcopy), D22 (last-used scope memory), D23 (lifetime tally), D24 (Explain), D25 (themes-covered visibility), D26 (Past-Q&A grouping). Renamed scope from "Multiple Chapters" to "Specific Chapters" + allow single-chapter selection. Added 2 new Goals (lifetime + theme), 1 Non-Goal (no streaming), 13 new Friction rows, 4 new Success Metrics (lifetime trend, theme bias, skip rate, lifetime tally), updated journey + ASCII flow + empty-state table. Open Q #6 (theme) resolved into D19; replaced with new Open Qs on Explain cap and section-type filtering. |
+| 2 | MSF findings R1–R14 surfaced via `/msf-req`: cold-start loading risk, scope-copy ambiguity, no skip affordance, missing session-theme handle, chapter-picker UX, onboarding microcopy, scope memory, lifetime tally gap, no Explain affordance, themes-covered hidden, already-asked microcopy, history pagination, single-chapter rename, self-assessment authority visibility. | All 14 applied. Added D16 (loading state), D17 (scope copy), D18 (Skip), D19 (optional theme), D20 (chapter-picker w/ budget bar), D21 (first-session onboarding microcopy), D22 (last-used scope memory), D23 (lifetime tally), D24 (Explain), D25 (themes-covered visibility), D26 (Past-Q&A grouping). Renamed scope from "Multiple Chapters" to "Specific Chapters" + allow single-chapter selection. Added 2 new Goals (lifetime + theme), 1 Non-Goal (no streaming), 13 new Friction rows, 4 new Success Metrics, updated journey + ASCII flow + empty-state table. Open Q #6 (theme) resolved into D19. |
+| 3 | Creativity findings C1–C7 via `/creativity`: pre-generated question queue, answer-grading loading copy, Missed-concept warm-up, exportable session, recent-reading auto-default, spot-the-error shape, annotation-seeded questions. | All 7 applied. Added D27 (pre-gen queue), D28 (grading loading copy), D29 (Missed warm-up — explicitly NOT SR), D30 (export session), D31 (recent-reading auto-default overrides D22), D32 (spot-the-error question shape), D33 (annotation-seeded generation). Added 5 new Goals, 7 new Friction rows, 3 new Empty-state rows, 5 new Success Metrics, 3 new Open Questions (Q7–Q9). Updated SR Non-Goal to clarify D29 distinction. Updated ASCII flow + Primary Journey with warm-up + export. Added Alternate Journeys for auto-default and spot-the-error. |
 
 ---
 
