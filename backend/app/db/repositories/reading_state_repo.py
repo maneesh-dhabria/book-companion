@@ -52,6 +52,22 @@ class ReadingStateRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_for_device_and_book(
+        self, user_agent: str, book_id: int
+    ) -> ReadingState | None:
+        """Reading state for a specific device + book pair (P13, FR-C02 helper).
+
+        Used by the Continue tile in OverviewDashboard to switch its label
+        between "Continue reading" and "Start reading".
+        """
+        result = await self.session.execute(
+            select(ReadingState)
+            .options(selectinload(ReadingState.section))
+            .where(ReadingState.user_agent == user_agent)
+            .where(ReadingState.book_id == book_id)
+        )
+        return result.scalar_one_or_none()
+
     async def get_latest_resume_banner_reading(self) -> ReadingState | None:
         """Get the most-recent reading_state across ALL browsers, skipping rows
         whose target section is front-matter.

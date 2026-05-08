@@ -56,6 +56,27 @@ async def get_continue_reading(
     )
 
 
+@router.get("/by-book/{book_id}", response_model=ReadingStateResponse)
+async def get_reading_state_by_book(
+    book_id: int,
+    user_agent: str = Header(default="Unknown"),
+    repo: ReadingStateRepository = Depends(get_reading_state_repo),
+):
+    """Per-device + per-book reading state (FR-C02 helper, P13).
+
+    Always 200; all-null fields when no row exists for this device+book pair.
+    """
+    rs = await repo.get_for_device_and_book(user_agent, book_id)
+    if rs is None:
+        return ReadingStateResponse()
+    return ReadingStateResponse(
+        last_book_id=rs.book_id,
+        last_section_id=rs.section_id,
+        last_viewed_at=rs.updated_at.isoformat() if rs.updated_at else None,
+        section_title=rs.section.title if rs.section else None,
+    )
+
+
 @router.get("/resume-banner", response_model=ResumeBannerResponse)
 async def get_resume_banner(
     repo: ReadingStateRepository = Depends(get_reading_state_repo),

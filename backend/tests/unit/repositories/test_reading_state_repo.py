@@ -121,6 +121,21 @@ async def test_resume_banner_reading_returns_none_when_empty(repo):
     assert rs is None
 
 
+async def test_by_book_returns_per_device_per_book_match(repo, db_session):
+    book_id, _fm_id, chapter_id = await _seed_book_with_two_sections(db_session)
+    await repo.upsert(user_agent="ua-A", book_id=book_id, section_id=chapter_id)
+    await db_session.commit()
+
+    rs = await repo.get_for_device_and_book("ua-A", book_id)
+    assert rs is not None
+    assert rs.section_id == chapter_id
+
+    # Different device → no row
+    assert await repo.get_for_device_and_book("ua-B", book_id) is None
+    # Different book → no row
+    assert await repo.get_for_device_and_book("ua-A", 9999) is None
+
+
 async def test_continue_includes_rows_with_null_section_id(repo, db_session):
     """A reader_position with no section_id (book-level resume) is NOT a front-matter
     row and should still appear in /continue results."""
