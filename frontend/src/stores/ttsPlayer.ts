@@ -8,7 +8,14 @@ export type TtsContentType =
   | 'annotation'
   | 'annotations_playlist'
 
-export type TtsStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended' | 'error'
+export type TtsStatus =
+  | 'idle'
+  | 'loading'
+  | 'starting'
+  | 'playing'
+  | 'paused'
+  | 'ended'
+  | 'error'
 
 export type TtsEngineKind = 'mp3' | 'web-speech'
 

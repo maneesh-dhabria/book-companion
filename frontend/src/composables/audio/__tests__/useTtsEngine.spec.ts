@@ -131,4 +131,104 @@ describe('useTtsEngine', () => {
     expect(terminated).not.toBeNull()
     expect(api.terminate()).toBeNull()
   })
+
+  it('load() sets store.status to paused on success', async () => {
+    const { useTtsPlayerStore } = await import('@/stores/ttsPlayer')
+    const store = useTtsPlayerStore()
+    store.status = 'loading'
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0],
+      sanitized_text: 'Hi.',
+    })
+    await useTtsEngine().load({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    expect(store.status).toBe('paused')
+  })
+
+  it('load() does not overwrite a pre-existing error status (FR-20 race)', async () => {
+    const { useTtsPlayerStore } = await import('@/stores/ttsPlayer')
+    const store = useTtsPlayerStore()
+    store.status = 'error'
+    store.errorKind = 'engine_unavailable'
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0],
+      sanitized_text: 'Hi.',
+    })
+    await useTtsEngine().load({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    expect(store.status).toBe('error')
+  })
+
+  it('playActive() calls engine.play() when lastEngine is set', async () => {
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0],
+      sanitized_text: 'Hi.',
+    })
+    const api = useTtsEngine()
+    const engine = await api.load({
+      bookId: 1,
+      contentType: 'section_summary',
+      contentId: 1,
+    })
+    const playSpy = vi.spyOn(engine, 'play')
+    await api.playActive()
+    expect(playSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('playActive() sets store.error to engine_unavailable when no engine', async () => {
+    const { useTtsPlayerStore } = await import('@/stores/ttsPlayer')
+    const store = useTtsPlayerStore()
+    const api = useTtsEngine()
+    api.terminate()
+    await api.playActive()
+    expect(store.errorKind).toBe('engine_unavailable')
+    expect(store.status).toBe('error')
+  })
+
+  it('pauseActive/nextActive/prevActive/seekActive forward to engine', async () => {
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0, 3],
+      sanitized_text: 'Hi. Bye.',
+    })
+    const api = useTtsEngine()
+    const engine = await api.load({
+      bookId: 1,
+      contentType: 'section_summary',
+      contentId: 1,
+    })
+    const pauseSpy = vi.spyOn(engine, 'pause')
+    const nextSpy = vi.spyOn(engine, 'nextSentence')
+    const prevSpy = vi.spyOn(engine, 'prevSentence')
+    const seekSpy = vi.spyOn(engine, 'seek')
+    api.pauseActive()
+    api.nextActive()
+    api.prevActive()
+    api.seekActive(1)
+    expect(pauseSpy).toHaveBeenCalled()
+    expect(nextSpy).toHaveBeenCalled()
+    expect(prevSpy).toHaveBeenCalled()
+    expect(seekSpy).toHaveBeenCalledWith(1)
+  })
+
+  it('onWaitingForVoices(true) sets store.status to starting; (false) restores', async () => {
+    const { useTtsPlayerStore } = await import('@/stores/ttsPlayer')
+    const store = useTtsPlayerStore()
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0],
+      sanitized_text: 'Hi.',
+    })
+    const engine = await useTtsEngine().load({
+      bookId: 1,
+      contentType: 'section_summary',
+      contentId: 1,
+    })
+    // Trigger waiting=true via the engine's wired callback
+    ;(engine as unknown as { waitingCb: ((w: boolean) => void) | null }).waitingCb?.(true)
+    expect(store.status).toBe('starting')
+    ;(engine as unknown as { waitingCb: ((w: boolean) => void) | null }).waitingCb?.(false)
+    expect(['playing', 'paused']).toContain(store.status)
+  })
 })

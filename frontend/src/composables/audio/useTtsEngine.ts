@@ -46,6 +46,11 @@ export interface LoadArgs {
 export interface UseTtsEngineApi {
   load(args: LoadArgs): Promise<TtsEngine & { lookup: AudioLookupResponse }>
   terminate(): TtsEngine | null
+  playActive(): Promise<void>
+  pauseActive(): void
+  nextActive(): void
+  prevActive(): void
+  seekActive(idx: number): void
 }
 
 function terminate(): TtsEngine | null {
@@ -60,9 +65,39 @@ function terminate(): TtsEngine | null {
   return eng
 }
 
+async function playActive(): Promise<void> {
+  const store = useTtsPlayerStore()
+  if (!lastEngine) {
+    store.setError('engine_unavailable')
+    return
+  }
+  await Promise.resolve(lastEngine.play())
+}
+
+function pauseActive(): void {
+  lastEngine?.pause()
+}
+
+function nextActive(): void {
+  lastEngine?.nextSentence()
+}
+
+function prevActive(): void {
+  lastEngine?.prevSentence()
+}
+
+function seekActive(idx: number): void {
+  lastEngine?.seek(idx)
+}
+
 export function useTtsEngine(): UseTtsEngineApi {
   return {
     terminate,
+    playActive,
+    pauseActive,
+    nextActive,
+    prevActive,
+    seekActive,
     async load(args: LoadArgs) {
       const store = useTtsPlayerStore()
       // Terminate the previous engine so prior audio + queued utterances stop
@@ -129,6 +164,11 @@ export function useTtsEngine(): UseTtsEngineApi {
       engine.onSentenceChange((idx) => {
         store.sentenceIndex = idx
       })
+      engine.onWaitingForVoices((waiting) => {
+        // Don't clobber a real error state; FR-20 race protection.
+        if (store.status === 'error') return
+        store.status = waiting ? 'starting' : store.isPlaying ? 'playing' : 'paused'
+      })
       const api: UseTtsEngineApi = this
       engine.onEnd(() => {
         store.status = 'ended'
@@ -153,6 +193,12 @@ export function useTtsEngine(): UseTtsEngineApi {
       store.activeEngineReason =
         engine.kind === 'mp3' ? 'pregenerated' : 'fallback_no_pregen'
       lastEngine = engine
+      // FR-01 / FR-20: load completed; flip 'loading' to 'paused' so the
+      // Playbar can render the play affordance. Defensive: don't overwrite
+      // 'error' (set by FR-20 null-engine race) or any other terminal state.
+      if (store.status === 'loading') {
+        store.status = 'paused'
+      }
       broadcastOpen()
       return Object.assign(engine, { lookup })
     },
