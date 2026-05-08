@@ -1,7 +1,7 @@
 <template>
   <span
-    class="tag-chip"
-    :class="{ removable, suggested, clickable }"
+    class="chip tag-chip"
+    :class="[toneClass, { removable, suggested, clickable }]"
     :style="chipStyle"
     @click="$emit('click')"
   >
@@ -35,31 +35,17 @@ defineEmits<{
   (e: 'click'): void
 }>()
 
+const toneClass = computed(() => {
+  if (props.color) return ''
+  return props.suggested ? 'chip--warn' : 'chip--neutral'
+})
+
 const chipStyle = computed(() =>
-  props.color
-    ? { '--chip-color': props.color }
-    : {},
+  props.color ? { background: props.color } : {},
 )
 </script>
 
 <style scoped>
-.tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.125rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  background: var(--chip-color, rgba(99, 102, 241, 0.12));
-  color: #1e293b;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  white-space: nowrap;
-}
-.tag-chip.suggested {
-  background: rgba(234, 179, 8, 0.18);
-  border-color: rgba(234, 179, 8, 0.35);
-}
 .tag-chip.clickable {
   cursor: pointer;
   transition: filter 0.12s ease;

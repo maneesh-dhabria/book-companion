@@ -148,7 +148,7 @@ function onRetry() {
       <span
         v-if="store.engine === 'web-speech'"
         data-testid="limited-controls"
-        class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+        class="chip chip--warn"
       >
         Limited controls
       </span>

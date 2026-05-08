@@ -29,10 +29,10 @@ const tooltipText = computed(() => useEngineCopy(props.reason, props.defaultEngi
 
 <template>
   <span
-    class="bc-engine-chip inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+    class="bc-engine-chip chip"
     :class="isKokoro
-      ? 'bc-engine-chip--kokoro bg-indigo-100 text-indigo-800'
-      : 'bc-engine-chip--web-speech bg-slate-100 text-slate-700'"
+      ? 'bc-engine-chip--kokoro chip--info'
+      : 'bc-engine-chip--web-speech chip--neutral'"
   >
     {{ label }}
     <span v-if="showTooltip" role="tooltip" class="sr-only">{{ tooltipText }}</span>
