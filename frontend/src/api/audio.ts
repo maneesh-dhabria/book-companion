@@ -60,6 +60,17 @@ export interface AudioJobRequest {
   engine: 'kokoro'
 }
 
+export interface AudioByBookEntry {
+  section_id: number
+  has_mp3: boolean
+  engine: string | null
+}
+
+export interface AudioByBookResponse {
+  book_id: number
+  sections: AudioByBookEntry[]
+}
+
 export const audioApi = {
   lookup(params: {
     book_id: number
@@ -101,5 +112,11 @@ export const audioApi = {
 
   mp3Url(bookId: number, contentType: AudioContentType, contentId: number): string {
     return `/api/v1/books/${bookId}/audio/${contentType}/${contentId}.mp3`
+  },
+
+  // FR-C20 / P14 — batch audio-availability map for a book. Used by
+  // `useBookAudioMap` so SectionListTable + TOCDropdown share one fetch.
+  sectionsByBook(bookId: number): Promise<AudioByBookResponse> {
+    return apiClient.get<AudioByBookResponse>(`/audio/sections/by-book/${bookId}`)
   },
 }
