@@ -12,7 +12,6 @@ from app.db.models import (
     ContentType,
 )
 
-
 _seed_counter = 0
 
 

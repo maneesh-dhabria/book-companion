@@ -52,9 +52,7 @@ class ReadingStateRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_for_device_and_book(
-        self, user_agent: str, book_id: int
-    ) -> ReadingState | None:
+    async def get_for_device_and_book(self, user_agent: str, book_id: int) -> ReadingState | None:
         """Reading state for a specific device + book pair (P13, FR-C02 helper).
 
         Used by the Continue tile in OverviewDashboard to switch its label
