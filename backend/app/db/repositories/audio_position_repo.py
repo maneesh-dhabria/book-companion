@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AudioPosition, BookSection, ContentType, Summary
+from app.db.models import AudioFile, AudioPosition, Book, BookSection, ContentType, Summary
 
 DEBOUNCE_SECONDS = 0.5
 
@@ -20,6 +20,20 @@ class PositionWithHint:
     updated_at: datetime
     has_other_browser: bool
     other_browser_updated_at: datetime | None
+
+
+@dataclass
+class ResumeBannerAudio:
+    """Flat row returned by ``get_latest_resume_banner`` for the home banner."""
+
+    content_type: str
+    content_id: int
+    sentence_index: int
+    updated_at: datetime
+    book_id: int
+    book_title: str | None
+    section_title: str | None
+    total_sentences: int | None
 
 
 class AudioPositionRepository:
@@ -83,6 +97,93 @@ class AudioPositionRepository:
             updated_at=row.updated_at,
             has_other_browser=other_at is not None,
             other_browser_updated_at=other_at,
+        )
+
+    async def get_latest_resume_banner(self) -> ResumeBannerAudio | None:
+        """Most-recent audio_position across all browsers, joined to its book.
+
+        Filters out ``annotations_playlist`` rows (never surfaced on the home
+        resume banner — see spec §9.1). For section-typed rows, joins through
+        ``book_sections`` to find the book; for ``book_summary`` rows, the
+        ``content_id`` IS the book id. Also looks up ``audio_files.sentence_count``
+        for honest "X of Y" copy in the resume affordance (P17).
+        """
+        section_types = (
+            ContentType.SECTION_SUMMARY.value,
+            ContentType.SECTION_CONTENT.value,
+        )
+
+        # Most-recent audio_position row, excluding annotations_playlist.
+        ap_row = (
+            await self.session.execute(
+                select(AudioPosition)
+                .where(
+                    AudioPosition.content_type.in_(
+                        section_types + (ContentType.BOOK_SUMMARY.value,)
+                    )
+                )
+                .order_by(AudioPosition.updated_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if ap_row is None:
+            return None
+
+        ct = (
+            ap_row.content_type.value
+            if hasattr(ap_row.content_type, "value")
+            else ap_row.content_type
+        )
+        book_id: int | None = None
+        book_title: str | None = None
+        section_title: str | None = None
+
+        if ct in section_types:
+            # Resolve via book_sections.
+            sec_row = (
+                await self.session.execute(
+                    select(BookSection.book_id, BookSection.title).where(
+                        BookSection.id == ap_row.content_id
+                    )
+                )
+            ).first()
+            if sec_row is None:
+                # Orphaned content_id — treat as no banner.
+                return None
+            book_id = sec_row.book_id
+            section_title = sec_row.title
+            book_title_row = (
+                await self.session.execute(select(Book.title).where(Book.id == book_id))
+            ).scalar_one_or_none()
+            book_title = book_title_row
+        else:  # book_summary
+            book_id = ap_row.content_id
+            book_title = (
+                await self.session.execute(select(Book.title).where(Book.id == book_id))
+            ).scalar_one_or_none()
+            if book_title is None:
+                return None
+
+        # Look up sentence_count from audio_files for honest "X of Y" copy.
+        total_sentences = (
+            await self.session.execute(
+                select(AudioFile.sentence_count).where(
+                    AudioFile.book_id == book_id,
+                    AudioFile.content_type == ct,
+                    AudioFile.content_id == ap_row.content_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+        return ResumeBannerAudio(
+            content_type=ct,
+            content_id=ap_row.content_id,
+            sentence_index=ap_row.sentence_index,
+            updated_at=ap_row.updated_at,
+            book_id=book_id,
+            book_title=book_title,
+            section_title=section_title,
+            total_sentences=total_sentences,
         )
 
     async def cleanup_for_book(self, book_id: int) -> int:

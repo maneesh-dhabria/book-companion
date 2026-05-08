@@ -582,3 +582,25 @@ class ReadingStateResponse(BaseModel):
     last_viewed_at: str | None = None
     book_title: str | None = None
     section_title: str | None = None
+
+
+class ResumeBannerResponse(BaseModel):
+    """Most-recent reading + audio positions across ALL browsers (FR-B05, §9.1).
+
+    Reading fields and audio fields are independently nullable; both can be
+    present, only one, or neither.
+    """
+
+    last_book_id: int | None = None
+    last_section_id: int | None = None
+    last_book_title: str | None = None
+    last_section_title: str | None = None
+    last_viewed_at: str | None = None
+    last_audio_content_type: str | None = None
+    last_audio_content_id: int | None = None
+    last_audio_book_id: int | None = None
+    last_audio_book_title: str | None = None
+    last_audio_section_title: str | None = None
+    last_audio_at: str | None = None
+    # Plan-level extension P17: ResumeAffordance needs honest "X of Y" copy.
+    last_audio_total_sentences: int | None = None

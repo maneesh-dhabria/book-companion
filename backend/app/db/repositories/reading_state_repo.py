@@ -52,6 +52,30 @@ class ReadingStateRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_latest_resume_banner_reading(self) -> ReadingState | None:
+        """Get the most-recent reading_state across ALL browsers, skipping rows
+        whose target section is front-matter.
+
+        Used by `GET /reading-state/resume-banner` (FR-B05). Differs from
+        `get_latest_other_device` in that it does NOT filter on user_agent —
+        the home banner shows the most-recent action regardless of device.
+        """
+        result = await self.session.execute(
+            select(ReadingState)
+            .outerjoin(BookSection, BookSection.id == ReadingState.section_id)
+            .options(selectinload(ReadingState.book), selectinload(ReadingState.section))
+            .where(ReadingState.book_id.isnot(None))
+            .where(
+                or_(
+                    ReadingState.section_id.is_(None),
+                    BookSection.section_type.notin_(FRONT_MATTER_TYPES),
+                )
+            )
+            .order_by(ReadingState.updated_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def get_latest_other_device(self, current_user_agent: str) -> ReadingState | None:
         """Get the most recent reading state from a different device.
 

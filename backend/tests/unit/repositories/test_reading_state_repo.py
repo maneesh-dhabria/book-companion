@@ -85,6 +85,42 @@ async def test_continue_returns_none_when_only_front_matter(repo, db_session):
     assert rs is None
 
 
+async def test_resume_banner_reading_picks_latest_across_devices(repo, db_session):
+    """`get_latest_resume_banner_reading` does NOT exclude any user_agent — it
+    returns the single most-recent reading_state across all browsers, skipping
+    front-matter rows."""
+    book_id, _fm_id, chapter_id = await _seed_book_with_two_sections(db_session)
+
+    await repo.upsert(user_agent="ua-A", book_id=book_id, section_id=chapter_id)
+    await db_session.commit()
+    await asyncio.sleep(1.1)
+    await repo.upsert(user_agent="ua-B", book_id=book_id, section_id=chapter_id)
+    await db_session.commit()
+
+    rs = await repo.get_latest_resume_banner_reading()
+    assert rs is not None
+    assert rs.user_agent == "ua-B"
+
+
+async def test_resume_banner_reading_skips_front_matter(repo, db_session):
+    book_id, fm_id, chapter_id = await _seed_book_with_two_sections(db_session)
+
+    await repo.upsert(user_agent="ua-A", book_id=book_id, section_id=chapter_id)
+    await db_session.commit()
+    await asyncio.sleep(1.1)
+    await repo.upsert(user_agent="ua-B", book_id=book_id, section_id=fm_id)
+    await db_session.commit()
+
+    rs = await repo.get_latest_resume_banner_reading()
+    assert rs is not None
+    assert rs.section_id == chapter_id
+
+
+async def test_resume_banner_reading_returns_none_when_empty(repo):
+    rs = await repo.get_latest_resume_banner_reading()
+    assert rs is None
+
+
 async def test_continue_includes_rows_with_null_section_id(repo, db_session):
     """A reader_position with no section_id (book-level resume) is NOT a front-matter
     row and should still appear in /continue results."""
