@@ -78,4 +78,27 @@ describe('Playbar', () => {
     await btn.trigger('click')
     expect(store.status).toBe('paused')
   })
+
+  it('renders spinner glyph and aria-label="Starting" when status === "starting"', async () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.status = 'starting'
+    const wrap = mount(Playbar)
+    const btn = wrap.find('[data-testid="play-pause"]')
+    expect(btn.attributes('aria-label')).toBe('Starting')
+    expect(btn.attributes('disabled')).toBeDefined()
+    expect(btn.attributes('aria-disabled')).toBe('true')
+    expect(btn.find('svg.animate-spin').exists()).toBe(true)
+  })
+
+  it('error template shows generic copy and Retry with errorKind in title', async () => {
+    const store = useTtsPlayerStore()
+    store.open({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    store.setError('engine_unavailable')
+    const wrap = mount(Playbar)
+    expect(wrap.text()).toContain("Audio couldn't start. Try again or check your settings.")
+    expect(wrap.find('[data-testid="retry"]').exists()).toBe(true)
+    const errSpan = wrap.find('[data-testid="audio-error-message"]')
+    expect(errSpan.attributes('title') ?? '').toContain('engine_unavailable')
+  })
 })
