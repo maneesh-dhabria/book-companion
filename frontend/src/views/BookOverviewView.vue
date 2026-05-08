@@ -451,28 +451,7 @@ onMounted(() => {
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  background: var(--color-accent, #4f46e5);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.btn-primary:hover {
-  background: var(--color-accent-hover, #4338ca);
-}
-.btn-primary:focus-visible {
-  outline: 2px solid var(--color-accent, #4f46e5);
-  outline-offset: 2px;
-}
+/* T19: .btn-primary is now defined globally in main.css. */
 .book-tabs {
   display: flex;
   gap: 0.25rem;

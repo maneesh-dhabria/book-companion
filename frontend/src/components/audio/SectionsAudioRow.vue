@@ -75,7 +75,7 @@ function onToggle(e: Event) {
       v-if="audioStatus === 'ready' || audioStatus === 'stale'"
       type="button"
       data-testid="play"
-      class="rounded-full bg-indigo-600 p-1.5 text-white hover:bg-indigo-500"
+      class="btn-secondary btn-icon"
       aria-label="Play"
       @click="onPlay"
     >

@@ -239,10 +239,23 @@ async def audio_lookup(
     from app.services.audio_gen_service import AudioGenService
     from app.services.tts.markdown_to_speech import EmptySanitizedTextError, sanitize
 
+    if content_type == "annotation":
+        # FR-22b: annotations have a dedicated route; reject here with a hint.
+        raise HTTPException(
+            status_code=400,
+            detail="use /api/v1/audio/annotations/{id}/lookup for annotations",
+        )
+
     try:
         ct = ContentType(content_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"unknown content_type {content_type}") from e
+    if ct == ContentType.ANNOTATION:
+        # Defense-in-depth: enum value exists but is runtime-only.
+        raise HTTPException(
+            status_code=400,
+            detail="use /api/v1/audio/annotations/{id}/lookup for annotations",
+        )
 
     voice = voice or settings.tts.voice or "af_sarah"
 
@@ -341,6 +354,81 @@ async def audio_lookup(
         "sanitizer_version_stored": result.sanitizer_version_stored,
         "sanitizer_version_current": result.sanitizer_version_current,
         "stale": stale_obj,
+    }
+
+
+@router.get("/api/v1/audio/annotations/{annotation_id}/lookup")
+async def audio_lookup_annotation(
+    annotation_id: int,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    """FR-22 / plan T2: per-annotation TTS lookup.
+
+    Annotations are runtime-only (D4 / FR-21): never persisted as audio
+    files, never cached. Returns a Web-Speech-only payload with sanitized
+    text + sentence offsets.
+    """
+    import hashlib
+
+    from app.db.repositories.annotation_repo import AnnotationRepository
+    from app.services.tts.markdown_to_speech import (
+        SANITIZER_VERSION,
+        EmptySanitizedTextError,
+        sanitize,
+    )
+
+    repo = AnnotationRepository(db)
+    ann = await repo.get_by_id(annotation_id)
+    if ann is None:
+        raise HTTPException(status_code=404, detail="annotation not found")
+
+    parts: list[str] = []
+    if ann.selected_text:
+        parts.append(ann.selected_text)
+    if ann.note:
+        parts.append(ann.note)
+    source_md = "\n\n".join(parts)
+
+    empty_response = {
+        "pregenerated": False,
+        "sanitized_text": "",
+        "sentence_offsets_chars": [],
+        "url": None,
+        "duration_seconds": None,
+        "voice": None,
+        "sentence_offsets_seconds": None,
+        "source_hash": None,
+        "source_hash_stored": None,
+        "source_hash_current": None,
+        "sanitizer_version_stored": None,
+        "sanitizer_version_current": SANITIZER_VERSION,
+        "stale": None,
+    }
+
+    if not source_md.strip():
+        return empty_response
+
+    try:
+        sanitized = sanitize(source_md)
+    except EmptySanitizedTextError:
+        return empty_response
+
+    source_hash = hashlib.sha256(sanitized.text.encode("utf-8")).hexdigest()
+    return {
+        "pregenerated": False,
+        "sanitized_text": sanitized.text,
+        "sentence_offsets_chars": sanitized.sentence_offsets_chars,
+        "url": None,
+        "duration_seconds": None,
+        "voice": None,
+        "sentence_offsets_seconds": None,
+        "source_hash": source_hash,
+        "source_hash_stored": None,
+        "source_hash_current": source_hash,
+        "sanitizer_version_stored": None,
+        "sanitizer_version_current": SANITIZER_VERSION,
+        "stale": None,
     }
 
 

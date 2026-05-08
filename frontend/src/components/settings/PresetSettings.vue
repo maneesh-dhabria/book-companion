@@ -355,15 +355,7 @@ const initialPayload = computed(() =>
   font-size: 0.9em;
   margin-top: 8px;
 }
-.btn-primary {
-  background: var(--color-accent, #4f46e5);
-  color: var(--color-text-on-accent, white);
-  border: none;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9em;
-}
+/* T19: .btn-primary is now defined globally in main.css. */
 @media (max-width: 767px) {
   .preset-layout {
     grid-template-columns: 1fr;

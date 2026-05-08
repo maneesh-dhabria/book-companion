@@ -3,6 +3,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import FloatingToolbar from '@/components/reader/FloatingToolbar.vue'
+import TtsPlayButton from '@/components/audio/TtsPlayButton.vue'
 import ReaderHeader from '@/components/reader/ReaderHeader.vue'
 import ReadingArea from '@/components/reader/ReadingArea.vue'
 import ReadingAreaFooterNav from '@/components/reader/ReadingAreaFooterNav.vue'
@@ -214,6 +215,17 @@ function handleAskAi() {
       >
         <template #actions>
           <div class="reader-actions">
+            <TtsPlayButton
+              v-if="reader.currentSection"
+              :content-type="
+                reader.contentMode === 'summary' ? 'section_summary' : 'section_content'
+              "
+              :content-id="reader.currentSection.id"
+              :has-summary="
+                reader.contentMode === 'summary' ? reader.hasSummary : true
+              "
+              :book-id="reader.book.id"
+            />
             <button
               class="action-btn"
               :class="{ active: sidebarOpen }"

@@ -12,9 +12,11 @@ import { audioApi } from '@/api/audio'
 import { useTtsEngine } from '@/composables/audio/useTtsEngine'
 
 describe('useTtsEngine', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    const cache = await import('@/composables/audio/preloadCache')
+    cache._resetForTests()
   })
 
   it('routes to Mp3Engine when pregenerated=true', async () => {
@@ -81,5 +83,52 @@ describe('useTtsEngine', () => {
     eng._fakeError?.('mp3_fetch_failed')
     expect(store.status).toBe('error')
     expect(store.errorKind).toBe('mp3_fetch_failed')
+  })
+
+  it('passes settingsStore.tts.voice + default_speed to WebSpeechEngine', async () => {
+    const { useSettingsStore } = await import('@/stores/settings')
+    const settings = useSettingsStore()
+    settings.tts = {
+      engine: 'web-speech',
+      voice: 'Daniel',
+      default_speed: 1.5,
+      auto_advance: true,
+    }
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0, 3],
+      sanitized_text: 'Hi there.',
+    })
+    const wsMod = await import('@/composables/audio/webSpeechEngine')
+    const RealCtor = wsMod.WebSpeechEngine
+    // Spy on the constructor and forward to the real one so engine wiring
+    // still works inside useTtsEngine.load(). Cast through `any` because
+    // vi.spyOn typing of class members vs. construct signatures diverges.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wsCtorSpy = vi.spyOn(wsMod as any, 'WebSpeechEngine').mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((opts: any) => new RealCtor(opts)) as any,
+    )
+    await useTtsEngine().load({
+      bookId: 1,
+      contentType: 'section_summary',
+      contentId: 1,
+    })
+    expect(wsCtorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ voice: 'Daniel', rate: 1.5 }),
+    )
+  })
+
+  it('exposes terminate() that clears lastEngine and is idempotent', async () => {
+    vi.mocked(audioApi.lookup).mockResolvedValueOnce({
+      pregenerated: false,
+      sentence_offsets_chars: [0],
+      sanitized_text: 'Hi.',
+    })
+    const api = useTtsEngine()
+    await api.load({ bookId: 1, contentType: 'section_summary', contentId: 1 })
+    const terminated = api.terminate()
+    expect(terminated).not.toBeNull()
+    expect(api.terminate()).toBeNull()
   })
 })

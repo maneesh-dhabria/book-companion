@@ -71,5 +71,27 @@ export const useAudioJobStore = defineStore('audioJob', () => {
     activeJob.value = job
   }
 
-  return { activeJob, lastEventAt, isRunning, apply, clear, setActiveJob }
+  /**
+   * FR-25f / plan T8 / D1: per-content audio completion beacon.
+   *
+   * Pure $onAction signal — no state mutation. preloadCache subscribes via
+   * Pinia's $onAction so completed audio jobs evict the matching cache
+   * entry; useBufferedJobStream calls this when it sees a per-content
+   * audio event (CLAUDE.md gotcha #23).
+   */
+  function recordContentCompletion(_contentType: string, _contentId: number): void {
+    // Intentionally no-op; consumers subscribe via $onAction.
+    void _contentType
+    void _contentId
+  }
+
+  return {
+    activeJob,
+    lastEventAt,
+    isRunning,
+    apply,
+    clear,
+    setActiveJob,
+    recordContentCompletion,
+  }
 })

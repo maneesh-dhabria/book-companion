@@ -1,3 +1,4 @@
+import { titleForContentType } from './mediaSessionTitles'
 import type {
   EndHandler,
   ErrorHandler,
@@ -26,6 +27,10 @@ export interface Mp3EngineOpts {
   sanitizedText: string
   sentenceOffsetsChars: number[]
   media?: MediaInfo
+  /** Used by T18 for navigator.mediaSession metadata title. Optional today. */
+  contentType?: string
+  /** Used by T18 for mediaSession.artist. Optional today. */
+  bookTitle?: string
 }
 
 function sliceSentences(text: string, offsets: number[]): string[] {
@@ -51,9 +56,13 @@ export class Mp3Engine implements TtsEngine {
   private endCb: EndHandler | null = null
   private errorCb: ErrorHandler | null = null
   private media?: MediaInfo
+  private contentType?: string
+  private bookTitle?: string
 
   constructor(opts: Mp3EngineOpts) {
     this.media = opts.media
+    this.contentType = opts.contentType
+    this.bookTitle = opts.bookTitle
     this.sentences = sliceSentences(opts.sanitizedText, opts.sentenceOffsetsChars)
     this.totalSentences = this.sentences.length
     this.durationSeconds = opts.durationSeconds
@@ -117,12 +126,14 @@ export class Mp3Engine implements TtsEngine {
         })
       | undefined
     if (!ms || typeof MediaMetadata === 'undefined') return
-    const m = this.media
-    if (!m) return
+    const m = this.media ?? {}
+    // FR-19b / plan T18: title varies by contentType. Falls back to media.title
+    // for callers that pre-supplied one.
+    const fallbackTitle = titleForContentType(this.contentType)
     const meta = new MediaMetadata({
-      title: m.title ?? '',
-      artist: m.artist ?? '',
-      album: m.album ?? '',
+      title: m.title ?? fallbackTitle,
+      artist: m.artist ?? this.bookTitle ?? '',
+      album: m.album ?? 'Book Companion',
       artwork: m.artwork ?? [],
     })
     if (m.chapterInfo) {

@@ -65,3 +65,66 @@ mark.annotation,
   white-space: nowrap;
   border-width: 0;
 }
+
+/* FR-08 / FR-09 / plan T19: canonical button classes.
+   Single source of truth for .btn-primary and .btn-secondary. Per-component
+   scoped redefinitions of these classes were removed in T19 (9 files). */
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.btn-primary {
+  background: var(--color-accent, #4f46e5);
+  color: var(--color-text-on-accent, #ffffff);
+}
+.btn-primary:hover {
+  background: var(--color-accent-hover, var(--color-accent, #4f46e5));
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--color-bg-primary, #ffffff);
+  color: var(--color-text-primary, #1f2937);
+  border-color: var(--color-border, #e5e7eb);
+}
+.btn-secondary:hover {
+  background: var(--color-bg-secondary, #f3f4f6);
+}
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--color-accent, #4f46e5);
+  outline-offset: 2px;
+}
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* L2-F1: icon-only modifier — square padding + circle for Playbar
+   Prev/Next/Close/Play-Pause. Combines with .btn-primary or .btn-secondary. */
+.btn-icon {
+  padding: 0.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  justify-content: center;
+  gap: 0;
+}

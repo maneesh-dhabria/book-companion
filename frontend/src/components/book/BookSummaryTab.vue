@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
+import TtsPlayButton from '@/components/audio/TtsPlayButton.vue'
 import MarkdownRenderer from '@/components/reader/MarkdownRenderer.vue'
 
 interface SectionLike {
@@ -41,6 +43,10 @@ const totalCount = computed(() => (props.book.sections || []).length)
 const activeJobId = ref<number | null>(null)
 const sse = ref<EventSource | null>(null)
 const errorMsg = ref<string | null>(null)
+// FR-01..FR-07b: spinner + elapsed timer + ARIA live wiring.
+const startedAt = ref<number | null>(null)
+const nowTick = ref(Date.now())
+let tickHandle: number | null = null
 
 const state = computed<'populated' | 'inProgress' | 'failed' | 'empty'>(() => {
   if (props.book.default_summary && props.book.default_summary.summary_md) return 'populated'
@@ -49,9 +55,39 @@ const state = computed<'populated' | 'inProgress' | 'failed' | 'empty'>(() => {
   return 'empty'
 })
 
-function attachSse(jobId: number) {
+const elapsedMs = computed(() =>
+  startedAt.value ? Math.max(0, nowTick.value - startedAt.value) : 0,
+)
+
+function formatElapsed(ms: number): string {
+  const totalSec = Math.floor(ms / 1000)
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  const ss = s < 10 ? `0${s}` : `${s}`
+  if (m >= 10) return `${m}:${ss}`
+  return `${m}:${ss}`
+}
+
+function startTimer(): void {
+  if (tickHandle !== null) return
+  tickHandle = window.setInterval(() => {
+    nowTick.value = Date.now()
+  }, 1000)
+}
+
+function stopTimer(): void {
+  if (tickHandle !== null) {
+    window.clearInterval(tickHandle)
+    tickHandle = null
+  }
+}
+
+function attachSse(jobId: number, startedAtMs: number) {
   detachSse()
   activeJobId.value = jobId
+  startedAt.value = startedAtMs
+  nowTick.value = Date.now()
+  startTimer()
   try {
     const es = new EventSource(`/api/v1/processing/${jobId}/stream`)
     sse.value = es
@@ -83,9 +119,19 @@ function detachSse() {
     sse.value = null
   }
   activeJobId.value = null
+  startedAt.value = null
+  stopTimer()
 }
 
 onUnmounted(detachSse)
+
+function parseStartedAt(raw: unknown): number {
+  if (typeof raw === 'string') {
+    const t = Date.parse(raw)
+    if (!Number.isNaN(t)) return t
+  }
+  return Date.now()
+}
 
 async function startGenerate() {
   errorMsg.value = null
@@ -98,11 +144,13 @@ async function startGenerate() {
     if (r.status === 201 || r.status === 202) {
       const body = await r.json()
       const jobId = body.job_id ?? body.id
-      if (typeof jobId === 'number') attachSse(jobId)
+      if (typeof jobId === 'number') attachSse(jobId, Date.now())
     } else if (r.status === 409) {
       const body = await r.json().catch(() => ({}) as Record<string, unknown>)
       const aj = (body as { active_job_id?: number }).active_job_id
-      if (typeof aj === 'number') attachSse(aj)
+      const startedRaw = (body as { active_job_started_at?: unknown })
+        .active_job_started_at
+      if (typeof aj === 'number') attachSse(aj, parseStartedAt(startedRaw))
     } else {
       const body = await r.json().catch(() => ({}) as Record<string, unknown>)
       errorMsg.value =
@@ -110,16 +158,6 @@ async function startGenerate() {
     }
   } catch (e) {
     errorMsg.value = (e as Error).message
-  }
-}
-
-async function cancelJob() {
-  if (activeJobId.value === null) return
-  try {
-    await fetch(`/api/v1/processing/${activeJobId.value}/cancel`, { method: 'POST' })
-  } finally {
-    detachSse()
-    emit('book-refetch')
   }
 }
 
@@ -149,6 +187,12 @@ watch(
       <header class="book-summary-tab__header">
         <h2>Book Summary</h2>
         <div class="book-summary-tab__actions">
+          <TtsPlayButton
+            content-type="book_summary"
+            :content-id="book.id"
+            :has-summary="true"
+            :book-id="book.id"
+          />
           <button class="btn-secondary" type="button" @click="readSectionSummaries">
             Read Section Summaries
           </button>
@@ -161,9 +205,14 @@ watch(
     </template>
 
     <template v-else-if="state === 'inProgress'">
-      <div class="book-summary-tab__progress">
-        <p>Generating book summary…</p>
-        <button class="btn-secondary" type="button" @click="cancelJob">Cancel</button>
+      <div
+        class="book-summary-tab__progress"
+        role="status"
+        aria-live="polite"
+        :aria-busy="true"
+      >
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Generating book summary… {{ formatElapsed(elapsedMs) }} elapsed</p>
       </div>
     </template>
 
@@ -229,22 +278,22 @@ watch(
   color: var(--color-text-danger, #b91c1c);
   font-size: 0.95em;
 }
-.btn-primary,
-.btn-secondary {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-primary);
-  cursor: pointer;
-  font-size: 14px;
+.spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent, #4f46e5);
+  animation: bc-spin 0.8s linear infinite;
 }
-.btn-primary {
-  background: var(--color-accent, #4f46e5);
-  color: var(--color-text-on-accent, white);
-  border-color: transparent;
+@keyframes bc-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
-.btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
 }
 </style>

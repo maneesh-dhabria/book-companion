@@ -30,7 +30,8 @@ const ttsPlayer = (() => {
 
 function onKeydown(e: KeyboardEvent) {
   // FR-36/D25: when audio is active, arrow keys skip sentences instead of
-  // navigating sections. Space toggles play/pause regardless.
+  // navigating sections. Space is owned globally by AppShell (FR-14b / T10)
+  // — do NOT handle it here.
   if (ttsPlayer?.isActive) {
     if (e.key === 'ArrowLeft') {
       ttsPlayer.prevSentence()
@@ -39,12 +40,6 @@ function onKeydown(e: KeyboardEvent) {
     }
     if (e.key === 'ArrowRight') {
       ttsPlayer.nextSentence()
-      e.preventDefault()
-      return
-    }
-    if (e.key === ' ') {
-      if (ttsPlayer.status === 'playing') ttsPlayer.pause()
-      else ttsPlayer.play()
       e.preventDefault()
       return
     }

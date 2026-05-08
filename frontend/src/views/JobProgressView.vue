@@ -204,8 +204,8 @@ async function onCancel() {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
-.btn-primary,
-.btn-secondary,
+/* T19: .btn-primary / .btn-secondary are now defined globally in main.css.
+   .btn-danger remains scoped here — it's not in the canonical set. */
 .btn-danger {
   display: inline-block;
   padding: 0.45rem 1rem;
@@ -213,21 +213,9 @@ async function onCancel() {
   text-decoration: none;
   font-size: 0.9rem;
   cursor: pointer;
-  border: 1px solid transparent;
-}
-.btn-primary {
-  background: var(--color-accent);
-  color: #fff;
-}
-.btn-secondary {
-  background: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
-}
-.btn-danger {
   background: transparent;
   color: var(--color-error);
-  border-color: var(--color-error);
+  border: 1px solid var(--color-error);
 }
 .terminal-stats {
   list-style: disc;

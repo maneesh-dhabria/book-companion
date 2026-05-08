@@ -55,7 +55,7 @@ onMounted(load)
         <button
           type="button"
           data-testid="play-all-annotations"
-          class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500"
+          class="btn-primary"
           @click="onPlayAll"
         >
           ▶ Play as audio

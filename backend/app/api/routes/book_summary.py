@@ -92,11 +92,13 @@ async def start_book_summary(
         )
     ).scalar_one_or_none()
     if in_flight is not None:
+        started = in_flight.started_at or in_flight.created_at
         return JSONResponse(
             status_code=409,
             content={
                 "detail": "A summarization job is already in progress for this book",
                 "active_job_id": in_flight.id,
+                "active_job_started_at": started.isoformat() if started else None,
             },
         )
 
@@ -122,11 +124,17 @@ async def start_book_summary(
                 )
             )
         ).scalar_one_or_none()
+        active_started = (
+            (active.started_at or active.created_at) if active is not None else None
+        )
         return JSONResponse(
             status_code=409,
             content={
                 "detail": "A summarization job is already in progress for this book",
                 "active_job_id": active.id if active is not None else None,
+                "active_job_started_at": (
+                    active_started.isoformat() if active_started else None
+                ),
             },
         )
     await db.refresh(job)

@@ -75,7 +75,7 @@ function startFromBeginning() {
       <button
         type="button"
         data-testid="resume"
-        class="rounded-md bg-indigo-600 px-3 py-1 text-white hover:bg-indigo-500"
+        class="btn-primary"
         @click="resume"
       >
         Resume
@@ -83,7 +83,7 @@ function startFromBeginning() {
       <button
         type="button"
         data-testid="start-from-beginning"
-        class="rounded-md border border-indigo-300 bg-white px-3 py-1 text-indigo-700 hover:bg-indigo-50"
+        class="btn-secondary"
         @click="startFromBeginning"
       >
         Start from beginning

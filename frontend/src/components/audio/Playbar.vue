@@ -73,7 +73,7 @@ function onRetry() {
       <button
         data-testid="retry"
         type="button"
-        class="rounded-md bg-indigo-600 px-2 py-1 text-sm text-white hover:bg-indigo-500"
+        class="btn-primary"
         @click="onRetry"
       >
         Retry
@@ -82,7 +82,7 @@ function onRetry() {
     <template v-else>
       <button
         type="button"
-        class="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-700"
+        class="btn-secondary btn-icon"
         :aria-label="'Previous sentence'"
         @click="onPrev"
       >
@@ -91,7 +91,7 @@ function onRetry() {
       <button
         type="button"
         data-testid="play-pause"
-        class="rounded-full bg-indigo-600 p-2 text-white hover:bg-indigo-500"
+        class="btn-primary btn-icon"
         :aria-label="store.status === 'playing' ? 'Pause' : 'Play'"
         @click="onPlayPause"
       >
@@ -99,7 +99,7 @@ function onRetry() {
       </button>
       <button
         type="button"
-        class="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-700"
+        class="btn-secondary btn-icon"
         aria-label="Next sentence"
         @click="onNext"
       >
@@ -131,7 +131,7 @@ function onRetry() {
 
       <button
         type="button"
-        class="ml-2 rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+        class="btn-secondary btn-icon ml-2"
         aria-label="Close player"
         @click="onClose"
       >

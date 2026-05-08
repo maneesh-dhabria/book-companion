@@ -85,7 +85,7 @@ onMounted(load)
       <button
         type="button"
         data-testid="cancel-job"
-        class="rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200"
+        class="btn-secondary"
         @click="onCancelJob"
       >
         Cancel
@@ -97,7 +97,7 @@ onMounted(load)
       <button
         type="button"
         data-testid="generate-audio"
-        class="mt-2 rounded-md bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500"
+        class="btn-primary mt-2"
         @click="onGenerate"
       >
         Generate audio

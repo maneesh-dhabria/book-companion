@@ -204,25 +204,5 @@ onMounted(async () => {
   display: flex;
   gap: 0.5rem;
 }
-.btn-primary,
-.btn-secondary {
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-.btn-primary {
-  background: var(--color-primary, #3b82f6);
-  color: #fff;
-  border: none;
-}
-.btn-secondary {
-  background: none;
-  border: 1px solid var(--color-border, #ddd);
-}
-.btn-primary:disabled,
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* T19: .btn-primary / .btn-secondary are now defined globally in main.css. */
 </style>

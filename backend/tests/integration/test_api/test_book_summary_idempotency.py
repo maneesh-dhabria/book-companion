@@ -81,3 +81,14 @@ async def test_concurrent_book_summary_returns_409_with_active_job_id(client: As
     assert "active_job_id" in body
     assert body["active_job_id"] == job_id
     assert "in progress" in body.get("detail", "").lower()
+    # FR-07b / plan T3: 409 must carry an ISO8601 started_at so the UI can
+    # render the elapsed-time counter on reattach. PENDING jobs fall back to
+    # created_at when started_at is null (T3 risk mitigation).
+    assert "active_job_started_at" in body
+    assert body["active_job_started_at"] is not None
+    # ISO8601: parses with fromisoformat (Python 3.11+ accepts trailing Z).
+    from datetime import datetime
+
+    started_raw = body["active_job_started_at"].replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(started_raw)
+    assert parsed is not None

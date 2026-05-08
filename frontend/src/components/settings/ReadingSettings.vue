@@ -163,23 +163,5 @@ async function saveReadingSettings() {
   color: var(--color-text, #333);
 }
 
-.btn-primary {
-  padding: 0.5rem 1.5rem;
-  background: var(--color-accent, #2563eb);
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* T19: .btn-primary is now defined globally in main.css. */
 </style>

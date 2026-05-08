@@ -223,20 +223,5 @@ function formatTableName(name: string): string {
   color: var(--color-text-muted, #888);
 }
 
-.btn-primary {
-  margin-top: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--color-accent, #2563eb);
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  width: fit-content;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
+/* T19: .btn-primary is now defined globally in main.css. */
 </style>

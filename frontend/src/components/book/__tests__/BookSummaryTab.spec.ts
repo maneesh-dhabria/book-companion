@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import BookSummaryTab from '../BookSummaryTab.vue'
 
@@ -10,7 +11,11 @@ function makeRouter() {
   })
 }
 
-const opts = () => ({ global: { plugins: [makeRouter()] } })
+const opts = () => ({ global: { plugins: [createPinia(), makeRouter()] } })
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+})
 
 const baseBook = (overrides: Record<string, unknown> = {}): never =>
   ({

@@ -158,17 +158,13 @@ function onDownloadModel() {
       </p>
 
       <div class="mt-4 flex justify-end gap-2">
-        <button
-          type="button"
-          class="rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
-          @click="emit('close')"
-        >
+        <button type="button" class="btn-secondary" @click="emit('close')">
           Cancel
         </button>
         <button
           type="button"
           data-testid="confirm"
-          class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
+          class="btn-primary"
           :disabled="submitting || (needsDownload ?? false)"
           @click="onConfirm"
         >

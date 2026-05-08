@@ -70,6 +70,19 @@ export const audioApi = {
     return apiClient.get<AudioLookupResponse>('/audio/lookup', params)
   },
 
+  /**
+   * FR-23 / plan T12: per-annotation Web-Speech-only lookup.
+   *
+   * Annotations are runtime-only (CLAUDE.md gotcha #24): never persisted as
+   * audio files. The backend route lives at
+   * `/audio/annotations/{annotation_id}/lookup` and ignores `book_id`.
+   */
+  lookupAnnotation(annotationId: number): Promise<AudioLookupResponse> {
+    return apiClient.get<AudioLookupResponse>(
+      `/audio/annotations/${annotationId}/lookup`,
+    )
+  },
+
   inventory(bookId: number): Promise<AudioInventoryResponse> {
     return apiClient.get<AudioInventoryResponse>(`/books/${bookId}/audio`)
   },

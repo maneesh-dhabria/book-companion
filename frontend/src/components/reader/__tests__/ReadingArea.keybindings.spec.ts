@@ -50,7 +50,7 @@ describe('ReadingArea keybindings', () => {
     expect(events[0]).toEqual(['prev'])
   })
 
-  it('Space toggles play/pause when player active', () => {
+  it('Space is NOT handled by ReadingArea (T10 / FR-14b — AppShell owns it globally)', () => {
     const store = useTtsPlayerStore()
     store.open({ contentType: 'section_summary', contentId: 1 })
     store.status = 'paused'
@@ -58,8 +58,7 @@ describe('ReadingArea keybindings', () => {
       props: { content: 'x', hasPrev: true, hasNext: true },
     })
     dispatch(' ')
-    expect(store.status).toBe('playing')
-    dispatch(' ')
+    // ReadingArea does not toggle anymore; status stays 'paused'.
     expect(store.status).toBe('paused')
   })
 })
