@@ -36,7 +36,7 @@ async function reset() {
     <div class="detail-header">
       <h2 class="concept-term">{{ store.selectedConcept.term }}</h2>
       <span class="book-title">{{ store.selectedConcept.book_title }}</span>
-      <span v-if="store.selectedConcept.user_edited" class="edited-badge">User Edited</span>
+      <span v-if="store.selectedConcept.user_edited" class="edited-badge chip chip--warn">User Edited</span>
     </div>
 
     <div class="detail-section">
@@ -76,7 +76,7 @@ async function reset() {
         <button
           v-for="related in store.selectedConcept.related_concepts"
           :key="related.id"
-          class="related-chip"
+          class="related-chip chip chip--accent"
           @click="store.selectConcept(related.id)"
         >
           {{ related.term }}

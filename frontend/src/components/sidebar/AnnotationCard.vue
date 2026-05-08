@@ -64,7 +64,7 @@ function startEdit() {
       {{ annotation.note }}
     </div>
     <div class="meta">
-      <span class="type-badge">{{ annotation.type }}</span>
+      <span class="type-badge chip chip--neutral">{{ annotation.type }}</span>
       <span class="date">{{ new Date(annotation.created_at).toLocaleDateString() }}</span>
       <TtsPlayButton
         content-type="annotation"
@@ -110,6 +110,6 @@ function startEdit() {
 }
 .note { font-size: 0.85rem; margin-bottom: 0.375rem; }
 .meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; color: var(--color-text-secondary, #888); }
-.type-badge { text-transform: capitalize; background: var(--color-bg-secondary, #f3f4f6); padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
+.type-badge { text-transform: capitalize; }
 .delete-btn { margin-left: auto; background: none; border: none; color: var(--color-danger, #ef4444); cursor: pointer; font-size: 0.7rem; }
 </style>

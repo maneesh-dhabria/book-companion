@@ -173,7 +173,7 @@ const initialPayload = computed(() =>
           @click="selectedId = preset.id"
         >
           <span class="preset-name">{{ preset.label }}</span>
-          <span v-if="preset.system" class="system-badge">System</span>
+          <span v-if="preset.system" class="system-badge chip chip--neutral">System</span>
           <span v-else class="preset-actions">
             <button type="button" class="link-btn" @click.stop="selectedId = preset.id; openEdit()">Edit</button>
             <button

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CoverFallback from '@/components/common/CoverFallback.vue'
 import TagChip from '@/components/common/TagChip.vue'
+import { bookStatusToneClass } from '@/utils/bookStatus'
 import type { BookListItem } from '@/types'
 
 defineProps<{
@@ -30,7 +31,7 @@ function formatSize(bytes: number): string {
         {{ book.authors.map(a => a.name).join(', ') || 'Unknown Author' }}
       </p>
       <div class="book-card-meta">
-        <span class="book-card-badge" :class="book.status">{{ book.status }}</span>
+        <span class="book-card-badge chip" :class="bookStatusToneClass(book.status)">{{ book.status }}</span>
         <span class="book-card-sections">{{ book.section_count }} sections</span>
         <span v-if="book.eval_passed !== null" class="book-card-eval">
           {{ book.eval_passed }}/{{ book.eval_total }}
@@ -141,16 +142,7 @@ function formatSize(bytes: number): string {
   color: var(--color-text-muted);
 }
 
-.book-card-badge {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-  background: var(--color-bg-tertiary);
-}
-
-.book-card-badge.completed { color: var(--color-success); }
-.book-card-badge.parsed { color: var(--color-text-accent); }
-.book-card-badge.summarizing { color: var(--color-warning); }
+.book-card-badge { font-weight: 500; }
 
 .book-card-select {
   position: absolute;

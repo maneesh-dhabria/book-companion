@@ -43,7 +43,7 @@ function changeSort(sort: 'term' | 'updated_at') {
         @click="store.selectConcept(concept.id)"
       >
         <span class="concept-term">{{ concept.term }}</span>
-        <span v-if="concept.user_edited" class="edited-badge">edited</span>
+        <span v-if="concept.user_edited" class="edited-badge chip chip--warn">edited</span>
       </button>
     </div>
     <div class="list-footer">{{ store.total }} concepts</div>

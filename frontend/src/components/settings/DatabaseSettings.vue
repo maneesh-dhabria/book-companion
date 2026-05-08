@@ -45,8 +45,8 @@ onMounted(() => {
         <div class="status-row">
           <span class="status-label">Status</span>
           <span
-            class="status-badge"
-            :class="store.migrationStatus.is_behind ? 'behind' : 'current'"
+            class="status-badge chip"
+            :class="store.migrationStatus.is_behind ? 'chip--warn' : 'chip--accent'"
             data-testid="migration-status"
           >
             {{ store.migrationStatus.is_behind ? 'Behind' : 'Up to date' }}

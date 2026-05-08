@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BookListItem } from '@/types'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
+import { bookStatusToneClass } from '@/utils/bookStatus'
 
 defineProps<{
   books: BookListItem[]
@@ -74,7 +75,7 @@ function formatDate(dateStr: string): string {
           </td>
           <td>{{ book.authors.map(a => a.name).join(', ') || '-' }}</td>
           <td>
-            <span class="status-badge" :class="book.status">{{ book.status }}</span>
+            <span class="status-badge chip" :class="bookStatusToneClass(book.status)">{{ book.status }}</span>
           </td>
           <td>{{ book.file_format.toUpperCase() }}</td>
           <td>{{ book.section_count }}</td>
@@ -155,17 +156,6 @@ thead .sticky {
 .title-link:hover {
   color: var(--color-accent);
 }
-
-.status-badge {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  background: var(--color-bg-tertiary);
-}
-
-.status-badge.completed { color: var(--color-success); }
-.status-badge.parsed { color: var(--color-text-accent); }
-.status-badge.summarizing { color: var(--color-warning); }
 
 .text-muted { color: var(--color-text-muted); }
 </style>

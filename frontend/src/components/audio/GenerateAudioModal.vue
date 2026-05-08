@@ -124,7 +124,7 @@ function onDownloadModel() {
             data-testid="include-annotations"
           />
           Annotations
-          <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+          <span class="chip chip--warn">
             recommended
           </span>
         </label>

@@ -1,5 +1,5 @@
 <template>
-  <span class="contrast-badge" :class="gradeClass" :title="titleText">
+  <span class="contrast-badge chip chip--neutral" :class="gradeClass" :title="titleText">
     {{ ratio }}:1
     <span class="grade">{{ grade }}</span>
   </span>
@@ -27,13 +27,7 @@ const titleText = computed(
 
 <style scoped>
 .contrast-badge {
-  display: inline-flex;
-  align-items: center;
   gap: 0.35rem;
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.5rem;
-  background: rgba(0, 0, 0, 0.06);
 }
 .grade {
   font-weight: 600;

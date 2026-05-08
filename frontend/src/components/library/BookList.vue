@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BookListItem } from '@/types'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
+import { bookStatusToneClass } from '@/utils/bookStatus'
 
 defineProps<{
   books: BookListItem[]
@@ -33,7 +34,7 @@ defineEmits<{
         <h3 class="book-list-title">{{ book.title }}</h3>
         <p class="book-list-author">{{ book.authors.map(a => a.name).join(', ') || 'Unknown' }}</p>
       </div>
-      <span class="book-list-badge" :class="book.status">{{ book.status }}</span>
+      <span class="book-list-badge chip" :class="bookStatusToneClass(book.status)">{{ book.status }}</span>
       <span class="book-list-sections">{{ book.section_count }} sections</span>
       <span v-if="book.eval_passed !== null" class="book-list-eval">
         {{ book.eval_passed }}/{{ book.eval_total }}
@@ -112,16 +113,6 @@ defineEmits<{
   color: var(--color-text-secondary);
   margin: 2px 0 0;
 }
-
-.book-list-badge {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--color-bg-tertiary);
-}
-
-.book-list-badge.completed { color: var(--color-success); }
-.book-list-badge.parsed { color: var(--color-text-accent); }
 
 .book-list-sections,
 .book-list-eval {

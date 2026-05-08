@@ -208,13 +208,13 @@ onMounted(async () => {
           </select>
           <span
             v-if="detectedBadge"
+            class="chip"
             :class="[
-              'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
               detectedBadge.tone === 'ok'
-                ? 'bg-emerald-100 text-emerald-800'
+                ? 'chip--accent'
                 : detectedBadge.tone === 'warning'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-red-100 text-red-800',
+                  ? 'chip--warn'
+                  : 'chip--warn',
             ]"
             data-testid="provider-badge"
           >

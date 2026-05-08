@@ -60,12 +60,12 @@ function onToggle(e: Event) {
 
     <span
       :data-testid="`audio-status-${audioStatus}`"
-      class="rounded-full px-2 py-0.5 text-xs"
+      class="chip"
       :class="{
-        'bg-slate-100 text-slate-600': audioStatus === 'none',
-        'bg-emerald-100 text-emerald-800': audioStatus === 'ready',
-        'bg-amber-100 text-amber-800': audioStatus === 'stale',
-        'bg-indigo-100 text-indigo-800': audioStatus === 'generating',
+        'chip--neutral': audioStatus === 'none',
+        'chip--accent': audioStatus === 'ready',
+        'chip--warn': audioStatus === 'stale',
+        'chip--info': audioStatus === 'generating',
       }"
     >
       {{ STATUS_LABEL[audioStatus] }}

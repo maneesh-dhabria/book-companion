@@ -36,7 +36,7 @@ onMounted(async () => {
       <div v-for="section in sections" :key="section.id" class="section-row">
         <span class="col-index">{{ section.order_index + 1 }}</span>
         <span class="col-title">{{ section.title }}</span>
-        <span class="col-type type-badge">{{ section.section_type }}</span>
+        <span class="col-type type-badge chip chip--neutral">{{ section.section_type }}</span>
       </div>
     </div>
 
