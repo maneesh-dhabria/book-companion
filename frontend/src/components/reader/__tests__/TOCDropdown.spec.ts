@@ -51,7 +51,7 @@ describe('TOCDropdown', () => {
     expect(table.props('currentSectionId')).toBe(3)
   })
 
-  it('renders content_char_count for non-empty sections in compact mode', async () => {
+  it('renders read time (not raw char count) for non-empty sections in compact mode', async () => {
     const sections = [
       {
         id: 1,
@@ -76,8 +76,10 @@ describe('TOCDropdown', () => {
     })
     await wrapper.find('.toc-trigger').trigger('click')
     const text = wrapper.text()
-    expect(text).toMatch(/1[,]?234/)
-    expect(text).toMatch(/5[,]?678/)
+    // T18: content_char_count column was replaced with formatReadTime.
+    // 1234 / 1100 cpm = 2 min (ceil); 5678 / 1100 = 6 min (ceil).
+    expect(text).toContain('2 min')
+    expect(text).toContain('6 min')
   })
 
   it('search input filters the list passed to SectionListTable', async () => {

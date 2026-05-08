@@ -2,7 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
-import { formatCompression } from './SectionListTable.formatters'
+import { FRONT_MATTER_TYPES, SUMMARIZABLE_TYPES } from '@/stores/reader'
+import { formatReadTime } from '@/utils/readTime'
 
 interface SectionRow {
   id: number
@@ -32,16 +33,69 @@ const jobStore = useSummarizationJobStore()
 type LiveStatus = 'pending' | 'completed' | 'failed' | 'retrying'
 const liveStatuses = ref<Record<number, LiveStatus>>({})
 
+type GroupKey = 'front' | 'chapters' | 'back'
+const GROUP_LABEL: Record<GroupKey, string> = {
+  front: 'Front matter',
+  chapters: 'Chapters',
+  back: 'Back matter',
+}
+
+function groupOf(sectionType: string): GroupKey {
+  if (FRONT_MATTER_TYPES.has(sectionType)) return 'front'
+  if (SUMMARIZABLE_TYPES.has(sectionType)) return 'chapters'
+  return 'back'
+}
+
 const sortedSections = computed(() =>
   [...props.sections].sort((a, b) => a.order_index - b.order_index),
 )
 
-function compressionLabel(s: SectionRow): string {
-  if (!s.has_summary || !s.default_summary || !s.content_char_count) return '—'
-  if (s.content_char_count === 0) return '—'
-  const pct = (s.default_summary.summary_char_count / s.content_char_count) * 100
-  return formatCompression(pct)
+const groupedSections = computed<Record<GroupKey, SectionRow[]>>(() => {
+  const out: Record<GroupKey, SectionRow[]> = { front: [], chapters: [], back: [] }
+  for (const s of sortedSections.value) out[groupOf(s.section_type)].push(s)
+  return out
+})
+
+const groupOrder: GroupKey[] = ['front', 'chapters', 'back']
+
+// FR-C16 — collapsible group state, persisted per book in localStorage.
+const expandKey = computed(() => `bc.sections.expand.${props.bookId}`)
+
+function loadExpanded(): Record<GroupKey, boolean> {
+  const fallback: Record<GroupKey, boolean> = { front: false, chapters: true, back: false }
+  if (typeof localStorage === 'undefined') return fallback
+  try {
+    const raw = localStorage.getItem(expandKey.value)
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw) as Partial<Record<GroupKey, boolean>>
+    return {
+      front: parsed.front ?? false,
+      chapters: parsed.chapters ?? true,
+      back: parsed.back ?? false,
+    }
+  } catch {
+    return fallback
+  }
 }
+
+const expanded = ref<Record<GroupKey, boolean>>(loadExpanded())
+
+function toggleGroup(g: GroupKey) {
+  expanded.value = { ...expanded.value, [g]: !expanded.value[g] }
+  try {
+    if (typeof localStorage !== 'undefined')
+      localStorage.setItem(expandKey.value, JSON.stringify(expanded.value))
+  } catch {
+    // best-effort persistence
+  }
+}
+
+watch(
+  () => props.bookId,
+  () => {
+    expanded.value = loadExpanded()
+  },
+)
 
 interface SummaryStatus {
   label: string
@@ -56,13 +110,15 @@ function summaryStatus(s: SectionRow): SummaryStatus {
   if (live === 'pending') return { label: 'pending', kind: 'pending' }
   if (s.has_summary) return { label: '✓', kind: 'done' }
   if (s.last_failure_type) return { label: 'failed', kind: 'failed' }
-  return { label: '—', kind: 'none' }
+  return { label: '✕', kind: 'none' }
+}
+
+function readTime(s: SectionRow): string {
+  return formatReadTime(s.content_char_count ?? 0)
 }
 
 function onRowClick(s: SectionRow) {
   const query: Record<string, string> = {}
-  // Only propagate ?tab when we're called from the reader-TOC context
-  // (currentSectionId provided). Book-detail callers leave it untouched.
   if (props.currentSectionId !== null && route.query.tab) {
     query.tab = String(route.query.tab)
   }
@@ -73,7 +129,7 @@ function onRowClick(s: SectionRow) {
   })
 }
 
-function onRowKeydown(e: KeyboardEvent, idx: number) {
+function onRowKeydown(e: KeyboardEvent, idx: number, list: SectionRow[]) {
   const target = e.currentTarget as HTMLElement
   const tbody = target.parentElement
   if (!tbody) return
@@ -86,22 +142,10 @@ function onRowKeydown(e: KeyboardEvent, idx: number) {
     rows[idx - 1]?.focus()
   } else if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault()
-    onRowClick(sortedSections.value[idx])
+    onRowClick(list[idx])
   }
 }
 
-function showSeparatorBefore(idx: number): boolean {
-  if (idx === 0) return false
-  return (
-    sortedSections.value[idx].section_type !==
-    sortedSections.value[idx - 1].section_type
-  )
-}
-
-// FR-33a — react to SSE updates from the existing summarization-job store.
-// Compact mode is read-only (Decision Log P8): the reader-TOC dropdown
-// already has its own job-aware surface, and we want to keep the
-// dropdown render lightweight when the user is mid-tap.
 if (!props.compact) {
   watch(
     () => jobStore.lastEvent,
@@ -139,37 +183,68 @@ if (!props.compact) {
       <tr>
         <th>#</th>
         <th>Title</th>
-        <th v-if="!compact">Type</th>
-        <th>Chars</th>
+        <th>Read time</th>
         <th>Summary</th>
-        <th v-if="!compact">Compression</th>
       </tr>
     </thead>
-    <tbody>
-      <template v-for="(s, idx) in sortedSections" :key="s.id">
-        <tr
-          v-if="showSeparatorBefore(idx)"
-          class="section-type-separator"
-          aria-hidden="true"
-        >
-          <td :colspan="compact ? 4 : 6"></td>
-        </tr>
-        <tr
-          role="link"
-          tabindex="0"
-          :class="{ 'is-current': s.id === currentSectionId }"
-          @click="onRowClick(s)"
-          @keydown="onRowKeydown($event, idx)"
-        >
-          <td>{{ s.order_index + 1 }}</td>
-          <td>{{ s.title }}</td>
-          <td v-if="!compact">{{ s.section_type }}</td>
-          <td>{{ (s.content_char_count ?? 0).toLocaleString() }}</td>
-          <td :data-summary-kind="summaryStatus(s).kind">{{ summaryStatus(s).label }}</td>
-          <td v-if="!compact">{{ compressionLabel(s) }}</td>
-        </tr>
-      </template>
+    <tbody v-if="compact">
+      <tr
+        v-for="(s, idx) in sortedSections"
+        :key="s.id"
+        role="link"
+        tabindex="0"
+        :class="{ 'is-current': s.id === currentSectionId }"
+        @click="onRowClick(s)"
+        @keydown="onRowKeydown($event, idx, sortedSections)"
+      >
+        <td>{{ s.order_index + 1 }}</td>
+        <td>{{ s.title }}</td>
+        <td>{{ readTime(s) }}</td>
+        <td :data-summary-kind="summaryStatus(s).kind">
+          {{ summaryStatus(s).label }}
+        </td>
+      </tr>
     </tbody>
+    <template v-else>
+      <template v-for="g in groupOrder" :key="g">
+        <thead v-if="groupedSections[g].length > 0" class="section-group-head">
+          <tr
+            class="section-group-row"
+            :data-group="g"
+            tabindex="0"
+            role="button"
+            :aria-expanded="expanded[g]"
+            @click="toggleGroup(g)"
+            @keydown.enter.prevent="toggleGroup(g)"
+            @keydown.space.prevent="toggleGroup(g)"
+          >
+            <th colspan="4">
+              <span class="chev" :class="{ open: expanded[g] }">▸</span>
+              {{ GROUP_LABEL[g] }}
+              <span class="group-count">({{ groupedSections[g].length }})</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody v-if="expanded[g]" :data-group-body="g">
+          <tr
+            v-for="(s, idx) in groupedSections[g]"
+            :key="s.id"
+            role="link"
+            tabindex="0"
+            :class="{ 'is-current': s.id === currentSectionId }"
+            @click="onRowClick(s)"
+            @keydown="onRowKeydown($event, idx, groupedSections[g])"
+          >
+            <td>{{ s.order_index + 1 }}</td>
+            <td>{{ s.title }}</td>
+            <td>{{ readTime(s) }}</td>
+            <td :data-summary-kind="summaryStatus(s).kind">
+              {{ summaryStatus(s).label }}
+            </td>
+          </tr>
+        </tbody>
+      </template>
+    </template>
   </table>
 </template>
 
@@ -185,7 +260,7 @@ if (!props.compact) {
   border-bottom: 1px solid var(--color-border);
   font-size: 14px;
 }
-.section-list-table th {
+.section-list-table thead:first-of-type th {
   font-weight: 600;
   color: var(--color-text-secondary);
   font-size: 12px;
@@ -205,12 +280,31 @@ if (!props.compact) {
 .section-list-table tr.is-current {
   background: rgba(79, 70, 229, 0.08);
 }
-.section-list-table tr.section-type-separator {
-  height: 1px;
+.section-group-head th {
+  background: var(--color-bg-secondary, #f8fafc);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
 }
-.section-list-table tr.section-type-separator td {
-  padding: 0;
-  border-bottom: 1px solid var(--color-border-strong);
+.section-group-row:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.chev {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  margin-right: 0.4rem;
+  color: var(--color-text-muted);
+}
+.chev.open {
+  transform: rotate(90deg);
+}
+.group-count {
+  margin-left: 0.4rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 .section-list-table.compact th,
 .section-list-table.compact td {
@@ -233,13 +327,5 @@ if (!props.compact) {
 }
 [data-summary-kind='none'] {
   color: var(--color-text-muted);
-}
-@media (max-width: 640px) {
-  .section-list-table:not(.compact) th:nth-child(3),
-  .section-list-table:not(.compact) td:nth-child(3),
-  .section-list-table:not(.compact) th:nth-child(6),
-  .section-list-table:not(.compact) td:nth-child(6) {
-    display: none;
-  }
 }
 </style>
