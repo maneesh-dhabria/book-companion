@@ -163,6 +163,6 @@ describe('Playbar', () => {
     expect(tooltip.text()).toContain("Web Speech can't seek/scrub")
     const link = tooltip.find('a')
     expect(link.exists()).toBe(true)
-    expect(link.attributes('href')).toBe('/settings#audio')
+    expect(link.attributes('href')).toBe('/settings/tts#audio')
   })
 })

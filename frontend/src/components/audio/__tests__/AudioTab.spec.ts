@@ -43,6 +43,33 @@ describe('AudioTab', () => {
     expect(wrap.find('button[data-testid="generate-audio"]').exists()).toBe(true)
   })
 
+  it('renders empty-state with engine chip + estimate + scope + diff trigger (FR-E04..E06)', async () => {
+    ;(audioApi.inventory as ReturnType<typeof vi.fn>).mockResolvedValue({
+      book_id: 1,
+      files: [],
+      coverage: { total: 47, generated: 0 },
+    })
+    const wrap = mount(AudioTab, { props: { bookId: 1 } })
+    await flushPromises()
+    expect(wrap.find('.bc-engine-chip').exists()).toBe(true)
+    expect(wrap.find('[data-testid="audio-estimate"]').exists()).toBe(true)
+    expect(wrap.find('[data-testid="audio-scope"]').text()).toContain('47 chapter summaries')
+    expect(wrap.find('[data-testid="diff-trigger"]').exists()).toBe(true)
+    expect(wrap.find('[data-testid="difference-popover"]').exists()).toBe(false)
+  })
+
+  it('toggles DifferencePopover when What\'s the difference? is clicked', async () => {
+    ;(audioApi.inventory as ReturnType<typeof vi.fn>).mockResolvedValue({
+      book_id: 1,
+      files: [],
+      coverage: { total: 47, generated: 0 },
+    })
+    const wrap = mount(AudioTab, { props: { bookId: 1 } })
+    await flushPromises()
+    await wrap.find('[data-testid="diff-trigger"]').trigger('click')
+    expect(wrap.find('[data-testid="difference-popover"]').exists()).toBe(true)
+  })
+
   it('renders partial state with coverage bar', async () => {
     ;(audioApi.inventory as ReturnType<typeof vi.fn>).mockResolvedValue({
       book_id: 1,

@@ -2,12 +2,40 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { audioApi, type AudioInventoryItem } from '@/api/audio'
+import DifferencePopover from '@/components/audio/DifferencePopover.vue'
+import EngineChip from '@/components/audio/EngineChip.vue'
 import GenerateAudioModal from '@/components/audio/GenerateAudioModal.vue'
 import { useAudioJobStore } from '@/stores/audioJob'
+import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 const props = defineProps<{ bookId: number }>()
 
 const showGenerateModal = ref(false)
+const showDiff = ref(false)
+const ttsPlayer = useTtsPlayerStore()
+
+// Default engine label/string. Defaults to 'web-speech' when no setting
+// has been pulled yet — the Settings TTS panel populates this on mount.
+const defaultEngine = computed<'kokoro' | 'web-speech'>(() =>
+  ttsPlayer.defaultEngine === 'mp3' ? 'kokoro' : 'web-speech',
+)
+
+// Generation estimate copy: ~30s per content unit on Kokoro; instant on
+// Web Speech (no pre-generation).
+const estimateCopy = computed(() => {
+  if (defaultEngine.value === 'web-speech') {
+    return 'Instant on Web Speech (no pre-generation needed)'
+  }
+  const totalUnits = coverage.value.total
+  const seconds = totalUnits * 30
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  return `≈ ${minutes} min on Kokoro`
+})
+
+const scopeCopy = computed(() => {
+  const n = coverage.value.total
+  return `${n} chapter ${n === 1 ? 'summary' : 'summaries'}`
+})
 
 const files = ref<AudioInventoryItem[]>([])
 const coverage = ref<{ total: number; generated: number; stale?: number }>({
@@ -92,16 +120,33 @@ onMounted(load)
       </button>
     </div>
 
-    <div v-else-if="state === 'no-audio'" data-testid="state-no-audio">
-      <p class="text-sm text-slate-700">No audio yet for this book.</p>
-      <button
-        type="button"
-        data-testid="generate-audio"
-        class="btn-primary mt-2"
-        @click="onGenerate"
-      >
-        Generate audio
-      </button>
+    <div v-else-if="state === 'no-audio'" data-testid="state-no-audio" class="audio-empty">
+      <div class="flex items-center gap-2">
+        <EngineChip :engine="defaultEngine" />
+      </div>
+      <p class="text-sm text-slate-700 dark:text-slate-200">No audio yet for this book.</p>
+      <p data-testid="audio-estimate" class="text-xs text-slate-500 dark:text-slate-400">
+        {{ estimateCopy }} · <span data-testid="audio-scope">{{ scopeCopy }}</span>
+      </p>
+      <div class="mt-2 flex items-center gap-3 audio-empty-actions">
+        <button
+          type="button"
+          data-testid="generate-audio"
+          class="btn-primary"
+          @click="onGenerate"
+        >
+          Generate audio
+        </button>
+        <button
+          type="button"
+          data-testid="diff-trigger"
+          class="text-sm text-indigo-600 underline"
+          @click.stop="showDiff = !showDiff"
+        >
+          What's the difference?
+        </button>
+        <DifferencePopover :open="showDiff" @close="showDiff = false" />
+      </div>
     </div>
 
     <div v-else-if="state === 'partial'" data-testid="state-partial">
@@ -140,3 +185,14 @@ onMounted(load)
     />
   </div>
 </template>
+
+<style scoped>
+.audio-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.audio-empty-actions {
+  position: relative;
+}
+</style>

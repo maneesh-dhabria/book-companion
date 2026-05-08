@@ -168,7 +168,7 @@ function onRetry() {
           role="tooltip"
           class="limited-tooltip"
         >
-          Web Speech can't seek/scrub. <a href="/settings#audio">Install Kokoro for full controls →</a>
+          Web Speech can't seek/scrub. <a href="/settings/tts#audio">Install Kokoro for full controls →</a>
         </span>
       </span>
 

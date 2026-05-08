@@ -128,7 +128,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="settings-tts space-y-6" data-testid="settings-tts-panel">
+  <section id="audio" class="settings-tts space-y-6" data-testid="settings-tts-panel">
     <header>
       <h2 class="text-lg font-semibold text-slate-800">Text-to-speech</h2>
       <p class="text-sm text-slate-500">
