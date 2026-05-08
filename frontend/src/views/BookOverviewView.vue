@@ -111,14 +111,7 @@
       </nav>
 
       <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel">
-        <div class="overview-meta">
-          <p v-if="(book.suggested_tags || []).length === 0 && !book.summary_progress" class="overview-empty">
-            No additional metadata yet.
-          </p>
-          <p v-else class="overview-hint">
-            Use the Summary tab to read or generate a book-level summary, or the Sections tab to browse chapters.
-          </p>
-        </div>
+        <OverviewDashboard :book="book" />
       </section>
 
       <section v-else-if="activeTab === 'summary'" class="tab-panel" role="tabpanel">
@@ -158,6 +151,7 @@ import ExportCustomizeModal from '@/components/book/ExportCustomizeModal.vue'
 import SectionListTable from '@/components/book/SectionListTable.vue'
 import OverflowMenu from '@/components/book/OverflowMenu.vue'
 import BookSummaryTab from '@/components/book/BookSummaryTab.vue'
+import OverviewDashboard from '@/components/book/OverviewDashboard.vue'
 import AudioTab from '@/components/audio/AudioTab.vue'
 import AnnotationsTab from '@/components/audio/AnnotationsTab.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
