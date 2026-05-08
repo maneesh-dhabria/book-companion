@@ -71,6 +71,13 @@ export interface AudioByBookResponse {
   sections: AudioByBookEntry[]
 }
 
+export interface AudioPositionByBook {
+  content_type: AudioContentType
+  content_id: number
+  sentence_index: number
+  updated_at: string
+}
+
 export const audioApi = {
   lookup(params: {
     book_id: number
@@ -118,5 +125,19 @@ export const audioApi = {
   // `useBookAudioMap` so SectionListTable + TOCDropdown share one fetch.
   sectionsByBook(bookId: number): Promise<AudioByBookResponse> {
     return apiClient.get<AudioByBookResponse>(`/audio/sections/by-book/${bookId}`)
+  },
+
+  // FR-E07a — most-recent audio_position for any audio belonging to this
+  // book (section_summary / section_content / book_summary). Returns 404
+  // when no position exists; consumers should treat the rejected promise
+  // as `null`.
+  positionsByBook(bookId: number): Promise<AudioPositionByBook | null> {
+    return apiClient
+      .get<AudioPositionByBook>(`/audio/positions/by-book/${bookId}`)
+      .then((res) => res)
+      .catch((e: { status?: number }) => {
+        if (e?.status === 404) return null
+        throw e
+      })
   },
 }

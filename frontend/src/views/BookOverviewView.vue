@@ -2,6 +2,15 @@
   <main class="book-overview">
     <div v-if="loading" class="loading">Loading book…</div>
     <template v-else-if="book">
+      <ResumeAffordance
+        v-if="showResume && audioPosition"
+        data-testid="book-resume-affordance"
+        :book-id="book.id"
+        :content-type="audioPosition.content_type"
+        :content-id="audioPosition.content_id"
+        audio-status="complete"
+        :total-sentences="0"
+      />
       <header class="book-header">
         <CoverFallback
           v-if="!book.cover_url"
@@ -159,6 +168,9 @@ import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
 import { firstChapter } from '@/stores/reader'
+import ResumeAffordance from '@/components/audio/ResumeAffordance.vue'
+import { audioApi, type AudioPositionByBook } from '@/api/audio'
+import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 
 interface SectionRow {
   id: number
@@ -444,9 +456,33 @@ async function rejectSuggestion(name: string) {
   }
 }
 
+// FR-E07a — surface a resume dock when an audio_position exists for this
+// book and the current Playbar isn't already on that exact content.
+const audioPosition = ref<AudioPositionByBook | null>(null)
+const ttsPlayer = useTtsPlayerStore()
+
+const showResume = computed(() => {
+  const pos = audioPosition.value
+  if (!pos || !pos.content_id || !pos.content_type || !book.value) return false
+  const sameAsActive =
+    ttsPlayer.isActive &&
+    ttsPlayer.contentType === pos.content_type &&
+    ttsPlayer.contentId === pos.content_id
+  return !sameAsActive
+})
+
+async function loadAudioPosition(bookId: number) {
+  try {
+    audioPosition.value = await audioApi.positionsByBook(bookId)
+  } catch {
+    audioPosition.value = null
+  }
+}
+
 onMounted(() => {
   load()
   settings.loadPresets()
+  if (bookId.value) loadAudioPosition(bookId.value)
 })
 </script>
 

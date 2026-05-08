@@ -213,4 +213,43 @@ describe('BookOverviewView', () => {
     await flushPromises()
     expect(w.findComponent({ name: 'SummarizationProgress' }).exists()).toBe(false)
   })
+
+  it('mounts ResumeAffordance when /audio/positions/by-book returns a position (FR-E07a)', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.endsWith('/books/1')) return new Response(JSON.stringify(BOOK))
+      if (u.includes('/audio/positions/by-book/1')) {
+        return new Response(JSON.stringify({
+          content_type: 'section_summary',
+          content_id: 11,
+          sentence_index: 4,
+          updated_at: '2026-05-08T12:00:00Z',
+        }))
+      }
+      return new Response('{"tags":[],"summary_md":null}')
+    })
+    const router = makeRouter()
+    router.push('/1')
+    await router.isReady()
+    const w = mount(BookOverviewView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(w.find('[data-testid="book-resume-affordance"]').exists()).toBe(true)
+  })
+
+  it('does NOT mount ResumeAffordance when /audio/positions/by-book is 404', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url)
+      if (u.endsWith('/books/1')) return new Response(JSON.stringify(BOOK))
+      if (u.includes('/audio/positions/by-book/1')) {
+        return new Response('not found', { status: 404 })
+      }
+      return new Response('{"tags":[],"summary_md":null}')
+    })
+    const router = makeRouter()
+    router.push('/1')
+    await router.isReady()
+    const w = mount(BookOverviewView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(w.find('[data-testid="book-resume-affordance"]').exists()).toBe(false)
+  })
 })

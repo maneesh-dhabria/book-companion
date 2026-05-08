@@ -19,6 +19,8 @@ import { useAnnotationsStore } from '@/stores/annotations'
 import { annotationContentTypeFor } from '@/utils/annotationContentType'
 import { useReaderStore } from '@/stores/reader'
 import { useReaderSettingsStore } from '@/stores/readerSettings'
+import ResumeAffordance from '@/components/audio/ResumeAffordance.vue'
+import { useTtsPlayerStore } from '@/stores/ttsPlayer'
 import { useSummarizationJobStore } from '@/stores/summarizationJob'
 import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
@@ -28,6 +30,20 @@ const reader = useReaderStore()
 const settings = useReaderSettingsStore()
 const annotations = useAnnotationsStore()
 const job = useSummarizationJobStore()
+const ttsPlayer = useTtsPlayerStore()
+
+// FR-E07a — only mount ResumeAffordance when the current section's audio
+// is NOT the same content currently playing. The affordance does its own
+// audio_position fetch + 404 handling, so we just gate the mount.
+const showSectionResume = computed(() => {
+  const sec = reader.currentSection
+  if (!sec) return false
+  const sameAsActive =
+    ttsPlayer.isActive &&
+    ttsPlayer.contentType === 'section_summary' &&
+    ttsPlayer.contentId === sec.id
+  return !sameAsActive
+})
 
 const readingState = useReadingState(
   () => reader.book?.id,
@@ -201,6 +217,15 @@ function handleAskAi() {
     </template>
 
     <template v-else>
+      <ResumeAffordance
+        v-if="showSectionResume && reader.currentSection && reader.book"
+        data-testid="section-resume-affordance"
+        :book-id="reader.book.id"
+        content-type="section_summary"
+        :content-id="reader.currentSection.id"
+        audio-status="complete"
+        :total-sentences="0"
+      />
       <ReaderHeader
         :book-title="reader.book.title"
         :book-id="reader.book.id"
