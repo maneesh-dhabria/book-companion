@@ -15,6 +15,7 @@ let toastId = 0
 export const useUiStore = defineStore('ui', () => {
   const commandPaletteOpen = ref(false)
   const uploadWizardOpen = ref(false)
+  const bulkSelectMode = ref(false)
   const toasts = ref<Toast[]>([])
   // Per-toast dismiss timers, keyed by id, so manual close cancels its timer
   // and the FIFO cap can also cancel the dropped oldest toast's timer.
@@ -50,9 +51,16 @@ export const useUiStore = defineStore('ui', () => {
     commandPaletteOpen.value = false
   }
 
+  function toggleBulkSelect(value?: boolean) {
+    const next = typeof value === 'boolean' ? value : !bulkSelectMode.value
+    bulkSelectMode.value = next
+  }
+
   return {
     commandPaletteOpen,
     uploadWizardOpen,
+    bulkSelectMode,
+    toggleBulkSelect,
     toasts,
     showToast,
     dismissToast,

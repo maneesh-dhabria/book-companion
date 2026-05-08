@@ -16,7 +16,19 @@ export const useBooksStore = defineStore('books', () => {
   const sort = ref<{ field: string; order: string }>({ field: 'updated_at', order: 'desc' })
   // Track the in-flight list request so fast-typed queries abort the stale one.
   let inflight: AbortController | null = null
-  const displayMode = ref<'grid' | 'list' | 'table'>('grid')
+  const displayMode = ref<'grid' | 'list' | 'table'>(
+    (() => {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const v = localStorage.getItem('bc.library.view')
+          if (v === 'grid' || v === 'list' || v === 'table') return v
+        }
+      } catch {
+        // fall through to default
+      }
+      return 'grid'
+    })(),
+  )
   const selectedIds = ref<number[]>([])
 
   // Views
@@ -81,6 +93,13 @@ export const useBooksStore = defineStore('books', () => {
 
   function setDisplayMode(mode: 'grid' | 'list' | 'table') {
     displayMode.value = mode
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('bc.library.view', mode)
+      }
+    } catch {
+      // best-effort persistence; quota errors are non-blocking
+    }
   }
 
   function setPage(p: number) {

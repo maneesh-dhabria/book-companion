@@ -2,6 +2,9 @@
 import type { BookListItem } from '@/types'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import { bookStatusToneClass } from '@/utils/bookStatus'
+import { useUiStore } from '@/stores/ui'
+
+const ui = useUiStore()
 
 defineProps<{
   books: BookListItem[]
@@ -37,7 +40,7 @@ function formatDate(dateStr: string): string {
     <table class="book-table">
       <thead>
         <tr>
-          <th class="col-checkbox">
+          <th v-if="ui.bulkSelectMode" class="col-checkbox">
             <input
               type="checkbox"
               :checked="selectedIds.length === books.length && books.length > 0"
@@ -61,7 +64,7 @@ function formatDate(dateStr: string): string {
           class="table-row"
           :class="{ selected: selectedIds.includes(book.id) }"
         >
-          <td class="col-checkbox" @click.stop>
+          <td v-if="ui.bulkSelectMode" class="col-checkbox" @click.stop>
             <input
               type="checkbox"
               :checked="selectedIds.includes(book.id)"

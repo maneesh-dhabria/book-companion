@@ -3,6 +3,9 @@ import CoverFallback from '@/components/common/CoverFallback.vue'
 import TagChip from '@/components/common/TagChip.vue'
 import { bookStatusToneClass } from '@/utils/bookStatus'
 import type { BookListItem } from '@/types'
+import { useUiStore } from '@/stores/ui'
+
+const ui = useUiStore()
 
 defineProps<{
   book: BookListItem
@@ -48,7 +51,11 @@ function formatSize(bytes: number): string {
         />
       </div>
     </div>
-    <div class="book-card-select" @click.prevent="$emit('toggleSelect', book.id)">
+    <div
+      v-if="ui.bulkSelectMode"
+      class="book-card-select"
+      @click.prevent="$emit('toggleSelect', book.id)"
+    >
       <input type="checkbox" :checked="selected" tabindex="-1" />
     </div>
   </router-link>

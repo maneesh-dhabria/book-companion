@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { LayoutGrid, List, Rows3, CheckSquare } from 'lucide-vue-next'
+
 import { useBooksStore } from '@/stores/books'
+import { useUiStore } from '@/stores/ui'
 
 const store = useBooksStore()
+const ui = useUiStore()
 
 const sortOptions = [
   { label: 'Recent', field: 'updated_at', order: 'desc' },
@@ -31,6 +35,11 @@ function onSortChange(e: Event) {
 function onDisplayMode(mode: 'grid' | 'list' | 'table') {
   store.setDisplayMode(mode)
 }
+
+function onToggleSelect() {
+  ui.toggleBulkSelect()
+  if (!ui.bulkSelectMode) store.clearSelection?.()
+}
 </script>
 
 <template>
@@ -54,26 +63,44 @@ function onDisplayMode(mode: 'grid' | 'list' | 'table') {
       <button
         class="mode-btn"
         :class="{ active: store.displayMode === 'grid' }"
-        @click="onDisplayMode('grid')"
+        aria-label="Grid view"
         title="Grid view"
+        @click="onDisplayMode('grid')"
       >
-        ▦
+        <LayoutGrid :size="16" />
+        <span class="mode-btn__label">Grid</span>
       </button>
       <button
         class="mode-btn"
         :class="{ active: store.displayMode === 'list' }"
-        @click="onDisplayMode('list')"
+        aria-label="List view"
         title="List view"
+        @click="onDisplayMode('list')"
       >
-        ☰
+        <List :size="16" />
+        <span class="mode-btn__label">List</span>
       </button>
       <button
         class="mode-btn"
         :class="{ active: store.displayMode === 'table' }"
-        @click="onDisplayMode('table')"
+        aria-label="Table view"
         title="Table view"
+        @click="onDisplayMode('table')"
       >
-        ▤
+        <Rows3 :size="16" />
+        <span class="mode-btn__label">Table</span>
+      </button>
+      <button
+        class="mode-btn"
+        :class="{ active: ui.bulkSelectMode }"
+        data-testid="bulk-select-toggle"
+        :aria-pressed="ui.bulkSelectMode"
+        :aria-label="ui.bulkSelectMode ? 'Exit select mode' : 'Enter select mode'"
+        :title="ui.bulkSelectMode ? 'Exit select mode' : 'Select books'"
+        @click="onToggleSelect"
+      >
+        <CheckSquare :size="16" />
+        <span class="mode-btn__label">Select</span>
       </button>
     </div>
   </div>
@@ -113,14 +140,28 @@ function onDisplayMode(mode: 'grid' | 'list' | 'table') {
 }
 
 .mode-btn {
-  width: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 32px;
   height: 32px;
+  padding: 0 8px;
   border: none;
   background: var(--color-bg-primary);
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 13px;
   transition: all 0.1s;
+}
+
+.mode-btn__label {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mode-btn__label {
+    display: inline;
+  }
 }
 
 .mode-btn:hover {
