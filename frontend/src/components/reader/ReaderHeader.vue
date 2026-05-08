@@ -16,10 +16,38 @@ const props = defineProps<{
   hasNext: boolean
 }>()
 
-const currentSectionTitle = computed(() => {
-  if (props.currentSectionId == null) return ''
-  return props.sections.find((s) => s.id === props.currentSectionId)?.title ?? ''
+const orderedSections = computed(() =>
+  [...props.sections].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
+)
+
+const currentIndex = computed(() => {
+  if (props.currentSectionId == null) return -1
+  return orderedSections.value.findIndex((s) => s.id === props.currentSectionId)
 })
+
+const currentSectionTitle = computed(() => {
+  const i = currentIndex.value
+  return i >= 0 ? (orderedSections.value[i]?.title ?? '') : ''
+})
+
+const prevSectionTitle = computed(() => {
+  const i = currentIndex.value
+  if (i <= 0) return ''
+  return orderedSections.value[i - 1]?.title ?? ''
+})
+
+const nextSectionTitle = computed(() => {
+  const i = currentIndex.value
+  if (i < 0 || i >= orderedSections.value.length - 1) return ''
+  return orderedSections.value[i + 1]?.title ?? ''
+})
+
+const prevAriaLabel = computed(() =>
+  prevSectionTitle.value ? `Previous section: ${prevSectionTitle.value}` : 'Previous section',
+)
+const nextAriaLabel = computed(() =>
+  nextSectionTitle.value ? `Next section: ${nextSectionTitle.value}` : 'Next section',
+)
 
 defineEmits<{
   toggleContent: []
@@ -43,28 +71,38 @@ defineEmits<{
       <SectionTagRow :section-id="currentSectionId" />
     </div>
     <div class="reader-controls">
-      <button
-        class="nav-btn"
-        :disabled="!hasPrev"
-        @click="$emit('navigate', 'prev')"
-        title="Previous section"
-      >
-        ←
-      </button>
-      <ContentToggle
-        :mode="contentMode"
-        :has-summary="hasSummary"
-        @toggle="$emit('toggleContent')"
-      />
-      <button
-        class="nav-btn"
-        :disabled="!hasNext"
-        @click="$emit('navigate', 'next')"
-        title="Next section"
-      >
-        →
-      </button>
-      <slot name="actions" />
+      <div class="cluster" data-cluster="nav" role="group" aria-label="Section navigation">
+        <button
+          class="nav-btn"
+          data-action="prev"
+          :disabled="!hasPrev"
+          :aria-label="prevAriaLabel"
+          :title="prevAriaLabel"
+          @click="$emit('navigate', 'prev')"
+        >
+          ←
+        </button>
+        <button
+          class="nav-btn"
+          data-action="next"
+          :disabled="!hasNext"
+          :aria-label="nextAriaLabel"
+          :title="nextAriaLabel"
+          @click="$emit('navigate', 'next')"
+        >
+          →
+        </button>
+      </div>
+      <div class="cluster cluster--divided" data-cluster="mode" role="group" aria-label="Reading mode">
+        <ContentToggle
+          :mode="contentMode"
+          :has-summary="hasSummary"
+          @toggle="$emit('toggleContent')"
+        />
+      </div>
+      <div class="cluster cluster--divided" data-cluster="actions" role="group" aria-label="Actions">
+        <slot name="actions" />
+      </div>
     </div>
   </div>
 </template>
@@ -114,9 +152,23 @@ defineEmits<{
   gap: 8px;
 }
 
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cluster--divided {
+  border-left: 1px solid var(--color-border);
+  padding-left: 8px;
+  margin-left: 4px;
+}
+
 .nav-btn {
-  width: 32px;
-  height: 32px;
+  min-width: 40px;
+  min-height: 40px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   background: var(--color-bg-primary);
