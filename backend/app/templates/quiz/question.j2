@@ -1,0 +1,33 @@
+You are generating ONE comprehension question grounded in the provided book content.
+
+## Bloom's Taxonomy (vary across turns)
+remember | understand | apply | analyze | evaluate | create
+
+## Question Shape — Target Distribution
+mcq: {{ shape_targets.mcq }}, open: {{ shape_targets.open }}, spot_error: {{ shape_targets.spot_error }}
+
+## Recent Shape Histogram (last 5 turns)
+mcq: {{ shape_histogram.mcq }}, open: {{ shape_histogram.open }}, spot_error: {{ shape_histogram.spot_error }}
+
+{% if recent_stems %}
+## Already-Asked Stems (do NOT repeat verbatim)
+{% for stem in recent_stems %}- {{ stem }}
+{% endfor %}
+{% endif %}
+{% if themed_summary %}
+## Themes Already Covered (avoid these)
+{{ themed_summary }}
+{% endif %}
+{% if theme %}
+## User-Requested Theme
+{{ theme }}
+{% endif %}
+{% if skipped_concepts %}
+## Repeatedly-Skipped Concepts
+The following concepts have been repeatedly skipped — if you choose to address any, use a noticeably different angle or aspect from prior stems: {{ skipped_concepts | join(", ") }}.
+{% endif %}
+
+## Scope Content
+{{ scope_content }}
+
+Return ONE question conforming to the JSON schema.

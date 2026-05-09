@@ -1,0 +1,15 @@
+The reader has asked for a deeper explanation of this question.
+
+## Question
+{{ stem }}
+
+## Cited Passage
+{{ citation }}
+
+{% if prior_explains %}
+## Prior Explanations (do not repeat verbatim — go deeper or take a different angle)
+{% for ex in prior_explains %}- {{ ex }}
+{% endfor %}
+{% endif %}
+
+Return a focused 2-3 sentence explanation grounded in the cited passage that adds a new angle, mechanism, or worked example beyond any prior explanation.

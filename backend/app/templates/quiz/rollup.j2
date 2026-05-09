@@ -1,0 +1,9 @@
+Summarize the THEMES of the following quiz questions in one short prose paragraph (max {{ max_chars }} characters). The output is fed back into future generation prompts to discourage thematic repetition.
+
+Cluster by concept; keep it dense; do NOT enumerate stems verbatim.
+
+## Stems
+{% for stem in stems %}- {{ stem }}
+{% endfor %}
+
+Return only the prose paragraph.

@@ -1,0 +1,18 @@
+You are grading a reader's answer to a comprehension question, grounded ONLY in the cited passage. Do not draw on outside knowledge.
+
+## Question
+{{ stem }}
+
+## Cited Passage
+{{ citation }}
+
+## Reader's Answer
+{{ user_answer }}
+
+## Output
+Return JSON conforming to the grading schema with fields:
+- `verdict`: one of "correct", "partial", "missed"
+- `feedback`: one paragraph explaining what the reader got right and what (if anything) is missing or wrong, citing the passage.
+{% if append_fatigue_prompt %}
+- After your feedback, end with the literal sentence: "Want to keep going or wrap up here?"
+{% endif %}
