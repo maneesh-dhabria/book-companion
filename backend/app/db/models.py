@@ -54,6 +54,8 @@ class ProcessingStep(str, enum.Enum):
     QUICK_SUMMARY = "quick_summary"
     EXTERNAL_REFS = "external_refs"
     AUDIO = "audio"
+    QUIZ_PREGEN_Q1 = "quiz_pregen_q1"
+    QUIZ_ROLLUP = "quiz_rollup"
 
 
 class ProcessingJobStatus(str, enum.Enum):
