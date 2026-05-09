@@ -144,7 +144,7 @@
       </section>
 
       <section v-else-if="activeTab === 'quiz'" class="tab-panel" role="tabpanel">
-        <QuizTab :book-id="book.id" />
+        <QuizTab :book-id="book.id" :has-summaries="!hasNoSummaries" />
       </section>
     </template>
     <div v-else class="error">Book not found.</div>

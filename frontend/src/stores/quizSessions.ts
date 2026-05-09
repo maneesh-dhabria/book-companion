@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import * as api from '@/api/quizSessions'
 import { ApiError } from '@/api/client'
 import type {
@@ -56,14 +56,14 @@ function emptyState(): BookQuizState {
 }
 
 export const useQuizSessionsStore = defineStore('quizSessions', () => {
-  const byBook = ref<Map<number, BookQuizState>>(new Map())
+  const byBook = reactive(new Map<number, BookQuizState>())
   const lastToast = ref<QuizToast | null>(null)
 
   function ensureBook(bookId: number): BookQuizState {
-    let state = byBook.value.get(bookId)
+    let state = byBook.get(bookId)
     if (!state) {
-      state = emptyState()
-      byBook.value.set(bookId, state)
+      state = reactive(emptyState()) as BookQuizState
+      byBook.set(bookId, state)
     }
     return state
   }
@@ -178,13 +178,13 @@ export const useQuizSessionsStore = defineStore('quizSessions', () => {
   }
 
   function reset(): void {
-    byBook.value = new Map()
+    byBook.clear()
     lastToast.value = null
   }
 
   // Convenience computed for current book's state — callers pass bookId
   function stateFor(bookId: number) {
-    return computed(() => byBook.value.get(bookId) ?? null)
+    return computed(() => byBook.get(bookId) ?? null)
   }
 
   return {
