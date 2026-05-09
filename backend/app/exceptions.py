@@ -21,6 +21,14 @@ class QuizGenerationError(BookCompanionError):
     """
 
 
+class QuizValidationError(BookCompanionError):
+    """Raised on invalid scope/theme inputs to start_session (FR-20). HTTP 400."""
+
+
+class QuizBudgetError(BookCompanionError):
+    """Raised when specific_chapters scope exceeds the 60k token budget (S1)."""
+
+
 class SummarizationError(BookCompanionError):
     """LLM summarization errors.
 
