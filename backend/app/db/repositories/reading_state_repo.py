@@ -1,5 +1,7 @@
 """Reading state repository — thin query builder for reading_state table."""
 
+from datetime import datetime
+
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,6 +67,26 @@ class ReadingStateRepository:
             .where(ReadingState.book_id == book_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_all_devices_for_book(
+        self, book_id: int, *, since: datetime | None = None
+    ) -> list[ReadingState]:
+        """All reading-state rows for a book across every device, optionally
+        windowed to rows updated at-or-after `since`. Ordered newest-first.
+
+        Used by `GET /reading-state/by-book/{id}` (FR-17) to populate the Quiz
+        tab's D31 default-scope hints from cross-device activity.
+        """
+        stmt = (
+            select(ReadingState)
+            .options(selectinload(ReadingState.section))
+            .where(ReadingState.book_id == book_id)
+        )
+        if since is not None:
+            stmt = stmt.where(ReadingState.updated_at >= since)
+        stmt = stmt.order_by(ReadingState.updated_at.desc())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def get_latest_resume_banner_reading(self) -> ReadingState | None:
         """Get the most-recent reading_state across ALL browsers, skipping rows

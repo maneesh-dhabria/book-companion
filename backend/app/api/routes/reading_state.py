@@ -1,5 +1,7 @@
 """Reading state API endpoints — cross-device reading position sync."""
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,21 +61,35 @@ async def get_continue_reading(
 @router.get("/by-book/{book_id}", response_model=ReadingStateResponse)
 async def get_reading_state_by_book(
     book_id: int,
-    user_agent: str = Header(default="Unknown"),
     repo: ReadingStateRepository = Depends(get_reading_state_repo),
 ):
-    """Per-device + per-book reading state (FR-C02 helper, P13).
+    """All-device reading state for a book (FR-17, T14).
 
-    Always 200; all-null fields when no row exists for this device+book pair.
+    Returns the most-recent reading position across every device that has read
+    this book in the past 48 hours, plus a deduplicated list of recently-read
+    section ids (newest-first, capped at 10). Powers the Quiz tab's D31
+    default-scope hint. Always 200.
     """
-    rs = await repo.get_for_device_and_book(user_agent, book_id)
-    if rs is None:
+    since = datetime.now(UTC) - timedelta(hours=48)
+    rows = await repo.get_all_devices_for_book(book_id, since=since)
+    if not rows:
         return ReadingStateResponse()
+    section_ids: list[int] = []
+    seen: set[int] = set()
+    for row in rows:
+        if row.section_id is None or row.section_id in seen:
+            continue
+        seen.add(row.section_id)
+        section_ids.append(row.section_id)
+        if len(section_ids) >= 10:
+            break
+    head = rows[0]
     return ReadingStateResponse(
-        last_book_id=rs.book_id,
-        last_section_id=rs.section_id,
-        last_viewed_at=rs.updated_at.isoformat() if rs.updated_at else None,
-        section_title=rs.section.title if rs.section else None,
+        last_book_id=book_id,
+        last_section_id=head.section_id,
+        last_viewed_at=head.updated_at.isoformat() if head.updated_at else None,
+        section_title=head.section.title if head.section else None,
+        most_recent_section_ids=section_ids,
     )
 
 

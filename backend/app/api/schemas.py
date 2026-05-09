@@ -582,6 +582,7 @@ class ReadingStateResponse(BaseModel):
     last_viewed_at: str | None = None
     book_title: str | None = None
     section_title: str | None = None
+    most_recent_section_ids: list[int] = []
 
 
 class ResumeBannerResponse(BaseModel):
