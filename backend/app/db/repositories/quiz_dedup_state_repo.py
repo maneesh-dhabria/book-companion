@@ -1,8 +1,8 @@
 """QuizDedupState repository — data access layer."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import QuizDedupState
@@ -23,7 +23,7 @@ class QuizDedupStateRepository:
         last_rollup_question_count: int,
     ) -> QuizDedupState:
         existing = await self.get(book_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if existing is None:
             state = QuizDedupState(
                 book_id=book_id,

@@ -1,4 +1,4 @@
-"""Unit tests for quiz schema additions: ProcessingStep extension + 3 ORM models + Book.pre_drafted_q1_id."""
+"""Unit tests for quiz schema: ProcessingStep, 3 ORM models, Book.pre_drafted_q1_id."""
 
 import pytest
 import pytest_asyncio

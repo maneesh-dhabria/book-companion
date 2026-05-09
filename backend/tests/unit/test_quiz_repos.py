@@ -6,7 +6,6 @@ import pytest_asyncio
 from app.db.models import (
     Book,
     BookStatus,
-    QuizDedupState,
     QuizQuestion,
     QuizSession,
 )

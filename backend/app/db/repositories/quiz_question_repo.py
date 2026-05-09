@@ -1,6 +1,6 @@
 """QuizQuestion repository — data access layer."""
 
-from sqlalchemy import distinct, func, or_, select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import QuizQuestion, QuizSession
