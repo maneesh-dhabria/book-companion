@@ -49,17 +49,31 @@ describe('BookOverviewView tab strip', () => {
     mockFetch()
   })
 
-  it('renders five tab buttons: Overview, Summary, Sections, Audio, Annotations', async () => {
+  it('renders six tab buttons: Overview, Summary, Sections, Audio, Annotations, Quiz', async () => {
     const { wrapper } = await mountAt('/3')
     const tabs = wrapper.findAll('[role="tab"]')
-    expect(tabs.length).toBe(5)
+    expect(tabs.length).toBe(6)
     expect(tabs.map((t) => t.text())).toEqual([
       'Overview',
       'Summary',
       'Sections',
       'Audio',
       'Annotations',
+      'Quiz',
     ])
+  })
+
+  it('clicking Quiz tab activates it and syncs ?tab=quiz', async () => {
+    const { wrapper, router } = await mountAt('/3')
+    const replaceSpy = vi.spyOn(router, 'replace')
+    await wrapper.findAll('[role="tab"]')[5].trigger('click')
+    const arg = replaceSpy.mock.calls[0][0] as { query?: { tab?: string } }
+    expect(arg.query?.tab).toBe('quiz')
+  })
+
+  it('?tab=quiz renders the QuizTab placeholder', async () => {
+    const { wrapper } = await mountAt('/3?tab=quiz')
+    expect(wrapper.find('[data-test="quiz-tab-root"]').exists()).toBe(true)
   })
 
   it('clicking Audio tab activates it', async () => {

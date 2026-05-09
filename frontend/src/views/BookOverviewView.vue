@@ -142,6 +142,10 @@
       <section v-else-if="activeTab === 'annotations'" class="tab-panel" role="tabpanel">
         <AnnotationsTab :book-id="book.id" />
       </section>
+
+      <section v-else-if="activeTab === 'quiz'" class="tab-panel" role="tabpanel">
+        <QuizTab :book-id="book.id" />
+      </section>
     </template>
     <div v-else class="error">Book not found.</div>
   </main>
@@ -163,6 +167,7 @@ import BookSummaryTab from '@/components/book/BookSummaryTab.vue'
 import OverviewDashboard from '@/components/book/OverviewDashboard.vue'
 import AudioTab from '@/components/audio/AudioTab.vue'
 import AnnotationsTab from '@/components/audio/AnnotationsTab.vue'
+import QuizTab from '@/components/quiz/QuizTab.vue'
 import ReaderSettingsPopover from '@/components/settings/ReaderSettingsPopover.vue'
 import { exportBookSummary } from '@/api/export'
 import { useUiStore } from '@/stores/ui'
@@ -192,8 +197,15 @@ interface BookTag {
 const route = useRoute()
 const router = useRouter()
 
-type BookTab = 'overview' | 'summary' | 'sections' | 'audio' | 'annotations'
-const TAB_VALUES: BookTab[] = ['overview', 'summary', 'sections', 'audio', 'annotations']
+type BookTab = 'overview' | 'summary' | 'sections' | 'audio' | 'annotations' | 'quiz'
+const TAB_VALUES: BookTab[] = [
+  'overview',
+  'summary',
+  'sections',
+  'audio',
+  'annotations',
+  'quiz',
+]
 const activeTab = computed<BookTab>(() => {
   const t = route.query.tab
   return typeof t === 'string' && (TAB_VALUES as string[]).includes(t)
