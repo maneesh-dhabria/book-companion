@@ -23,7 +23,11 @@
     />
 
     <!-- Active session -->
-    <ActiveSession v-else-if="mode === 'active'" :book-id="bookId" />
+    <ActiveSession
+      v-else-if="mode === 'active'"
+      :book-id="bookId"
+      :book-slug="bookSlug"
+    />
 
     <!-- Default 'ready' mode: scope picker, plus past-Q&A if any -->
     <template v-else>
@@ -52,8 +56,9 @@ const props = withDefaults(
     /** When true, the parent has confirmed at least one section/book summary exists. */
     hasSummaries: boolean
     sections?: SectionBrief[]
+    bookSlug?: string
   }>(),
-  { sections: () => [] },
+  { sections: () => [], bookSlug: 'book' },
 )
 
 const store = useQuizSessionsStore()
