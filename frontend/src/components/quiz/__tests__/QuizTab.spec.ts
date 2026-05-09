@@ -167,4 +167,31 @@ describe('QuizTab — state machine', () => {
     expect(wrapper.find('[data-test="scope-picker"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="past-qa-panel"]').exists()).toBe(true)
   })
+
+  it('mounts ThemesCoveredPanel in ready mode when lifetime themes_summary is present (FR-63 wiring)', async () => {
+    settingsMocks.getLlmStatus.mockResolvedValue({
+      configured_provider: 'auto',
+      provider: 'claude',
+      preflight: {
+        ok: true,
+        provider: 'claude',
+        binary: null,
+        binary_resolved: true,
+        version: null,
+        version_ok: true,
+        reason: null,
+      },
+    })
+    apiMocks.listSessions.mockResolvedValue({
+      sessions: [],
+      lifetime_tally: EMPTY_LIFETIME,
+    })
+    apiMocks.getLifetimeTally.mockResolvedValue({
+      ...EMPTY_LIFETIME,
+      themes_summary: 'Loss aversion and anchoring dominate.',
+    })
+    const wrapper = await mountTab()
+    expect(wrapper.attributes('data-mode')).toBe('ready')
+    expect(wrapper.find('[data-test="themes-covered"]').exists()).toBe(true)
+  })
 })

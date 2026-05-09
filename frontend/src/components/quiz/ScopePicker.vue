@@ -84,6 +84,8 @@ const props = defineProps<{
   bookId: number
   sections: SectionBrief[]
   budgetMax?: number
+  /** Optional seed for the theme input (FR-63). When this changes the local theme is overwritten. */
+  seededTheme?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -96,6 +98,14 @@ const scopeMode = ref<QuizScopeMode>('all_summaries')
 const selectedSectionIds = ref<number[]>([])
 const theme = ref<string | null>(null)
 const attemptedOverflow = ref(false)
+
+// FR-63: chip clicks in ThemesCoveredPanel arrive here via the parent.
+watch(
+  () => props.seededTheme,
+  (next) => {
+    if (next != null && next.length > 0) theme.value = next
+  },
+)
 
 const ELIGIBLE_TYPES = new Set(['chapter', 'part', 'section'])
 const lsKey = computed(() => `quiz.lastScope.book-${props.bookId}`)

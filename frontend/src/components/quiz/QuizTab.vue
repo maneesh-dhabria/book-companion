@@ -29,9 +29,18 @@
       :book-slug="bookSlug"
     />
 
-    <!-- Default 'ready' mode: scope picker, plus past-Q&A if any -->
+    <!-- Default 'ready' mode: scope picker, themes covered, past-Q&A if any -->
     <template v-else>
-      <ScopePicker :book-id="bookId" :sections="sections" @start="onStartFromScope" />
+      <ScopePicker
+        :book-id="bookId"
+        :sections="sections"
+        :seeded-theme="seededTheme"
+        @start="onStartFromScope"
+      />
+      <ThemesCoveredPanel
+        :themes-summary="themesSummary"
+        @seed-theme="onSeedTheme"
+      />
       <PastQAPanel v-if="pastSessions.length > 0" :sessions="pastSessions" />
     </template>
   </div>
@@ -44,6 +53,7 @@ import ScopePicker from './ScopePicker.vue'
 import ResumeBanner from './ResumeBanner.vue'
 import ActiveSession from './ActiveSession.vue'
 import PastQAPanel from './PastQAPanel.vue'
+import ThemesCoveredPanel from './ThemesCoveredPanel.vue'
 import { getLlmStatus } from '@/api/settings'
 import { useQuizSessionsStore } from '@/stores/quizSessions'
 import type { QuizScope, QuizSessionListItem, SectionBrief } from '@/types'
@@ -85,6 +95,12 @@ const pastSessions = computed<QuizSessionListItem[]>(() =>
   (bookState.value?.sessions ?? []).filter((s) => s.status !== 'in_progress'),
 )
 const currentQuestion = computed(() => bookState.value?.currentQuestion ?? null)
+const themesSummary = computed<string | null>(() => bookState.value?.themesSummary ?? null)
+const seededTheme = ref<string | null>(null)
+
+function onSeedTheme(value: string) {
+  seededTheme.value = value
+}
 
 const mode = computed<Mode>(() => {
   if (llmLoading.value || !bookState.value?.loaded) return 'loading'
