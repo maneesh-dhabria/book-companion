@@ -7,6 +7,7 @@ import sqlalchemy
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -145,6 +146,11 @@ class Book(Base):
     default_summary_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("summaries.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    )
+    pre_drafted_q1_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("quiz_questions.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
     status: Mapped[BookStatus] = mapped_column(Enum(BookStatus), default=BookStatus.UPLOADING)
@@ -689,4 +695,147 @@ class AudioPosition(Base):
 
     __table_args__ = (
         Index("ix_audio_positions_target", "content_type", "content_id"),
+    )
+
+
+# --- Quiz models (v1.7a — AI Comprehension Quiz feature) ---
+# §10.2: citation_json stores section_id as JSON, not FK — staleness covers re-import.
+
+
+class QuizSession(Base):
+    __tablename__ = "quiz_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    scope_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope_section_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    theme: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="in_progress")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    questions: Mapped[list["QuizQuestion"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "scope_mode IN ('all_summaries','specific_chapters')",
+            name="ck_quiz_sessions_scope_mode",
+        ),
+        CheckConstraint(
+            "status IN ('in_progress','completed','abandoned')",
+            name="ck_quiz_sessions_status",
+        ),
+        Index("ix_quiz_sessions_book_status", "book_id", "status"),
+        Index("ix_quiz_sessions_book_created", "book_id", "created_at"),
+    )
+
+
+class QuizQuestion(Base):
+    __tablename__ = "quiz_questions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("quiz_sessions.id", ondelete="CASCADE"), nullable=True
+    )
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
+    )
+    shape: Mapped[str] = mapped_column(String(16), nullable=False)
+    bloom_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    stem: Mapped[str] = mapped_column(Text, nullable=False)
+    concept_label: Mapped[str] = mapped_column(String(200), nullable=False)
+    citation_json: Mapped[str] = mapped_column(Text, nullable=False)
+    mcq_options_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    intended_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    feedback_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    agent_verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    self_assessment: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    override_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    explain_history_json: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'[]'"), default="[]"
+    )
+    skip_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
+    )
+    discarded: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("0"), default=False
+    )
+    warm_up: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("0"), default=False
+    )
+    is_pregen: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("0"), default=False
+    )
+    is_stale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("0"), default=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    session: Mapped["QuizSession | None"] = relationship(back_populates="questions")
+
+    __table_args__ = (
+        CheckConstraint(
+            "shape IN ('mcq','open','spot_error')",
+            name="ck_quiz_questions_shape",
+        ),
+        CheckConstraint(
+            "bloom_level IN ('remember','understand','apply','analyze','evaluate','create')",
+            name="ck_quiz_questions_bloom",
+        ),
+        CheckConstraint(
+            "agent_verdict IS NULL OR agent_verdict IN ('correct','partial','incorrect')",
+            name="ck_quiz_questions_agent_verdict",
+        ),
+        CheckConstraint(
+            "self_assessment IS NULL OR self_assessment IN ('got_it','partial','missed')",
+            name="ck_quiz_questions_self_assessment",
+        ),
+        CheckConstraint(
+            "(shape = 'mcq' AND mcq_options_json IS NOT NULL "
+            "AND intended_error IS NULL AND error_explanation IS NULL) "
+            "OR (shape = 'spot_error' AND intended_error IS NOT NULL "
+            "AND error_explanation IS NOT NULL AND mcq_options_json IS NULL) "
+            "OR (shape = 'open' AND mcq_options_json IS NULL "
+            "AND intended_error IS NULL AND error_explanation IS NULL)",
+            name="ck_quiz_questions_shape_payload",
+        ),
+        Index(
+            "ix_quiz_questions_book_dedup",
+            "book_id",
+            "is_stale",
+            "discarded",
+            "skip_count",
+            "created_at",
+        ),
+        Index("ix_quiz_questions_session", "session_id"),
+        Index("ix_quiz_questions_concept", "book_id", "concept_label", "is_stale"),
+    )
+
+
+class QuizDedupState(Base):
+    __tablename__ = "quiz_dedup_state"
+
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), primary_key=True
+    )
+    themes_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    themes_summary_computed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_rollup_question_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
     )
