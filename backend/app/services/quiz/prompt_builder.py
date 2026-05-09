@@ -36,6 +36,7 @@ class QuizPromptBuilder:
         shape_histogram: dict[str, int],
         skipped_concepts: list[str],
         max_prompt_tokens: int | None = None,
+        validator_error: str | None = None,
     ) -> str:
         shape_targets = self.settings.quiz.shape_target_distribution
         ctx = dict(
@@ -46,6 +47,7 @@ class QuizPromptBuilder:
             shape_histogram=shape_histogram,
             skipped_concepts=skipped_concepts,
             shape_targets=shape_targets,
+            validator_error=validator_error,
         )
         prompt = self._render("question.j2", **ctx)
         if max_prompt_tokens is None or count_tokens(prompt) <= max_prompt_tokens:

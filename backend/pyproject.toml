@@ -40,6 +40,8 @@ dependencies = [
     "mutagen>=1.47.0",
     # Token counting (quiz feature — cl100k_base for prompt budget enforcement)
     "tiktoken>=0.7.0",
+    # Strict JSON Schema validation for quiz LLM responses (FR-30, FR-32)
+    "jsonschema>=4.20.0",
 ]
 
 [project.optional-dependencies]

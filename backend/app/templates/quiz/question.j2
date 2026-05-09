@@ -29,5 +29,11 @@ The following concepts have been repeatedly skipped — if you choose to address
 
 ## Scope Content
 {{ scope_content }}
+{% if validator_error %}
+## Prior Attempt Failed Validation
+{{ validator_error }}
+
+You MUST fix the issue described above. Conform exactly to the JSON schema and (for `spot_error`) ensure the stem encodes a deliberate, easily-checkable factual flip versus the citation snippet.
+{% endif %}
 
 Return ONE question conforming to the JSON schema.

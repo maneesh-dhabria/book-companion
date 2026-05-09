@@ -13,6 +13,14 @@ class ParseError(BookCompanionError):
     """Book parsing errors."""
 
 
+class QuizGenerationError(BookCompanionError):
+    """Raised when question generation fails after the FR-32 single retry.
+
+    The HTTP layer maps this to 502 with detail
+    ``"Could not generate a question — try again."``.
+    """
+
+
 class SummarizationError(BookCompanionError):
     """LLM summarization errors.
 
