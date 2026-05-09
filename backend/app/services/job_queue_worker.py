@@ -163,6 +163,8 @@ class JobQueueWorker:
             )
         if job.step == ProcessingStep.AUDIO:
             await self._run_audio_job(job.id, job.book_id, job.request_params or {})
+        elif job.step == ProcessingStep.QUIZ_PREGEN_Q1:
+            await self._run_quiz_pregen_q1(job.id, job.book_id)
         else:
             await self._run_processing(job.id, job.book_id, job.request_params or {})
 
@@ -545,6 +547,79 @@ class JobQueueWorker:
             "on_section_fail": on_fail,
             "on_section_retry": on_retry,
         }
+
+    async def _run_quiz_pregen_q1(self, job_id: int, book_id: int) -> None:
+        """T17 — handle QUIZ_PREGEN_Q1 jobs (FR-80, FR-81, FR-83, S3).
+
+        FR-81a: noop when slot already populated by a non-stale question.
+        FR-83: graceful-degrade when no LLM provider is on PATH (mark COMPLETED,
+        do not poison the queue with retries).
+        Single-attempt per Decision Log P9 (no retry-counter column in v1).
+        """
+        from app.config import Settings as _Settings
+        from app.db.models import Book, QuizQuestion
+        from app.services.quiz.quiz_service import QuizService
+        from app.services.summarizer import create_llm_provider, detect_llm_provider
+
+        settings = _Settings()
+        async with self._session_factory() as bg_session:
+            bg_job = (
+                await bg_session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
+            ).scalar_one_or_none()
+            if bg_job is None:
+                log.warning("queue_worker_run_missing_job", job_id=job_id)
+                return
+            try:
+                book = await bg_session.get(Book, book_id)
+                if book is None:
+                    bg_job.status = ProcessingJobStatus.FAILED
+                    bg_job.error_message = f"book {book_id} not found"
+                    await bg_session.commit()
+                    return
+                # FR-81a: noop when slot already populated by a non-stale Q.
+                if book.pre_drafted_q1_id is not None:
+                    existing = await bg_session.get(QuizQuestion, book.pre_drafted_q1_id)
+                    if existing is not None and not existing.is_stale:
+                        bg_job.status = ProcessingJobStatus.COMPLETED
+                        await bg_session.commit()
+                        log.info("quiz.pregen.noop_slot_populated", book_id=book_id)
+                        return
+                # FR-83: graceful-degrade when no LLM provider.
+                provider_name = settings.llm.provider
+                if provider_name == "auto":
+                    provider_name = detect_llm_provider()
+                llm = create_llm_provider(
+                    provider_name,
+                    config_dir=settings.llm.config_dir,
+                    default_model=settings.llm.model,
+                    default_timeout=settings.llm.timeout_seconds,
+                    max_budget_usd=settings.llm.max_budget_usd,
+                )
+                if llm is None:
+                    bg_job.status = ProcessingJobStatus.COMPLETED
+                    await bg_session.commit()
+                    log.info("quiz.pregen.skipped_no_llm", book_id=book_id)
+                    return
+                svc = QuizService(session=bg_session, llm=llm, settings=settings)
+                qq = await svc.generate_question(
+                    book_id=book_id,
+                    session_id=None,
+                    scope={"mode": "all_summaries"},
+                    theme=None,
+                    warm_up=False,
+                )
+                qq.is_pregen = True
+                # Re-fetch the book in case ORM identity expired between flushes.
+                book = await bg_session.get(Book, book_id)
+                book.pre_drafted_q1_id = qq.id
+                bg_job.status = ProcessingJobStatus.COMPLETED
+                await bg_session.commit()
+                log.info("quiz.pregen.completed", book_id=book_id, question_id=qq.id)
+            except Exception as e:  # noqa: BLE001 — keep worker alive
+                bg_job.status = ProcessingJobStatus.FAILED
+                bg_job.error_message = str(e)[:2048]
+                await bg_session.commit()
+                log.warning("quiz.pregen.failed", book_id=book_id, error=str(e))
 
 
 def serialize_request_params(body) -> dict[str, Any]:
