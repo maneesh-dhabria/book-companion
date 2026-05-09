@@ -8,6 +8,10 @@ export interface ReadingStateResponse {
   section_title: string | null
 }
 
+export interface ReadingStateByBookResponse {
+  most_recent_section_ids: number[]
+}
+
 export function updateReadingState(bookId: number, sectionId?: number) {
   return apiClient.put<ReadingStateResponse>('/reading-state', {
     book_id: bookId,
@@ -17,4 +21,8 @@ export function updateReadingState(bookId: number, sectionId?: number) {
 
 export function getContinueReading() {
   return apiClient.get<ReadingStateResponse>('/reading-state/continue')
+}
+
+export function getReadingStateByBook(bookId: number) {
+  return apiClient.get<ReadingStateByBookResponse>(`/reading-state/by-book/${bookId}`)
 }

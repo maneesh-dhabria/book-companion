@@ -27,7 +27,7 @@
 
     <!-- Default 'ready' mode: scope picker, plus past-Q&A if any -->
     <template v-else>
-      <ScopePicker :book-id="bookId" />
+      <ScopePicker :book-id="bookId" :sections="sections" @start="onStartFromScope" />
       <PastQAPanel v-if="pastSessions.length > 0" :sessions="pastSessions" />
     </template>
   </div>
@@ -42,15 +42,19 @@ import ActiveSession from './ActiveSession.vue'
 import PastQAPanel from './PastQAPanel.vue'
 import { getLlmStatus } from '@/api/settings'
 import { useQuizSessionsStore } from '@/stores/quizSessions'
-import type { QuizSessionListItem } from '@/types'
+import type { QuizScope, QuizSessionListItem, SectionBrief } from '@/types'
 
 type Mode = 'loading' | 'no-llm' | 'no-summaries' | 'resume' | 'active' | 'ready'
 
-const props = defineProps<{
-  bookId: number
-  /** When true, the parent has confirmed at least one section/book summary exists. */
-  hasSummaries: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    bookId: number
+    /** When true, the parent has confirmed at least one section/book summary exists. */
+    hasSummaries: boolean
+    sections?: SectionBrief[]
+  }>(),
+  { sections: () => [] },
+)
 
 const store = useQuizSessionsStore()
 const llmAvailable = ref<boolean | null>(null)
@@ -101,6 +105,12 @@ async function onStopAndStart() {
   // Stub — full stop+pivot flow lives in T28/T33; for now just reload
   // to surface the abandoned session in the past-Q&A list.
   await store.loadForBook(props.bookId)
+}
+
+const sections = computed(() => props.sections)
+
+async function onStartFromScope(payload: { scope: QuizScope; theme: string | null }) {
+  await store.startSession(props.bookId, payload.scope, payload.theme)
 }
 </script>
 
