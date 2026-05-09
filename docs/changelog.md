@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-05-09 — AI Comprehension Quiz
+
+- **New Quiz tab on the book page**: turn each book into an active recall surface
+  via an LLM-driven quiz over its summaries. Pick scope (all summaries / specific
+  chapters with a token budget), give an optional theme, and start a session.
+- **Three question shapes** mixed automatically by Bloom level:
+  - **Multiple choice** (4 options)
+  - **Open-ended** (free-text answer)
+  - **Spot the error** (the agent restates wrongly; you write the correction)
+- **Self-assess after each turn** with Got it / Partial / Missed — your click is
+  the source of truth for the tally, regardless of the agent's grade.
+- **Per-turn controls**: Skip (no self-assessment), Explain (agent clarifies
+  the question without revealing the answer), Already-asked (discard + replace
+  with a fresh angle), Override note (record why you disagree without changing
+  the tally).
+- **Warm-up phase**: when you reopen a book, the first question revisits a concept
+  you previously got wrong with a different angle.
+- **Pre-drafted Q1**: when summaries finish, the agent pre-generates question 1
+  in the background so the next session starts instantly.
+- **Past Q&A panel** with collapsible session groups (most-recent open by
+  default), "stale (re-imported)" badges on questions whose source content has
+  changed, and a themes-covered chip strip you can click to seed the next
+  session's theme.
+- **Sticky session tally**: `Session: G/P/M (N skipped) · Lifetime: G/P/M across
+  N sessions` so you can feel weekly retention drift in the UI.
+- **Markdown export**: each completed session can be exported as a portable
+  Markdown file (turns + your answers + agent feedback + self-assessments).
+  Image references in citations and feedback are sanitized so the export reads
+  cleanly outside the app. Available as a button on the session-end card and as
+  a CLI command: `bookcompanion export quiz-session <id> -o file.md`.
+- **No-LLM graceful degradation**: when no Claude/Codex CLI is installed, the
+  Quiz tab shows a banner and the rest of the app continues to work.
+
 ## 2026-05-08 — Design-Crit Followups (UX cohesion + a11y + audio polish)
 
 - **Cleaner book home page**: a new **Overview** dashboard shows 4 tiles at a glance — Continue reading (jumps to your last chapter or the first chapter if you haven't started), Summary, Top concepts, and Sections (with total read time). Frontmatter (Copyright, Acknowledgments, Title Page) no longer hijacks Read CTAs.
