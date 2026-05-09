@@ -113,6 +113,24 @@ class ProcessingConfig(BaseModel):
     stale_job_age_seconds: int = 86400
 
 
+class QuizConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = True
+    specific_chapters_token_budget: int = 60_000
+    dedup_verbatim_cap: int = 50
+    rollup_delta_threshold: int = 10
+    shape_target_distribution: dict[str, float] = Field(
+        default_factory=lambda: {"mcq": 0.4, "open": 0.45, "spot_error": 0.15}
+    )
+    warm_up_lookback_sessions: int = 3
+    warm_up_max_questions: int = 2
+    explain_soft_cap: int = 2
+    skip_dedup_threshold: int = 3
+    fatigue_prompt_interval: int = 10
+    override_note_max_chars: int = 500
+    theme_max_chars: int = 200
+
+
 def _load_yaml_config() -> dict[str, Any]:
     """Load config from YAML file if it exists. Priority: env var > XDG > fallback.
 
@@ -158,6 +176,7 @@ class Settings(BaseSettings):
     backup: BackupConfig = BackupConfig()
     processing: ProcessingConfig = ProcessingConfig()
     tts: TTSConfig = TTSConfig()
+    quiz: QuizConfig = QuizConfig()
 
     def model_post_init(self, __context: Any) -> None:
         """Merge YAML config, compute data dir and DB URL defaults."""

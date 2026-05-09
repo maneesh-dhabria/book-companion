@@ -161,3 +161,31 @@ def test_tts_config_speed_bounds():
         TTSConfig(default_speed=0.4)
     with pytest.raises(ValidationError):
         TTSConfig(default_speed=2.1)
+
+
+def test_quiz_config_defaults():
+    from app.config import Settings
+
+    s = Settings()
+    assert s.quiz.enabled is True
+    assert s.quiz.specific_chapters_token_budget == 60_000
+    assert s.quiz.dedup_verbatim_cap == 50
+    assert s.quiz.rollup_delta_threshold == 10
+    assert s.quiz.shape_target_distribution == {"mcq": 0.4, "open": 0.45, "spot_error": 0.15}
+    assert s.quiz.warm_up_lookback_sessions == 3
+    assert s.quiz.warm_up_max_questions == 2
+    assert s.quiz.explain_soft_cap == 2
+    assert s.quiz.skip_dedup_threshold == 3
+    assert s.quiz.fatigue_prompt_interval == 10
+    assert s.quiz.override_note_max_chars == 500
+    assert s.quiz.theme_max_chars == 200
+
+
+def test_quiz_config_env_override(monkeypatch):
+    monkeypatch.setenv("BOOKCOMPANION_QUIZ__ENABLED", "false")
+    monkeypatch.setenv("BOOKCOMPANION_QUIZ__DEDUP_VERBATIM_CAP", "25")
+    from app.config import Settings
+
+    s = Settings()
+    assert s.quiz.enabled is False
+    assert s.quiz.dedup_verbatim_cap == 25
