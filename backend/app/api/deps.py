@@ -167,6 +167,21 @@ def get_tag_service(
     return TagService(session=db)
 
 
+def get_quiz_service(
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    """Construct QuizService — None when no LLM provider OR feature disabled."""
+    from app.services.quiz.quiz_service import QuizService
+
+    if not settings.quiz.enabled:
+        return None
+    llm = _get_llm_provider(settings)
+    if llm is None:
+        return None
+    return QuizService(session=db, llm=llm, settings=settings)
+
+
 def get_settings_service(
     settings: Settings = Depends(get_settings),
 ):
