@@ -44,6 +44,7 @@ Book Companion produces high-quality summaries but offers no active-recall loop,
 - **Annotation-seeded generation** — cut in Loop 4 (D33).
 - **Streaming question text token-by-token** — `LLMProvider` waits for full subprocess output. Mitigated with loading copy (D16/D28), not architecture change.
 - **Embedding-similarity dedup** — D6 prompt-list only; defer to v1.x if drift emerges.
+- **CLI parity for quiz authoring (G35)** — `bookcompanion quiz start/answer/stop` etc. is explicitly out of scope for v1; `export quiz-session` is the only CLI verb. A CLI quiz session is incoherent without rendered question shapes (MCQ buttons, spot-error layout); the UX is the primary surface.
 
 ---
 
@@ -229,9 +230,10 @@ JobQueueWorker (existing)
 | `QuizService` | NEW | Orchestrates session lifecycle, prompt assembly, LLM invocation, persistence. Mirrors `AIThreadService` in shape (constructor DI, async methods). |
 | `QuizPromptBuilder` | NEW (helper inside service module) | Assembles context: scope content (summaries OR full sections), recent N stems, themed-summary line from `quiz_dedup_state`, optional theme, recent-shape histogram. Token-budget enforcement via `tiktoken`. |
 | `LLMProvider` | Existing | Reused unchanged. Two prompt families introduced: `quiz_question_generation` and `quiz_answer_grading`, each with its own JSON schema. |
-| `JobQueueWorker` | Existing | Two new step types added to `ProcessingStep` enum: `QUIZ_PREGEN_Q1`, `QUIZ_ROLLUP`. |
+| `JobQueueWorker` | Existing | Two new step types added to `ProcessingStep` enum: `QUIZ_PREGEN_Q1`, `QUIZ_ROLLUP`. **Retry policy (G32):** both new steps inherit JobQueueWorker defaults EXCEPT — (a) `QUIZ_PREGEN_Q1`: `max_attempts=2` (one retry; if the LLM provider is unavailable, leave the slot empty rather than busy-looping the subprocess); (b) `QUIZ_ROLLUP`: `max_attempts=3` with exponential backoff. On terminal failure, both steps emit `quiz.<step>.failed` and complete-as-failed; user-visible impact is null `themes_summary` or null `Book.pre_drafted_q1_id`, both of which gracefully degrade per existing FRs. |
 | `ExportService` | Existing, extended | New method `export_quiz_session(session_id, fmt='markdown')`. New Jinja2 template at `app/templates/exports/quiz_session.md.j2`. Image URL sanitization re-used (CLAUDE.md gotcha #20). |
 | `SummarizerService` | Existing, lightly extended | On `summarize_book` completion (status=COMPLETED), enqueue a `QUIZ_PREGEN_Q1` job for the book. Single line addition. |
+| `BookService._re_import_book` | Existing, lightly extended (G15) | On re-import detection, before section delete-and-recreate, perform the quiz-side cleanup atomically in the same transaction: (1) flag all `quiz_questions` rows for this book `is_stale=true` (FR-64); (2) reset `quiz_dedup_state` row — `themes_summary=NULL`, `themes_summary_computed_at=NULL`, `last_rollup_question_count=0` (FR-64 + G24); (3) set `Book.pre_drafted_q1_id=NULL` (FR-82); (4) end any open `quiz_sessions` for this book with `status='abandoned', ended_at=now()` (E16); (5) enqueue a fresh `QUIZ_PREGEN_Q1` job (FR-82). |
 
 ### 6.3 Frontend module map {#frontend-module-map}
 
@@ -242,7 +244,8 @@ JobQueueWorker (existing)
 | `frontend/src/components/quiz/ScopePicker.vue` | NEW | All-Summaries vs Specific-Chapters radio + chapter multi-select + budget bar + theme input. |
 | `frontend/src/components/quiz/QuestionTurn.vue` | NEW | One question card. Loading / question / answer-input / feedback / self-assessment states. Per-shape rendering (MCQ / open / spot-error). |
 | `frontend/src/components/quiz/SessionTally.vue` | NEW | Header strip showing session + lifetime tallies. |
-| `frontend/src/components/quiz/PastQAPanel.vue` | NEW | Collapsible session-grouped history (D26) + Themes-covered pill row (D25). |
+| `frontend/src/components/quiz/PastQAPanel.vue` | NEW | Collapsible session-grouped history (D26). |
+| `frontend/src/components/quiz/ThemesCoveredPanel.vue` | NEW | Renders `themes_summary` as paragraph + clickable theme chips that seed `ScopePicker`'s theme input (D25, FR-63). Mounted inside `PastQAPanel.vue` per §11.1. |
 | `frontend/src/components/quiz/ExportSessionModal.vue` | NEW | Triggers `export_quiz_session`; downloads `.md`. |
 | `frontend/src/stores/quizSessions.ts` | NEW | Pinia store mirroring `aiThreads.ts` shape. |
 | `frontend/src/api/quizSessions.ts` | NEW | Typed REST client for `/api/v1/.../quiz-sessions`. |
@@ -274,7 +277,7 @@ JobQueueWorker (existing)
 | FR-14 | Token counting MUST use `tiktoken` with `cl100k_base` encoding on the chapter's `content_md`. [S4] |
 | FR-15 | The optional theme input MUST be a freeform text field (max 200 characters) with placeholder `"e.g., focus on prospect theory"`. [D19] |
 | FR-16 | On Quiz-tab open, the scope picker MUST default per the priority order: (1) recent reading activity within 48h → `Specific Chapters` with those chapters checked [D31]; (2) last-used scope for this book [D22]; (3) `All Summaries`. |
-| FR-17 | "Recent reading activity" is defined as: for any device's `ReadingState` row where `book_id == this book` AND `updated_at >= now() - 48h`, the `section_id` referenced. Resolved client-side from a single `GET /api/v1/reading-state/by-book/{id}` response. |
+| FR-17 | "Recent reading activity" is defined as: for any device's `ReadingState` row where `book_id == this book` AND `updated_at >= now() - 48h`, the `section_id` referenced. Resolved client-side from a single `GET /api/v1/reading-state/by-book/{id}` response. **Contract requirement (G2):** `/by-book/{id}` MUST return all-devices rows for that book — NOT user-agent-filtered like `/continue` (per CLAUDE.md gotcha #27). If the existing endpoint filters by user-agent, /plan must extend it (cheap: drop the UA predicate); otherwise verify before relying on it. |
 | FR-18 | When `Specific Chapters` is selected with zero chapters, the `Start Quiz` button MUST be disabled with helper copy `"Pick at least one chapter."` |
 
 ### 7.3 Session lifecycle {#session-lifecycle}
@@ -282,10 +285,11 @@ JobQueueWorker (existing)
 | ID | Requirement |
 |----|-------------|
 | FR-20 | `POST /api/v1/books/{book_id}/quiz-sessions` MUST validate `scope.mode ∈ {'all_summaries', 'specific_chapters'}`, validate provided `section_ids` are all content-type sections of this book, and 400 on invalid input. |
+| FR-19 | **Active-session resumption (G28):** on Quiz tab mount, if a `quiz_sessions` row exists for this book with `status='in_progress'` (any device), the tab MUST display a banner `"You have a session in progress — [Resume] or [Stop & start a new one]"` instead of immediately rendering the scope picker. The Resume action loads the session into `ActiveSession.vue` (re-fetches via §9.8); the Stop action calls `POST /stop` and then renders the scope picker. This makes cross-device behavior deterministic instead of relying on NFR-06's vague "newest wins". |
 | FR-21 | On valid session start, `QuizService.start_session()` MUST persist a `quiz_sessions` row (status='in_progress'), and (if eligible) D29 warm-up MUST insert 1–2 `quiz_questions` rows with `warm_up=true` BEFORE the first non-warm-up question. |
 | FR-22 | The pre-drafted Q1 slot MUST be consumed only when **all** the following hold: (a) scope is `all_summaries`; (b) `theme` is null/empty; (c) D29 warm-up produced zero candidates; (d) `Book.pre_drafted_q1_id` references a non-stale `quiz_questions` row. On consume: link the question to the new session (`session_id` updated), flip `is_pregen=false`, set `Book.pre_drafted_q1_id=NULL`, return `queue_hit=true`. If any condition fails, the slot is **not** touched and the cold-start generation path runs; the slot persists for a future eligible session or until invalidated by re-import or overwritten by a fresh pregen job. [D27, S3] |
 | FR-23 | If pre-gen slot is consumed, the response MUST omit a generation-loading state on the frontend (UI gates on `queue_hit`). |
-| FR-24 | `POST /api/v1/quiz-sessions/{sid}/stop` MUST set `quiz_sessions.status='completed'` and `ended_at=now()`, AND enqueue a `processing_jobs` row with `step='QUIZ_ROLLUP'`. |
+| FR-24 | `POST /api/v1/quiz-sessions/{sid}/stop` MUST set `quiz_sessions.status='completed'` (or `'abandoned'` per FR-25) and `ended_at=now()`. **Enqueue gate (G1/G7):** enqueue a `processing_jobs` row with `step='QUIZ_ROLLUP'` UNLESS the session resolved as `abandoned` (zero answered questions). The worker handler additionally noops if the non-stale stem count is below `settings.quiz.dedup_verbatim_cap` and below the FR-61 delta gate. **Atomicity (G10):** the status UPDATE and the rollup INSERT MUST be wrapped in a single async transaction; if the INSERT fails (integrity / DB busy), the UPDATE is rolled back and the route returns `500`. **Idempotency (G10):** stopping an already-`completed` or already-`abandoned` session MUST return `200` with the current session state (NOT 409) so a retried client click is safe. |
 | FR-25 | A session that has zero non-skipped questions MUST be marked `status='abandoned'` on stop, NOT `completed`. Export action is disabled for abandoned sessions. |
 | FR-26 | If the user closes the tab mid-question (last turn is a posed question with no answer), the unanswered question MUST NOT be persisted to dedup history. Implementation: `quiz_questions.answered_at IS NULL AND created_at < now() - 24h` rows are excluded from the dedup query. [D11] |
 
@@ -293,11 +297,11 @@ JobQueueWorker (existing)
 
 | ID | Requirement |
 |----|-------------|
-| FR-30 | Question generation MUST invoke `LLMProvider.generate(prompt, json_schema=question_schema)`. The strict JSON schema (S6) requires fields: `stem` (str), `concept_label` (str, lower-cased server-side), `citation` (object: `section_id`, `section_title`, `snippet`), `shape` (enum: `mcq`, `open`, `spot_error`), `bloom_level` (enum: `remember`, `understand`, `apply`, `analyze`, `evaluate`), and shape-conditional fields: `mcq_options` (array of 4 strings) when `shape='mcq'`; `intended_error` + `error_explanation` when `shape='spot_error'`. [D32, D40] |
+| FR-30 | Question generation MUST invoke `LLMProvider.generate(prompt, json_schema=question_schema)`. The strict JSON schema (S6) requires fields: `stem` (str), `concept_label` (str, lower-cased server-side), `citation` (object: `section_id`, `section_title`, `snippet`), `shape` (enum: `mcq`, `open`, `spot_error`), `bloom_level` (enum: `remember`, `understand`, `apply`, `analyze`, `evaluate`, `create`), and shape-conditional fields: `mcq_options` (array of 4 strings) when `shape='mcq'`; `intended_error` + `error_explanation` when `shape='spot_error'`. [D32, D40] |
 | FR-31 | The generation prompt MUST include: (a) scope content (summaries OR full sections per scope mode); (b) recent up-to-50 verbatim non-stale stems for this book [D6, S2]; (c) themed-summary line from `quiz_dedup_state.themes_summary` if present [D13]; (d) optional theme; (e) recent-shape histogram of last 5 turns + target distribution `{mcq:0.4, open:0.45, spot_error:0.15}` [S5]; (f) Bloom-verb instruction list. |
 | FR-32 | If the structured response fails JSON-schema validation OR `shape='spot_error'` but `intended_error` is empty/null, the service MUST retry generation once with the validator error pasted into the prompt. On second failure, return HTTP 502 with `{"detail": "Could not generate a question — try again."}`. The failed attempts MUST NOT be persisted as `quiz_questions`. [S6, error journey] |
 | FR-33 | For `shape='spot_error'`, the service MUST additionally validate that `intended_error` does NOT match a known-correct fact in the source: a heuristic check that the stem's text differs from the citation snippet by ≥1 negation/quantitative-flip token (cheap regex; if match, treat as validation failure). |
-| FR-34 | The generated `concept_label` MUST be normalized server-side: `.strip().lower()`. Stored as-emitted-then-normalized in `quiz_questions.concept_label`. [S8] |
+| FR-34 | The generated `concept_label` MUST be normalized server-side via the following deterministic pipeline (in order): (1) `.strip()`; (2) `.lower()`; (3) strip trailing parenthetical via regex `r'\s*\([^)]*\)\s*$'` (so "loss aversion (kahneman)" → "loss aversion"); (4) replace hyphens and underscores with single space (`re.sub(r'[-_]+', ' ', ...)`); (5) collapse internal whitespace (`re.sub(r'\s+', ' ', ...).strip()`). Stored as-normalized in `quiz_questions.concept_label`. **Why (G16):** with only `.strip().lower()`, agent drift across runs ("Loss Aversion (Kahneman)" vs "loss-aversion" vs "loss aversion") would silently break the D29 warm-up `WHERE concept_label = ?` JOIN. The expanded normalization is exact-match-friendly without resorting to fuzzy/LIKE queries. [S8] |
 | FR-35 | Every generated question MUST be persisted with `is_stale=false`, `is_pregen=false` (unless the pre-gen worker), `skip_count=0`, `warm_up=<bool>`, `created_at=now()`, `session_id=<id>`. |
 
 ### 7.5 Question turn UX & lifecycle {#question-turn-ux-and-lifecycle}
@@ -307,12 +311,14 @@ JobQueueWorker (existing)
 | FR-40 | While generation is in flight (no `queue_hit`), the UI MUST show the verbatim copy `"Reading the book to draft your question…"` with a spinner. [D16] |
 | FR-41 | Citation visibility MUST be shape-conditional: hidden until after-answer for `mcq` and `spot_error`; shown alongside the question for `open`. [D14] |
 | FR-42 | Per-turn controls MUST include: `Skip`, `Explain`, `Override`, `Already asked` (link). |
-| FR-43 | `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/skip` MUST: end the turn without recording an answer, increment `quiz_questions.skip_count`, NOT request self-assessment, and exclude this stem from the `recent N` dedup query going forward only when `skip_count >= 3` (S2/D37 soft-dedup). |
+| FR-43 | `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/skip` MUST: end the turn without recording an answer; **increment `skip_count` on every `quiz_questions` row whose `book_id` matches AND `stem` matches the skipped row's stem** (NOT only the row identified by `qid`) — implemented as `UPDATE quiz_questions SET skip_count = skip_count + 1 WHERE book_id=? AND stem=?`; NOT request self-assessment; and exclude that stem from the `recent N` dedup query going forward only when `skip_count >= 3` (S2/D37 soft-dedup). Per-stem (not per-row) increment is required because each generation produces a new row, so a per-row counter would never reach 3 in practice and D37 would be dead code. |
 | FR-44 | Before each question generation, `QuizPromptBuilder` MUST query the set of `concept_label`s with at least one non-stale `quiz_questions` row at `skip_count >= 3` for this book. If non-empty, the prompt MUST include the augmentation: `"The following concepts have been repeatedly skipped — if you choose to address any, use a noticeably different angle or aspect from prior stems: {comma-separated labels}."` [D37] |
 | FR-45 | `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/explain` MUST invoke `LLMProvider` with the `quiz_explain` prompt (system-prompt clause: "Clarify the term, scope, or intent of the question without revealing the answer."). The response MUST be persisted to `quiz_questions.explain_history` (JSON array). |
 | FR-46 | Soft cap: when `len(quiz_questions.explain_history) >= 2`, the UI MUST replace the `Explain` button with the inline copy `"Try answering or Skip"` and not call the endpoint. [D35] |
-| FR-47 | The "Already asked" link, when clicked, MUST: (a) call `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/discard` which sets `quiz_questions.discarded=true` AND adds the stem to a session-scoped negative-example list; (b) trigger a fresh `next_question` generation using the augmented prompt. The discarded question is NOT used for dedup but IS preserved in past Q&A as a discarded turn. |
+| FR-46a | **Explain history rendering (G3):** the UI MUST stack ALL prior explanations from `quiz_questions.explain_history` above the question card (oldest at the top, newest at the bottom), each prefixed `Clarification:` in muted text. The current question stem stays visible throughout. This preserves the user's reasoning context across multiple Explain clicks. |
+| FR-47 | The "Already asked" link, when clicked, MUST issue a single `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/discard` call. The backend orchestrates atomically (G33): (a) sets `quiz_questions.discarded=true` on the named row; (b) assembles the session-scoped negative-example list via `SELECT stem FROM quiz_questions WHERE session_id=? AND discarded=1` (G4 — no separate state column needed); (c) generates a fresh question using the augmented prompt with that list as additional negative examples; (d) returns `{discarded_question, next_question}` in the response so the frontend can update both turns in one render pass. The discarded question is NOT used for dedup but IS preserved in past Q&A as a discarded turn. If generation fails after the discard write, the discard stays committed and the route returns `502` — frontend handles by showing the toast and offering a manual "Next" click. |
 | FR-48 | Submit button MUST be disabled until: (open-ended) at least 1 character entered; (mcq) an option clicked; (spot_error) at least 1 character entered. |
+| FR-49 | **Double-click guards (G11/G14/G20):** Start-Quiz, Next-Question, and Submit-Answer buttons MUST be disabled the moment they are clicked and remain disabled until either the response returns OR a 5-second client-side fallback timer elapses (re-enables on timeout so a hung subprocess doesn't lock the UI). On response error, re-enable immediately. Personal-tool-scale rationale: backend `Idempotency-Key` headers were considered and rejected as over-engineering; FE guards alone close the realistic double-click risk. |
 
 ### 7.6 Answer grading & feedback {#answer-grading-and-feedback}
 
@@ -321,19 +327,19 @@ JobQueueWorker (existing)
 | FR-50 | `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/answer` MUST invoke `LLMProvider` with the `quiz_answer_grading` prompt and a strict JSON schema requiring fields: `feedback.correct` (str), `feedback.missing` (str), `feedback.actual` (str), `agent_verdict` (enum: `correct`, `partial`, `incorrect`). [D4, D41] |
 | FR-51 | While grading is in flight, the UI MUST show the verbatim copy `"Reading your answer alongside the book…"` [D28] |
 | FR-52 | The persisted `quiz_questions.feedback_json` MUST include all 3 feedback fields verbatim plus the agent verdict; `agent_verdict` MUST be hidden from the UI per S9. |
-| FR-53 | Self-assessment is captured via `PATCH /api/v1/quiz-sessions/{sid}/questions/{qid}` with body `{self_assessment: 'got_it'|'partial'|'missed'}`. Only one update per question is allowed; subsequent calls 409. |
+| FR-53 | Self-assessment is captured via `PATCH /api/v1/quiz-sessions/{sid}/questions/{qid}` with body `{self_assessment: 'got_it'|'partial'|'missed'}`. Only one update per question is allowed; subsequent calls 409. **Race-safe implementation (G9):** the route MUST use a conditional UPDATE — `UPDATE quiz_questions SET self_assessment=? WHERE id=? AND self_assessment IS NULL` — and treat `rowcount=0` as "already assessed" → return 409. A naive SELECT-then-UPDATE has a race window where two concurrent PATCHes both read NULL and both UPDATE silently. SQLite WAL + BEGIN IMMEDIATE gives the necessary atomicity. |
 | FR-54 | `POST /api/v1/quiz-sessions/{sid}/questions/{qid}/override` accepts `{note: str}` (max 500 chars) and stores `quiz_questions.override_note`. The override does NOT change `self_assessment` or any tally. [D15] |
-| FR-55 | The fatigue prompt: when the in-session non-warm-up turn count is a multiple of 10, the generation prompt for the NEXT question MUST instruct the agent to append the verbatim line `"Want to keep going or wrap up here?"` to the feedback turn. Implementation: pass `append_fatigue_prompt=True` to `QuizPromptBuilder` for that turn. [D36] |
+| FR-55 | The fatigue prompt: when the in-session non-warm-up turn count is a multiple of 10, **the GRADING prompt** for that turn's answer-grading invocation (NOT the question-generation prompt for the next turn) MUST instruct the agent to append the verbatim line `"Want to keep going or wrap up here?"` to the `feedback.actual` field. Implementation: pass `append_fatigue_prompt=True` to `QuizPromptBuilder.build_grading_prompt(...)` when `(non_warm_up_count % settings.quiz.fatigue_prompt_interval == 0)` and the count is non-zero. **Why (G5):** generation produces questions; grading produces feedback. The original wording wired the augmentation to question-generation, which would never reach the feedback surface. [D36] |
 
 ### 7.7 Dedup & themed-summary rollup {#dedup-and-themed-summary-rollup}
 
 | ID | Requirement |
 |----|-------------|
 | FR-60 | The "recent N stems" query is: `SELECT stem FROM quiz_questions WHERE book_id=? AND is_stale=0 AND discarded=0 AND skip_count<3 AND (warm_up=0 OR self_assessment IS NOT NULL) ORDER BY created_at DESC LIMIT 50`. [D6, S2, D37] |
-| FR-61 | The themed-summary rollup is computed by the `QUIZ_ROLLUP` background job AFTER `count(non-stale stems for book) > settings.quiz.dedup_verbatim_cap` (default 50). Below threshold, `quiz_dedup_state.themes_summary` stays NULL. [S7] |
+| FR-61 | The themed-summary rollup is computed by the `QUIZ_ROLLUP` background job AFTER `count(non-stale stems for book) > settings.quiz.dedup_verbatim_cap` (default 50) **AND** `(non_stale_count - quiz_dedup_state.last_rollup_question_count) >= settings.quiz.rollup_delta_threshold` (default 10) — the delta gate (G18) avoids re-running the LLM rollup at every session-end once the threshold is crossed. After a successful compute, the worker MUST set `quiz_dedup_state.last_rollup_question_count = current non_stale_count` and `themes_summary_computed_at = now()`. Below threshold, `quiz_dedup_state.themes_summary` stays NULL. [S7] |
 | FR-62 | The rollup prompt: "Summarize the recurring themes covered in these N+ quiz questions in 80–150 words. Output one paragraph; no bullets." Stored in `quiz_dedup_state.themes_summary`. [D13, D38] |
-| FR-63 | The Themes-covered panel (D25) MUST render `quiz_dedup_state.themes_summary` as a paragraph with each named theme rendered as a clickable chip; clicking a chip seeds the next session's theme input field. |
-| FR-64 | On book re-import (existing `_re_import_book` flow), all `quiz_questions` rows for the book MUST be flagged `is_stale=true`. Past Q&A panel still renders stale rows; dedup queries filter them out per FR-60. [D39] |
+| FR-63 | The Themes-covered panel (D25) MUST render `quiz_dedup_state.themes_summary` (consumed via the `GET /api/v1/books/{book_id}/quiz-sessions/lifetime-tally` endpoint, per FR-94 + §9.9) as a paragraph with each named theme rendered as a clickable chip; clicking a chip seeds the next session's theme input field. |
+| FR-64 | On book re-import (existing `_re_import_book` flow), all `quiz_questions` rows for the book MUST be flagged `is_stale=true`. The book's `quiz_dedup_state` row MUST also be reset: `themes_summary=NULL`, `themes_summary_computed_at=NULL`, `last_rollup_question_count=0` — otherwise stale themes would continue seeding generation prompts and rendering in the D25 Themes-covered panel after the book content has been replaced. The next `QUIZ_ROLLUP` enqueue (after a post-re-import session ends and the threshold is re-crossed) recomputes from non-stale stems only. Past Q&A panel still renders stale rows; dedup queries filter them out per FR-60. [D39] |
 
 ### 7.8 Warm-up phase {#warm-up-phase}
 
@@ -358,11 +364,11 @@ JobQueueWorker (existing)
 
 | ID | Requirement |
 |----|-------------|
-| FR-90 | `GET /api/v1/books/{book_id}/quiz-sessions` MUST return list of sessions ordered by `created_at` DESC with: `id`, `scope`, `theme`, `status`, `created_at`, `ended_at`, `question_count`, `tally` (`got_it`, `partial`, `missed`, `skipped`), `is_warm_up_session` (boolean). |
+| FR-90 | `GET /api/v1/books/{book_id}/quiz-sessions` MUST return list of sessions ordered by `created_at` DESC with: `id`, `scope`, `theme`, `status`, `created_at`, `ended_at`, `question_count`, `tally` (`got_it`, `partial`, `missed`, `skipped`), `is_warm_up_session` (boolean). **`is_warm_up_session` is derived (G22)** — computed via `EXISTS (SELECT 1 FROM quiz_questions WHERE session_id = s.id AND warm_up = 1)` per row. No denormalization; personal-tool scale absorbs the per-session subquery. |
 | FR-91 | `GET /api/v1/quiz-sessions/{sid}` returns the full session with all questions (including their feedback, citations, self-assessment, override, skip status, warm-up flag, discarded flag). Use `selectinload(QuizSession.questions)` per CLAUDE.md gotcha #1. |
 | FR-92 | The Past-Q&A panel MUST group by session with collapsible headers; default expansion = most-recent session only. [D26] |
 | FR-93 | Stale-flagged turns (post-re-import) MUST render with a "stale (re-imported)" badge but remain readable. |
-| FR-94 | Lifetime tally is computed as the SQL aggregation `SELECT count(self_assessment) FILTER (WHERE self_assessment='got_it'), ... FROM quiz_questions q JOIN quiz_sessions s ON q.session_id = s.id WHERE s.book_id = ? AND q.is_stale = 0`. Returned via `GET /api/v1/books/{book_id}/quiz-sessions/lifetime-tally`. |
+| FR-94 | Lifetime tally is computed as the SQL aggregation `SELECT count(self_assessment) FILTER (WHERE self_assessment='got_it'), ... FROM quiz_questions q JOIN quiz_sessions s ON q.session_id = s.id WHERE s.book_id = ? AND q.is_stale = 0`. Returned via `GET /api/v1/books/{book_id}/quiz-sessions/lifetime-tally`. The same response MUST also include `themes_summary` (nullable string) read from `quiz_dedup_state.themes_summary` for this book — see §9.9 example. This single endpoint is the source of truth for both the tally header (D23) and the themes-covered panel (D25), avoiding two round-trips on tab mount. |
 
 ### 7.11 Export {#export}
 
@@ -372,7 +378,7 @@ JobQueueWorker (existing)
 | FR-101 | The exported Markdown MUST include for each turn: question stem, citation (section title + snippet), shape, user answer (or "skipped" / "discarded" badge), feedback fields (correct/missing/actual), self-assessment, override note (if any), warm-up flag (if any). |
 | FR-102 | Image URLs in the exported content MUST be sanitized via the existing image-URL-sanitization helper (CLAUDE.md gotcha #20). |
 | FR-103 | A new Typer command `bookcompanion export quiz-session <session_id> [-o file.md]` MUST be wired in `cli/commands/export.py`. |
-| FR-104 | UI: the `ExportSessionModal.vue` MUST POST to `GET /api/v1/quiz-sessions/{sid}/export?fmt=markdown` (returns text/markdown) and trigger a browser download with filename `{book_slug}_quiz_session_{sid}.md`. |
+| FR-104 | UI: the `ExportSessionModal.vue` MUST issue a `GET /api/v1/quiz-sessions/{sid}/export?fmt=markdown` (returns `text/markdown`) and trigger a browser download with filename `{book_slug}_quiz_session_{sid}.md`. |
 | FR-105 | Export of an `abandoned` session MUST 404 with `{"detail": "Cannot export an abandoned session — answer at least one question first."}`. |
 
 ---
@@ -384,13 +390,14 @@ JobQueueWorker (existing)
 | NFR-01 | Performance — Pre-gen Q1 latency | When `Book.pre_drafted_q1_id` is populated and user picks default scope with no theme, time from `Start Quiz` click to first-question render MUST be <500ms (p95). Verified by Playwright timing. |
 | NFR-02 | Performance — Cold-start generation | LLM-bound (5–15s typical); UI MUST NOT block past first paint of D16 loading state (<200ms from click to spinner visible). |
 | NFR-03 | Performance — Token budget enforcement | The full prompt sent to `LLMProvider.generate()` MUST never exceed `min(settings.llm.context_budget_tokens, 180000)`. Validated server-side via `tiktoken` count before subprocess invocation; on overflow, return 500 with `{"detail": "scope too large"}` (this should be unreachable given S1 budget bar). |
-| NFR-04 | Reliability — Provider absence | Quiz tab and all read-only routes (history, lifetime tally) MUST function with `LLMProvider is None`. Only generation-path routes (start_session, next_question, answer, explain, discard) MUST 503 with banner-trigger response. |
+| NFR-04 | Reliability — Provider absence & timeouts | Quiz tab and all read-only routes (history, lifetime tally) MUST function with `LLMProvider is None`. Only generation-path routes (start_session, next_question, answer, explain, discard) MUST 503 with banner-trigger response. **LLM subprocess timeout (G13):** when the Claude/Codex CLI subprocess does not return within `settings.llm.subprocess_timeout_seconds`, the route MUST surface HTTP `504` with `{"detail": "LLM did not respond in time — try again."}` so frontend toast logic differentiates timeout (retry) from absent provider (banner). |
 | NFR-05 | Data — Re-import safety | Re-import MUST not orphan `quiz_questions` (kept stale-flagged); no FK cascades fire on `BookSection` re-creation since `quiz_questions.citation` is JSON, not a FK. |
 | NFR-06 | Concurrency — Same book, multiple devices | Two open Quiz tabs on the same book may write concurrently; "newest wins" via `updated_at`. No explicit conflict-resolution UI per personal-tool scope. |
 | NFR-07 | Accessibility | All interactive controls (Skip / Explain / Override / Already-asked / chapter checkboxes / self-assessment buttons) MUST have `aria-label`s; keyboard navigation supported (tab order matches visual order); color contrast meets WCAG 2.2 AA. |
 | NFR-08 | Internationalization | English-only in v1; copy strings centralized in `frontend/src/components/quiz/copy.ts` to ease future i18n. |
 | NFR-09 | Privacy | Quiz data is local-only (SQLite); no telemetry; no third-party calls beyond the user's own Claude/Codex CLI subprocess. |
 | NFR-10 | Logging | Every LLM invocation MUST emit a structured log event (`structlog`): `quiz.generate.started`, `.completed`, `.failed` with `book_id`, `session_id`, `latency_ms`, `input_tokens`, `output_tokens`. |
+| NFR-10a | Outcome metrics (G31) | For each LLM-bound route (`start_session`, `next_question`, `answer`, `explain`, `discard`), the response handler MUST emit a `quiz.<step>.outcome` structured event with `outcome ∈ {success, schema_retry, schema_failed, timeout, llm_unavailable}`. A periodic grep script over the structlog file gives an honest signal on dupe / malformed-JSON / timeout drift without a metrics backend (personal-tool scale). |
 
 ---
 
@@ -480,7 +487,10 @@ POST /api/v1/quiz-sessions/{session_id}/next-question
 }
 ```
 
-**Errors:** `502` generation failed twice (`{"detail": "Could not generate a question — try again."}`).
+**Errors:**
+- `502` generation failed twice (`{"detail": "Could not generate a question — try again."}`).
+- `503` LLM provider unavailable (per NFR-04).
+- `504` LLM subprocess timeout (per G13 patch on NFR-04).
 
 ### 9.4 Submit an answer {#submit-an-answer}
 
@@ -507,7 +517,11 @@ POST /api/v1/quiz-sessions/{session_id}/questions/{question_id}/answer
 }
 ```
 
-**Errors:** `502` grading failed.
+**Errors:**
+- `502` grading failed (LLM emitted invalid output).
+- `503` LLM provider unavailable (per NFR-04).
+- `504` LLM subprocess timeout (per G13 patch on NFR-04).
+- `500` unexpected subprocess failure / non-zero exit (`{"detail": "Could not grade your answer — try again."}`).
 
 ### 9.5 Record self-assessment {#record-self-assessment}
 
@@ -531,7 +545,24 @@ POST /api/v1/quiz-sessions/{session_id}/questions/{question_id}/override   body:
 POST /api/v1/quiz-sessions/{session_id}/questions/{question_id}/discard
 ```
 
-All return `200` with the updated question shape. `/explain` returns `{question, explanation: str}`.
+All return `200` with the updated question shape. `/explain` returns `{question, explanation: str}` — see §9.6.1 for the full response schema. Generation-path routes (`/explain`, `/discard`) MUST also surface `503` (LLM unavailable per NFR-04) and `504` (LLM subprocess timeout per G13).
+
+### 9.6.1 /explain response schema {#explain-response-schema}
+
+```json
+{
+  "question": {
+    "id": 319, "session_id": 43, "stem": "...", "shape": "open",
+    "concept_label": "anchoring effect",
+    "citation": {"section_id": 12, "section_title": "Chapter 6", "snippet": "..."},
+    "explain_history": ["First explanation text...", "Second explanation text..."],
+    "warm_up": false, "queue_hit": false, "created_at": "..."
+  },
+  "explanation": "Second explanation text..."
+}
+```
+
+The `explanation` field is the just-generated string (also appended verbatim to `quiz_questions.explain_history` per FR-45). The `question.explain_history` array reflects the post-append state. Frontend should append to local store from `explain_history` to keep it the source of truth.
 
 ### 9.7 Stop session {#stop-session}
 
@@ -563,6 +594,10 @@ GET /api/v1/books/{book_id}/quiz-sessions/lifetime-tally
 }
 ```
 
+### 9.x Forward-compat notes {#forward-compat-notes}
+
+- **Pagination (G12):** v1 omits pagination on §9.1 (sessions list) and §9.8 (session detail). Realistic personal-scale ceiling is ~150 sessions/book × ~50 Q/session. If a book ever crosses 200 sessions or a session crosses 50 questions, add `?limit&cursor` to both endpoints.
+
 ### 9.10 Export session {#export-session}
 
 ```
@@ -587,7 +622,7 @@ CREATE TABLE quiz_sessions (
     theme TEXT,                                   -- nullable; max 200 chars
     status TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'abandoned')),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- ORM model uses onupdate=func.now() (G19); SQLite has no auto-update.
     ended_at DATETIME
 );
 CREATE INDEX ix_quiz_sessions_book_status ON quiz_sessions(book_id, status);
@@ -618,7 +653,13 @@ CREATE TABLE quiz_questions (
     is_pregen INTEGER NOT NULL DEFAULT 0,         -- bool; true while sitting in Book.pre_drafted_q1_id
     is_stale INTEGER NOT NULL DEFAULT 0,          -- bool; flipped on re-import (D39)
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    answered_at DATETIME
+    answered_at DATETIME,
+    -- Shape-conditional integrity (belt-and-suspenders for FR-30 strict-schema):
+    CHECK (
+      (shape = 'mcq'        AND mcq_options_json IS NOT NULL AND intended_error IS NULL AND error_explanation IS NULL)
+      OR (shape = 'spot_error' AND intended_error IS NOT NULL AND error_explanation IS NOT NULL AND mcq_options_json IS NULL)
+      OR (shape = 'open'       AND mcq_options_json IS NULL AND intended_error IS NULL AND error_explanation IS NULL)
+    )
 );
 CREATE INDEX ix_quiz_questions_book_dedup
   ON quiz_questions(book_id, is_stale, discarded, skip_count, created_at DESC);
@@ -699,8 +740,8 @@ BookOverviewView (existing, extended)
 
 | State slice | Lives in | Notes |
 |-------------|----------|-------|
-| Sessions list, lifetime tally, themes summary | `useQuizSessionsStore` (Pinia) | Loaded on tab mount; refreshed on session-stop. |
-| Active session + current question + feedback + tally | `useQuizSessionsStore.activeSession` | Optimistic updates on submit; rolled back on API error. |
+| Sessions list, lifetime tally, themes summary | `useQuizSessionsStore` (Pinia) | Loaded on tab mount; refreshed on session-stop. **Mount fetch shape (G34):** the store issues `GET §9.1` (sessions + lifetime_tally) and `GET §9.9` (lifetime-tally + themes_summary) in **parallel** — each endpoint stays single-purpose and the parallel fan-out costs one round-trip's worth of latency. The store reconciles `lifetime_tally` from §9.9 (canonical) over §9.1's mirror. |
+| Active session + current question + feedback + tally | `useQuizSessionsStore.activeSession` | Optimistic updates on submit; rolled back on API error. **Optimistic-rollback UX (G30):** on `409` (self-assessment already recorded by another device), revert the local click AND show toast `"Already recorded as <verdict> — refresh to see latest."`; on `5xx`, revert + toast `"Couldn't save — try again."`. After either, re-render the question from the server-side state. |
 | Scope picker selection (mode, sections, theme) | Local component state in `ScopePicker.vue` | Persisted to `localStorage` keyed by `quiz:lastScope:{bookId}` for D22. **Trade-off:** localStorage is per-device, so a user on a second device will see the global default (D31 reading-state activity, then `All Summaries`) instead of the last-used scope from their primary device. Acceptable for v1 personal-tool scope; revisit only if cross-device usage becomes common. |
 | Reading-state recency for D31 default | Computed from `useReadingStateStore` (existing) | Read-only, on tab mount. |
 | Quiz-tab active query param | `route.query.tab` | Synced via `router.replace()` — no separate state. |
@@ -763,6 +804,7 @@ New nested `QuizConfig` in `app/config.py`:
 | `BOOKCOMPANION_QUIZ__ENABLED` | `True` | Master switch; when false, tab renders banner-only and routes 503. |
 | `BOOKCOMPANION_QUIZ__SPECIFIC_CHAPTERS_TOKEN_BUDGET` | `60000` | S1 — budget bar 100% reading. |
 | `BOOKCOMPANION_QUIZ__DEDUP_VERBATIM_CAP` | `50` | S2 — N for recent-stem list. |
+| `BOOKCOMPANION_QUIZ__ROLLUP_DELTA_THRESHOLD` | `10` | G18 — minimum new-stems delta before re-running the themed rollup once the cap is crossed. |
 | `BOOKCOMPANION_QUIZ__SHAPE_TARGET_DISTRIBUTION` | `{"mcq": 0.4, "open": 0.45, "spot_error": 0.15}` | S5 — passed to prompt as nudge. |
 | `BOOKCOMPANION_QUIZ__WARM_UP_LOOKBACK_SESSIONS` | `3` | D29 — N=3. |
 | `BOOKCOMPANION_QUIZ__WARM_UP_MAX_QUESTIONS` | `2` | D29 — up to 2. |
