@@ -11,8 +11,7 @@ You are grading a reader's answer to a comprehension question, grounded ONLY in 
 
 ## Output
 Return JSON conforming to the grading schema with fields:
-- `verdict`: one of "correct", "partial", "missed"
-- `feedback`: one paragraph explaining what the reader got right and what (if anything) is missing or wrong, citing the passage.
-{% if append_fatigue_prompt %}
-- After your feedback, end with the literal sentence: "Want to keep going or wrap up here?"
-{% endif %}
+- `feedback.correct` — one short clause noting what the reader got right (or "" if nothing applies).
+- `feedback.missing` — what the reader missed or got wrong (or "").
+- `feedback.actual` — the source-grounded answer, with section title + brief snippet.{% if append_fatigue_prompt %} End this field with the literal sentence: "Want to keep going or wrap up here?"{% endif %}
+- `agent_verdict` — one of "correct", "partial", "incorrect" (backend-only, NOT shown to user).

@@ -29,6 +29,14 @@ class QuizBudgetError(BookCompanionError):
     """Raised when specific_chapters scope exceeds the 60k token budget (S1)."""
 
 
+class QuizSoftCapError(BookCompanionError):
+    """Raised when the per-question explain soft cap (FR-46) is hit. HTTP 409."""
+
+
+class QuizNotFoundError(BookCompanionError):
+    """Raised when a quiz_questions row referenced by an action does not exist."""
+
+
 class SummarizationError(BookCompanionError):
     """LLM summarization errors.
 

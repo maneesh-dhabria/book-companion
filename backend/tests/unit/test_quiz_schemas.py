@@ -30,6 +30,9 @@ def test_feedback_schema_strict():
     assert FEEDBACK_SCHEMA["additionalProperties"] is False
     required = set(FEEDBACK_SCHEMA["required"])
     assert {"feedback", "agent_verdict"}.issubset(required)
+    feedback_props = FEEDBACK_SCHEMA["properties"]["feedback"]
+    assert feedback_props["additionalProperties"] is False
+    assert set(feedback_props["required"]) == {"correct", "missing", "actual"}
     assert FEEDBACK_SCHEMA["properties"]["agent_verdict"]["enum"] == [
         "correct",
         "partial",

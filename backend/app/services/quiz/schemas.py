@@ -64,8 +64,27 @@ FEEDBACK_SCHEMA = {
     "additionalProperties": False,
     "required": ["feedback", "agent_verdict"],
     "properties": {
-        "feedback": {"type": "string", "minLength": 1},
+        "feedback": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["correct", "missing", "actual"],
+            "properties": {
+                "correct": {"type": "string"},
+                "missing": {"type": "string"},
+                "actual": {"type": "string"},
+            },
+        },
         "agent_verdict": {"enum": ["correct", "partial", "incorrect"]},
+    },
+}
+
+
+EXPLAIN_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["explanation"],
+    "properties": {
+        "explanation": {"type": "string", "minLength": 1},
     },
 }
 

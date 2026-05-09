@@ -13,9 +13,7 @@ def test_trailing_parenthetical_dropped():
 
 
 def test_internal_parenthetical_kept():
-    assert (
-        normalize_concept_label("loss (asymmetric) aversion") == "loss (asymmetric) aversion"
-    )
+    assert normalize_concept_label("loss (asymmetric) aversion") == "loss (asymmetric) aversion"
 
 
 def test_hyphens_underscores_become_spaces():

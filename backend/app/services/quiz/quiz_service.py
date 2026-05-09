@@ -20,11 +20,13 @@ from app.db.repositories.quiz_session_repo import QuizSessionRepository
 from app.exceptions import (
     QuizBudgetError,
     QuizGenerationError,
+    QuizNotFoundError,
+    QuizSoftCapError,
     QuizValidationError,
 )
 from app.services.quiz.normalize import normalize_concept_label
 from app.services.quiz.prompt_builder import QuizPromptBuilder
-from app.services.quiz.schemas import QUESTION_SCHEMA
+from app.services.quiz.schemas import EXPLAIN_SCHEMA, FEEDBACK_SCHEMA, QUESTION_SCHEMA
 from app.services.quiz.token_counter import count_tokens
 
 if TYPE_CHECKING:
@@ -365,22 +367,145 @@ class QuizService:
                 break
         return out
 
-    async def grade_answer(self, **kwargs):
-        raise NotImplementedError("Filled in by T13")
+    async def grade_answer(self, *, question_id: int, user_answer: str) -> dict:
+        """FR-50/52/55: invoke grading prompt with strict schema. Persist
+        feedback_json + agent_verdict + user_answer; return UI-shape dict
+        with `feedback` (3-field) but NO ``agent_verdict`` (S9).
+        """
+        q = await self._get_question_or_raise(question_id)
+        citation = json.loads(q.citation_json or "{}")
+        non_warm_up_count = await self._count_non_warm_up_answered(q.session_id)
+        # FR-55: only when count is non-zero AND a multiple of fatigue_prompt_interval
+        interval = self.settings.quiz.fatigue_prompt_interval
+        append_fatigue = (
+            q.session_id is not None
+            and non_warm_up_count > 0
+            and (non_warm_up_count + 1) % interval == 0
+        )
+        prompt = self.builder.build_grading_prompt(
+            stem=q.stem,
+            citation=citation.get("snippet", ""),
+            user_answer=user_answer,
+            append_fatigue_prompt=append_fatigue,
+        )
+        resp = await self.llm.generate(prompt, json_schema=FEEDBACK_SCHEMA)
+        try:
+            data = json.loads(resp.content)
+            jsonschema.validate(data, FEEDBACK_SCHEMA)
+        except (json.JSONDecodeError, jsonschema.ValidationError) as e:
+            raise QuizGenerationError(f"Grading response invalid: {e}") from e
+        q.user_answer = user_answer
+        q.feedback_json = json.dumps(data["feedback"])
+        q.agent_verdict = data["agent_verdict"]
+        await self.session.flush()
+        return {
+            "question_id": q.id,
+            "feedback": data["feedback"],  # S9: agent_verdict NOT exposed
+        }
 
-    async def skip_question(self, **kwargs):
-        raise NotImplementedError("Filled in by T13")
+    async def skip_question(self, *, question_id: int) -> dict:
+        """FR-43: per-stem skip — every row with the same stem in this book
+        has skip_count incremented (NOT only the named row). Returns the
+        affected rowcount.
+        """
+        q = await self._get_question_or_raise(question_id)
+        affected = await self.question_repo.increment_skip_for_stem(q.book_id, q.stem)
+        await self.session.flush()
+        return {"question_id": q.id, "rows_affected": affected}
 
-    async def explain_question(self, **kwargs):
-        raise NotImplementedError("Filled in by T13")
+    async def explain_question(self, *, question_id: int) -> dict:
+        """FR-45/46: invoke explain prompt; persist into ``explain_history_json``.
+        Soft cap: when len(history) >= explain_soft_cap, refuse with
+        QuizSoftCapError (HTTP 409).
+        """
+        q = await self._get_question_or_raise(question_id)
+        history = json.loads(q.explain_history_json or "[]")
+        if len(history) >= self.settings.quiz.explain_soft_cap:
+            raise QuizSoftCapError(
+                f"Explain soft cap reached ({self.settings.quiz.explain_soft_cap})"
+            )
+        citation = json.loads(q.citation_json or "{}")
+        prompt = self.builder.build_explain_prompt(
+            stem=q.stem,
+            citation=citation.get("snippet", ""),
+            prior_explains=history,
+        )
+        resp = await self.llm.generate(prompt, json_schema=EXPLAIN_SCHEMA)
+        try:
+            data = json.loads(resp.content)
+            jsonschema.validate(data, EXPLAIN_SCHEMA)
+        except (json.JSONDecodeError, jsonschema.ValidationError) as e:
+            raise QuizGenerationError(f"Explain response invalid: {e}") from e
+        history.append(data["explanation"])
+        q.explain_history_json = json.dumps(history)
+        await self.session.flush()
+        return {"explanation": data["explanation"], "explain_history": history}
 
-    async def override_verdict(self, **kwargs):
-        raise NotImplementedError("Filled in by T13")
+    async def override_verdict(self, *, question_id: int, note: str) -> dict:
+        """FR-54: store override note; does NOT change self_assessment/tally."""
+        if len(note) > self.settings.quiz.override_note_max_chars:
+            raise QuizValidationError(
+                f"override_note exceeds {self.settings.quiz.override_note_max_chars} chars"
+            )
+        q = await self._get_question_or_raise(question_id)
+        q.override_note = note
+        await self.session.flush()
+        return {"question_id": q.id, "override_note": note}
 
-    async def discard_question(self, **kwargs):
-        raise NotImplementedError("Filled in by T13")
+    async def discard_question(self, *, question_id: int, scope_content: str | None = None) -> dict:
+        """FR-47/G33: atomically discard the named row, then generate a
+        replacement using the session's accumulated discarded-stem list as
+        negative examples (G4). Returns ``{discarded_question, next_question}``.
+        """
+        q = await self._get_question_or_raise(question_id)
+        if q.session_id is None:
+            raise QuizValidationError("Cannot discard a question outside a session")
+        await self.question_repo.discard(q.id)
+        await self.session.flush()
+        # FR-47: generate the next question. The dedup payload includes the
+        # newly-discarded stem because `recent_stems` reads `discarded=0` —
+        # we explicitly fetch session-discards and weave them into the prompt
+        # via the recent_stems channel (cheap re-use, avoids a new template).
+        discarded_stems = await self.question_repo.discarded_stems_for_session(q.session_id)
+        # Inject the discarded stems on top of the standard recent_stems list.
+        # The simplest path: temporarily extend the standard prompt by passing
+        # `theme=None` and letting `recent_stems` (already including discarded
+        # via book history) carry duplicates. For now we forward via theme as
+        # an "Avoid these stems" signal.
+        next_qq = await self.generate_question(
+            book_id=q.book_id,
+            session_id=q.session_id,
+            scope_content=scope_content or "",
+            theme=("Avoid the following discarded stems verbatim: " + " | ".join(discarded_stems))
+            if discarded_stems
+            else None,
+            warm_up=False,
+        )
+        return {
+            "discarded_question": {"id": q.id, "discarded": True},
+            "next_question": {"id": next_qq.id, "stem": next_qq.stem},
+        }
 
     # ---- helpers ---------------------------------------------------------
+
+    async def _get_question_or_raise(self, question_id: int) -> QuizQuestion:
+        q = await self.session.get(QuizQuestion, question_id)
+        if q is None:
+            raise QuizNotFoundError(f"quiz_questions row {question_id} not found")
+        return q
+
+    async def _count_non_warm_up_answered(self, session_id: int | None) -> int:
+        """FR-55: count of non-warm-up turns already answered in this session."""
+        if session_id is None:
+            return 0
+        rows = await self.session.execute(
+            select(QuizQuestion.id).where(
+                QuizQuestion.session_id == session_id,
+                QuizQuestion.warm_up.is_(False),
+                QuizQuestion.user_answer.isnot(None),
+            )
+        )
+        return len(rows.all())
 
     async def _validate_scope(self, book_id: int, scope: dict) -> None:
         """FR-20: scope.mode must be enum + section_ids must belong to book."""
