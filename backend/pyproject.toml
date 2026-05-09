@@ -38,6 +38,8 @@ dependencies = [
     "apscheduler>=3.10.0",
     "pysbd>=0.3.4",
     "mutagen>=1.47.0",
+    # Token counting (quiz feature — cl100k_base for prompt budget enforcement)
+    "tiktoken>=0.7.0",
 ]
 
 [project.optional-dependencies]
