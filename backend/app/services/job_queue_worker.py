@@ -422,6 +422,10 @@ class JobQueueWorker:
                         bg_job.error_message = (
                             f"{completed_count} sections succeeded, {failed_count} failed."
                         )
+                    # T19 / FR-80: enqueue QUIZ_PREGEN_Q1 only when the slot
+                    # is empty or stale (and at least one section succeeded).
+                    if completed_count > 0:
+                        await self._maybe_enqueue_pregen_q1(bg_session, book_id)
                 await bg_session.commit()
 
                 if event_bus is not None:
@@ -549,6 +553,43 @@ class JobQueueWorker:
             "on_section_fail": on_fail,
             "on_section_retry": on_retry,
         }
+
+    async def _maybe_enqueue_pregen_q1(self, session: AsyncSession, book_id: int) -> bool:
+        """T19 / FR-80: enqueue a QUIZ_PREGEN_Q1 job iff the pregen slot is
+        empty or holds a stale question. Returns True when a job was added.
+
+        The partial UNIQUE INDEX `ix_processing_jobs_one_active_per_book_step`
+        guarantees we never end up with two PENDING/RUNNING pregen jobs for
+        the same book — IntegrityError is swallowed so the summarize commit
+        can still proceed.
+        """
+        from sqlalchemy.exc import IntegrityError
+
+        from app.db.models import Book, QuizQuestion
+
+        book = await session.get(Book, book_id)
+        if book is None:
+            return False
+        needs = book.pre_drafted_q1_id is None
+        if not needs:
+            existing = await session.get(QuizQuestion, book.pre_drafted_q1_id)
+            needs = existing is None or existing.is_stale
+        if not needs:
+            return False
+        session.add(
+            ProcessingJob(
+                book_id=book_id,
+                step=ProcessingStep.QUIZ_PREGEN_Q1,
+                status=ProcessingJobStatus.PENDING,
+            )
+        )
+        try:
+            await session.flush()
+            return True
+        except IntegrityError:
+            await session.rollback()
+            log.info("quiz.pregen.enqueue_skipped_active_exists", book_id=book_id)
+            return False
 
     async def _run_quiz_pregen_q1(self, job_id: int, book_id: int) -> None:
         """T17 — handle QUIZ_PREGEN_Q1 jobs (FR-80, FR-81, FR-83, S3).

@@ -241,3 +241,133 @@ async def test_pregen_handler_marks_failed_on_generation_error(
         ).scalar_one()
         assert row.status == ProcessingJobStatus.FAILED
         assert row.error_message
+
+
+# ---- T19: post-summarize enqueue helper -----------------------------------
+
+
+@pytest.mark.asyncio
+async def test_maybe_enqueue_pregen_q1_when_slot_empty(
+    session_factory, book_with_summary, event_bus
+):
+    """FR-80: slot empty → helper enqueues exactly one PENDING job."""
+    worker = JobQueueWorker(
+        session_factory=session_factory, event_bus=event_bus, settings=Settings()
+    )
+    async with session_factory() as session:
+        added = await worker._maybe_enqueue_pregen_q1(session, book_with_summary)
+        await session.commit()
+    assert added is True
+    async with session_factory() as session:
+        rows = (
+            (
+                await session.execute(
+                    select(ProcessingJob).where(
+                        ProcessingJob.book_id == book_with_summary,
+                        ProcessingJob.step == ProcessingStep.QUIZ_PREGEN_Q1,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(list(rows)) == 1
+
+
+@pytest.mark.asyncio
+async def test_maybe_enqueue_pregen_q1_skips_when_slot_populated(
+    session_factory, book_with_summary, event_bus
+):
+    """FR-80 idempotency: slot populated by non-stale question → no enqueue."""
+    async with session_factory() as session:
+        existing = QuizQuestion(
+            book_id=book_with_summary,
+            session_id=None,
+            shape="open",
+            bloom_level="apply",
+            stem="x",
+            concept_label="x",
+            citation_json=json.dumps({"section_id": 1, "section_title": "Ch", "snippet": "..."}),
+            is_pregen=True,
+        )
+        session.add(existing)
+        await session.flush()
+        b = await session.get(Book, book_with_summary)
+        b.pre_drafted_q1_id = existing.id
+        await session.commit()
+    worker = JobQueueWorker(
+        session_factory=session_factory, event_bus=event_bus, settings=Settings()
+    )
+    async with session_factory() as session:
+        added = await worker._maybe_enqueue_pregen_q1(session, book_with_summary)
+        await session.commit()
+    assert added is False
+
+
+@pytest.mark.asyncio
+async def test_maybe_enqueue_pregen_q1_when_slot_stale(
+    session_factory, book_with_summary, event_bus
+):
+    """FR-80 + FR-82: slot points at a stale question → re-enqueue."""
+    async with session_factory() as session:
+        stale_q = QuizQuestion(
+            book_id=book_with_summary,
+            session_id=None,
+            shape="open",
+            bloom_level="apply",
+            stem="x",
+            concept_label="x",
+            citation_json=json.dumps({"section_id": 1, "section_title": "Ch", "snippet": "..."}),
+            is_pregen=True,
+            is_stale=True,
+        )
+        session.add(stale_q)
+        await session.flush()
+        b = await session.get(Book, book_with_summary)
+        b.pre_drafted_q1_id = stale_q.id
+        await session.commit()
+    worker = JobQueueWorker(
+        session_factory=session_factory, event_bus=event_bus, settings=Settings()
+    )
+    async with session_factory() as session:
+        added = await worker._maybe_enqueue_pregen_q1(session, book_with_summary)
+        await session.commit()
+    assert added is True
+
+
+@pytest.mark.asyncio
+async def test_maybe_enqueue_pregen_q1_swallows_integrity_when_active_exists(
+    session_factory, book_with_summary, event_bus
+):
+    """When a PENDING pregen job already exists for the book, the partial
+    UNIQUE INDEX rejects the new INSERT. Helper returns False, no crash."""
+    async with session_factory() as session:
+        session.add(
+            ProcessingJob(
+                book_id=book_with_summary,
+                step=ProcessingStep.QUIZ_PREGEN_Q1,
+                status=ProcessingJobStatus.PENDING,
+            )
+        )
+        await session.commit()
+    worker = JobQueueWorker(
+        session_factory=session_factory, event_bus=event_bus, settings=Settings()
+    )
+    async with session_factory() as session:
+        added = await worker._maybe_enqueue_pregen_q1(session, book_with_summary)
+        await session.commit()
+    assert added is False
+    async with session_factory() as session:
+        rows = (
+            (
+                await session.execute(
+                    select(ProcessingJob).where(
+                        ProcessingJob.book_id == book_with_summary,
+                        ProcessingJob.step == ProcessingStep.QUIZ_PREGEN_Q1,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(list(rows)) == 1  # only the pre-existing one
