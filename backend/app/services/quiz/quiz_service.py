@@ -8,12 +8,25 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import UTC
+from datetime import datetime as _dt
 from typing import TYPE_CHECKING, Any
 
 import jsonschema
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 
-from app.db.models import Book, BookSection, QuizQuestion, Summary, SummaryContentType
+from app.db.models import (
+    Book,
+    BookSection,
+    ProcessingJob,
+    ProcessingJobStatus,
+    ProcessingStep,
+    QuizQuestion,
+    QuizSession,
+    Summary,
+    SummaryContentType,
+)
 from app.db.repositories.quiz_dedup_state_repo import QuizDedupStateRepository
 from app.db.repositories.quiz_question_repo import QuizQuestionRepository
 from app.db.repositories.quiz_session_repo import QuizSessionRepository
@@ -451,6 +464,62 @@ class QuizService:
         q.override_note = note
         await self.session.flush()
         return {"question_id": q.id, "override_note": note}
+
+    async def stop_session(self, *, session_id: int) -> QuizSession:
+        """FR-19/FR-24/G10: atomically transition a session to `completed`
+        (when ≥1 non-discarded answered question exists) or `abandoned`
+        (otherwise), and on `completed` enqueue ONE `QUIZ_ROLLUP` processing
+        job in the same transaction.
+
+        Re-stop is idempotent — when the session is already terminal, returns
+        the row unchanged. The partial UNIQUE INDEX on processing_jobs (per
+        book, step) prevents double-enqueue if a previous rollup job is still
+        PENDING/RUNNING; we swallow the IntegrityError in that case.
+        """
+        qs = await self.session.get(QuizSession, session_id)
+        if qs is None:
+            raise QuizNotFoundError(f"quiz_sessions row {session_id} not found")
+        if qs.status in {"completed", "abandoned"}:
+            return qs
+        answered = await self.session.scalar(
+            select(func.count())
+            .select_from(QuizQuestion)
+            .where(
+                QuizQuestion.session_id == session_id,
+                QuizQuestion.user_answer.isnot(None),
+                QuizQuestion.discarded.is_(False),
+            )
+        )
+        final = "completed" if (answered or 0) > 0 else "abandoned"
+        qs.status = final
+        qs.ended_at = _dt.now(UTC)
+        if final == "completed":
+            job = ProcessingJob(
+                book_id=qs.book_id,
+                step=ProcessingStep.QUIZ_ROLLUP,
+                status=ProcessingJobStatus.PENDING,
+                request_params={"session_id": session_id},
+            )
+            self.session.add(job)
+            try:
+                await self.session.flush()
+            except IntegrityError:
+                # Another rollup is already PENDING/RUNNING for this book —
+                # the partial UNIQUE INDEX guards against double-enqueue.
+                # Roll back ONLY the failing INSERT by expunging the job and
+                # letting the session.commit() the route invokes persist the
+                # status transition. The session itself is already updated in
+                # the identity map; expire-and-fetch is unnecessary.
+                await self.session.rollback()
+                # Re-fetch + re-set after rollback (rollback expires the
+                # in-memory state per CLAUDE.md addendum).
+                qs = await self.session.get(QuizSession, session_id)
+                qs.status = final
+                qs.ended_at = _dt.now(UTC)
+                await self.session.flush()
+        else:
+            await self.session.flush()
+        return qs
 
     async def discard_question(self, *, question_id: int, scope_content: str | None = None) -> dict:
         """FR-47/G33: atomically discard the named row, then generate a

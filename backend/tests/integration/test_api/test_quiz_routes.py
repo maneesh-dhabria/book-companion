@@ -452,9 +452,13 @@ async def test_override_200_stores_note(app, client: AsyncClient, fake_llm):
 
 
 @pytest.mark.asyncio
-async def test_stop_session_flips_status(app, client: AsyncClient):
+async def test_stop_session_flips_status(app, client: AsyncClient, fake_llm):
+    """Smoke wiring: stop returns 200 with terminal status. Detailed
+    `completed` vs `abandoned` semantics are covered in
+    `test_quiz_lifecycle.py` (T16)."""
+    fake_llm.set([])  # stop_session needs the service injected; no LLM call
     await _seed_book(app, book_id=1)
     sid = await _seed_session(app, book_id=1)
     r = await client.post(f"/api/v1/quiz-sessions/{sid}/stop")
     assert r.status_code == 200
-    assert r.json()["status"] == "completed"
+    assert r.json()["status"] in ("completed", "abandoned")

@@ -555,17 +555,17 @@ async def discard_question(
 async def stop_session(
     session_id: int,
     db: AsyncSession = Depends(get_db),
+    svc: QuizService | None = Depends(get_quiz_service),
 ):
-    """T16's atomic stop will land in the dedicated PR. T15 ships a basic
-    stop that flips the session to `completed` with `ended_at` set."""
-    qs = await _session_or_404(db, session_id)
-    if qs.status == "in_progress":
-        await db.execute(
-            update(QuizSession)
-            .where(QuizSession.id == session_id)
-            .values(status="completed", ended_at=datetime.now(UTC))
-        )
-        await db.commit()
+    """FR-19/FR-24/G10: atomic stop — completed iff ≥1 answered question,
+    abandoned otherwise. Re-stop is idempotent. Side effect: enqueue
+    QUIZ_ROLLUP on completed (deduped by partial UNIQUE INDEX)."""
+    quiz = _require_service(svc)
+    try:
+        await quiz.stop_session(session_id=session_id)
+    except QuizNotFoundError as e:
+        raise HTTPException(404, detail=str(e)) from e
+    await db.commit()
     from sqlalchemy.orm import selectinload
 
     qs = await db.scalar(
