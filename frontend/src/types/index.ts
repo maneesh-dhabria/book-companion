@@ -297,3 +297,127 @@ export interface RecentSearch {
   result_count: number | null
   created_at: string
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// Quiz (AI Comprehension Quiz, spec §9)
+// ──────────────────────────────────────────────────────────────────────
+
+export type QuizScopeMode = 'all_summaries' | 'specific_chapters'
+export type QuizQuestionShape = 'mcq' | 'open' | 'spot_error'
+export type QuizBloomLevel =
+  | 'remember'
+  | 'understand'
+  | 'apply'
+  | 'analyze'
+  | 'evaluate'
+  | 'create'
+export type QuizSelfAssessment = 'got_it' | 'partial' | 'missed'
+export type QuizSessionStatus = 'in_progress' | 'completed' | 'abandoned'
+
+export interface QuizScope {
+  mode: QuizScopeMode
+  section_ids?: number[] | null
+}
+
+export interface QuizCitation {
+  section_id: number
+  section_title: string
+  snippet: string
+}
+
+export interface QuizFeedback {
+  correct: string
+  missing: string
+  actual: string
+}
+
+export interface QuizQuestion {
+  id: number
+  session_id: number | null
+  book_id: number
+  stem: string
+  concept_label: string
+  citation: QuizCitation
+  shape: QuizQuestionShape
+  bloom_level: QuizBloomLevel
+  mcq_options?: string[] | null
+  intended_error?: string | null
+  error_explanation?: string | null
+  user_answer?: string | null
+  feedback?: QuizFeedback | null
+  self_assessment?: QuizSelfAssessment | null
+  override_note?: string | null
+  explain_history: string[]
+  skip_count: number
+  discarded: boolean
+  warm_up: boolean
+  queue_hit?: boolean
+  is_pregen: boolean
+  is_stale: boolean
+  created_at: string
+  answered_at?: string | null
+}
+
+export interface QuizSessionTally {
+  got_it: number
+  partial: number
+  missed: number
+  skipped: number
+  discarded: number
+}
+
+export interface QuizSessionListItem {
+  id: number
+  book_id: number
+  scope: QuizScope
+  theme: string | null
+  status: QuizSessionStatus
+  created_at: string
+  ended_at: string | null
+  question_count: number
+  tally: QuizSessionTally
+  is_warm_up_session: boolean
+}
+
+export interface QuizLifetimeTally {
+  total_questions: number
+  got_it: number
+  partial: number
+  missed: number
+  session_count: number
+  themes_summary?: string | null
+}
+
+export interface QuizSessionListResponse {
+  sessions: QuizSessionListItem[]
+  lifetime_tally: QuizLifetimeTally
+}
+
+export interface QuizSessionDetailResponse {
+  session: QuizSessionListItem
+  questions: QuizQuestion[]
+}
+
+export interface QuizStartResponse {
+  session: QuizSessionListItem
+  first_question: QuizQuestion
+  warm_up_count: number
+}
+
+export interface QuizNextQuestionResponse {
+  question: QuizQuestion
+}
+
+export interface QuizAnswerResponse {
+  question: QuizQuestion
+}
+
+export interface QuizExplainResponse {
+  explanation: string
+  question: QuizQuestion
+}
+
+export interface QuizDiscardResponse {
+  question: QuizQuestion
+  replacement: QuizQuestion
+}
