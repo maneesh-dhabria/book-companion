@@ -18,6 +18,7 @@
     Loop 2: No remaining HIGH/MEDIUM after re-read.
     MSF R1: trend line added below lifetime tally.
     MSF R4/R5/R6 applied 2026-05-09.
+    User feedback 2026-05-09: scope picker moved above past Q&A; expanded sessions now use one-turn carousel.
   -->
 
   <header class="wf-chrome">
@@ -103,7 +104,45 @@
               </div>
             </section>
 
-            <!-- 2. Past Q&A panel (collapsible by session) -->
+            <!-- 2. Scope picker + Start (moved above Past Q&A so primary action stays above the fold) -->
+            <section class="mock-card" style="padding:20px; margin-bottom:20px;">
+              <div style="font-weight:600; font-size:15px; margin-bottom:4px;">Start a new session</div>
+              <div class="wf-muted" style="font-size:13px; margin-bottom:14px;">Pre-selected from your last session.</div>
+
+              <fieldset style="border:0; padding:0; margin:0;">
+                <legend class="sr-only">Scope</legend>
+
+                <label class="wf-row wf-anno"
+                       data-note="Last-used scope memory (D22) — pre-selected from prior session."
+                       style="align-items:flex-start; gap:10px; padding:12px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff; cursor:pointer;">
+                  <input type="radio" name="scope" checked style="margin-top:4px;">
+                  <span>
+                    <span style="font-weight:500;">All Summaries (book summary + every chapter summary)</span><br>
+                    <span class="wf-muted" style="font-size:13px;">Agent receives the book summary and every chapter summary. Best for breadth across the whole book.</span>
+                  </span>
+                </label>
+
+                <label class="wf-row" style="align-items:flex-start; gap:10px; padding:12px; border:1px solid var(--wf-border); border-radius:8px; margin-top:8px; cursor:pointer;">
+                  <input type="radio" name="scope" style="margin-top:4px;">
+                  <span>
+                    <span style="font-weight:500;">Specific Chapters (full text of selected chapters)</span><br>
+                    <span class="wf-muted" style="font-size:13px;">Agent receives the full text of the chapters you pick. Best for depth on a few chapters.</span>
+                  </span>
+                </label>
+              </fieldset>
+
+              <div style="margin-top:16px;">
+                <label class="mock-label" for="theme">Theme (optional)</label>
+                <input id="theme" class="mock-input" placeholder="e.g., focus on prospect theory">
+              </div>
+
+              <div class="wf-row" style="margin-top:16px; justify-content:flex-end; gap:8px;">
+                <button class="mock-button">Cancel</button>
+                <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5;">Start Quiz</button>
+              </div>
+            </section>
+
+            <!-- 3. Past Q&A panel (collapsible by session) -->
             <section class="mock-card" style="padding:0; margin-bottom:20px;">
               <header style="padding:14px 20px; border-bottom:1px solid var(--wf-border-2); display:flex; justify-content:space-between; align-items:center;">
                 <div style="font-weight:600; font-size:15px;">Past Q&amp;A</div>
@@ -128,10 +167,21 @@
                           style="font-size:12px; padding:4px 10px; min-height:28px;">Export</button>
                 </div>
 
-                <!-- Turns inside session 3 -->
+                <!-- Turns inside session 3 (one-turn carousel) -->
                 <div style="padding:8px 20px 16px;">
 
-                  <!-- Turn 1: a normal answered turn -->
+                  <!-- Carousel chrome -->
+                  <div class="wf-row wf-anno"
+                       data-note="Carousel — only one turn visible at a time keeps the section above the fold. Prev/Next or arrow keys to navigate; 'View all turns →' opens the full list."
+                       style="align-items:center; gap:12px; margin-top:6px; padding:0 4px;">
+                    <button aria-label="Previous turn" class="mock-button" style="min-height:32px; padding:4px 10px;">‹</button>
+                    <span class="wf-muted" style="font-size:13px;">Turn <strong>1</strong> of 12</span>
+                    <span class="wf-muted">·</span>
+                    <span class="wf-muted" style="font-size:12px;">Got it · MCQ · Chapter 1</span>
+                    <button aria-label="Next turn" class="mock-button" style="min-height:32px; padding:4px 10px; margin-left:auto;">›</button>
+                  </div>
+
+                  <!-- Turn 1: visible turn card (Q1 MCQ) -->
                   <div class="mock-card" style="padding:14px 16px; margin-top:10px; box-shadow:none;">
                     <div class="wf-row" style="gap:8px; flex-wrap:wrap;">
                       <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q1 · MCQ</span>
@@ -158,56 +208,12 @@
                     </div>
                   </div>
 
-                  <!-- Turn 2: a skipped turn -->
-                  <div class="mock-card" style="padding:14px 16px; margin-top:10px; box-shadow:none; border-style:dashed;">
-                    <div class="wf-row" style="gap:8px; flex-wrap:wrap;">
-                      <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q2 · Open-ended</span>
-                      <span class="mock-pill">Source: Chapter 4</span>
-                      <span class="mock-pill wf-anno"
-                            data-note="Skipped badge (D18) — turn ended without an answer; not added to dedup history."
-                            style="background:#f4f4f5; border-color:#d4d4d8; color:#52525b;">⏭ skipped</span>
-                      <span class="wf-muted" style="font-size:12px; margin-left:auto;">May 6, 2026 · 2:18pm</span>
+                  <!-- Carousel footer: dots + view-all link -->
+                  <div class="wf-row" style="margin-top:10px; align-items:center; gap:10px; padding:0 4px;">
+                    <div class="wf-row" aria-hidden="true" style="gap:4px; font-size:10px; color:#4f46e5; letter-spacing:1px;">
+                      <span>●</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span>
                     </div>
-                    <div style="margin-top:10px; font-weight:500;">
-                      Describe the difference between cognitive ease and cognitive strain, and give one example of each.
-                    </div>
-                    <div class="wf-muted" style="margin-top:8px; font-size:13px; font-style:italic;">
-                      You skipped this question. No self-assessment recorded.
-                    </div>
-                  </div>
-
-                  <!-- Turn 3: with override note -->
-                  <div class="mock-card" style="padding:14px 16px; margin-top:10px; box-shadow:none;">
-                    <div class="wf-row" style="gap:8px; flex-wrap:wrap;">
-                      <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q3 · Spot the error</span>
-                      <span class="mock-pill">Source: Chapter 11</span>
-                      <span class="wf-muted" style="font-size:12px; margin-left:auto;">May 6, 2026 · 2:21pm</span>
-                    </div>
-                    <div style="margin-top:10px; font-weight:500;">
-                      "Anchoring only happens when people are explicitly told to compare to a number." — what's wrong with this claim?
-                    </div>
-                    <div style="margin-top:10px; padding:10px 12px; background:var(--wf-surface-2); border-radius:6px; font-size:14px;">
-                      <span class="wf-muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Your answer</span><br>
-                      Anchoring still occurs even when the anchor is irrelevant or random — Kahneman cites the wheel-of-fortune study where spinning a number affected later estimates.
-                    </div>
-                    <div style="margin-top:10px; padding:10px 12px; border-left:3px solid #4f46e5; background:#fafafa; font-size:14px;">
-                      <span class="wf-muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Agent feedback</span><br>
-                      Partial — you named the wheel-of-fortune study but missed the second mechanism (anchoring-and-adjustment vs priming).
-                    </div>
-                    <div class="wf-row" style="margin-top:10px; gap:8px; flex-wrap:wrap;">
-                      <span class="mock-pill" style="background:#fef3c7; border-color:#fde68a; color:#92400e;">~ Partial</span>
-                      <span class="mock-pill wf-anno"
-                            data-note="Override note marker — user disagreed with agent grading and recorded a counter-note."
-                            style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">⚑ Override note</span>
-                    </div>
-                    <div style="margin-top:8px; padding:10px 12px; background:#eef2ff; border:1px dashed #c7d2fe; border-radius:6px; font-size:13px;">
-                      <span class="wf-muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Your override note</span><br>
-                      I think this should be Got it — the priming mechanism wasn't part of the question stem.
-                    </div>
-                  </div>
-
-                  <div class="wf-muted" style="margin-top:12px; font-size:13px; text-align:center;">
-                    9 more turns in this session (collapsed)
+                    <a href="#" style="margin-left:auto; font-size:13px; color:var(--wf-accent);">View all turns →</a>
                   </div>
                 </div>
               </article>
@@ -247,7 +253,7 @@
               </article>
             </section>
 
-            <!-- 3. Themes covered -->
+            <!-- 4. Themes covered -->
             <section class="mock-card wf-anno"
                      data-note="Themes covered (D25) — agent-summarized themes from D13's rollup. Click a chip to seed next session's theme field."
                      style="padding:16px 20px; margin-bottom:20px;">
@@ -266,44 +272,6 @@
                   <button class="mock-pill" style="cursor:pointer; padding:6px 12px;">the lazy controller</button>
                   <a href="#" style="font-size:13px; color:var(--wf-accent);">(+4 more)</a>
                 </div>
-              </div>
-            </section>
-
-            <!-- 4. Scope picker + Start -->
-            <section class="mock-card" style="padding:20px;">
-              <div style="font-weight:600; font-size:15px; margin-bottom:4px;">Start a new session</div>
-              <div class="wf-muted" style="font-size:13px; margin-bottom:14px;">Pre-selected from your last session.</div>
-
-              <fieldset style="border:0; padding:0; margin:0;">
-                <legend class="sr-only">Scope</legend>
-
-                <label class="wf-row wf-anno"
-                       data-note="Last-used scope memory (D22) — pre-selected from prior session."
-                       style="align-items:flex-start; gap:10px; padding:12px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff; cursor:pointer;">
-                  <input type="radio" name="scope" checked style="margin-top:4px;">
-                  <span>
-                    <span style="font-weight:500;">All Summaries (book summary + every chapter summary)</span><br>
-                    <span class="wf-muted" style="font-size:13px;">Agent receives the book summary and every chapter summary. Best for breadth across the whole book.</span>
-                  </span>
-                </label>
-
-                <label class="wf-row" style="align-items:flex-start; gap:10px; padding:12px; border:1px solid var(--wf-border); border-radius:8px; margin-top:8px; cursor:pointer;">
-                  <input type="radio" name="scope" style="margin-top:4px;">
-                  <span>
-                    <span style="font-weight:500;">Specific Chapters (full text of selected chapters)</span><br>
-                    <span class="wf-muted" style="font-size:13px;">Agent receives the full text of the chapters you pick. Best for depth on a few chapters.</span>
-                  </span>
-                </label>
-              </fieldset>
-
-              <div style="margin-top:16px;">
-                <label class="mock-label" for="theme">Theme (optional)</label>
-                <input id="theme" class="mock-input" placeholder="e.g., focus on prospect theory">
-              </div>
-
-              <div class="wf-row" style="margin-top:16px; justify-content:flex-end; gap:8px;">
-                <button class="mock-button">Cancel</button>
-                <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5;">Start Quiz</button>
               </div>
             </section>
 
@@ -337,11 +305,25 @@
             <a role="tab" aria-selected="true" style="padding:12px 0; border-bottom:2px solid #4f46e5; color:var(--wf-text); font-weight:500;">Quiz</a>
           </nav>
           <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <!-- 1. Lifetime tally -->
             <section class="mock-card" style="padding:14px 20px; margin-bottom:16px;">
               <div style="font-size:14px;">Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</div>
               <div class="wf-anno" data-note="MSF R1 — compound progress visibility (added 2026-05-09)" style="font-size:12px; color:#16a34a; margin-top:2px;">↑ 11pp · Got it 60% → 71% over 3 sessions</div>
             </section>
 
+            <!-- 2. Scope picker + Start (above the fold) -->
+            <section class="mock-card" style="padding:16px 20px; margin-bottom:20px;">
+              <div style="font-weight:600; font-size:15px; margin-bottom:10px;">Start a new session</div>
+              <label class="wf-row" style="align-items:flex-start; gap:10px; padding:10px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff; cursor:pointer;">
+                <input type="radio" name="scope-se" checked style="margin-top:4px;">
+                <span><span style="font-weight:500;">All Summaries</span> <span class="wf-muted" style="font-size:13px;">— book + every chapter summary</span></span>
+              </label>
+              <div class="wf-row" style="margin-top:12px; justify-content:flex-end; gap:8px;">
+                <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5;">Start Quiz</button>
+              </div>
+            </section>
+
+            <!-- 3. Past Q&A -->
             <section class="mock-card" style="padding:0; margin-bottom:20px;">
               <header style="padding:14px 20px; border-bottom:1px solid var(--wf-border-2); font-weight:600;">Past Q&amp;A</header>
 
@@ -353,7 +335,38 @@
                   </button>
                   <button class="mock-button" style="font-size:12px; padding:4px 10px; min-height:28px;">Export</button>
                 </div>
-                <div style="padding:8px 20px 14px;" class="wf-muted">12 turns rendered…</div>
+                <div style="padding:8px 20px 14px;">
+                  <!-- Carousel chrome (Session 3) -->
+                  <div class="wf-row wf-anno"
+                       data-note="Carousel — only one turn visible at a time keeps the section above the fold. Prev/Next or arrow keys to navigate; 'View all turns →' opens the full list."
+                       style="align-items:center; gap:12px; margin-top:6px; padding:0 4px;">
+                    <button aria-label="Previous turn" class="mock-button" style="min-height:32px; padding:4px 10px;">‹</button>
+                    <span class="wf-muted" style="font-size:13px;">Turn <strong>1</strong> of 12</span>
+                    <span class="wf-muted">·</span>
+                    <span class="wf-muted" style="font-size:12px;">Got it · MCQ · Chapter 1</span>
+                    <button aria-label="Next turn" class="mock-button" style="min-height:32px; padding:4px 10px; margin-left:auto;">›</button>
+                  </div>
+                  <div class="mock-card" style="padding:14px 16px; margin-top:10px; box-shadow:none;">
+                    <div class="wf-row" style="gap:8px; flex-wrap:wrap;">
+                      <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q1 · MCQ</span>
+                      <span class="mock-pill">Source: Chapter 1</span>
+                    </div>
+                    <div style="margin-top:10px; font-weight:500;">In Kahneman's framing, which task is most characteristic of System 2?</div>
+                    <div style="margin-top:8px; padding:10px 12px; background:var(--wf-surface-2); border-radius:6px; font-size:14px;">
+                      <span class="wf-muted" style="font-size:12px;">Your answer</span><br>
+                      Multiplying 17 × 24 in your head — effortful, deliberate computation.
+                    </div>
+                    <div class="wf-row" style="margin-top:8px;">
+                      <span class="mock-pill" style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46;">✓ Got it</span>
+                    </div>
+                  </div>
+                  <div class="wf-row" style="margin-top:10px; align-items:center; gap:10px; padding:0 4px;">
+                    <div class="wf-row" aria-hidden="true" style="gap:4px; font-size:10px; color:#4f46e5; letter-spacing:1px;">
+                      <span>●</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span>
+                    </div>
+                    <a href="#" style="margin-left:auto; font-size:13px; color:var(--wf-accent);">View all turns →</a>
+                  </div>
+                </div>
               </article>
 
               <article class="wf-anno" data-note="User clicked Session 2 header → expanded. Session 3 stays expanded." style="border-bottom:1px solid var(--wf-border-2);">
@@ -365,7 +378,17 @@
                   <button class="mock-button" style="font-size:12px; padding:4px 10px; min-height:28px;">Export</button>
                 </div>
                 <div style="padding:8px 20px 14px;">
-                  <div class="mock-card" style="padding:12px 16px; box-shadow:none;">
+                  <!-- Carousel chrome (Session 2) -->
+                  <div class="wf-row wf-anno"
+                       data-note="Carousel — only one turn visible at a time keeps the section above the fold. Prev/Next or arrow keys to navigate; 'View all turns →' opens the full list."
+                       style="align-items:center; gap:12px; margin-top:6px; padding:0 4px;">
+                    <button aria-label="Previous turn" class="mock-button" style="min-height:32px; padding:4px 10px;">‹</button>
+                    <span class="wf-muted" style="font-size:13px;">Turn <strong>1</strong> of 7</span>
+                    <span class="wf-muted">·</span>
+                    <span class="wf-muted" style="font-size:12px;">Got it · Open-ended · Chapter 26</span>
+                    <button aria-label="Next turn" class="mock-button" style="min-height:32px; padding:4px 10px; margin-left:auto;">›</button>
+                  </div>
+                  <div class="mock-card" style="padding:12px 16px; margin-top:10px; box-shadow:none;">
                     <div class="wf-row" style="gap:8px; flex-wrap:wrap;">
                       <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q1 · Open-ended</span>
                       <span class="mock-pill">Source: Chapter 26</span>
@@ -384,7 +407,12 @@
                       <span class="mock-pill" style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46;">✓ Got it</span>
                     </div>
                   </div>
-                  <div class="wf-muted" style="margin-top:10px; font-size:13px; text-align:center;">6 more turns in this session</div>
+                  <div class="wf-row" style="margin-top:10px; align-items:center; gap:10px; padding:0 4px;">
+                    <div class="wf-row" aria-hidden="true" style="gap:4px; font-size:10px; color:#4f46e5; letter-spacing:1px;">
+                      <span>●</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span><span style="color:var(--wf-muted);">○</span>
+                    </div>
+                    <a href="#" style="margin-left:auto; font-size:13px; color:var(--wf-accent);">View all turns →</a>
+                  </div>
                 </div>
               </article>
 
@@ -399,6 +427,7 @@
               </article>
             </section>
 
+            <!-- 4. Themes covered -->
             <section class="mock-card" style="padding:16px 20px;">
               <div style="font-weight:600; font-size:14px; margin-bottom:10px;">Themes covered</div>
               <div class="wf-row" style="flex-wrap:wrap; gap:8px;">
@@ -441,12 +470,33 @@
           </nav>
           <main style="padding:24px 32px; flex:1; overflow:auto;">
 
+            <!-- 1. Lifetime tally -->
             <section class="mock-card" style="padding:14px 20px; margin-bottom:16px;">
               <div style="font-size:14px;">Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</div>
               <div class="wf-anno" data-note="MSF R1 — compound progress visibility (added 2026-05-09)" style="font-size:12px; color:#16a34a; margin-top:2px;">↑ 11pp · Got it 60% → 71% over 3 sessions</div>
             </section>
 
-            <section class="mock-card" style="padding:16px 20px; margin-bottom:20px;">
+            <!-- 2. Scope picker + Start (above the fold) -->
+            <section class="mock-card" style="padding:20px; margin-bottom:20px;">
+              <div style="font-weight:600; font-size:15px; margin-bottom:14px;">Start a new session</div>
+              <label class="wf-row" style="align-items:flex-start; gap:10px; padding:12px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff; cursor:pointer;">
+                <input type="radio" name="scope2" checked style="margin-top:4px;">
+                <span>
+                  <span style="font-weight:500;">All Summaries (book summary + every chapter summary)</span><br>
+                  <span class="wf-muted" style="font-size:13px;">Agent receives the book summary and every chapter summary.</span>
+                </span>
+              </label>
+              <div style="margin-top:14px;">
+                <label class="mock-label" for="theme2">Theme (optional)</label>
+                <input id="theme2" class="mock-input" placeholder="e.g., focus on prospect theory">
+              </div>
+              <div class="wf-row" style="margin-top:14px; justify-content:flex-end;">
+                <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5;">Start Quiz</button>
+              </div>
+            </section>
+
+            <!-- 4. Themes covered (no Past Q&A panel rendered in this state — chip-hover focus) -->
+            <section class="mock-card" style="padding:16px 20px;">
               <div style="font-weight:600; font-size:14px; margin-bottom:10px;">Themes covered</div>
               <div class="wf-row" style="flex-wrap:wrap; gap:8px; align-items:flex-start;">
                 <button class="mock-pill" style="padding:6px 12px;">System 1 / System 2</button>
@@ -462,24 +512,6 @@
                 <button class="mock-pill" style="padding:6px 12px;">loss aversion</button>
                 <button class="mock-pill" style="padding:6px 12px;">cognitive ease</button>
                 <button class="mock-pill" style="padding:6px 12px;">the lazy controller</button>
-              </div>
-            </section>
-
-            <section class="mock-card" style="padding:20px;">
-              <div style="font-weight:600; font-size:15px; margin-bottom:14px;">Start a new session</div>
-              <label class="wf-row" style="align-items:flex-start; gap:10px; padding:12px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff; cursor:pointer;">
-                <input type="radio" name="scope2" checked style="margin-top:4px;">
-                <span>
-                  <span style="font-weight:500;">All Summaries (book summary + every chapter summary)</span><br>
-                  <span class="wf-muted" style="font-size:13px;">Agent receives the book summary and every chapter summary.</span>
-                </span>
-              </label>
-              <div style="margin-top:14px;">
-                <label class="mock-label" for="theme2">Theme (optional)</label>
-                <input id="theme2" class="mock-input" placeholder="e.g., focus on prospect theory">
-              </div>
-              <div class="wf-row" style="margin-top:14px; justify-content:flex-end;">
-                <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5;">Start Quiz</button>
               </div>
             </section>
           </main>
