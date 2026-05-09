@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import UTC
 from datetime import datetime as _dt
 from typing import TYPE_CHECKING, Any
 
 import jsonschema
+import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
@@ -102,6 +104,8 @@ _FLIP_TOKENS = frozenset(
 )
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
+log = structlog.get_logger(__name__)
+
 
 class SpotErrorValidationError(QuizGenerationError):
     """FR-33: stem failed the deliberate-flip heuristic."""
@@ -167,12 +171,28 @@ class QuizService:
                 skipped_concepts=skipped,
                 validator_error=validator_error,
             )
+            log.info(
+                "quiz.generate.started",
+                book_id=book_id,
+                session_id=session_id,
+                attempt=attempt,
+            )
+            t0 = time.perf_counter()
             try:
                 resp = await self.llm.generate(prompt, json_schema=QUESTION_SCHEMA)
                 data = json.loads(resp.content)
                 jsonschema.validate(data, QUESTION_SCHEMA)
                 if data["shape"] == "spot_error":
                     self._validate_spot_error(data)
+                log.info(
+                    "quiz.generate.completed",
+                    book_id=book_id,
+                    session_id=session_id,
+                    latency_ms=int((time.perf_counter() - t0) * 1000),
+                    attempt=attempt,
+                    input_tokens=getattr(resp, "input_tokens", None),
+                    output_tokens=getattr(resp, "output_tokens", None),
+                )
                 break
             except (
                 json.JSONDecodeError,
@@ -182,6 +202,14 @@ class QuizService:
                 last_exc = e
                 validator_error = self._format_validator_error(e)
                 data = None
+                log.warning(
+                    "quiz.generate.failed",
+                    book_id=book_id,
+                    session_id=session_id,
+                    attempt=attempt,
+                    latency_ms=int((time.perf_counter() - t0) * 1000),
+                    error=str(e)[:200],
+                )
                 if attempt == 1:
                     raise QuizGenerationError(f"Question generation failed after retry: {e}") from e
 

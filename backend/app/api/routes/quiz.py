@@ -60,6 +60,24 @@ router = APIRouter(tags=["quiz"])
 # ---- helpers ----------------------------------------------------------------
 
 
+def _classify_outcome(exc: BaseException | None) -> str:
+    """NFR-10a outcome taxonomy: success | schema_failed | timeout | llm_unavailable."""
+    if exc is None:
+        return "success"
+    if isinstance(exc, SubprocessTimeoutError):
+        return "timeout"
+    if isinstance(exc, SubprocessNotFoundError):
+        return "llm_unavailable"
+    if isinstance(exc, QuizGenerationError):
+        return "schema_failed"
+    return "error"
+
+
+def _log_outcome(step: str, *, outcome: str, **kwargs) -> None:
+    """Emit `quiz.<step>.outcome` per NFR-10a."""
+    logger.info(f"quiz.{step}.outcome", outcome=outcome, **kwargs)
+
+
 def _require_service(svc: QuizService | None) -> QuizService:
     if svc is None:
         raise HTTPException(
@@ -261,16 +279,22 @@ async def start_session(
     try:
         result = await quiz.start_session(book_id=book_id, scope=scope_dict, theme=body.theme)
     except QuizValidationError as e:
+        _log_outcome("start_session", outcome="error", book_id=book_id)
         raise HTTPException(400, detail=str(e)) from e
     except QuizBudgetError as e:
+        _log_outcome("start_session", outcome="error", book_id=book_id)
         raise HTTPException(422, detail=str(e)) from e
     except SubprocessNotFoundError as e:
+        _log_outcome("start_session", outcome="llm_unavailable", book_id=book_id)
         raise HTTPException(503, detail=str(e)) from e
     except SubprocessTimeoutError as e:
+        _log_outcome("start_session", outcome="timeout", book_id=book_id)
         raise HTTPException(504, detail=str(e)) from e
     except QuizGenerationError as e:
+        _log_outcome("start_session", outcome="schema_failed", book_id=book_id)
         raise HTTPException(502, detail=str(e)) from e
     await db.commit()
+    _log_outcome("start_session", outcome="success", book_id=book_id)
 
     # Re-fetch with relationships eagerly loaded so the response serializer
     # has access to questions and tally inputs.
@@ -354,12 +378,16 @@ async def next_question(
             warm_up=False,
         )
     except SubprocessNotFoundError as e:
+        _log_outcome("next_question", outcome="llm_unavailable", session_id=session_id)
         raise HTTPException(503, detail=str(e)) from e
     except SubprocessTimeoutError as e:
+        _log_outcome("next_question", outcome="timeout", session_id=session_id)
         raise HTTPException(504, detail=str(e)) from e
     except QuizGenerationError as e:
+        _log_outcome("next_question", outcome="schema_failed", session_id=session_id)
         raise HTTPException(502, detail=str(e)) from e
     await db.commit()
+    _log_outcome("next_question", outcome="success", session_id=session_id)
     return QuizNextQuestionResponse(question=_serialize_question(qq))
 
 
@@ -381,15 +409,19 @@ async def submit_answer(
     except QuizNotFoundError as e:
         raise HTTPException(404, detail=str(e)) from e
     except SubprocessNotFoundError as e:
+        _log_outcome("answer", outcome="llm_unavailable", question_id=question_id)
         raise HTTPException(503, detail=str(e)) from e
     except SubprocessTimeoutError as e:
+        _log_outcome("answer", outcome="timeout", question_id=question_id)
         raise HTTPException(504, detail=str(e)) from e
     except QuizGenerationError as e:
+        _log_outcome("answer", outcome="schema_failed", question_id=question_id)
         raise HTTPException(502, detail=str(e)) from e
     await db.commit()
     qq = await _question_or_404(db, question_id)
     qq.answered_at = datetime.now(UTC)
     await db.commit()
+    _log_outcome("answer", outcome="success", question_id=question_id)
     return QuizAnswerResponse(question=_serialize_question(qq))
 
 
@@ -459,16 +491,21 @@ async def explain_question(
     try:
         result = await quiz.explain_question(question_id=question_id)
     except QuizSoftCapError as e:
+        _log_outcome("explain", outcome="error", question_id=question_id)
         raise HTTPException(409, detail=str(e)) from e
     except QuizNotFoundError as e:
         raise HTTPException(404, detail=str(e)) from e
     except SubprocessNotFoundError as e:
+        _log_outcome("explain", outcome="llm_unavailable", question_id=question_id)
         raise HTTPException(503, detail=str(e)) from e
     except SubprocessTimeoutError as e:
+        _log_outcome("explain", outcome="timeout", question_id=question_id)
         raise HTTPException(504, detail=str(e)) from e
     except QuizGenerationError as e:
+        _log_outcome("explain", outcome="schema_failed", question_id=question_id)
         raise HTTPException(502, detail=str(e)) from e
     await db.commit()
+    _log_outcome("explain", outcome="success", question_id=question_id)
     qq = await _question_or_404(db, question_id)
     return QuizExplainResponse(
         question=_serialize_question(qq),
@@ -519,16 +556,21 @@ async def discard_question(
     try:
         await quiz.discard_question(question_id=question_id, scope_content=scope_content)
     except QuizValidationError as e:
+        _log_outcome("discard", outcome="error", question_id=question_id)
         raise HTTPException(400, detail=str(e)) from e
     except QuizNotFoundError as e:
         raise HTTPException(404, detail=str(e)) from e
     except SubprocessNotFoundError as e:
+        _log_outcome("discard", outcome="llm_unavailable", question_id=question_id)
         raise HTTPException(503, detail=str(e)) from e
     except SubprocessTimeoutError as e:
+        _log_outcome("discard", outcome="timeout", question_id=question_id)
         raise HTTPException(504, detail=str(e)) from e
     except QuizGenerationError as e:
+        _log_outcome("discard", outcome="schema_failed", question_id=question_id)
         raise HTTPException(502, detail=str(e)) from e
     await db.commit()
+    _log_outcome("discard", outcome="success", question_id=question_id)
     discarded = await _question_or_404(db, question_id)
     # Find the just-created next question (newest non-discarded for this session).
     next_q = (
