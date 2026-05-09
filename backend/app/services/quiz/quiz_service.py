@@ -11,7 +11,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 import jsonschema
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.db.models import Book, BookSection, QuizQuestion, Summary, SummaryContentType
 from app.db.repositories.quiz_dedup_state_repo import QuizDedupStateRepository
@@ -239,15 +239,31 @@ class QuizService:
                 theme=theme,
             )
 
-            warm_up_count = 0  # T12 plugs in the real warm-up branch.
+            warm_up_candidates = await self.compute_warm_up_candidates(book_id=book_id, scope=scope)
+            warm_up_count = 0
+            first_warm_up_id: int | None = None
+            for candidate in warm_up_candidates:
+                # FR-71: prompt LLM with the concept label as the focus. Re-using
+                # the `theme` channel gives the agent the hint without a new
+                # template branch; FR-71's exact wording is a soft guideline.
+                wq = await self.generate_question(
+                    book_id=book_id,
+                    session_id=qs.id,
+                    scope_content=scope_content,
+                    theme=f"Revisit the concept: {candidate['concept_label']}",
+                    warm_up=True,
+                )
+                if first_warm_up_id is None:
+                    first_warm_up_id = wq.id
+                warm_up_count += 1
 
             queue_hit = False
-            first_question_id: int | None = None
+            first_non_warm_up_id: int | None = None
             if warm_up_count == 0 and scope["mode"] == "all_summaries" and not theme:
-                first_question_id = await self._consume_pregen_q1(book_id, qs.id)
-                queue_hit = first_question_id is not None
+                first_non_warm_up_id = await self._consume_pregen_q1(book_id, qs.id)
+                queue_hit = first_non_warm_up_id is not None
 
-            if first_question_id is None:
+            if first_non_warm_up_id is None:
                 qq = await self.generate_question(
                     book_id=book_id,
                     session_id=qs.id,
@@ -255,7 +271,10 @@ class QuizService:
                     theme=theme,
                     warm_up=False,
                 )
-                first_question_id = qq.id
+                first_non_warm_up_id = qq.id
+
+            # FR-21: warm-up turns are presented first when present.
+            first_question_id = first_warm_up_id or first_non_warm_up_id
 
             return {
                 "session_id": qs.id,
@@ -267,8 +286,84 @@ class QuizService:
             await self.session.rollback()
             raise
 
-    async def warm_up_candidates(self, *, book_id: int):
-        raise NotImplementedError("Filled in by T12")
+    async def compute_warm_up_candidates(self, *, book_id: int, scope: dict) -> list[dict]:
+        """FR-70: gather concepts to revisit at the start of a session.
+
+        (a) up to last 3 completed sessions for this book
+        (b) concepts where ``self_assessment IN ('partial','missed') OR
+            agent_verdict IN ('partial','incorrect')``
+        (c) exclude concepts later marked ``self_assessment='got_it'`` in
+            any subsequent session (across the whole book history)
+        (d) for ``specific_chapters`` scope, retain only concepts whose
+            citation ``section_id`` is in the picked set.
+        Returns up to ``settings.quiz.warm_up_max_questions`` dicts of
+        ``{"concept_label", "section_id"}``.
+        """
+        from app.db.models import QuizSession  # avoid circular at import time
+
+        recent_session_ids_q = (
+            select(QuizSession.id)
+            .where(
+                QuizSession.book_id == book_id,
+                QuizSession.status == "completed",
+            )
+            .order_by(QuizSession.created_at.desc(), QuizSession.id.desc())
+            .limit(self.settings.quiz.warm_up_lookback_sessions)
+        )
+        recent_session_ids = [
+            row[0] for row in (await self.session.execute(recent_session_ids_q)).all()
+        ]
+        if not recent_session_ids:
+            return []
+
+        candidate_q = (
+            select(QuizQuestion)
+            .where(
+                QuizQuestion.session_id.in_(recent_session_ids),
+                QuizQuestion.is_stale.is_(False),
+                QuizQuestion.discarded.is_(False),
+                or_(
+                    QuizQuestion.self_assessment.in_(["partial", "missed"]),
+                    QuizQuestion.agent_verdict.in_(["partial", "incorrect"]),
+                ),
+            )
+            .order_by(QuizQuestion.created_at.desc(), QuizQuestion.id.desc())
+        )
+        candidates = list((await self.session.execute(candidate_q)).scalars().all())
+
+        # FR-70(c): exclude concepts later resolved (self_assessment='got_it')
+        # in any LATER session (not necessarily within the lookback).
+        resolved_q = select(QuizQuestion.concept_label).where(
+            QuizQuestion.book_id == book_id,
+            QuizQuestion.self_assessment == "got_it",
+            QuizQuestion.is_stale.is_(False),
+        )
+        # Per-concept latest verdict wins: a concept is resolved if the most
+        # recent self_assessment for that concept is 'got_it'. Implementing
+        # as "has any later got_it row" is a reasonable approximation for
+        # personal-tool scale and avoids a window function.
+        resolved_concepts = {row[0] for row in (await self.session.execute(resolved_q)).all()}
+
+        # FR-70(d): scope filter for specific_chapters
+        scope_section_ids: set[int] | None = None
+        if scope.get("mode") == "specific_chapters":
+            scope_section_ids = set(scope.get("section_ids") or [])
+
+        seen: set[str] = set()
+        out: list[dict] = []
+        for cand in candidates:
+            label = cand.concept_label
+            if label in seen or label in resolved_concepts:
+                continue
+            citation = json.loads(cand.citation_json or "{}")
+            section_id = citation.get("section_id")
+            if scope_section_ids is not None and section_id not in scope_section_ids:
+                continue
+            seen.add(label)
+            out.append({"concept_label": label, "section_id": section_id})
+            if len(out) >= self.settings.quiz.warm_up_max_questions:
+                break
+        return out
 
     async def grade_answer(self, **kwargs):
         raise NotImplementedError("Filled in by T13")

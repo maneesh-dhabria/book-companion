@@ -189,6 +189,58 @@ async def test_start_session_does_not_consume_pregen_for_specific_chapters(
 
 
 @pytest.mark.asyncio
+async def test_start_session_warm_up_takes_precedence_over_pregen(
+    db_session, book_factory, section_factory
+):
+    """E14 / FR-22(c): warm-up has ≥1 candidate → pregen slot NOT consumed."""
+    from app.db.models import QuizSession
+
+    book = await book_factory()
+    section = await section_factory(book=book)
+    # Seed a prior completed session that produces a warm-up candidate
+    prior = QuizSession(book_id=book.id, scope_mode="all_summaries", status="completed")
+    db_session.add(prior)
+    await db_session.flush()
+    db_session.add(
+        QuizQuestion(
+            book_id=book.id,
+            session_id=prior.id,
+            shape="open",
+            bloom_level="apply",
+            stem="?",
+            concept_label="loss aversion",
+            citation_json='{"section_id": 1, "section_title": "ch", "snippet": "..."}',
+            self_assessment="missed",
+        )
+    )
+    # Stage a pregen slot
+    pregen = QuizQuestion(
+        book_id=book.id,
+        shape="open",
+        bloom_level="apply",
+        stem="pregen?",
+        concept_label="x",
+        citation_json='{"section_id": 1, "section_title": "ch", "snippet": "..."}',
+        is_pregen=True,
+    )
+    db_session.add(pregen)
+    await db_session.flush()
+    book.pre_drafted_q1_id = pregen.id
+    await db_session.flush()
+
+    # Warm-up + cold-start Q1 both go through generate_question; script 2 valid
+    # responses (1 warm-up + 1 cold-start). Only one warm-up candidate seeded.
+    payload = _valid_question_payload(section.id)
+    provider = FakeLLMProvider([payload, payload])
+    svc = QuizService(db_session, provider, Settings())
+    result = await svc.start_session(book_id=book.id, scope={"mode": "all_summaries"}, theme=None)
+    assert result["warm_up_count"] == 1
+    assert result["queue_hit"] is False  # FR-22(c) — slot NOT consumed
+    await db_session.refresh(book)
+    assert book.pre_drafted_q1_id == pregen.id  # E14: persists
+
+
+@pytest.mark.asyncio
 async def test_start_session_does_not_consume_stale_pregen(
     db_session, book_factory, section_factory
 ):
