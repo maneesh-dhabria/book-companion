@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz · Question Turn (MCQ) — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    .m-shell { display: flex; flex-direction: column; height: 100%; }
+    .m-topbar {
+      height: 48px; padding: 0 12px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--wf-border); font-size: 14px;
+    }
+    .m-iconbtn {
+      width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--wf-border-2);
+      background: var(--wf-surface); display: inline-flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .m-bookhdr {
+      padding: 10px 14px; border-bottom: 1px solid var(--wf-border); display: flex; gap: 10px; align-items: center;
+    }
+    .m-tabstrip {
+      display: flex; gap: 16px; overflow-x: auto; padding: 0 14px;
+      border-bottom: 1px solid var(--wf-border); font-size: 13px;
+      white-space: nowrap;
+    }
+    .m-tabstrip a { padding: 10px 0; color: var(--wf-muted); }
+    .m-tabstrip a.active { color: var(--wf-text); border-bottom: 2px solid var(--wf-accent); font-weight: 500; }
+    .m-session-hdr {
+      padding: 8px 14px; border-bottom: 1px solid var(--wf-border);
+      background: var(--wf-surface); font-size: 12px; color: var(--wf-muted);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .m-content { padding: 14px; flex: 1; overflow: auto; padding-bottom: 80px; }
+    .m-pane {
+      background: var(--wf-surface); border: 1px solid var(--wf-border-2);
+      border-radius: var(--wf-radius); padding: 16px;
+    }
+    .m-opt {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 12px; border: 1px solid var(--wf-border-2);
+      border-radius: var(--wf-radius); background: var(--wf-surface);
+      font-size: 14px; line-height: 1.4;
+    }
+    .m-opt + .m-opt { margin-top: 8px; }
+    .m-opt.selected { border-color: var(--wf-accent); background: var(--bc-indigo-bg); }
+    .m-opt.correct { border-color: var(--wf-success); background: #f0fdf4; }
+    .m-radio {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1.5px solid var(--wf-border-2); margin-top: 2px; flex-shrink: 0;
+      background: var(--wf-surface);
+    }
+    .m-opt.selected .m-radio { border-color: var(--wf-accent); box-shadow: inset 0 0 0 3px var(--wf-accent); }
+    .m-opt.correct .m-radio { border-color: var(--wf-success); box-shadow: inset 0 0 0 3px var(--wf-success); }
+    .m-citation {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: var(--bc-indigo-bg); border: 1px solid var(--bc-indigo-border);
+      color: var(--bc-indigo-text); font-size: 11px;
+    }
+    .m-pill {
+      flex: 1; padding: 10px 8px; border-radius: 999px;
+      border: 1px solid var(--wf-border); background: var(--wf-surface);
+      color: var(--wf-text); font-size: 13px; min-height: 44px; cursor: pointer;
+    }
+    .m-pill.selected { background: var(--bc-indigo-text); color: #fff; border-color: var(--bc-indigo-text); }
+    .m-link {
+      background: transparent; border: 0; color: var(--wf-accent);
+      padding: 8px 6px; font-size: 13px; min-height: 44px;
+    }
+    .m-stop {
+      padding: 8px 12px; border-radius: var(--wf-radius);
+      border: 1px solid var(--wf-border); background: var(--wf-surface);
+      color: var(--wf-error); font-size: 13px; min-height: 44px;
+    }
+    .m-feedback {
+      background: var(--wf-surface-2); border: 1px solid var(--wf-border-2);
+      border-radius: var(--wf-radius); padding: 12px 14px; font-size: 13px; line-height: 1.5;
+    }
+    .m-tabbar-spec {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 56px;
+      background: var(--wf-surface); border-top: 1px solid var(--wf-border-2);
+      display: flex; align-items: center; justify-content: space-around;
+      font-size: 11px; color: var(--wf-muted);
+    }
+    .m-check {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--wf-success); color: #fff; font-size: 12px;
+    }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: PASS — D14 enforced (default state shows no citation chip; "Source revealed after answer" annotation only); citation chip appears in revealed/self-assessed/fatigue. N5 Submit disabled+aria-disabled until option picked. S4 loading: skeleton blocks + verbatim "Reading the book to draft your question…". D36 verbatim "Want to keep going or wrap up here?". C1 Kahneman loss-aversion stem. A1 <label>+<input type="radio"> in default. F1 m-opt rows full-width with padding 12px (≥44px hit area), m-pill/m-link/m-stop all min-height:44px, Submit min-height:44px+min-width:44px. C3 footer present (file 08 of 18). No findings — no edits applied.
+    Loop 2: skipped — no findings to address.
+    MSF R3 + R7: loading copy now shows theme-aware variant + annotation about post-Q1 copy shortening.
+    MSF R4/R5/R6 applied as appropriate.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Quiz · Question Turn (MCQ)</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="loading-draft">Loading</button>
+        <button class="wf-tab" aria-selected="false" data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="answered-revealed">Revealed</button>
+        <button class="wf-tab" aria-selected="false" data-state="feedback-self-assessed">Self-assessed</button>
+        <button class="wf-tab" aria-selected="false" data-state="fatigue-prompt">Fatigue</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web">
+
+    <!-- ========================= STATE 1: LOADING-DRAFT ========================= -->
+    <section class="wf-state active" data-state="loading-draft" aria-labelledby="state-loading-h-m">
+      <h1 id="state-loading-h-m" class="sr-only">Loading draft state</h1>
+      <div class="m-shell">
+        <div class="m-topbar">
+          <button class="m-iconbtn" aria-label="Open menu">☰</button>
+          <span style="font-weight:500;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="m-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="m-tabstrip" role="tablist">
+          <a role="tab">Overview</a>
+          <a role="tab">Summary</a>
+          <a role="tab">Sections</a>
+          <a role="tab">Audio</a>
+          <a role="tab">Annotations</a>
+          <a role="tab" class="active" aria-selected="true">Quiz</a>
+        </nav>
+        <div class="m-session-hdr">
+          <div><strong>Session:</strong> 3 Got it · 1 Partial</div>
+          <div>Lifetime: 14 Got it / 6 Partial / 3 Missed</div>
+        </div>
+
+        <div class="m-content">
+          <div class="m-pane wf-anno" data-note="MSF R3 — theme-aware loading copy keeps the user oriented when a theme survived the Start click. MSF R7 — after Q1 the copy shortens to 'Drafting…' since user momentum is built. Q1 keeps the long copy because cold-start anxiety is highest there.">
+            <div class="wf-row" style="gap:6px; margin-bottom:12px; flex-wrap:wrap;">
+              <span class="mock-pill">Q5</span>
+              <span class="mock-pill">MCQ</span>
+            </div>
+            <div class="wf-stack" style="gap:8px; margin-bottom:12px; padding:8px 10px; border:1px dashed var(--wf-border); border-radius:6px;">
+              <div class="wf-muted" style="font-size:10px; text-transform:uppercase; letter-spacing:.04em;">Loading copy varies by whether a theme was set on session start.</div>
+              <div class="wf-stack" style="gap:2px;">
+                <div class="wf-muted" style="font-size:10px;">A — no theme set</div>
+                <div class="wf-muted" style="font-size:12px;">Reading the book to draft your question…</div>
+              </div>
+              <div class="wf-stack" style="gap:2px;">
+                <div class="wf-muted" style="font-size:10px;">B — theme set</div>
+                <div class="wf-muted" style="font-size:12px;">Reading the book to draft a question on <strong>prospect theory</strong>…</div>
+              </div>
+            </div>
+            <div class="wf-stack" style="gap:10px;">
+              <div class="skeleton skeleton--lg" style="width:90%"></div>
+              <div class="skeleton" style="width:70%"></div>
+              <div class="mock-divider"></div>
+              <div class="skeleton" style="width:96%"></div>
+              <div class="skeleton" style="width:90%"></div>
+              <div class="skeleton" style="width:88%"></div>
+              <div class="skeleton" style="width:80%"></div>
+            </div>
+            <div style="margin-top:14px; display:flex; gap:8px;">
+              <button class="m-stop">Stop</button>
+              <span class="wf-grow"></span>
+              <button class="mock-button" disabled style="opacity:.5; min-height:44px;">Submit</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="m-tabbar-spec">
+          <span>Library</span><span>Search</span><span>Settings</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= STATE 2: DEFAULT ========================= -->
+    <section class="wf-state" data-state="default" aria-labelledby="state-default-h-m">
+      <h1 id="state-default-h-m" class="sr-only">Default — question + 4 options</h1>
+      <div class="m-shell">
+        <div class="m-topbar">
+          <button class="m-iconbtn" aria-label="Open menu">☰</button>
+          <span style="font-weight:500;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="m-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="m-tabstrip" role="tablist">
+          <a role="tab">Overview</a>
+          <a role="tab">Summary</a>
+          <a role="tab">Sections</a>
+          <a role="tab">Audio</a>
+          <a role="tab">Annotations</a>
+          <a role="tab" class="active" aria-selected="true">Quiz</a>
+        </nav>
+        <div class="m-session-hdr">
+          <div><strong>Session:</strong> 3 Got it · 1 Partial</div>
+          <div>Lifetime: 14 Got it / 6 Partial / 3 Missed</div>
+        </div>
+
+        <div class="m-content">
+          <div class="m-pane">
+            <div class="wf-row" style="gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+              <span class="mock-pill">Q5</span>
+              <span class="mock-pill">MCQ</span>
+              <span class="wf-anno wf-muted" data-note="D14: MCQ citation appears AFTER answer — pre-answer would leak the answer" style="font-size:11px;">Source revealed after answer</span>
+            </div>
+            <p style="font-size:16px; font-weight:500; line-height:1.4; margin-bottom:14px;">
+              Which of the following best describes loss aversion as Kahneman frames it?
+            </p>
+
+            <fieldset style="border:0; padding:0; margin:0;">
+              <legend class="sr-only">Choose one option</legend>
+              <label class="m-opt"><span class="m-radio" aria-hidden="true"></span><span><strong>A.</strong> People weigh losses about half as heavily as equivalent gains.</span><input type="radio" name="m-mcq" class="sr-only"></label>
+              <label class="m-opt"><span class="m-radio" aria-hidden="true"></span><span><strong>B.</strong> People weigh losses roughly twice as heavily as equivalent gains.</span><input type="radio" name="m-mcq" class="sr-only"></label>
+              <label class="m-opt"><span class="m-radio" aria-hidden="true"></span><span><strong>C.</strong> People weigh gains and losses roughly equally.</span><input type="radio" name="m-mcq" class="sr-only"></label>
+              <label class="m-opt"><span class="m-radio" aria-hidden="true"></span><span><strong>D.</strong> People are indifferent to losses below a personal threshold.</span><input type="radio" name="m-mcq" class="sr-only"></label>
+            </fieldset>
+
+            <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--wf-border-2); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <button class="m-link wf-anno" data-note="D18: Skip records as skipped, asks new Q">Skip</button>
+              <button class="m-link wf-anno" data-note="D24: Explain offers a hint without revealing the answer">Explain</button>
+              <button class="m-stop wf-anno" data-note="Ends session; tally preserved">Stop</button>
+              <span class="wf-grow"></span>
+              <button class="mock-button" disabled style="opacity:.5; min-height:44px; min-width:44px;" aria-disabled="true">Submit</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="m-tabbar-spec"><span>Library</span><span>Search</span><span>Settings</span></div>
+      </div>
+    </section>
+
+    <!-- ========================= STATE 3: ANSWERED-REVEALED ========================= -->
+    <section class="wf-state" data-state="answered-revealed" aria-labelledby="state-revealed-h-m">
+      <h1 id="state-revealed-h-m" class="sr-only">Answered, revealed</h1>
+      <div class="m-shell">
+        <div class="m-topbar">
+          <button class="m-iconbtn" aria-label="Open menu">☰</button>
+          <span style="font-weight:500;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="m-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="m-tabstrip" role="tablist">
+          <a role="tab">Overview</a>
+          <a role="tab">Summary</a>
+          <a role="tab">Sections</a>
+          <a role="tab">Audio</a>
+          <a role="tab">Annotations</a>
+          <a role="tab" class="active" aria-selected="true">Quiz</a>
+        </nav>
+        <div class="m-session-hdr">
+          <div><strong>Session:</strong> 3 Got it · 1 Partial</div>
+          <div>Lifetime: 14 Got it / 6 Partial / 3 Missed</div>
+        </div>
+
+        <div class="m-content">
+          <div class="m-pane">
+            <div class="wf-row" style="gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+              <span class="mock-pill">Q5</span>
+              <span class="mock-pill">MCQ</span>
+              <span class="m-citation wf-anno" data-note="D14: MCQ citation revealed AFTER answer">📖 Source: Ch. 26 — Prospect Theory</span>
+              <span style="color:var(--wf-success); font-size:12px; font-weight:500;">Correct</span>
+            </div>
+            <p style="font-size:16px; font-weight:500; line-height:1.4; margin-bottom:14px;">
+              Which of the following best describes loss aversion as Kahneman frames it?
+            </p>
+
+            <fieldset style="border:0; padding:0; margin:0;">
+              <legend class="sr-only">Your answer (revealed)</legend>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>A.</strong> People weigh losses about half as heavily as equivalent gains.</span></div>
+              <div class="m-opt correct selected" aria-disabled="true">
+                <span class="m-radio" aria-hidden="true"></span>
+                <span style="flex:1;"><strong>B.</strong> People weigh losses roughly twice as heavily as equivalent gains.</span>
+                <span class="m-check" aria-label="Correct answer">✓</span>
+              </div>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>C.</strong> People weigh gains and losses roughly equally.</span></div>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>D.</strong> People are indifferent to losses below a personal threshold.</span></div>
+            </fieldset>
+
+            <div class="m-feedback" style="margin-top:14px;">
+              <div style="font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Agent feedback</div>
+              <ul style="margin:0; padding-left:16px;">
+                <li><strong>What was right:</strong> you picked B — the loss-multiplier framing.</li>
+                <li><strong>What was missing:</strong> Kahneman pins the multiplier at roughly 2× (1.5–2.5×).</li>
+                <li><strong>From the source:</strong> Ch. 26 frames loss aversion as an asymmetry in prospect theory's value function.</li>
+              </ul>
+            </div>
+
+            <div style="margin-top:14px; padding:12px; border:1px dashed var(--bc-indigo-border); background:var(--bc-indigo-bg); border-radius:var(--wf-radius);">
+              <div style="font-size:12px; color:var(--bc-indigo-text); margin-bottom:8px;">How did that feel?</div>
+              <div style="display:flex; gap:6px;">
+                <button class="m-pill wf-anno" data-note="D12: your click is authoritative for the tally">Got it</button>
+                <button class="m-pill">Partial</button>
+                <button class="m-pill">Missed</button>
+                <button class="m-pill wf-anno" data-note="MSF R4 — tally-neutral; doesn't move Got it / Partial / Missed counts. Concept_label still recorded so warm-up (D29) can resurface the concept next session." style="background:#f3f4f6; color:#374151; border-color:#d1d5db;">Not sure</button>
+              </div>
+              <div style="margin-top:8px; display:flex; align-items:center;">
+                <span class="wf-muted wf-anno" data-note="D21: first-session onboarding microcopy" style="font-size:11px;">Your click is authoritative for the session tally.</span>
+                <span class="wf-grow"></span>
+                <button class="m-link wf-anno" data-note="D15: appends note; agent feedback stays">Override</button>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--wf-border-2); display:flex; gap:6px; align-items:center;">
+              <button class="m-link">Skip</button>
+              <button class="m-stop">Stop</button>
+              <span class="wf-grow"></span>
+              <span class="wf-muted" style="font-size:11px;">Pick an outcome</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="m-tabbar-spec"><span>Library</span><span>Search</span><span>Settings</span></div>
+      </div>
+    </section>
+
+    <!-- ========================= STATE 4: FEEDBACK SELF-ASSESSED ========================= -->
+    <section class="wf-state" data-state="feedback-self-assessed" aria-labelledby="state-self-h-m">
+      <h1 id="state-self-h-m" class="sr-only">Self-assessed — Got it selected, Next visible</h1>
+      <div class="m-shell">
+        <div class="m-topbar">
+          <button class="m-iconbtn" aria-label="Open menu">☰</button>
+          <span style="font-weight:500;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="m-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="m-tabstrip" role="tablist">
+          <a role="tab">Overview</a>
+          <a role="tab">Summary</a>
+          <a role="tab">Sections</a>
+          <a role="tab">Audio</a>
+          <a role="tab">Annotations</a>
+          <a role="tab" class="active" aria-selected="true">Quiz</a>
+        </nav>
+        <div class="m-session-hdr wf-anno" data-note="D12: tally updates immediately on self-assessment click">
+          <div><strong>Session:</strong> 4 Got it · 1 Partial</div>
+          <div>Lifetime: 15 Got it / 6 Partial / 3 Missed</div>
+        </div>
+
+        <div class="m-content">
+          <div class="m-pane">
+            <div class="wf-row" style="gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+              <span class="mock-pill">Q5</span>
+              <span class="mock-pill">MCQ</span>
+              <span class="m-citation">📖 Source: Ch. 26 — Prospect Theory</span>
+              <span style="color:var(--wf-success); font-size:12px; font-weight:500;">Correct</span>
+            </div>
+            <p style="font-size:16px; font-weight:500; line-height:1.4; margin-bottom:14px;">
+              Which of the following best describes loss aversion as Kahneman frames it?
+            </p>
+
+            <fieldset style="border:0; padding:0; margin:0;">
+              <legend class="sr-only">Your answer</legend>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>A.</strong> People weigh losses about half as heavily as equivalent gains.</span></div>
+              <div class="m-opt correct selected" aria-disabled="true">
+                <span class="m-radio" aria-hidden="true"></span>
+                <span style="flex:1;"><strong>B.</strong> People weigh losses roughly twice as heavily as equivalent gains.</span>
+                <span class="m-check" aria-label="Correct answer">✓</span>
+              </div>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>C.</strong> People weigh gains and losses roughly equally.</span></div>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>D.</strong> People are indifferent to losses below a personal threshold.</span></div>
+            </fieldset>
+
+            <div class="m-feedback" style="margin-top:14px;">
+              <div style="font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Agent feedback</div>
+              <ul style="margin:0; padding-left:16px;">
+                <li><strong>What was right:</strong> you picked B — the loss-multiplier framing.</li>
+                <li><strong>What was missing:</strong> roughly 2× (1.5–2.5×).</li>
+                <li><strong>From the source:</strong> Ch. 26 — asymmetry in the value function.</li>
+              </ul>
+            </div>
+
+            <div style="margin-top:14px; padding:12px; border:1px solid var(--bc-indigo-border); background:var(--bc-indigo-bg); border-radius:var(--wf-radius);">
+              <div style="font-size:12px; color:var(--bc-indigo-text); margin-bottom:8px;">How did that feel?</div>
+              <div style="display:flex; gap:6px;">
+                <button class="m-pill selected" aria-pressed="true">Got it</button>
+                <button class="m-pill">Partial</button>
+                <button class="m-pill">Missed</button>
+                <button class="m-pill wf-anno" data-note="MSF R4 — tally-neutral; doesn't move Got it / Partial / Missed counts. Concept_label still recorded so warm-up (D29) can resurface the concept next session." style="background:#f3f4f6; color:#374151; border-color:#d1d5db;">Not sure</button>
+              </div>
+              <div style="margin-top:8px; text-align:right;">
+                <button class="m-link">Override</button>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--wf-border-2); display:flex; gap:6px; align-items:center;">
+              <button class="m-link">Skip</button>
+              <button class="m-stop">Stop</button>
+              <span class="wf-grow"></span>
+              <button class="mock-button mock-button--primary wf-anno" data-note="Next-Question CTA only after self-assessment recorded" style="min-height:44px;">Next question</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="m-tabbar-spec"><span>Library</span><span>Search</span><span>Settings</span></div>
+      </div>
+    </section>
+
+    <!-- ========================= STATE 5: FATIGUE PROMPT ========================= -->
+    <section class="wf-state" data-state="fatigue-prompt" aria-labelledby="state-fatigue-h-m">
+      <h1 id="state-fatigue-h-m" class="sr-only">Fatigue prompt</h1>
+      <div class="m-shell">
+        <div class="m-topbar">
+          <button class="m-iconbtn" aria-label="Open menu">☰</button>
+          <span style="font-weight:500;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="m-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="m-tabstrip" role="tablist">
+          <a role="tab">Overview</a>
+          <a role="tab">Summary</a>
+          <a role="tab">Sections</a>
+          <a role="tab">Audio</a>
+          <a role="tab">Annotations</a>
+          <a role="tab" class="active" aria-selected="true">Quiz</a>
+        </nav>
+        <div class="m-session-hdr">
+          <div><strong>Session:</strong> 7 Got it · 2 Partial · 1 Missed</div>
+          <div>Lifetime: 21 Got it / 8 Partial / 4 Missed</div>
+        </div>
+
+        <div class="m-content">
+          <div class="m-pane">
+            <div class="wf-row" style="gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+              <span class="mock-pill">Q10</span>
+              <span class="mock-pill">MCQ</span>
+              <span class="m-citation">📖 Source: Ch. 26 — Prospect Theory</span>
+              <span style="color:var(--wf-success); font-size:12px; font-weight:500;">Correct</span>
+            </div>
+            <p style="font-size:16px; font-weight:500; line-height:1.4; margin-bottom:14px;">
+              Which of the following best describes loss aversion as Kahneman frames it?
+            </p>
+
+            <fieldset style="border:0; padding:0; margin:0;">
+              <legend class="sr-only">Your answer</legend>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>A.</strong> People weigh losses about half as heavily as equivalent gains.</span></div>
+              <div class="m-opt correct selected" aria-disabled="true">
+                <span class="m-radio" aria-hidden="true"></span>
+                <span style="flex:1;"><strong>B.</strong> People weigh losses roughly twice as heavily as equivalent gains.</span>
+                <span class="m-check" aria-label="Correct answer">✓</span>
+              </div>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>C.</strong> People weigh gains and losses roughly equally.</span></div>
+              <div class="m-opt" aria-disabled="true"><span class="m-radio" aria-hidden="true"></span><span><strong>D.</strong> People are indifferent to losses below a personal threshold.</span></div>
+            </fieldset>
+
+            <div class="m-feedback wf-anno" data-note="D36: every 10th turn, the agent appends the fatigue prompt to the feedback turn — generation-prompt-only" style="margin-top:14px;">
+              <div style="font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Agent feedback</div>
+              <ul style="margin:0 0 8px 0; padding-left:16px;">
+                <li><strong>What was right:</strong> the 2× framing per Ch. 26.</li>
+                <li><strong>What was missing:</strong> nothing material on this one.</li>
+                <li><strong>From the source:</strong> the asymmetry in prospect theory's value function.</li>
+              </ul>
+              <div style="padding-top:8px; border-top:1px dashed var(--wf-border-2); color:var(--wf-text);">
+                Want to keep going or wrap up here?
+              </div>
+            </div>
+
+            <div style="margin-top:14px; padding:12px; border:1px solid var(--bc-indigo-border); background:var(--bc-indigo-bg); border-radius:var(--wf-radius);">
+              <div style="font-size:12px; color:var(--bc-indigo-text); margin-bottom:8px;">How did that feel?</div>
+              <div style="display:flex; gap:6px;">
+                <button class="m-pill selected" aria-pressed="true">Got it</button>
+                <button class="m-pill">Partial</button>
+                <button class="m-pill">Missed</button>
+                <button class="m-pill wf-anno" data-note="MSF R4 — tally-neutral; doesn't move Got it / Partial / Missed counts. Concept_label still recorded so warm-up (D29) can resurface the concept next session." style="background:#f3f4f6; color:#374151; border-color:#d1d5db;">Not sure</button>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--wf-border-2); display:flex; flex-direction:column; gap:8px;">
+              <button class="mock-button mock-button--primary" style="min-height:44px;">Next question</button>
+              <button class="mock-button wf-anno" data-note="Stop and review ends session, routes to session-summary surface" style="min-height:44px;">Stop and review</button>
+              <div style="display:flex; gap:6px;">
+                <button class="m-link">Skip</button>
+                <span class="wf-grow"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="m-tabbar-spec"><span>Library</span><span>Search</span><span>Settings</span></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Quiz · Question Turn (MCQ)</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 08 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+
+    document.querySelectorAll('section[data-state="default"] .m-opt').forEach(row => {
+      row.addEventListener('click', () => {
+        row.parentElement.querySelectorAll('.m-opt').forEach(r => r.classList.remove('selected'));
+        row.classList.add('selected');
+        const submit = row.closest('.m-pane').querySelector('.mock-button');
+        if (submit) { submit.disabled = false; submit.style.opacity = '1'; submit.removeAttribute('aria-disabled'); }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz tab — Returning view — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1:
+      - N6 (HIGH): Lifetime tally lines diverged from D23 canonical phrasing "Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions". Default state hid the tally counts; other states put pieces in the wrong order. Fixed: each state now opens with the canonical line.
+      - A1 (HIGH): Session headers in the session-expanded state were <div class="wf-stack">, not <button>/<details>. Disclosure controls must be focusable buttons. Fixed: replaced with <button aria-expanded>; Export pulled out as a sibling button to avoid nesting.
+      - A1 (HIGH) default state: Export was a <span class="mock-pill"> nested inside the disclosure <button>. Fixed: Export is now a sibling <button> next to the header.
+      - F2 (verified): default keeps most-recent expanded; older sessions collapsed → matches D26.
+    Loop 2: No remaining HIGH/MEDIUM after re-read.
+    MSF R1: trend line added below lifetime tally.
+    MSF R4/R5/R6 applied 2026-05-09.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Quiz tab — Returning view</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="session-expanded">Older session</button>
+        <button class="wf-tab" aria-selected="false" data-state="themes-covered">Theme tooltip</button>
+        <button class="wf-tab" aria-selected="false" data-state="last-used-specific">Specific Chapters</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <!-- ============== STATE: default ============== -->
+  <main class="wf-frame wf-frame--mobile-web wf-state active" data-state="default" aria-labelledby="state-default-h" style="padding:0;">
+    <h1 id="state-default-h" class="sr-only">Default — most-recent session expanded</h1>
+
+    <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+
+    <!-- Top bar -->
+    <header style="height:48px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:8px; background:var(--wf-surface);">
+      <button aria-label="Open menu" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">☰</button>
+      <span style="font-weight:600; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+      <button aria-label="More actions" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">⋯</button>
+    </header>
+
+    <!-- Scrollable tab strip -->
+    <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 12px; display:flex; gap:18px; font-size:13px; overflow-x:auto; white-space:nowrap; background:var(--wf-surface);">
+      <a role="tab" aria-selected="false" style="padding:10px 0;" class="wf-muted">Overview</a>
+      <a role="tab" aria-selected="false" style="padding:10px 0;" class="wf-muted">Summary</a>
+      <a role="tab" aria-selected="false" style="padding:10px 0;" class="wf-muted">Sections</a>
+      <a role="tab" aria-selected="false" style="padding:10px 0;" class="wf-muted">Audio</a>
+      <a role="tab" aria-selected="false" style="padding:10px 0;" class="wf-muted">Annotations</a>
+      <a role="tab" aria-selected="true" style="padding:10px 0; border-bottom:2px solid #4f46e5; color:var(--wf-text); font-weight:500;">Quiz</a>
+    </nav>
+
+    <div style="padding:14px 14px 76px; overflow-y:auto; max-height:calc(812px - 48px - 24px - 56px - 40px);">
+
+      <!-- Lifetime tally -->
+      <section class="mock-card wf-anno"
+               data-note="Lifetime tally (D23) — canonical phrasing per requirements."
+               style="padding:12px 14px;">
+        <div style="font-size:13px; font-weight:500; line-height:1.4;">
+          Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions
+        </div>
+        <div class="wf-anno" data-note="MSF R1 — compound progress visibility (added 2026-05-09)" style="font-size:12px; color:#16a34a; margin-top:2px;">↑ 11pp · Got it 60% → 71% over 3 sessions</div>
+        <div class="wf-row" style="margin-top:8px; gap:6px; flex-wrap:wrap;">
+          <span class="mock-pill" style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46;">14 Got it</span>
+          <span class="mock-pill" style="background:#fef3c7; border-color:#fde68a; color:#92400e;">6 Partial</span>
+          <span class="mock-pill" style="background:#fee2e2; border-color:#fecaca; color:#991b1b;">3 Missed</span>
+        </div>
+        <div class="wf-row" style="margin-top:10px; gap:0; height:5px; border-radius:4px; overflow:hidden;">
+          <div style="flex:14; background:#10b981;"></div>
+          <div style="flex:6; background:#f59e0b;"></div>
+          <div style="flex:3; background:#ef4444;"></div>
+        </div>
+      </section>
+
+      <!-- Past Q&A -->
+      <section class="mock-card" style="padding:0; margin-top:14px;">
+        <header style="padding:10px 14px; border-bottom:1px solid var(--wf-border-2); font-weight:600; font-size:14px;">Past Q&amp;A</header>
+
+        <!-- Session 3 (expanded) -->
+        <article style="border-bottom:1px solid var(--wf-border-2);">
+          <div class="wf-row" style="background:var(--wf-surface-2); padding:0 10px 0 0; align-items:stretch;">
+            <button aria-expanded="true" aria-controls="ses3-body-m"
+                    style="flex:1; padding:10px 14px; background:transparent; border:0; text-align:left; min-height:44px; display:flex; flex-direction:column; gap:2px;">
+              <div class="wf-row" style="gap:6px; font-size:13px;">
+                <span aria-hidden="true" style="font-size:10px; color:var(--wf-muted);">▼</span>
+                <span style="font-weight:600;">Session 3</span>
+                <span class="wf-muted">· May 6, 2026</span>
+              </div>
+              <div class="wf-muted" style="font-size:12px; padding-left:16px;">12 Q · 6 Got it · 3 Partial · 1 Missed · 1 skipped</div>
+            </button>
+            <button class="mock-pill wf-anno"
+                    data-note="Export this session — separate button, not nested inside disclosure header."
+                    style="font-size:11px; align-self:center; min-height:32px;">Export</button>
+          </div>
+
+          <div style="padding:8px 14px 12px;">
+            <!-- Turn 1 -->
+            <div class="mock-card" style="padding:10px 12px; box-shadow:none; margin-top:8px;">
+              <div class="wf-row" style="gap:6px; flex-wrap:wrap; font-size:11px;">
+                <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q1 · MCQ</span>
+                <span class="mock-pill wf-anno" data-note="Source citation chip.">Source: Ch 1</span>
+              </div>
+              <div style="margin-top:8px; font-weight:500; font-size:14px;">
+                Which task is most characteristic of System 2?
+              </div>
+              <div style="margin-top:8px; padding:8px 10px; background:var(--wf-surface-2); border-radius:6px; font-size:13px;">
+                <span class="wf-muted" style="font-size:11px;">Your answer</span><br>
+                Multiplying 17 × 24 in your head — effortful, deliberate.
+              </div>
+              <div style="margin-top:8px; padding:8px 10px; border-left:3px solid #4f46e5; background:#fafafa; font-size:13px;">
+                <span class="wf-muted" style="font-size:11px;">Agent feedback</span><br>
+                Right. System 2 is the slow, effortful mode.
+              </div>
+              <div class="wf-row" style="margin-top:8px; gap:6px;">
+                <span class="mock-pill wf-anno"
+                      data-note="Self-assessment chip."
+                      style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46;">✓ Got it</span>
+              </div>
+            </div>
+
+            <!-- Turn 2: skipped -->
+            <div class="mock-card" style="padding:10px 12px; box-shadow:none; margin-top:8px; border-style:dashed;">
+              <div class="wf-row" style="gap:6px; flex-wrap:wrap; font-size:11px;">
+                <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q2 · Open</span>
+                <span class="mock-pill">Source: Ch 4</span>
+                <span class="mock-pill wf-anno"
+                      data-note="Skipped badge (D18) — not added to dedup history."
+                      style="background:#f4f4f5; border-color:#d4d4d8; color:#52525b;">⏭ skipped</span>
+              </div>
+              <div style="margin-top:8px; font-weight:500; font-size:14px;">
+                Difference between cognitive ease and cognitive strain — give one example each.
+              </div>
+              <div class="wf-muted" style="margin-top:6px; font-size:12px; font-style:italic;">
+                You skipped this question.
+              </div>
+            </div>
+
+            <!-- Turn 3: override -->
+            <div class="mock-card" style="padding:10px 12px; box-shadow:none; margin-top:8px;">
+              <div class="wf-row" style="gap:6px; flex-wrap:wrap; font-size:11px;">
+                <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q3 · Spot the error</span>
+                <span class="mock-pill">Source: Ch 11</span>
+              </div>
+              <div style="margin-top:8px; font-weight:500; font-size:14px;">
+                "Anchoring only happens when people are explicitly told to compare to a number." What's wrong?
+              </div>
+              <div style="margin-top:8px; padding:8px 10px; background:var(--wf-surface-2); border-radius:6px; font-size:13px;">
+                <span class="wf-muted" style="font-size:11px;">Your answer</span><br>
+                Anchoring still occurs with random/irrelevant anchors — wheel-of-fortune study.
+              </div>
+              <div style="margin-top:8px; padding:8px 10px; border-left:3px solid #4f46e5; background:#fafafa; font-size:13px;">
+                <span class="wf-muted" style="font-size:11px;">Agent feedback</span><br>
+                Partial — missed the second mechanism (anchor-and-adjust vs priming).
+              </div>
+              <div class="wf-row" style="margin-top:8px; gap:6px; flex-wrap:wrap;">
+                <span class="mock-pill" style="background:#fef3c7; border-color:#fde68a; color:#92400e;">~ Partial</span>
+                <span class="mock-pill wf-anno"
+                      data-note="Override note marker."
+                      style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">⚑ Override</span>
+              </div>
+              <div style="margin-top:6px; padding:8px 10px; background:#eef2ff; border:1px dashed #c7d2fe; border-radius:6px; font-size:12px;">
+                <span class="wf-muted" style="font-size:11px;">Your override note</span><br>
+                Should be Got it — priming wasn't in the stem.
+              </div>
+            </div>
+
+            <div class="wf-muted" style="margin-top:10px; font-size:12px; text-align:center;">9 more turns</div>
+          </div>
+        </article>
+
+        <!-- Session 2 (collapsed) -->
+        <article style="border-bottom:1px solid var(--wf-border-2);">
+          <div class="wf-row" style="padding:0 10px 0 0; align-items:stretch;">
+            <button aria-expanded="false"
+                    style="flex:1; padding:10px 14px; background:transparent; border:0; text-align:left; min-height:44px; display:flex; flex-direction:column; gap:2px;">
+              <div class="wf-row" style="gap:6px; font-size:13px;">
+                <span aria-hidden="true" style="font-size:10px; color:var(--wf-muted);">▶</span>
+                <span style="font-weight:600;">Session 2</span>
+                <span class="wf-muted">· May 3, 2026</span>
+              </div>
+              <div class="wf-muted" style="font-size:12px; padding-left:16px;">7 Q · 5 Got it · 1 Partial · 1 Missed</div>
+            </button>
+            <button class="mock-pill" style="font-size:11px; align-self:center; min-height:32px;">Export</button>
+          </div>
+        </article>
+
+        <!-- Session 1 (collapsed) -->
+        <article>
+          <div class="wf-row" style="padding:0 10px 0 0; align-items:stretch;">
+            <button aria-expanded="false"
+                    style="flex:1; padding:10px 14px; background:transparent; border:0; text-align:left; min-height:44px; display:flex; flex-direction:column; gap:2px;">
+              <div class="wf-row" style="gap:6px; font-size:13px;">
+                <span aria-hidden="true" style="font-size:10px; color:var(--wf-muted);">▶</span>
+                <span style="font-weight:600;">Session 1</span>
+                <span class="wf-muted">· Apr 28, 2026</span>
+              </div>
+              <div class="wf-muted" style="font-size:12px; padding-left:16px;">4 Q · 3 Got it · 0 Partial · 1 Missed</div>
+            </button>
+            <button class="mock-pill" style="font-size:11px; align-self:center; min-height:32px;">Export</button>
+          </div>
+        </article>
+      </section>
+
+      <!-- Themes covered -->
+      <section class="mock-card wf-anno"
+               data-note="Themes covered (D25) — tap to seed next session's theme."
+               style="padding:12px 14px; margin-top:14px;">
+        <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Themes covered</div>
+        <div class="wf-anno" data-note="MSF R5 — themes covered grouped by recency.">
+          <div class="wf-muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:4px;">Recent (this month)</div>
+          <div class="wf-row" style="flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+            <button class="mock-pill wf-anno" data-note="MSF R6 — Mastered (3 consecutive Got it sessions)." style="padding:6px 10px;"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#16a34a; margin-right:6px;" aria-hidden="true"></span>System 1 / System 2</button>
+            <button class="mock-pill" style="padding:6px 10px;">anchoring effect</button>
+            <button class="mock-pill" style="padding:6px 10px;">availability heuristic</button>
+            <button class="mock-pill" style="padding:6px 10px;">loss aversion</button>
+          </div>
+          <div class="wf-muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:4px;">All-time</div>
+          <div class="wf-row" style="flex-wrap:wrap; gap:6px; align-items:center;">
+            <button class="mock-pill wf-anno" data-note="MSF R6 — Mastered (3 consecutive Got it sessions)." style="padding:6px 10px;"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#16a34a; margin-right:6px;" aria-hidden="true"></span>cognitive ease</button>
+            <button class="mock-pill" style="padding:6px 10px;">the lazy controller</button>
+            <a href="#" style="font-size:12px; color:var(--wf-accent);">(+4 more)</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scope picker -->
+      <section class="mock-card" style="padding:14px; margin-top:14px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:2px;">Start a new session</div>
+        <div class="wf-muted" style="font-size:12px; margin-bottom:10px;">Pre-selected from your last session.</div>
+
+        <label class="wf-anno wf-row"
+               data-note="Last-used scope memory (D22)."
+               style="align-items:flex-start; gap:8px; padding:10px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff;">
+          <input type="radio" name="scope-m" checked style="margin-top:3px;">
+          <span style="font-size:13px;">
+            <span style="font-weight:500;">All Summaries</span><br>
+            <span class="wf-muted">book summary + every chapter summary</span>
+          </span>
+        </label>
+
+        <label class="wf-row" style="align-items:flex-start; gap:8px; padding:10px; border:1px solid var(--wf-border); border-radius:8px; margin-top:8px;">
+          <input type="radio" name="scope-m" style="margin-top:3px;">
+          <span style="font-size:13px;">
+            <span style="font-weight:500;">Specific Chapters</span><br>
+            <span class="wf-muted">full text of selected chapters</span>
+          </span>
+        </label>
+
+        <div style="margin-top:12px;">
+          <label class="mock-label" for="theme-m">Theme (optional)</label>
+          <input id="theme-m" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+
+        <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5; width:100%; margin-top:12px;">Start Quiz</button>
+      </section>
+    </div>
+
+    <!-- Bottom tab bar -->
+    <div class="wf-tabbar">
+      <button aria-label="Library" style="background:none; border:0; font-size:11px;">Library</button>
+      <button aria-label="Search" style="background:none; border:0; font-size:11px;">Search</button>
+      <button aria-label="Settings" style="background:none; border:0; font-size:11px;">Settings</button>
+    </div>
+  </main>
+
+  <!-- ============== STATE: session-expanded ============== -->
+  <main class="wf-frame wf-frame--mobile-web wf-state" data-state="session-expanded" style="padding:0;">
+    <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+    <header style="height:48px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:8px; background:var(--wf-surface);">
+      <button aria-label="Open menu" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">☰</button>
+      <span style="font-weight:600; font-size:14px; flex:1;">Thinking, Fast and Slow</span>
+      <button aria-label="More actions" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">⋯</button>
+    </header>
+    <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 12px; display:flex; gap:18px; font-size:13px; overflow-x:auto; white-space:nowrap; background:var(--wf-surface);">
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Overview</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Summary</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Sections</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Audio</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Annotations</a>
+      <a role="tab" aria-selected="true" style="padding:10px 0; border-bottom:2px solid #4f46e5; color:var(--wf-text); font-weight:500;">Quiz</a>
+    </nav>
+    <div style="padding:14px; overflow-y:auto; max-height:calc(812px - 48px - 24px - 56px - 40px); padding-bottom:80px;">
+      <section class="mock-card" style="padding:10px 14px;">
+        <div style="font-size:13px; font-weight:500;">Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</div>
+        <div class="wf-anno" data-note="MSF R1 — compound progress visibility (added 2026-05-09)" style="font-size:12px; color:#16a34a; margin-top:2px;">↑ 11pp · Got it 60% → 71% over 3 sessions</div>
+      </section>
+
+      <section class="mock-card" style="padding:0; margin-top:12px;">
+        <header style="padding:10px 14px; border-bottom:1px solid var(--wf-border-2); font-weight:600; font-size:14px;">Past Q&amp;A</header>
+
+        <article style="border-bottom:1px solid var(--wf-border-2);">
+          <div class="wf-row" style="background:var(--wf-surface-2); padding:0 10px 0 0; align-items:stretch;">
+            <button aria-expanded="true" style="flex:1; padding:10px 14px; background:transparent; border:0; text-align:left; min-height:44px; display:flex; flex-direction:column; gap:2px;">
+              <div class="wf-row" style="gap:6px; font-size:13px;">
+                <span style="font-size:10px; color:var(--wf-muted);">▼</span>
+                <span style="font-weight:600;">Session 3</span><span class="wf-muted">· May 6, 2026</span>
+              </div>
+              <div class="wf-muted" style="font-size:12px; padding-left:16px;">12 Q · 6 / 3 / 1 / 1 skipped</div>
+            </button>
+            <button class="mock-pill" style="font-size:11px; align-self:center; min-height:32px;">Export</button>
+          </div>
+          <div class="wf-muted" style="padding:10px 14px; font-size:12px;">12 turns rendered…</div>
+        </article>
+
+        <article class="wf-anno" data-note="User tapped Session 2 → expanded."
+                 style="border-bottom:1px solid var(--wf-border-2);">
+          <div class="wf-row" style="background:var(--wf-surface-2); padding:0 10px 0 0; align-items:stretch;">
+            <button aria-expanded="true" style="flex:1; padding:10px 14px; background:transparent; border:0; text-align:left; min-height:44px; display:flex; flex-direction:column; gap:2px;">
+              <div class="wf-row" style="gap:6px; font-size:13px;">
+                <span style="font-size:10px; color:var(--wf-muted);">▼</span>
+                <span style="font-weight:600;">Session 2</span><span class="wf-muted">· May 3, 2026</span>
+              </div>
+              <div class="wf-muted" style="font-size:12px; padding-left:16px;">7 Q · 5 / 1 / 1</div>
+            </button>
+            <button class="mock-pill" style="font-size:11px; align-self:center; min-height:32px;">Export</button>
+          </div>
+          <div style="padding:10px 14px;">
+            <div class="mock-card" style="padding:10px 12px; box-shadow:none;">
+              <div class="wf-row" style="gap:6px; font-size:11px;">
+                <span class="mock-pill" style="background:#eef2ff; border-color:#c7d2fe; color:#3730a3;">Q1 · Open</span>
+                <span class="mock-pill">Source: Ch 26</span>
+              </div>
+              <div style="margin-top:8px; font-weight:500; font-size:13px;">What does loss aversion predict about gains vs losses?</div>
+              <div style="margin-top:8px; padding:8px 10px; background:var(--wf-surface-2); border-radius:6px; font-size:13px;">
+                <span class="wf-muted" style="font-size:11px;">Your answer</span><br>
+                Losses ~2x gains.
+              </div>
+              <div style="margin-top:8px; padding:8px 10px; border-left:3px solid #4f46e5; font-size:13px;">
+                <span class="wf-muted" style="font-size:11px;">Agent feedback</span><br>
+                Correct, ~2:1 ratio.
+              </div>
+              <div class="wf-row" style="margin-top:8px;">
+                <span class="mock-pill" style="background:#ecfdf5; border-color:#a7f3d0; color:#065f46;">✓ Got it</span>
+              </div>
+            </div>
+            <div class="wf-muted" style="margin-top:8px; font-size:12px; text-align:center;">6 more turns</div>
+          </div>
+        </article>
+
+        <article>
+          <div class="wf-row" style="padding:0 10px 0 0; align-items:stretch;">
+            <button aria-expanded="false" style="flex:1; padding:10px 14px; background:transparent; border:0; text-align:left; min-height:44px; display:flex; flex-direction:column; gap:2px;">
+              <div class="wf-row" style="gap:6px; font-size:13px;">
+                <span style="font-size:10px; color:var(--wf-muted);">▶</span>
+                <span style="font-weight:600;">Session 1</span><span class="wf-muted">· Apr 28, 2026</span>
+              </div>
+              <div class="wf-muted" style="font-size:12px; padding-left:16px;">4 Q · 3 / 0 / 1</div>
+            </button>
+            <button class="mock-pill" style="font-size:11px; align-self:center; min-height:32px;">Export</button>
+          </div>
+        </article>
+      </section>
+    </div>
+    <div class="wf-tabbar">
+      <button aria-label="Library" style="background:none; border:0; font-size:11px;">Library</button>
+      <button aria-label="Search" style="background:none; border:0; font-size:11px;">Search</button>
+      <button aria-label="Settings" style="background:none; border:0; font-size:11px;">Settings</button>
+    </div>
+  </main>
+
+  <!-- ============== STATE: themes-covered (tap-tooltip) ============== -->
+  <main class="wf-frame wf-frame--mobile-web wf-state" data-state="themes-covered" style="padding:0;">
+    <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+    <header style="height:48px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:8px; background:var(--wf-surface);">
+      <button aria-label="Open menu" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">☰</button>
+      <span style="font-weight:600; font-size:14px; flex:1;">Thinking, Fast and Slow</span>
+      <button aria-label="More actions" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">⋯</button>
+    </header>
+    <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 12px; display:flex; gap:18px; font-size:13px; overflow-x:auto; white-space:nowrap; background:var(--wf-surface);">
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Overview</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Summary</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Sections</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Audio</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Annotations</a>
+      <a role="tab" aria-selected="true" style="padding:10px 0; border-bottom:2px solid #4f46e5; color:var(--wf-text); font-weight:500;">Quiz</a>
+    </nav>
+    <div style="padding:14px; padding-bottom:80px; overflow-y:auto;">
+      <section class="mock-card" style="padding:10px 14px;">
+        <div style="font-size:13px; font-weight:500;">Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</div>
+        <div class="wf-anno" data-note="MSF R1 — compound progress visibility (added 2026-05-09)" style="font-size:12px; color:#16a34a; margin-top:2px;">↑ 11pp · Got it 60% → 71% over 3 sessions</div>
+      </section>
+
+      <section class="mock-card" style="padding:12px 14px; margin-top:12px;">
+        <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Themes covered</div>
+        <div class="wf-row" style="flex-wrap:wrap; gap:6px; align-items:flex-start;">
+          <button class="mock-pill" style="padding:6px 10px;">System 1 / System 2</button>
+          <span style="position:relative;">
+            <button class="mock-pill" style="padding:6px 10px; background:#eef2ff; border-color:#4f46e5; color:#3730a3;">anchoring effect</button>
+            <span role="tooltip"
+                  style="position:absolute; top:100%; left:0; margin-top:6px; background:#18181b; color:#fafafa; font-size:11px; padding:5px 8px; border-radius:6px; white-space:nowrap; z-index:30;">
+              Tap to seed next session's theme
+            </span>
+          </span>
+          <button class="mock-pill" style="padding:6px 10px;">availability heuristic</button>
+          <button class="mock-pill" style="padding:6px 10px;">loss aversion</button>
+          <button class="mock-pill" style="padding:6px 10px;">cognitive ease</button>
+          <button class="mock-pill" style="padding:6px 10px;">the lazy controller</button>
+        </div>
+      </section>
+
+      <section class="mock-card" style="padding:14px; margin-top:24px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:10px;">Start a new session</div>
+        <label class="wf-row" style="align-items:flex-start; gap:8px; padding:10px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff;">
+          <input type="radio" name="scope-tc" checked style="margin-top:3px;">
+          <span style="font-size:13px;"><span style="font-weight:500;">All Summaries</span><br><span class="wf-muted">book summary + every chapter summary</span></span>
+        </label>
+        <div style="margin-top:10px;">
+          <label class="mock-label" for="theme-tc">Theme (optional)</label>
+          <input id="theme-tc" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5; width:100%; margin-top:12px;">Start Quiz</button>
+      </section>
+    </div>
+    <div class="wf-tabbar">
+      <button aria-label="Library" style="background:none; border:0; font-size:11px;">Library</button>
+      <button aria-label="Search" style="background:none; border:0; font-size:11px;">Search</button>
+      <button aria-label="Settings" style="background:none; border:0; font-size:11px;">Settings</button>
+    </div>
+  </main>
+
+  <!-- ============== STATE: last-used-specific ============== -->
+  <main class="wf-frame wf-frame--mobile-web wf-state" data-state="last-used-specific" style="padding:0;">
+    <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+    <header style="height:48px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:8px; background:var(--wf-surface);">
+      <button aria-label="Open menu" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">☰</button>
+      <span style="font-weight:600; font-size:14px; flex:1;">Thinking, Fast and Slow</span>
+      <button aria-label="More actions" style="background:none; border:0; font-size:18px; min-height:44px; min-width:44px;">⋯</button>
+    </header>
+    <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 12px; display:flex; gap:18px; font-size:13px; overflow-x:auto; white-space:nowrap; background:var(--wf-surface);">
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Overview</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Summary</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Sections</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Audio</a>
+      <a role="tab" style="padding:10px 0;" class="wf-muted">Annotations</a>
+      <a role="tab" aria-selected="true" style="padding:10px 0; border-bottom:2px solid #4f46e5; color:var(--wf-text); font-weight:500;">Quiz</a>
+    </nav>
+    <div style="padding:14px; padding-bottom:80px; overflow-y:auto;">
+      <section class="mock-card" style="padding:10px 14px;">
+        <div style="font-size:13px; font-weight:500;">Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</div>
+        <div class="wf-anno" data-note="MSF R1 — compound progress visibility (added 2026-05-09)" style="font-size:12px; color:#16a34a; margin-top:2px;">↑ 11pp · Got it 60% → 71% over 3 sessions</div>
+      </section>
+
+      <section class="mock-card wf-anno"
+               data-note="D22 chapter-selection memory — chapters 6, 7, 8 still checked from prior session."
+               style="padding:14px; margin-top:12px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:2px;">Start a new session</div>
+        <div class="wf-muted" style="font-size:12px; margin-bottom:10px;">Pre-selected: Specific Chapters · 6, 7, 8.</div>
+
+        <label class="wf-row" style="align-items:flex-start; gap:8px; padding:10px; border:1px solid var(--wf-border); border-radius:8px;">
+          <input type="radio" name="scope-lu" style="margin-top:3px;">
+          <span style="font-size:13px;"><span style="font-weight:500;">All Summaries</span><br><span class="wf-muted">book summary + every chapter summary</span></span>
+        </label>
+
+        <label class="wf-row" style="align-items:flex-start; gap:8px; padding:10px; border:1px solid #4f46e5; border-radius:8px; background:#eef2ff; margin-top:8px;">
+          <input type="radio" name="scope-lu" checked style="margin-top:3px;">
+          <span style="font-size:13px;"><span style="font-weight:500;">Specific Chapters</span><br><span class="wf-muted">full text of selected chapters</span></span>
+        </label>
+
+        <div style="margin-top:12px; padding:10px; border:1px solid var(--wf-border-2); border-radius:8px;">
+          <div class="wf-row" style="justify-content:space-between; font-size:12px; margin-bottom:6px;">
+            <span style="font-weight:500;">Pick chapters</span>
+            <span class="wf-muted">3 sel · ~58%</span>
+          </div>
+          <div class="wf-anno" data-note="Budget bar (D20)."
+               style="height:5px; border-radius:4px; background:var(--wf-border-2); overflow:hidden;">
+            <div style="width:58%; height:100%; background:#4f46e5;"></div>
+          </div>
+          <div class="wf-stack" style="margin-top:10px; gap:6px; font-size:13px;">
+            <label class="wf-row"><input type="checkbox"> <span class="wf-muted">Ch 4 — The Lazy Controller</span></label>
+            <label class="wf-row"><input type="checkbox"> <span class="wf-muted">Ch 5 — Cognitive Ease</span></label>
+            <label class="wf-row"><input type="checkbox" checked> <span style="font-weight:500;">Ch 6 — Norms, Surprises, Causes</span></label>
+            <label class="wf-row"><input type="checkbox" checked> <span style="font-weight:500;">Ch 7 — Jumping to Conclusions</span></label>
+            <label class="wf-row"><input type="checkbox" checked> <span style="font-weight:500;">Ch 8 — How Judgments Happen</span></label>
+            <label class="wf-row"><input type="checkbox"> <span class="wf-muted">Ch 9 — Answering an Easier Question</span></label>
+            <label class="wf-row"><input type="checkbox"> <span class="wf-muted">Ch 11 — Anchors</span></label>
+            <div class="wf-muted" style="font-size:11px;">…30 more (front/back matter hidden, D34)</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label class="mock-label" for="theme-lu">Theme (optional)</label>
+          <input id="theme-lu" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+
+        <button class="mock-button mock-button--primary" style="background:#4f46e5; border-color:#4f46e5; width:100%; margin-top:12px;">Start Quiz</button>
+      </section>
+    </div>
+    <div class="wf-tabbar">
+      <button aria-label="Library" style="background:none; border:0; font-size:11px;">Library</button>
+      <button aria-label="Search" style="background:none; border:0; font-size:11px;">Search</button>
+      <button aria-label="Settings" style="background:none; border:0; font-size:11px;">Settings</button>
+    </div>
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Quiz tab — Returning view</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 06 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W07 In-question controls — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    .bc-chip { display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px;
+               background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); color:var(--bc-indigo-text);
+               font-size:11.5px; font-weight:500; }
+    .bc-ctrl { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 12px;
+               border:1px solid var(--wf-border); background:var(--wf-surface); color:var(--wf-text);
+               border-radius:8px; font-size:13px; min-height:44px; cursor:pointer; }
+    .bc-ctrl[disabled] { opacity:.5; cursor:not-allowed; background:var(--wf-surface-2); }
+    .bc-link { color:var(--wf-accent); font-size:13px; text-decoration:underline; text-underline-offset:2px;
+               background:transparent; border:0; padding:10px 6px; cursor:pointer; min-height:44px; }
+    .bc-counter { color:var(--wf-muted); font-size:11.5px; margin-left:2px; }
+    .bc-clarify { background:var(--bc-indigo-bg); border-left:3px solid var(--wf-accent); border-radius:6px;
+                  padding:10px 12px; margin-left:14px; font-size:13px; color:var(--wf-text); }
+    .bc-clarify__head { font-weight:600; color:var(--bc-indigo-text); margin-bottom:4px; font-size:11px;
+                        text-transform:uppercase; letter-spacing:.04em; }
+    .bc-tip__pop { background:var(--wf-text); color:#fff; padding:8px 10px; border-radius:6px;
+                   font-size:11.5px; line-height:1.4; margin-top:6px; }
+    .bc-ghost-msg { font-size:12px; color:var(--wf-muted); font-style:italic; margin-top:8px; }
+    .bc-confirm { padding:10px 12px; background:var(--wf-surface-2); border:1px solid var(--wf-border);
+                  border-radius:8px; }
+    .bc-q-stem { font-size:15px; line-height:1.45; color:var(--wf-text); font-weight:500; }
+    .bc-controls-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .bc-controls-row > .bc-ctrl { flex:1 1 calc(50% - 4px); }
+    .bc-topbar { height:48px; display:flex; align-items:center; padding:0 12px; gap:10px; border-bottom:1px solid var(--wf-border); }
+    .bc-tabstrip { display:flex; gap:18px; padding:0 12px; overflow-x:auto; border-bottom:1px solid var(--wf-border); font-size:13px; }
+    .bc-tabstrip a { padding:10px 0; white-space:nowrap; }
+    .bc-tabstrip a[aria-selected="true"] { border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500; }
+    .bc-bottombar { position:absolute; bottom:0; left:0; right:0; height:56px; background:var(--wf-surface);
+                    border-top:1px solid var(--wf-border); display:flex; align-items:center; justify-content:space-around;
+                    font-size:11px; color:var(--wf-muted); }
+    .bc-content { padding:14px 14px 80px; }
+    .bc-meta-row { display:flex; gap:8px; flex-wrap:wrap; font-size:11.5px; color:var(--wf-muted); margin-bottom:10px; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: No fixes required — D35/N5/N9/A4/C2/C3 all satisfied.
+    Loop 2: -
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W07 In-question controls</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="explain-shown">Explain shown</button>
+        <button class="wf-tab" aria-selected="false" data-state="explain-cap">Cap reached</button>
+        <button class="wf-tab" aria-selected="false" data-state="already-tip">Already-asked tooltip</button>
+        <button class="wf-tab" aria-selected="false" data-state="skip-confirm">Skip confirm</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web">
+
+    <!-- ============================ STATE: explain-shown ============================ -->
+    <section class="wf-state active" data-state="explain-shown" aria-labelledby="state-explain-shown-h">
+      <h1 id="state-explain-shown-h" class="sr-only">Explain shown — first use</h1>
+
+      <div class="bc-topbar">
+        <button aria-label="Open menu" class="bc-ctrl" style="min-width:36px; padding:6px 10px;">☰</button>
+        <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+      </div>
+      <nav class="bc-tabstrip" role="tablist" aria-label="Book tabs">
+        <a role="tab" aria-selected="false">Overview</a>
+        <a role="tab" aria-selected="false">Summary</a>
+        <a role="tab" aria-selected="false">Sections</a>
+        <a role="tab" aria-selected="false">Audio</a>
+        <a role="tab" aria-selected="false">Annotations</a>
+        <a role="tab" aria-selected="true">Quiz</a>
+      </nav>
+
+      <div class="bc-content">
+        <div class="bc-meta-row">
+          <span>Q4 of session</span>
+          <span>·</span>
+          <span>Open-ended</span>
+        </div>
+
+        <div class="mock-card" style="padding:14px;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+            <span class="bc-chip">Source: Chapter 7</span>
+            <span class="mock-pill">Open-ended</span>
+          </div>
+
+          <p class="bc-q-stem">
+            How does the affect heuristic interact with the availability cascade in policy debate?
+          </p>
+
+          <div class="bc-clarify wf-anno" style="margin-top:10px;"
+               data-note="D24 leakage guard: clarifies term + scope, never the answer.">
+            <div class="bc-clarify__head">Clarification — agent</div>
+            <p style="margin:0 0 4px 0;">
+              An <em>availability cascade</em> is a self-reinforcing loop: a story gains plausibility just by being repeated.
+            </p>
+            <p style="margin:0;" class="wf-muted">
+              Scope: Chapters 12–13, Kahneman's policy-debate examples (Love Canal, terror coverage).
+            </p>
+          </div>
+
+          <hr class="mock-divider" style="margin:14px 0;">
+
+          <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+          <button class="mock-button mock-button--primary" style="width:100%; margin-top:10px;">Submit answer</button>
+
+          <div class="bc-controls-row">
+            <span class="wf-anno" style="flex:1 1 calc(50% - 4px);"
+                  data-note="D35: 2-Explain soft cap; counter shows usage.">
+              <button class="bc-ctrl" style="width:100%;">
+                💬 Explain <span class="bc-counter">(1 / 2)</span>
+              </button>
+            </span>
+            <button class="bc-ctrl wf-anno"
+                    data-note="Skip is excluded from dedup history (D18). 3 skips → soft-dedup nudge (D37).">
+              Skip
+            </button>
+          </div>
+
+          <div class="bc-controls-row" style="margin-top:8px;">
+            <button class="bc-link wf-anno" style="text-align:left;"
+                    data-note="Ghost text-link; first appearance per session shows tooltip.">
+              Already asked
+            </button>
+            <button class="bc-ctrl" disabled aria-disabled="true"
+                    title="Available after you submit and receive feedback">Override</button>
+          </div>
+
+          <p class="wf-muted" style="font-size:11.5px; margin-top:10px;">
+            Override unlocks after the agent gives you feedback.
+          </p>
+        </div>
+      </div>
+
+      <div class="bc-bottombar" aria-label="Primary navigation">
+        <span>Library</span>
+        <span>Search</span>
+        <span>Settings</span>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: explain-cap ============================ -->
+    <section class="wf-state" data-state="explain-cap" aria-labelledby="state-explain-cap-h">
+      <h1 id="state-explain-cap-h" class="sr-only">Explain soft cap reached</h1>
+
+      <div class="bc-topbar">
+        <button aria-label="Open menu" class="bc-ctrl" style="min-width:36px; padding:6px 10px;">☰</button>
+        <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+      </div>
+      <nav class="bc-tabstrip" role="tablist" aria-label="Book tabs">
+        <a role="tab" aria-selected="false">Overview</a>
+        <a role="tab" aria-selected="false">Summary</a>
+        <a role="tab" aria-selected="false">Sections</a>
+        <a role="tab" aria-selected="false">Audio</a>
+        <a role="tab" aria-selected="false">Annotations</a>
+        <a role="tab" aria-selected="true">Quiz</a>
+      </nav>
+
+      <div class="bc-content">
+        <div class="bc-meta-row">
+          <span>Q4 of session</span>
+          <span>·</span>
+          <span>Open-ended</span>
+        </div>
+
+        <div class="mock-card" style="padding:14px;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+            <span class="bc-chip">Source: Chapter 7</span>
+            <span class="mock-pill">Open-ended</span>
+          </div>
+
+          <p class="bc-q-stem">
+            How does the affect heuristic interact with the availability cascade in policy debate?
+          </p>
+
+          <details style="margin-top:10px; margin-left:14px;">
+            <summary class="wf-muted" style="font-size:12px; cursor:pointer;">2 prior clarifications shown</summary>
+            <div class="bc-clarify" style="margin:6px 0 0 0;">
+              <div class="bc-clarify__head">Clarification 1</div>
+              <p style="margin:0;" class="wf-muted">Defines availability cascade; points to Chapters 12–13.</p>
+            </div>
+            <div class="bc-clarify" style="margin:6px 0 0 0;">
+              <div class="bc-clarify__head">Clarification 2</div>
+              <p style="margin:0;" class="wf-muted">Refines what "policy debate" means in the book — no answer content.</p>
+            </div>
+          </details>
+
+          <hr class="mock-divider" style="margin:14px 0;">
+
+          <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+          <button class="mock-button mock-button--primary" style="width:100%; margin-top:10px;">Submit answer</button>
+
+          <div class="bc-controls-row">
+            <span class="wf-anno" style="flex:1 1 calc(50% - 4px);"
+                  data-note="D35: 3rd Explain click is a no-op — no LLM call, just a ghost nudge.">
+              <button class="bc-ctrl" style="width:100%;" disabled aria-disabled="true">
+                💬 Explain <span class="bc-counter">(2 / 2)</span>
+              </button>
+            </span>
+            <button class="bc-ctrl">Skip</button>
+          </div>
+          <div class="bc-controls-row" style="margin-top:8px;">
+            <button class="bc-link" style="text-align:left;">Already asked</button>
+            <button class="bc-ctrl" disabled aria-disabled="true"
+                    title="Available after you submit and receive feedback">Override</button>
+          </div>
+
+          <div class="bc-ghost-msg">Try answering or Skip.</div>
+        </div>
+      </div>
+
+      <div class="bc-bottombar" aria-label="Primary navigation">
+        <span>Library</span>
+        <span>Search</span>
+        <span>Settings</span>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: already-tip ============================ -->
+    <section class="wf-state" data-state="already-tip" aria-labelledby="state-already-tip-h">
+      <h1 id="state-already-tip-h" class="sr-only">Already-asked tooltip on first appearance</h1>
+
+      <div class="bc-topbar">
+        <button aria-label="Open menu" class="bc-ctrl" style="min-width:36px; padding:6px 10px;">☰</button>
+        <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+      </div>
+      <nav class="bc-tabstrip" role="tablist" aria-label="Book tabs">
+        <a role="tab" aria-selected="false">Overview</a>
+        <a role="tab" aria-selected="false">Summary</a>
+        <a role="tab" aria-selected="false">Sections</a>
+        <a role="tab" aria-selected="false">Audio</a>
+        <a role="tab" aria-selected="false">Annotations</a>
+        <a role="tab" aria-selected="true">Quiz</a>
+      </nav>
+
+      <div class="bc-content">
+        <div class="bc-meta-row">
+          <span>Q4 of session</span>
+          <span>·</span>
+          <span>Open-ended</span>
+        </div>
+
+        <div class="mock-card" style="padding:14px;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+            <span class="bc-chip">Source: Chapter 7</span>
+            <span class="mock-pill">Open-ended</span>
+          </div>
+
+          <p class="bc-q-stem">
+            How does the affect heuristic interact with the availability cascade in policy debate?
+          </p>
+
+          <hr class="mock-divider" style="margin:14px 0;">
+
+          <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+          <button class="mock-button mock-button--primary" style="width:100%; margin-top:10px;">Submit answer</button>
+
+          <div class="bc-controls-row">
+            <button class="bc-ctrl">💬 Explain <span class="bc-counter">(0 / 2)</span></button>
+            <button class="bc-ctrl">Skip</button>
+          </div>
+
+          <div class="bc-controls-row" style="margin-top:8px;">
+            <span class="wf-anno" style="flex:1 1 calc(50% - 4px); display:flex; flex-direction:column;"
+                  data-note="On mobile the tooltip becomes an inline popover under the link (first session appearance only).">
+              <button class="bc-link" style="text-align:left;" aria-describedby="m-already-tip-pop">Already asked</button>
+              <div class="bc-tip__pop" id="m-already-tip-pop" role="tooltip">
+                Reports this stem to the agent as already-asked. The next question regenerates and we won't ask this again.
+              </div>
+            </span>
+            <button class="bc-ctrl" disabled aria-disabled="true"
+                    title="Available after you submit and receive feedback">Override</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bc-bottombar" aria-label="Primary navigation">
+        <span>Library</span>
+        <span>Search</span>
+        <span>Settings</span>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: skip-confirm ============================ -->
+    <section class="wf-state" data-state="skip-confirm" aria-labelledby="state-skip-confirm-h">
+      <h1 id="state-skip-confirm-h" class="sr-only">Skip inline confirmation</h1>
+
+      <div class="bc-topbar">
+        <button aria-label="Open menu" class="bc-ctrl" style="min-width:36px; padding:6px 10px;">☰</button>
+        <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+      </div>
+      <nav class="bc-tabstrip" role="tablist" aria-label="Book tabs">
+        <a role="tab" aria-selected="false">Overview</a>
+        <a role="tab" aria-selected="false">Summary</a>
+        <a role="tab" aria-selected="false">Sections</a>
+        <a role="tab" aria-selected="false">Audio</a>
+        <a role="tab" aria-selected="false">Annotations</a>
+        <a role="tab" aria-selected="true">Quiz</a>
+      </nav>
+
+      <div class="bc-content">
+        <div class="bc-meta-row">
+          <span>Q4 of session</span>
+          <span>·</span>
+          <span>Open-ended</span>
+        </div>
+
+        <div class="mock-card" style="padding:14px;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+            <span class="bc-chip">Source: Chapter 7</span>
+            <span class="mock-pill">Open-ended</span>
+          </div>
+
+          <p class="bc-q-stem">
+            How does the affect heuristic interact with the availability cascade in policy debate?
+          </p>
+
+          <hr class="mock-divider" style="margin:14px 0;">
+
+          <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+          <div class="bc-confirm wf-anno" style="margin-top:12px;"
+               data-note="Skipped questions are NOT added to dedup history (D18). 3 skips on the same stem triggers a soft-dedup nudge (D37).">
+            <div style="font-size:13.5px; margin-bottom:8px;">Skip this question?</div>
+            <div style="display:flex; gap:8px;">
+              <button class="bc-ctrl" style="flex:1;">Yes, skip</button>
+              <button class="bc-ctrl" style="flex:1;">Cancel</button>
+            </div>
+          </div>
+
+          <p class="wf-muted" style="font-size:11.5px; margin-top:8px;">
+            Skipped questions are not added to the dedup history (D18).
+          </p>
+        </div>
+      </div>
+
+      <div class="bc-bottombar" aria-label="Primary navigation">
+        <span>Library</span>
+        <span>Search</span>
+        <span>Settings</span>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W07 In-question controls</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 14 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

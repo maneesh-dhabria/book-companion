@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W02 Scope · Specific Chapters — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    .bc-banner { background: var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); color: var(--bc-indigo-text); border-radius: 8px; padding: 10px 12px; font-size: 12px; }
+    .bc-budget-track { height: 6px; background: var(--wf-border); border-radius: 999px; overflow: hidden; }
+    .bc-budget-fill  { height: 100%; background: var(--wf-accent); border-radius: 999px; }
+    .bc-budget-fill--warn { background: var(--wf-warning); }
+    .bc-chap-row { display:flex; align-items:center; gap:10px; padding: 12px; min-height: 44px; border-bottom: 1px solid var(--wf-border-2); font-size: 13px; }
+    .bc-chap-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
+    .bc-chap-row--disabled { color: var(--wf-faint); font-style: italic; }
+    .bc-chap-row--checked { background: var(--bc-indigo-bg); }
+    .bc-part-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--wf-muted); padding: 10px 12px 4px; font-weight: 600; background: var(--wf-surface-2); }
+    .bc-helper { font-size: 11px; color: var(--wf-muted); }
+    .bc-radio-row { display:flex; align-items:flex-start; gap:8px; padding:10px 12px; border:1px solid var(--wf-border); border-radius: 8px; font-size: 13px; }
+    .bc-radio-row--active { border-color: var(--wf-accent); background: var(--bc-indigo-bg); }
+    .bc-cta { background: var(--wf-accent); color: #fff; border:1px solid var(--wf-accent); border-radius: 8px; padding: 10px 16px; font-weight: 500; width: 100%; font-size: 14px; }
+    .bc-cta:disabled { background: var(--wf-border); color: var(--wf-faint); border-color: var(--wf-border); }
+    .bc-screen { padding-bottom: 72px; }
+    .bc-topbar { height: 48px; display:flex; align-items:center; gap:8px; padding: 0 12px; border-bottom: 1px solid var(--wf-border-2); background: var(--wf-surface); }
+    .bc-tabstrip { display:flex; gap:16px; padding: 0 12px; border-bottom: 1px solid var(--wf-border); overflow-x:auto; font-size: 13px; }
+    .bc-tabstrip a { padding: 10px 0; white-space: nowrap; }
+    .bc-tabstrip a[aria-selected="true"] { border-bottom: 2px solid var(--wf-accent); font-weight: 500; }
+    .bc-bottombar { position: absolute; bottom: 0; left: 0; right: 0; height: 56px; background: var(--wf-surface); border-top: 1px solid var(--wf-border-2); display: flex; align-items: center; justify-content: space-around; font-size: 11px; color: var(--wf-muted); }
+    .bc-bottombar a[aria-current="page"] { color: var(--wf-accent); }
+    .bc-section-title { padding: 12px; font-weight: 600; font-size: 14px; }
+    .bc-bulk-toolbar { display:flex; align-items:center; gap:10px; padding: 10px 12px; background: var(--wf-surface-2); border-bottom: 1px solid var(--wf-border-2); font-size: 12px; flex-wrap: wrap; }
+    .bc-bulk-toolbar .bc-link { color: var(--wf-accent); text-decoration: underline; min-height: 32px; display:inline-flex; align-items:center; }
+    .bc-part-row { display:flex; align-items:center; justify-content:space-between; background: var(--wf-surface-2); }
+    .bc-part-row .bc-part-label { background: transparent; }
+    .bc-part-select { font-size: 11px; color: var(--wf-accent); text-decoration: underline; padding: 8px 12px; min-height: 32px; display:inline-flex; align-items:center; }
+    .bc-part-select--disabled { color: var(--wf-faint); text-decoration: line-through; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1:
+      - HIGH F1/A5: chapter rows ~35px tall (below 44px touch target) -> padding 12px, min-height:44px, checkbox 20x20.
+      - HIGH A1: tablist/bottombar anchors lacked href -> added href="#" to all <a role="tab"> and bottombar nav links.
+      - Verified: D20 6px pill bar with percent label across all states; D34 front/back-matter hidden with explicit helper line; D31 auto-default banner with Change-scope link; verbatim over-budget copy "Would exceed budget — deselect a chapter to add."; icon buttons (☰, ⋯) carry aria-label; C1 chapter names from "Thinking, Fast and Slow"; C3 footer present; all 6 states reachable.
+    Loop 2: re-read, no remaining HIGH/MEDIUM. Exit.
+    MSF R2: bulk-select Pick-range link + Per-Part Select-all link added above chapter list; budget enforcement preserved.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W02 Scope · Specific Chapters</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="partial">Partial</button>
+        <button class="wf-tab" aria-selected="false" data-state="near-budget">Near budget</button>
+        <button class="wf-tab" aria-selected="false" data-state="over-budget">Over budget</button>
+        <button class="wf-tab" aria-selected="false" data-state="auto-default">Auto-default</button>
+        <button class="wf-tab" aria-selected="false" data-state="single-chapter">Single chapter</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <!-- ============== STATE: default ============== -->
+  <main class="wf-frame wf-frame--mobile-web">
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default state — no chapters selected</h1>
+      <div class="bc-screen">
+        <div class="bc-topbar">
+          <button aria-label="Open menu" style="background:none; border:0; font-size:18px;">☰</button>
+          <span style="font-weight:500; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+          <button aria-label="More actions" style="background:none; border:0; font-size:18px;">⋯</button>
+        </div>
+        <nav role="tablist" class="bc-tabstrip">
+          <a role="tab" href="#">Overview</a><a role="tab" href="#">Summary</a><a role="tab" href="#">Sections</a><a role="tab" href="#">Audio</a><a role="tab" href="#">Annotations</a>
+          <a role="tab" href="#" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-section-title">Scope</div>
+        <div style="padding: 0 12px; display:flex; flex-direction:column; gap:8px;">
+          <label class="bc-radio-row"><input type="radio" name="scope1m" style="margin-top:2px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+          <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope1m" checked style="margin-top:2px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters</div></div></label>
+        </div>
+
+        <div class="mock-card wf-anno" style="margin: 12px;" data-note="Budget bar = % of token budget consumed (Claude-Code-style). Adding a chapter that would exceed 100% is blocked inline (D20).">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+          <div class="bc-budget-track"><div class="bc-budget-fill" style="width:0%"></div></div>
+          <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+            <span class="bc-helper">0% of budget used</span>
+            <span class="bc-helper">0 chapters</span>
+          </div>
+        </div>
+
+        <div class="bc-section-title">Chapters</div>
+        <div style="border-top:1px solid var(--wf-border-2);">
+          <div class="bc-bulk-toolbar wf-anno" data-note="MSF R2: bulk-select toolbar above chapter list. 'Pick range…' opens a chapter range picker. Per-Part 'Select all' toggles visible chapters in that part. Both honor D20 budget — if action would exceed 100%, the affordance shows the same inline rejection copy ('Would exceed budget — deselect a chapter to add.') instead of silent truncation.">
+            <span style="font-weight:500;">Bulk select:</span>
+            <a href="#" class="bc-link">Pick range…</a>
+            <span class="bc-helper" style="margin-left:auto;">e.g., Ch 6–8</span>
+          </div>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 1 · Two Systems</div>
+            <a href="#" class="bc-part-select">Select all</a>
+          </div>
+          <label class="bc-chap-row"><input type="checkbox"> <span>1. The Characters of the Story</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>2. Attention and Effort</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>3. The Lazy Controller</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>4. The Associative Machine</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>5. Cognitive Ease</span></label>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+            <a href="#" class="bc-part-select">Select all</a>
+          </div>
+          <label class="bc-chap-row"><input type="checkbox"> <span>6. Norms, Surprises, and Causes</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>7. A Machine for Jumping to Conclusions</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>8. How Judgments Happen</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>9. Answering an Easier Question</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>10. The Law of Small Numbers</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>11. Anchors</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>12. The Science of Availability</span></label>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 4 · Choices</div>
+            <a href="#" class="bc-part-select">Select all</a>
+          </div>
+          <label class="bc-chap-row"><input type="checkbox"> <span>26. Prospect Theory</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>27. The Endowment Effect</span></label>
+          <p class="bc-helper" style="padding: 10px 12px;">Front/back matter (dedication, copyright, glossary, notes, appendix) is hidden.</p>
+        </div>
+
+        <div style="padding: 12px;">
+          <label class="mock-label" for="theme-dm">Optional theme</label>
+          <input id="theme-dm" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <div style="padding: 0 12px;">
+          <button class="bc-cta" disabled>Start Quiz</button>
+          <p class="bc-helper" style="text-align:center; margin-top:6px;">Pick at least one chapter</p>
+        </div>
+
+        <nav class="bc-bottombar"><a href="#">Library</a><a href="#">Search</a><a aria-current="page" href="#">Settings</a></nav>
+      </div>
+    </section>
+
+    <!-- ============== STATE: partial ============== -->
+    <section class="wf-state" data-state="partial" aria-labelledby="state-partial-h">
+      <h1 id="state-partial-h" class="sr-only">Partial state — 3 chapters selected</h1>
+      <div class="bc-screen">
+        <div class="bc-topbar">
+          <button aria-label="Open menu" style="background:none; border:0; font-size:18px;">☰</button>
+          <span style="font-weight:500; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+          <button aria-label="More actions" style="background:none; border:0; font-size:18px;">⋯</button>
+        </div>
+        <nav role="tablist" class="bc-tabstrip">
+          <a role="tab" href="#">Overview</a><a role="tab" href="#">Summary</a><a role="tab" href="#">Sections</a><a role="tab" href="#">Audio</a><a role="tab" href="#">Annotations</a>
+          <a role="tab" href="#" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-section-title">Scope</div>
+        <div style="padding: 0 12px; display:flex; flex-direction:column; gap:8px;">
+          <label class="bc-radio-row"><input type="radio" name="scope2m" style="margin-top:2px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+          <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope2m" checked style="margin-top:2px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters</div></div></label>
+        </div>
+
+        <div class="mock-card" style="margin: 12px;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+          <div class="bc-budget-track"><div class="bc-budget-fill" style="width:58%"></div></div>
+          <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+            <span class="bc-helper" style="color:var(--bc-indigo-text); font-weight:500;">58% of budget used</span>
+            <span class="bc-helper">3 chapters</span>
+          </div>
+        </div>
+
+        <div class="bc-section-title">Chapters · 3 selected</div>
+        <div style="border-top:1px solid var(--wf-border-2);">
+          <div class="bc-bulk-toolbar">
+            <span style="font-weight:500;">Bulk select:</span>
+            <a href="#" class="bc-link">Pick range…</a>
+            <span class="bc-helper" style="margin-left:auto;">e.g., Ch 6–8</span>
+          </div>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+            <a href="#" class="bc-part-select">Select all</a>
+          </div>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>9. Answering an Easier Question</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>10. The Law of Small Numbers</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>11. Anchors</span></label>
+        </div>
+
+        <div style="padding: 12px;">
+          <label class="mock-label" for="theme-pm">Optional theme</label>
+          <input id="theme-pm" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <div style="padding: 0 12px;">
+          <button class="bc-cta">Start Quiz</button>
+        </div>
+
+        <nav class="bc-bottombar"><a href="#">Library</a><a href="#">Search</a><a aria-current="page" href="#">Settings</a></nav>
+      </div>
+    </section>
+
+    <!-- ============== STATE: near-budget ============== -->
+    <section class="wf-state" data-state="near-budget" aria-labelledby="state-near-h">
+      <h1 id="state-near-h" class="sr-only">Near-budget — 5 chapters, 92%</h1>
+      <div class="bc-screen">
+        <div class="bc-topbar">
+          <button aria-label="Open menu" style="background:none; border:0; font-size:18px;">☰</button>
+          <span style="font-weight:500; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+          <button aria-label="More actions" style="background:none; border:0; font-size:18px;">⋯</button>
+        </div>
+        <nav role="tablist" class="bc-tabstrip">
+          <a role="tab" href="#">Overview</a><a role="tab" href="#">Summary</a><a role="tab" href="#">Sections</a><a role="tab" href="#">Audio</a><a role="tab" href="#">Annotations</a>
+          <a role="tab" href="#" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-section-title">Scope</div>
+        <div style="padding: 0 12px;">
+          <label class="bc-radio-row bc-radio-row--active"><input type="radio" checked style="margin-top:2px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters</div></div></label>
+        </div>
+
+        <div class="mock-card" style="margin: 12px;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+          <div class="bc-budget-track"><div class="bc-budget-fill bc-budget-fill--warn" style="width:92%"></div></div>
+          <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+            <span class="bc-helper" style="color:var(--wf-warning); font-weight:500;">92% of budget used</span>
+            <span class="bc-helper">5 chapters</span>
+          </div>
+          <p class="bc-helper" style="margin-top:8px;">Adding another chapter may exceed the per-call cap.</p>
+        </div>
+
+        <div class="bc-section-title">Chapters · 5 selected</div>
+        <div style="border-top:1px solid var(--wf-border-2);">
+          <div class="bc-bulk-toolbar wf-anno" data-note="MSF R2 + D20: Pick-range still tappable (user may pick a fitting range). Per-Part 'Select all' on Part 2 disabled — adding remaining chapters would exceed cap. Same rejection copy as inline D20.">
+            <span style="font-weight:500;">Bulk select:</span>
+            <a href="#" class="bc-link">Pick range…</a>
+            <span class="bc-helper" style="margin-left:auto; color:var(--wf-warning);">Would exceed budget — deselect a chapter to add.</span>
+          </div>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+            <a class="bc-part-select bc-part-select--disabled" aria-disabled="true">Select all</a>
+          </div>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>10. The Law of Small Numbers</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>11. Anchors</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>12. The Science of Availability</span></label>
+        </div>
+
+        <div style="padding: 12px;">
+          <label class="mock-label" for="theme-nm">Optional theme</label>
+          <input id="theme-nm" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <div style="padding: 0 12px;">
+          <button class="bc-cta">Start Quiz</button>
+        </div>
+
+        <nav class="bc-bottombar"><a href="#">Library</a><a href="#">Search</a><a aria-current="page" href="#">Settings</a></nav>
+      </div>
+    </section>
+
+    <!-- ============== STATE: over-budget ============== -->
+    <section class="wf-state" data-state="over-budget" aria-labelledby="state-over-h">
+      <h1 id="state-over-h" class="sr-only">Over-budget — adding ch 9 would exceed cap</h1>
+      <div class="bc-screen">
+        <div class="bc-topbar">
+          <button aria-label="Open menu" style="background:none; border:0; font-size:18px;">☰</button>
+          <span style="font-weight:500; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+          <button aria-label="More actions" style="background:none; border:0; font-size:18px;">⋯</button>
+        </div>
+        <nav role="tablist" class="bc-tabstrip">
+          <a role="tab" href="#">Overview</a><a role="tab" href="#">Summary</a><a role="tab" href="#">Sections</a><a role="tab" href="#">Audio</a><a role="tab" href="#">Annotations</a>
+          <a role="tab" href="#" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="mock-card" style="margin: 12px;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+          <div class="bc-budget-track"><div class="bc-budget-fill bc-budget-fill--warn" style="width:92%"></div></div>
+          <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+            <span class="bc-helper" style="color:var(--wf-warning); font-weight:500;">92% of budget used</span>
+            <span class="bc-helper">5 chapters</span>
+          </div>
+        </div>
+
+        <div class="bc-section-title">Chapters · 5 selected</div>
+        <div style="border-top:1px solid var(--wf-border-2);">
+          <div class="bc-bulk-toolbar">
+            <span style="font-weight:500;">Bulk select:</span>
+            <a href="#" class="bc-link">Pick range…</a>
+            <span class="bc-helper" style="margin-left:auto; color:var(--wf-warning);">Would exceed budget — deselect a chapter to add.</span>
+          </div>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+            <a class="bc-part-select bc-part-select--disabled" aria-disabled="true">Select all</a>
+          </div>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span></label>
+          <div class="bc-chap-row bc-chap-row--disabled wf-anno" data-note="Inline rejection (D20). Existing selection retained; would-add row disabled with verbatim copy.">
+            <input type="checkbox" disabled>
+            <div style="display:flex; flex-direction:column;">
+              <span>9. Answering an Easier Question</span>
+              <span class="bc-helper" style="color:var(--wf-warning);">Would exceed budget — deselect a chapter to add.</span>
+            </div>
+          </div>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>10. The Law of Small Numbers</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>11. Anchors</span></label>
+        </div>
+
+        <div style="padding: 12px;">
+          <label class="mock-label" for="theme-om">Optional theme</label>
+          <input id="theme-om" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <div style="padding: 0 12px;">
+          <button class="bc-cta">Start Quiz</button>
+        </div>
+
+        <nav class="bc-bottombar"><a href="#">Library</a><a href="#">Search</a><a aria-current="page" href="#">Settings</a></nav>
+      </div>
+    </section>
+
+    <!-- ============== STATE: auto-default ============== -->
+    <section class="wf-state" data-state="auto-default" aria-labelledby="state-auto-h">
+      <h1 id="state-auto-h" class="sr-only">Auto-default — chapters auto-selected from recent reading</h1>
+      <div class="bc-screen">
+        <div class="bc-topbar">
+          <button aria-label="Open menu" style="background:none; border:0; font-size:18px;">☰</button>
+          <span style="font-weight:500; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+          <button aria-label="More actions" style="background:none; border:0; font-size:18px;">⋯</button>
+        </div>
+        <nav role="tablist" class="bc-tabstrip">
+          <a role="tab" href="#">Overview</a><a role="tab" href="#">Summary</a><a role="tab" href="#">Sections</a><a role="tab" href="#">Audio</a><a role="tab" href="#">Annotations</a>
+          <a role="tab" href="#" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div style="padding: 12px;">
+          <div class="bc-banner wf-anno" data-note="D31: /reading-state shows finished chapters in the last 48h — Specific Chapters preselected with those chapters checked. Overrides D22 last-used-scope memory for this visit.">
+            <strong>Auto-selected:</strong> chapters you finished reading in the last 48 hours.
+            <a href="#" style="color:inherit; text-decoration:underline; display:block; margin-top:4px;">Change scope</a>
+          </div>
+        </div>
+
+        <div class="bc-section-title" style="padding-top:0;">Scope</div>
+        <div style="padding: 0 12px;">
+          <label class="bc-radio-row bc-radio-row--active"><input type="radio" checked style="margin-top:2px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text · auto-default from recent reading</div></div></label>
+        </div>
+
+        <div class="mock-card" style="margin: 12px;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+          <div class="bc-budget-track"><div class="bc-budget-fill" style="width:58%"></div></div>
+          <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+            <span class="bc-helper" style="color:var(--bc-indigo-text); font-weight:500;">58% of budget used</span>
+            <span class="bc-helper">3 chapters</span>
+          </div>
+        </div>
+
+        <div class="bc-section-title">Chapters · 3 selected</div>
+        <div style="border-top:1px solid var(--wf-border-2);">
+          <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span style="flex:1;">6. Norms, Surprises, and Causes</span> <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Read May 8</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span style="flex:1;">7. A Machine for Jumping to Conclusions</span> <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Read May 8</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span style="flex:1;">8. How Judgments Happen</span> <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Read May 9</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>9. Answering an Easier Question</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>10. The Law of Small Numbers</span></label>
+        </div>
+
+        <div style="padding: 12px;">
+          <label class="mock-label" for="theme-am">Optional theme</label>
+          <input id="theme-am" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <div style="padding: 0 12px;">
+          <button class="bc-cta">Start Quiz</button>
+        </div>
+
+        <nav class="bc-bottombar"><a href="#">Library</a><a href="#">Search</a><a aria-current="page" href="#">Settings</a></nav>
+      </div>
+    </section>
+
+    <!-- ============== STATE: single-chapter ============== -->
+    <section class="wf-state" data-state="single-chapter" aria-labelledby="state-single-h">
+      <h1 id="state-single-h" class="sr-only">Single chapter — only chapter 4 selected</h1>
+      <div class="bc-screen">
+        <div class="bc-topbar">
+          <button aria-label="Open menu" style="background:none; border:0; font-size:18px;">☰</button>
+          <span style="font-weight:500; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+          <button aria-label="More actions" style="background:none; border:0; font-size:18px;">⋯</button>
+        </div>
+        <nav role="tablist" class="bc-tabstrip">
+          <a role="tab" href="#">Overview</a><a role="tab" href="#">Summary</a><a role="tab" href="#">Sections</a><a role="tab" href="#">Audio</a><a role="tab" href="#">Annotations</a>
+          <a role="tab" href="#" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-section-title">Scope</div>
+        <div style="padding: 0 12px;">
+          <label class="bc-radio-row bc-radio-row--active"><input type="radio" checked style="margin-top:2px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">single chapter is allowed</div></div></label>
+        </div>
+
+        <div class="mock-card" style="margin: 12px;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+          <div class="bc-budget-track"><div class="bc-budget-fill" style="width:14%"></div></div>
+          <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+            <span class="bc-helper" style="color:var(--bc-indigo-text); font-weight:500;">14% of budget used</span>
+            <span class="bc-helper">1 chapter</span>
+          </div>
+        </div>
+
+        <div class="bc-section-title">Chapters · 1 selected</div>
+        <div style="border-top:1px solid var(--wf-border-2);">
+          <div class="bc-bulk-toolbar">
+            <span style="font-weight:500;">Bulk select:</span>
+            <a href="#" class="bc-link">Pick range…</a>
+            <span class="bc-helper" style="margin-left:auto;">e.g., Ch 6–8</span>
+          </div>
+          <div class="bc-part-row">
+            <div class="bc-part-label">Part 1 · Two Systems</div>
+            <a href="#" class="bc-part-select">Select all</a>
+          </div>
+          <label class="bc-chap-row"><input type="checkbox"> <span>1. The Characters of the Story</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>2. Attention and Effort</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>3. The Lazy Controller</span></label>
+          <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>4. The Associative Machine</span></label>
+          <label class="bc-chap-row"><input type="checkbox"> <span>5. Cognitive Ease</span></label>
+        </div>
+
+        <div style="padding: 12px;">
+          <label class="mock-label" for="theme-sm">Optional theme</label>
+          <input id="theme-sm" class="mock-input" placeholder="e.g., focus on prospect theory">
+        </div>
+        <div style="padding: 0 12px;">
+          <button class="bc-cta">Start Quiz</button>
+        </div>
+
+        <nav class="bc-bottombar"><a href="#">Library</a><a href="#">Search</a><a aria-current="page" href="#">Settings</a></nav>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W02 Scope · Specific Chapters</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 04 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

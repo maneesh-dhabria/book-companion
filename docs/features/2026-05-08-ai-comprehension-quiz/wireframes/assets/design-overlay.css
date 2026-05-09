@@ -1,0 +1,28 @@
+/* Generated from frontend/DESIGN.md (Book Companion, light theme). Do not edit by hand. */
+:root {
+  --wf-bg:         #ffffff;
+  --wf-surface:    #f8f9fa;
+  --wf-surface-2:  #f1f3f5;
+  --wf-border:     #e5e7eb;
+  --wf-border-2:   #d1d5db;
+  --wf-text:       #1a1a2e;
+  --wf-muted:      #6b7280;
+  --wf-faint:      #9ca3af;
+  --wf-accent:     #4f46e5;
+  --wf-accent-2:   #4338ca;
+  --wf-success:    #16a34a;
+  --wf-warning:    #d97706;
+  --wf-error:      #dc2626;
+  --wf-radius:     8px;
+  --wf-radius-lg:  14px;
+  --wf-font-sans:  Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --wf-font-mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Book Companion-specific extensions used by Quiz wireframes */
+  --bc-sidebar-bg:    #1e1e2e;
+  --bc-sidebar-text:  #cdd6f4;
+  --bc-highlight:     #fef9c3;
+  --bc-indigo-bg:     #eef2ff;
+  --bc-indigo-border: #c7d2fe;
+  --bc-indigo-text:   #3730a3;
+}

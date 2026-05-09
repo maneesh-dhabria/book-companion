@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Comprehension Quiz — Wireframes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="./assets/wireframe.css">
+<link rel="stylesheet" href="./assets/design-overlay.css">
+<style>
+  body { background: var(--wf-bg); color: var(--wf-text); font-family: var(--wf-font-sans); }
+  .idx-card { display:flex; flex-direction:column; gap:8px; padding:14px; background:var(--wf-bg); border:1px solid var(--wf-border); border-radius:var(--wf-radius); transition:border-color .15s, transform .05s; cursor:pointer; text-decoration:none; color:inherit; }
+  .idx-card:hover { border-color: var(--wf-accent); transform: translateY(-1px); }
+  .idx-card__thumb { width:100%; aspect-ratio: 5 / 3.5; background:var(--wf-surface); border:1px solid var(--wf-border); border-radius:6px; overflow:hidden; }
+  .idx-card__thumb iframe { width:200%; height:200%; transform: scale(0.5); transform-origin: top left; border:0; pointer-events:none; }
+  .idx-card__title { font-size:14px; font-weight:600; }
+  .idx-card__row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:11px; color:var(--wf-muted); }
+  .idx-pill { display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; background:var(--wf-surface); border:1px solid var(--wf-border); font-size:11px; line-height:1.6; }
+  .idx-pill--device { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+  .idx-tabs { display:flex; gap:4px; }
+  .idx-tab { padding:8px 14px; border-radius:999px; border:1px solid var(--wf-border); background:var(--wf-bg); font-size:13px; cursor:pointer; }
+  .idx-tab[aria-pressed="true"] { background:var(--wf-accent); color:#fff; border-color:var(--wf-accent); }
+  .idx-search { width:100%; max-width:320px; padding:8px 12px; border:1px solid var(--wf-border); border-radius:var(--wf-radius); font-size:13px; }
+</style>
+</head>
+<body>
+<header style="border-bottom:1px solid var(--wf-border); padding:24px 32px; background:var(--wf-bg);">
+  <div style="max-width:1200px; margin:0 auto; display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
+    <div style="flex:1; min-width:280px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--wf-muted); font-weight:600;">Book Companion · Wireframes</div>
+      <h1 style="font-size:24px; font-weight:600; margin-top:4px;">AI Comprehension Quiz</h1>
+      <div style="color:var(--wf-muted); font-size:13px; margin-top:4px;">
+        Generated May 9, 2026 · 18 wireframes · 9 components × 2 devices
+      </div>
+      <div style="font-size:13px; margin-top:8px;">
+        <a href="../01_requirements.md" style="color:var(--wf-accent); text-decoration:none;">← Requirements doc</a>
+        <span style="color:var(--wf-muted); margin:0 8px;">·</span>
+        <a href="./_BRIEF.md" style="color:var(--wf-accent); text-decoration:none;">Subagent brief</a>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; align-items:stretch;">
+      <input class="idx-search" id="search" type="search" placeholder="Filter by component name…" aria-label="Filter wireframes">
+      <div class="idx-tabs" role="tablist" aria-label="Device filter">
+        <button class="idx-tab" aria-pressed="true"  data-device="all">All (18)</button>
+        <button class="idx-tab" aria-pressed="false" data-device="desktop-web">Desktop (9)</button>
+        <button class="idx-tab" aria-pressed="false" data-device="mobile-web">Mobile (9)</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main style="max-width:1200px; margin:0 auto; padding:24px 32px;">
+  <div id="grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:16px;">
+
+    <!-- W01 -->
+    <a class="idx-card" data-name="quiz empty first visit scope picker" data-device="desktop-web" href="./01_quiz-empty_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./01_quiz-empty_desktop-web.html" title="Quiz Empty — desktop"></iframe></div>
+      <div class="idx-card__title">01 · Quiz tab — Empty</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+    <a class="idx-card" data-name="quiz empty first visit scope picker" data-device="mobile-web" href="./02_quiz-empty_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./02_quiz-empty_mobile-web.html" title="Quiz Empty — mobile"></iframe></div>
+      <div class="idx-card__title">02 · Quiz tab — Empty</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+
+    <!-- W02 -->
+    <a class="idx-card" data-name="scope specific chapters budget bar" data-device="desktop-web" href="./03_scope-specific-chapters_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./03_scope-specific-chapters_desktop-web.html" title="Scope picker — desktop"></iframe></div>
+      <div class="idx-card__title">03 · Scope picker — Specific Chapters</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">6 states</span></div>
+    </a>
+    <a class="idx-card" data-name="scope specific chapters budget bar" data-device="mobile-web" href="./04_scope-specific-chapters_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./04_scope-specific-chapters_mobile-web.html" title="Scope picker — mobile"></iframe></div>
+      <div class="idx-card__title">04 · Scope picker — Specific Chapters</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">6 states</span></div>
+    </a>
+
+    <!-- W03 -->
+    <a class="idx-card" data-name="quiz returning past q a lifetime tally themes" data-device="desktop-web" href="./05_quiz-returning_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./05_quiz-returning_desktop-web.html" title="Quiz returning — desktop"></iframe></div>
+      <div class="idx-card__title">05 · Quiz tab — Returning</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+    <a class="idx-card" data-name="quiz returning past q a lifetime tally themes" data-device="mobile-web" href="./06_quiz-returning_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./06_quiz-returning_mobile-web.html" title="Quiz returning — mobile"></iframe></div>
+      <div class="idx-card__title">06 · Quiz tab — Returning</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+
+    <!-- W04 -->
+    <a class="idx-card" data-name="question turn mcq citation post answer" data-device="desktop-web" href="./07_q-turn-mcq_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./07_q-turn-mcq_desktop-web.html" title="Question turn MCQ — desktop"></iframe></div>
+      <div class="idx-card__title">07 · Question turn — MCQ</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">5 states</span></div>
+    </a>
+    <a class="idx-card" data-name="question turn mcq citation post answer" data-device="mobile-web" href="./08_q-turn-mcq_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./08_q-turn-mcq_mobile-web.html" title="Question turn MCQ — mobile"></iframe></div>
+      <div class="idx-card__title">08 · Question turn — MCQ</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">5 states</span></div>
+    </a>
+
+    <!-- W05 -->
+    <a class="idx-card" data-name="question turn open ended override" data-device="desktop-web" href="./09_q-turn-open_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./09_q-turn-open_desktop-web.html" title="Question turn open — desktop"></iframe></div>
+      <div class="idx-card__title">09 · Question turn — Open-ended</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">5 states</span></div>
+    </a>
+    <a class="idx-card" data-name="question turn open ended override" data-device="mobile-web" href="./10_q-turn-open_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./10_q-turn-open_mobile-web.html" title="Question turn open — mobile"></iframe></div>
+      <div class="idx-card__title">10 · Question turn — Open-ended</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">5 states</span></div>
+    </a>
+
+    <!-- W06 -->
+    <a class="idx-card" data-name="question turn spot the error" data-device="desktop-web" href="./11_q-turn-spot-error_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./11_q-turn-spot-error_desktop-web.html" title="Question turn spot error — desktop"></iframe></div>
+      <div class="idx-card__title">11 · Question turn — Spot the error</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">3 states</span></div>
+    </a>
+    <a class="idx-card" data-name="question turn spot the error" data-device="mobile-web" href="./12_q-turn-spot-error_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./12_q-turn-spot-error_mobile-web.html" title="Question turn spot error — mobile"></iframe></div>
+      <div class="idx-card__title">12 · Question turn — Spot the error</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">3 states</span></div>
+    </a>
+
+    <!-- W07 -->
+    <a class="idx-card" data-name="in question controls explain skip override already asked" data-device="desktop-web" href="./13_q-controls_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./13_q-controls_desktop-web.html" title="Q controls — desktop"></iframe></div>
+      <div class="idx-card__title">13 · In-question controls</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+    <a class="idx-card" data-name="in question controls explain skip override already asked" data-device="mobile-web" href="./14_q-controls_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./14_q-controls_mobile-web.html" title="Q controls — mobile"></iframe></div>
+      <div class="idx-card__title">14 · In-question controls</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+
+    <!-- W08 -->
+    <a class="idx-card" data-name="warm up missed concept revisit" data-device="desktop-web" href="./15_warm-up_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./15_warm-up_desktop-web.html" title="Warm-up — desktop"></iframe></div>
+      <div class="idx-card__title">15 · Warm-up phase</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+    <a class="idx-card" data-name="warm up missed concept revisit" data-device="mobile-web" href="./16_warm-up_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./16_warm-up_mobile-web.html" title="Warm-up — mobile"></iframe></div>
+      <div class="idx-card__title">16 · Warm-up phase</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+
+    <!-- W09 -->
+    <a class="idx-card" data-name="session end export markdown" data-device="desktop-web" href="./17_session-end_desktop-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./17_session-end_desktop-web.html" title="Session end — desktop"></iframe></div>
+      <div class="idx-card__title">17 · Session end + Export</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">desktop-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+    <a class="idx-card" data-name="session end export markdown" data-device="mobile-web" href="./18_session-end_mobile-web.html" target="_blank">
+      <div class="idx-card__thumb"><iframe src="./18_session-end_mobile-web.html" title="Session end — mobile"></iframe></div>
+      <div class="idx-card__title">18 · Session end + Export</div>
+      <div class="idx-card__row"><span class="idx-pill idx-pill--device">mobile-web</span><span class="idx-pill">4 states</span></div>
+    </a>
+
+  </div>
+</main>
+
+<footer style="padding:24px 32px; color:var(--wf-muted); font-size:12px; border-top:1px solid var(--wf-border); margin-top:24px;">
+  <div style="max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>18 wireframes · <code>docs/features/2026-05-08-ai-comprehension-quiz/wireframes/</code></span>
+    <span>Layout anchor: <code>book-detail</code> · Theme: light (Book Companion DESIGN.md)</span>
+  </div>
+</footer>
+
+<script>
+  const search = document.getElementById('search');
+  const tabs = document.querySelectorAll('.idx-tab');
+  const cards = document.querySelectorAll('.idx-card');
+  let activeDevice = 'all';
+  let activeQuery = '';
+
+  function apply() {
+    cards.forEach(c => {
+      const name = c.dataset.name + ' ' + c.dataset.device + ' ' + (c.querySelector('.idx-card__title').textContent || '');
+      const matchesDevice = activeDevice === 'all' || c.dataset.device === activeDevice;
+      const matchesQuery = activeQuery === '' || name.toLowerCase().includes(activeQuery);
+      c.style.display = (matchesDevice && matchesQuery) ? '' : 'none';
+    });
+  }
+
+  search.addEventListener('input', e => { activeQuery = e.target.value.toLowerCase().trim(); apply(); });
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.setAttribute('aria-pressed', x === t));
+    activeDevice = t.dataset.device;
+    apply();
+  }));
+</script>
+</body>
+</html>

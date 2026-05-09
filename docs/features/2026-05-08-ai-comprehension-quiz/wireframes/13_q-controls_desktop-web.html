@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W07 In-question controls — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    /* Local-only helpers — no rules duplicated from wireframe.css */
+    .bc-chip { display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px;
+               background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); color:var(--bc-indigo-text);
+               font-size:12px; font-weight:500; }
+    .bc-ctrl { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border:1px solid var(--wf-border);
+               background:var(--wf-surface); color:var(--wf-text); border-radius:8px; font-size:13px; min-height:36px; cursor:pointer; }
+    .bc-ctrl[disabled] { opacity:.5; cursor:not-allowed; background:var(--wf-surface-2); }
+    .bc-link { color:var(--wf-accent); font-size:13px; text-decoration:underline; text-underline-offset:2px;
+               background:transparent; border:0; padding:6px 4px; cursor:pointer; }
+    .bc-counter { color:var(--wf-muted); font-size:12px; margin-left:4px; }
+    .bc-clarify { background:var(--bc-indigo-bg); border-left:3px solid var(--wf-accent); border-radius:6px;
+                  padding:12px 14px; margin-left:24px; font-size:13.5px; color:var(--wf-text); }
+    .bc-clarify__head { font-weight:600; color:var(--bc-indigo-text); margin-bottom:4px; font-size:12px;
+                        text-transform:uppercase; letter-spacing:.04em; }
+    .bc-tip { position:relative; display:inline-block; }
+    .bc-tip__pop { position:absolute; bottom:calc(100% + 8px); left:0; background:var(--wf-text); color:#fff;
+                   padding:8px 10px; border-radius:6px; font-size:12px; line-height:1.4; width:320px; z-index:10;
+                   box-shadow:0 4px 12px rgba(0,0,0,.15); }
+    .bc-tip__pop::after { content:""; position:absolute; top:100%; left:18px; border:6px solid transparent;
+                          border-top-color:var(--wf-text); }
+    .bc-ghost-msg { font-size:12.5px; color:var(--wf-muted); font-style:italic; margin-top:8px; }
+    .bc-confirm { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--wf-surface-2);
+                  border:1px solid var(--wf-border); border-radius:8px; }
+    .bc-q-stem { font-size:18px; line-height:1.5; color:var(--wf-text); font-weight:500; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: Fixed duplicate class attribute on Override button in explain-shown state (was losing bc-ctrl styling); added wf-anno data-note for C2 coverage.
+    Loop 2: -
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W07 In-question controls</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="explain-shown">Explain shown</button>
+        <button class="wf-tab" aria-selected="false" data-state="explain-cap">Cap reached</button>
+        <button class="wf-tab" aria-selected="false" data-state="already-tip">Already-asked tooltip</button>
+        <button class="wf-tab" aria-selected="false" data-state="skip-confirm">Skip confirm</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="padding:0;">
+
+    <!-- Shared chrome wrapper renders inside each state so the active state cleanly fills the frame. -->
+
+    <!-- ============================ STATE: explain-shown ============================ -->
+    <section class="wf-state active" data-state="explain-shown" aria-labelledby="state-explain-shown-h">
+      <h1 id="state-explain-shown-h" class="sr-only">Explain shown — first use</h1>
+
+      <div class="wf-row" style="height:100%; align-items:stretch; gap:0;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px; font-size:14px;">
+            <a style="padding:8px 12px; border-radius:6px;">Library</a>
+            <a style="padding:8px 12px; border-radius:6px;">Search</a>
+            <a style="padding:8px 12px; border-radius:6px;">Settings</a>
+          </nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0; gap:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:8px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span>
+            <span class="wf-muted">›</span>
+            <span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;">
+              <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+              <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+            </div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Overview</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Summary</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Sections</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Audio</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Annotations</a>
+            <a role="tab" aria-selected="true"
+               style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div class="wf-row wf-muted" style="font-size:12px; gap:12px; margin-bottom:12px;">
+              <span>Question 4 of session</span>
+              <span>·</span>
+              <span>Open-ended</span>
+              <span>·</span>
+              <span>Session: 1 partial · Lifetime: 1 partial</span>
+            </div>
+
+            <div class="mock-card" style="padding:20px 22px;">
+              <div class="wf-row" style="gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                <span class="bc-chip">Source: Chapter 7 — A Machine for Jumping to Conclusions</span>
+                <span class="mock-pill">Open-ended</span>
+              </div>
+
+              <p class="bc-q-stem">
+                How does the affect heuristic interact with the availability cascade in policy debate?
+              </p>
+
+              <!-- Clarification panel rendered after first Explain click -->
+              <div class="bc-clarify wf-anno"
+                   data-note="Explain renders a scoped clarification only — never the answer (D24 leakage guard).">
+                <div class="bc-clarify__head">Clarification — agent</div>
+                <p style="margin:0 0 6px 0;">
+                  An <em>availability cascade</em> is a self-reinforcing cycle where a story gains plausibility just by being repeated in media and conversation, making it feel more frequent than it is.
+                </p>
+                <p style="margin:0;" class="wf-muted">
+                  This question asks you to connect that idea with the affect heuristic from <strong>Chapters 12–13</strong> — focused on policy-debate examples Kahneman discusses (e.g., Love Canal, terror coverage). The clarification is scoped to terms and reading range; it does not contain the answer.
+                </p>
+              </div>
+
+              <hr class="mock-divider" style="margin:18px 0;">
+
+              <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+              <div class="wf-row" style="margin-top:14px; gap:10px; flex-wrap:wrap;">
+                <button class="mock-button mock-button--primary">Submit answer</button>
+
+                <span class="wf-grow"></span>
+
+                <span class="wf-anno" data-note="D35: soft cap of 2 Explains per question; counter shows usage.">
+                  <button class="bc-ctrl">
+                    <span aria-hidden="true">💬</span>
+                    Explain
+                    <span class="bc-counter">(1 / 2 used)</span>
+                  </button>
+                </span>
+
+                <button class="bc-ctrl wf-anno"
+                        data-note="Skip is excluded from dedup history (D18). 3 skips on same stem triggers a soft-dedup nudge (D37).">
+                  Skip
+                </button>
+
+                <button class="bc-link wf-anno"
+                        data-note="Ghost text-link — first appearance per session shows a tooltip explaining what it does.">
+                  Already asked
+                </button>
+
+                <button class="bc-ctrl wf-anno" disabled aria-disabled="true"
+                        title="Available after you submit and receive feedback"
+                        data-note="Override unlocks only after Submit returns feedback (D37 surface).">
+                  Override
+                </button>
+              </div>
+            </div>
+
+            <p class="wf-muted" style="font-size:12px; margin-top:14px;">
+              Override is enabled only after the agent returns feedback on your submitted answer.
+            </p>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: explain-cap ============================ -->
+    <section class="wf-state" data-state="explain-cap" aria-labelledby="state-explain-cap-h">
+      <h1 id="state-explain-cap-h" class="sr-only">Explain soft cap reached</h1>
+
+      <div class="wf-row" style="height:100%; align-items:stretch; gap:0;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px; font-size:14px;">
+            <a style="padding:8px 12px; border-radius:6px;">Library</a>
+            <a style="padding:8px 12px; border-radius:6px;">Search</a>
+            <a style="padding:8px 12px; border-radius:6px;">Settings</a>
+          </nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0; gap:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:8px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span>
+            <span class="wf-muted">›</span>
+            <span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;">
+              <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+              <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+            </div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Overview</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Summary</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Sections</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Audio</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Annotations</a>
+            <a role="tab" aria-selected="true"
+               style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div class="wf-row wf-muted" style="font-size:12px; gap:12px; margin-bottom:12px;">
+              <span>Question 4 of session</span>
+              <span>·</span>
+              <span>Open-ended</span>
+              <span>·</span>
+              <span>Session: 1 partial · Lifetime: 1 partial</span>
+            </div>
+
+            <div class="mock-card" style="padding:20px 22px;">
+              <div class="wf-row" style="gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                <span class="bc-chip">Source: Chapter 7 — A Machine for Jumping to Conclusions</span>
+                <span class="mock-pill">Open-ended</span>
+              </div>
+
+              <p class="bc-q-stem">
+                How does the affect heuristic interact with the availability cascade in policy debate?
+              </p>
+
+              <!-- Two prior clarifications collapsed -->
+              <details style="margin-left:24px; margin-top:10px;">
+                <summary class="wf-muted" style="font-size:12.5px; cursor:pointer;">2 prior clarifications shown</summary>
+                <div class="bc-clarify" style="margin:8px 0 0 0;">
+                  <div class="bc-clarify__head">Clarification 1</div>
+                  <p style="margin:0;" class="wf-muted">Defines availability cascade and points to Chapters 12–13 scope.</p>
+                </div>
+                <div class="bc-clarify" style="margin:8px 0 0 0;">
+                  <div class="bc-clarify__head">Clarification 2</div>
+                  <p style="margin:0;" class="wf-muted">Refines what "policy debate" means in Kahneman's examples; still no answer content.</p>
+                </div>
+              </details>
+
+              <hr class="mock-divider" style="margin:18px 0;">
+
+              <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+              <div class="wf-row" style="margin-top:14px; gap:10px; flex-wrap:wrap;">
+                <button class="mock-button mock-button--primary">Submit answer</button>
+
+                <span class="wf-grow"></span>
+
+                <span class="wf-anno"
+                      data-note="D35: 3rd Explain click is a no-op — no LLM call, just a ghost nudge.">
+                  <button class="bc-ctrl" disabled aria-disabled="true">
+                    <span aria-hidden="true">💬</span>
+                    Explain
+                    <span class="bc-counter">(2 / 2 used)</span>
+                  </button>
+                </span>
+
+                <button class="bc-ctrl">Skip</button>
+
+                <button class="bc-link">Already asked</button>
+
+                <button class="bc-ctrl" disabled aria-disabled="true"
+                        title="Available after you submit and receive feedback">Override</button>
+              </div>
+
+              <div class="bc-ghost-msg">Try answering or Skip.</div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: already-tip ============================ -->
+    <section class="wf-state" data-state="already-tip" aria-labelledby="state-already-tip-h">
+      <h1 id="state-already-tip-h" class="sr-only">Already-asked tooltip on first appearance</h1>
+
+      <div class="wf-row" style="height:100%; align-items:stretch; gap:0;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px; font-size:14px;">
+            <a style="padding:8px 12px; border-radius:6px;">Library</a>
+            <a style="padding:8px 12px; border-radius:6px;">Search</a>
+            <a style="padding:8px 12px; border-radius:6px;">Settings</a>
+          </nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0; gap:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:8px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span>
+            <span class="wf-muted">›</span>
+            <span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;">
+              <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+              <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+            </div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Overview</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Summary</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Sections</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Audio</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Annotations</a>
+            <a role="tab" aria-selected="true"
+               style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div class="wf-row wf-muted" style="font-size:12px; gap:12px; margin-bottom:12px;">
+              <span>Question 4 of session</span>
+              <span>·</span>
+              <span>Open-ended</span>
+            </div>
+
+            <div class="mock-card" style="padding:20px 22px;">
+              <div class="wf-row" style="gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                <span class="bc-chip">Source: Chapter 7 — A Machine for Jumping to Conclusions</span>
+                <span class="mock-pill">Open-ended</span>
+              </div>
+
+              <p class="bc-q-stem">
+                How does the affect heuristic interact with the availability cascade in policy debate?
+              </p>
+
+              <hr class="mock-divider" style="margin:18px 0;">
+
+              <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+              <div class="wf-row" style="margin-top:14px; gap:10px; flex-wrap:wrap; position:relative;">
+                <button class="mock-button mock-button--primary">Submit answer</button>
+
+                <span class="wf-grow"></span>
+
+                <button class="bc-ctrl">
+                  <span aria-hidden="true">💬</span>
+                  Explain
+                  <span class="bc-counter">(0 / 2 used)</span>
+                </button>
+
+                <button class="bc-ctrl">Skip</button>
+
+                <span class="bc-tip wf-anno"
+                      data-note="Tooltip auto-appears the first time the link is shown in a session; dismisses on next render.">
+                  <button class="bc-link" aria-describedby="already-tip-pop">Already asked</button>
+                  <div class="bc-tip__pop" id="already-tip-pop" role="tooltip">
+                    Reports this stem to the agent as already-asked. The next question regenerates and we won't ask this again.
+                  </div>
+                </span>
+
+                <button class="bc-ctrl" disabled aria-disabled="true"
+                        title="Available after you submit and receive feedback">Override</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ STATE: skip-confirm ============================ -->
+    <section class="wf-state" data-state="skip-confirm" aria-labelledby="state-skip-confirm-h">
+      <h1 id="state-skip-confirm-h" class="sr-only">Skip inline confirmation</h1>
+
+      <div class="wf-row" style="height:100%; align-items:stretch; gap:0;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px; font-size:14px;">
+            <a style="padding:8px 12px; border-radius:6px;">Library</a>
+            <a style="padding:8px 12px; border-radius:6px;">Search</a>
+            <a style="padding:8px 12px; border-radius:6px;">Settings</a>
+          </nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0; gap:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:8px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span>
+            <span class="wf-muted">›</span>
+            <span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;">
+              <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+              <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+            </div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Overview</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Summary</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Sections</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Audio</a>
+            <a role="tab" aria-selected="false" style="padding:12px 0;">Annotations</a>
+            <a role="tab" aria-selected="true"
+               style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div class="wf-row wf-muted" style="font-size:12px; gap:12px; margin-bottom:12px;">
+              <span>Question 4 of session</span>
+              <span>·</span>
+              <span>Open-ended</span>
+            </div>
+
+            <div class="mock-card" style="padding:20px 22px;">
+              <div class="wf-row" style="gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                <span class="bc-chip">Source: Chapter 7 — A Machine for Jumping to Conclusions</span>
+                <span class="mock-pill">Open-ended</span>
+              </div>
+
+              <p class="bc-q-stem">
+                How does the affect heuristic interact with the availability cascade in policy debate?
+              </p>
+
+              <hr class="mock-divider" style="margin:18px 0;">
+
+              <textarea class="mock-input" rows="4" placeholder="Type your answer here…" style="resize:vertical;"></textarea>
+
+              <!-- Inline confirm replaces the control row -->
+              <div class="bc-confirm wf-anno" style="margin-top:14px;"
+                   data-note="Skipped questions are NOT added to dedup history (D18). After 3 skips on the same stem, a soft-dedup nudge appears (D37).">
+                <span style="font-size:13.5px;">Skip this question?</span>
+                <span class="wf-grow"></span>
+                <button class="bc-ctrl">Yes, skip</button>
+                <button class="bc-ctrl">Cancel</button>
+              </div>
+
+              <p class="wf-muted" style="font-size:12px; margin-top:8px;">
+                Skipped questions are not added to the dedup history (D18).
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W07 In-question controls</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 13 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

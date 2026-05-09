@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W05 Question turn — Open-ended — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    /* mobile-web specific layout helpers (one-offs only) */
+    .bc-topbar { display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--wf-border); background:var(--wf-bg); }
+    .bc-topbar .ham { font-size:18px; }
+    .bc-tabstrip { display:flex; gap:18px; overflow-x:auto; padding:8px 14px; border-bottom:1px solid var(--wf-border); font-size:13px; white-space:nowrap; background:var(--wf-bg); }
+    .bc-tabstrip a { padding:6px 0; color:var(--wf-muted); }
+    .bc-tabstrip a[aria-selected="true"] { color:var(--wf-text); font-weight:600; border-bottom:2px solid var(--wf-accent); }
+    .bc-bookhdr { display:flex; gap:10px; padding:10px 14px; border-bottom:1px solid var(--wf-border); align-items:center; }
+    .bc-bottomtabs { display:flex; align-items:center; justify-content:space-around; height:56px; border-top:1px solid var(--wf-border); background:var(--wf-bg); position:sticky; bottom:0; }
+    .bc-bottomtabs button { background:transparent; border:0; color:var(--wf-muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .bc-bottomtabs button[aria-selected="true"] { color:var(--wf-accent); }
+    .bc-page { padding:14px; display:flex; flex-direction:column; gap:14px; }
+    .pill-indigo { background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); }
+    .session-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 12px; }
+    .session-bar .grow { flex:1; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: A1 — Feedback panel and override-applied retained-feedback panel used bold inline spans rather than semantic structure. Converted both to <h2> + <dl>/<dt>/<dd>. D14 verified (Source chip in default). D15 verified (agent feedback retained alongside override note). N5 verified (Submit disabled when empty). S4 verified (verbatim copy).
+    Loop 2: No remaining HIGH issues; stopping.
+    MSF R3 + R7: loading copy now shows theme-aware variant + annotation about post-Q1 copy shortening. (No draft-question loading state in this open-ended wireframe — the question renders directly; R3/R7 copy changes apply only to the MCQ files 07/08. Log entry recorded for parity.)
+    MSF R4/R5/R6 applied as appropriate.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W05 — Question turn (Open-ended)</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="typed">Typed</button>
+        <button class="wf-tab" aria-selected="false" data-state="grading-loading">Grading</button>
+        <button class="wf-tab" aria-selected="false" data-state="feedback">Feedback</button>
+        <button class="wf-tab" aria-selected="false" data-state="override-applied">Override applied</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <!-- ===================== DEFAULT ===================== -->
+  <main class="wf-frame wf-frame--mobile-web">
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default — empty answer, Submit disabled</h1>
+      <div style="padding-bottom:60px;">
+        <div class="bc-topbar">
+          <button class="ham" aria-label="Open menu">☰</button>
+          <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="bc-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="bc-tabstrip" role="tablist">
+          <a role="tab">Overview</a><a role="tab">Summary</a><a role="tab">Sections</a>
+          <a role="tab">Audio</a><a role="tab">Annotations</a>
+          <a role="tab" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-page">
+          <div class="mock-card session-bar">
+            <span style="font-weight:600; font-size:13px;">Q 3 of 8</span>
+            <span class="mock-pill">Session: 0 partial</span>
+            <div class="grow"></div>
+            <button class="mock-button" aria-label="Stop session" style="padding:.4rem .7rem;">Stop</button>
+          </div>
+
+          <div class="mock-card" style="padding:14px;">
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+              <span class="mock-pill pill-indigo">Open-ended</span>
+              <span class="wf-anno mock-pill pill-indigo" data-note="D14: open-ended shows source WITH the question (MCQ hides it until after answer).">Source: Chapter 1</span>
+            </div>
+            <p style="font-size:15px; line-height:1.45; margin:0 0 12px;">
+              System 1 vs System 2 — give me one example, from the book, of System 1 making a snap judgment that System 2 would override on reflection.
+            </p>
+            <label class="mock-label" for="answer-default">Your answer</label>
+            <textarea id="answer-default" class="mock-input" rows="6" placeholder="Type your answer…"></textarea>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+              <button class="wf-anno mock-button" data-note="Skip — counted as 'skipped' in tally, not 'missed'.">Skip</button>
+              <button class="wf-anno mock-button" data-note="Explain — agent expands the question, no answer reveal.">Explain</button>
+            </div>
+            <button class="wf-anno mock-button mock-button--primary" disabled
+                    data-note="Disabled while textarea is empty. Enables on first non-whitespace keystroke."
+                    style="opacity:.5; cursor:not-allowed; width:100%; margin-top:10px;">Submit answer</button>
+          </div>
+
+          <div class="wf-muted wf-anno" data-note="Already-asked link — opens history of prior questions in this scope."
+               style="font-size:12px; padding:0 4px;">Already asked (12)</div>
+        </div>
+
+        <div class="bc-bottomtabs">
+          <button>Library</button>
+          <button>Search</button>
+          <button aria-selected="true">Quiz</button>
+          <button>Settings</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TYPED ===================== -->
+    <section class="wf-state" data-state="typed" aria-labelledby="state-typed-h">
+      <h1 id="state-typed-h" class="sr-only">Typed — answer entered, Submit enabled</h1>
+      <div style="padding-bottom:60px;">
+        <div class="bc-topbar">
+          <button class="ham" aria-label="Open menu">☰</button>
+          <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="bc-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="bc-tabstrip" role="tablist">
+          <a role="tab">Overview</a><a role="tab">Summary</a><a role="tab">Sections</a>
+          <a role="tab">Audio</a><a role="tab">Annotations</a>
+          <a role="tab" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-page">
+          <div class="mock-card session-bar">
+            <span style="font-weight:600; font-size:13px;">Q 3 of 8</span>
+            <span class="mock-pill">Session: 0 partial</span>
+            <div class="grow"></div>
+            <button class="mock-button" aria-label="Stop session" style="padding:.4rem .7rem;">Stop</button>
+          </div>
+
+          <div class="mock-card" style="padding:14px;">
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+              <span class="mock-pill pill-indigo">Open-ended</span>
+              <span class="mock-pill pill-indigo">Source: Chapter 1</span>
+            </div>
+            <p style="font-size:15px; line-height:1.45; margin:0 0 12px;">
+              System 1 vs System 2 — give me one example, from the book, of System 1 making a snap judgment that System 2 would override on reflection.
+            </p>
+            <label class="mock-label" for="answer-typed">Your answer</label>
+            <textarea id="answer-typed" class="mock-input" rows="8">When I see a friendly face I instantly assume someone is trustworthy — that's System 1 doing a fast, automatic read on warmth. System 2 would override that by asking whether the person has actually behaved trustworthily before, weighing evidence rather than the impression. Kahneman's halo-effect and cognitive-ease arguments cover this — System 1 substitutes the easier question ("do they look nice?") for the harder one.</textarea>
+            <div class="wf-muted" style="font-size:12px; margin-top:4px;">~78 words</div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button class="mock-button">Skip</button>
+              <button class="mock-button">Explain</button>
+            </div>
+            <button class="wf-anno mock-button mock-button--primary"
+                    data-note="Enabled because textarea is non-empty. Tap to grade."
+                    style="width:100%; margin-top:10px;">Submit answer</button>
+          </div>
+        </div>
+
+        <div class="bc-bottomtabs">
+          <button>Library</button><button>Search</button>
+          <button aria-selected="true">Quiz</button><button>Settings</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== GRADING ===================== -->
+    <section class="wf-state" data-state="grading-loading" aria-labelledby="state-grading-h">
+      <h1 id="state-grading-h" class="sr-only">Grading — agent reading the answer</h1>
+      <div style="padding-bottom:60px;">
+        <div class="bc-topbar">
+          <button class="ham" aria-label="Open menu">☰</button>
+          <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="bc-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="bc-tabstrip" role="tablist">
+          <a role="tab">Overview</a><a role="tab">Summary</a><a role="tab">Sections</a>
+          <a role="tab">Audio</a><a role="tab">Annotations</a>
+          <a role="tab" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-page">
+          <div class="mock-card session-bar">
+            <span style="font-weight:600; font-size:13px;">Q 3 of 8</span>
+            <span class="mock-pill">Session: 0 partial</span>
+            <div class="grow"></div>
+            <button class="mock-button" aria-label="Stop session" style="padding:.4rem .7rem;">Stop</button>
+          </div>
+
+          <div class="mock-card" style="padding:14px;">
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+              <span class="mock-pill pill-indigo">Open-ended</span>
+              <span class="mock-pill pill-indigo">Source: Chapter 1</span>
+            </div>
+            <p style="font-size:15px; line-height:1.45; margin:0 0 12px;">
+              System 1 vs System 2 — give me one example, from the book, of System 1 making a snap judgment that System 2 would override on reflection.
+            </p>
+            <label class="mock-label">Your answer (submitted)</label>
+            <div class="mock-input" style="background:var(--wf-surface-2); white-space:pre-wrap; font-size:13px;">When I see a friendly face I instantly assume someone is trustworthy — that's System 1. System 2 would weigh evidence about whether someone has actually behaved trustworthily before. Kahneman's halo-effect and cognitive-ease arguments cover this.</div>
+
+            <div class="wf-anno" data-note="D28 grading copy verbatim. Replaces Submit area while agent grades."
+                 style="margin-top:14px; padding:12px 14px; background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); border-radius:var(--wf-radius); color:var(--bc-indigo-text); display:flex; gap:10px; align-items:center;">
+              <div class="skeleton" style="width:16px; height:16px; border-radius:50%;"></div>
+              <span style="font-size:13px;">Reading your answer alongside the book…</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bc-bottomtabs">
+          <button>Library</button><button>Search</button>
+          <button aria-selected="true">Quiz</button><button>Settings</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== FEEDBACK ===================== -->
+    <section class="wf-state" data-state="feedback" aria-labelledby="state-feedback-h">
+      <h1 id="state-feedback-h" class="sr-only">Feedback — agent's three-line evaluation</h1>
+      <div style="padding-bottom:60px;">
+        <div class="bc-topbar">
+          <button class="ham" aria-label="Open menu">☰</button>
+          <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="bc-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="bc-tabstrip" role="tablist">
+          <a role="tab">Overview</a><a role="tab">Summary</a><a role="tab">Sections</a>
+          <a role="tab">Audio</a><a role="tab">Annotations</a>
+          <a role="tab" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-page">
+          <div class="mock-card session-bar">
+            <span style="font-weight:600; font-size:13px;">Q 3 of 8</span>
+            <span class="mock-pill">Session: 0 partial</span>
+            <div class="grow"></div>
+            <button class="mock-button" aria-label="Stop session" style="padding:.4rem .7rem;">Stop</button>
+          </div>
+
+          <div class="mock-card" style="padding:14px;">
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+              <span class="mock-pill pill-indigo">Open-ended</span>
+              <span class="mock-pill pill-indigo">Source: Chapter 1</span>
+            </div>
+            <p style="font-size:15px; line-height:1.45; margin:0 0 10px;">
+              System 1 vs System 2 — give me one example, from the book, of System 1 making a snap judgment that System 2 would override on reflection.
+            </p>
+
+            <label class="mock-label">Your answer</label>
+            <div class="mock-input" style="background:var(--wf-surface-2); white-space:pre-wrap; font-size:13px;">When I see a friendly face I instantly assume someone is trustworthy — that's System 1. System 2 would weigh evidence about whether someone has actually behaved trustworthily before. Kahneman's halo-effect and cognitive-ease arguments cover this.</div>
+
+            <!-- Feedback panel -->
+            <div style="margin-top:14px; border:1px solid var(--bc-indigo-border); border-radius:var(--wf-radius); background:var(--bc-indigo-bg); padding:14px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <h2 style="font-weight:600; color:var(--bc-indigo-text); font-size:12px; letter-spacing:.04em; text-transform:uppercase; margin:0;">Agent feedback</h2>
+                <div class="grow" style="flex:1;"></div>
+                <button class="wf-anno mock-button" data-note="D15 Override — opens a free-text note panel; agent verdict is NOT deleted."
+                        style="font-size:12px; padding:.3rem .6rem;">Override</button>
+              </div>
+              <dl style="margin:0;">
+                <div style="font-size:13px; margin-bottom:6px;"><dt style="display:inline; font-weight:600;">What was correct:</dt> <dd style="display:inline; margin:0;">You named the System 1 / System 2 distinction and used a halo-style example.</dd></div>
+                <div style="font-size:13px; margin-bottom:6px;"><dt style="display:inline; font-weight:600;">What was missing:</dt> <dd style="display:inline; margin:0;">You didn't name "cognitive ease" as the underlying mechanism.</dd></div>
+                <div style="font-size:13px;"><dt style="display:inline; font-weight:600;">The book's answer:</dt> <dd style="display:inline; margin:0;">Kahneman's canonical example: glancing at a stranger and instantly judging trustworthiness. System 2 would override by weighing actual behavioural evidence.</dd></div>
+              </dl>
+            </div>
+
+            <div style="margin-top:14px;">
+              <div class="wf-muted" style="font-size:12px; margin-bottom:6px;">How did you do?</div>
+              <div style="display:flex; gap:8px;">
+                <button class="wf-anno mock-button" data-note="Self-assessment: Got it / Partial / Missed — order is fixed left-to-right."
+                        style="flex:1;">Got it</button>
+                <button class="mock-button" style="flex:1; background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Partial</button>
+                <button class="mock-button" style="flex:1;">Missed</button>
+                <button class="wf-anno mock-button" data-note="MSF R4 — tally-neutral; doesn't move Got it / Partial / Missed counts. Concept_label still recorded so warm-up (D29) can resurface the concept next session." style="flex:1; background:#f3f4f6; color:#374151; border-color:#d1d5db;">Not sure</button>
+              </div>
+              <button class="mock-button mock-button--primary" style="width:100%; margin-top:10px;">Next question</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bc-bottomtabs">
+          <button>Library</button><button>Search</button>
+          <button aria-selected="true">Quiz</button><button>Settings</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== OVERRIDE APPLIED ===================== -->
+    <section class="wf-state" data-state="override-applied" aria-labelledby="state-override-h">
+      <h1 id="state-override-h" class="sr-only">Override applied — note appended, agent feedback retained</h1>
+      <div style="padding-bottom:60px;">
+        <div class="bc-topbar">
+          <button class="ham" aria-label="Open menu">☰</button>
+          <span style="font-weight:600; font-size:14px;">Thinking, Fast and Slow</span>
+        </div>
+        <div class="bc-bookhdr">
+          <div class="mock-img" style="width:36px; height:52px; border-radius:4px;"></div>
+          <div style="font-size:12px;" class="wf-muted">Daniel Kahneman · 38 sections</div>
+        </div>
+        <nav class="bc-tabstrip" role="tablist">
+          <a role="tab">Overview</a><a role="tab">Summary</a><a role="tab">Sections</a>
+          <a role="tab">Audio</a><a role="tab">Annotations</a>
+          <a role="tab" aria-selected="true">Quiz</a>
+        </nav>
+
+        <div class="bc-page">
+          <div class="mock-card session-bar">
+            <span style="font-weight:600; font-size:13px;">Q 3 of 8</span>
+            <span class="mock-pill">Session: 0 partial</span>
+            <div class="grow"></div>
+            <button class="mock-button" aria-label="Stop session" style="padding:.4rem .7rem;">Stop</button>
+          </div>
+
+          <div class="mock-card" style="padding:14px;">
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+              <span class="mock-pill pill-indigo">Open-ended</span>
+              <span class="mock-pill pill-indigo">Source: Chapter 1</span>
+              <span class="wf-anno mock-pill" data-note="D15 — flag + date appear in history; turn carries override marker."
+                    style="background:#fef9c3; border-color:#fde68a; color:#854d0e;">⚑ Overridden · May 9, 2026</span>
+            </div>
+            <p style="font-size:15px; line-height:1.45; margin:0 0 10px;">
+              System 1 vs System 2 — give me one example, from the book, of System 1 making a snap judgment that System 2 would override on reflection.
+            </p>
+
+            <label class="mock-label">Your answer</label>
+            <div class="mock-input" style="background:var(--wf-surface-2); white-space:pre-wrap; font-size:13px;">When I see a friendly face I instantly assume someone is trustworthy — that's System 1. System 2 would weigh evidence about whether someone has actually behaved trustworthily before. Kahneman's halo-effect and cognitive-ease arguments cover this.</div>
+
+            <!-- Original agent feedback retained -->
+            <div class="wf-anno" data-note="Override semantics: agent feedback REMAINS visible. User's note is appended below — both stored."
+                 style="margin-top:14px; border:1px solid var(--bc-indigo-border); border-radius:var(--wf-radius); background:var(--bc-indigo-bg); padding:14px;">
+              <h2 style="font-weight:600; color:var(--bc-indigo-text); font-size:12px; letter-spacing:.04em; text-transform:uppercase; margin:0 0 8px;">Agent feedback</h2>
+              <dl style="margin:0;">
+                <div style="font-size:13px; margin-bottom:6px;"><dt style="display:inline; font-weight:600;">What was correct:</dt> <dd style="display:inline; margin:0;">System 1 / System 2 distinction named correctly.</dd></div>
+                <div style="font-size:13px; margin-bottom:6px;"><dt style="display:inline; font-weight:600;">What was missing:</dt> <dd style="display:inline; margin:0;">Didn't name "cognitive ease" mechanism.</dd></div>
+                <div style="font-size:13px;"><dt style="display:inline; font-weight:600;">The book's answer:</dt> <dd style="display:inline; margin:0;">Glancing at a stranger and judging trustworthiness — System 2 would override by weighing behaviour, not appearance.</dd></div>
+              </dl>
+            </div>
+
+            <!-- User override note -->
+            <div style="margin-top:10px; border:1px solid var(--bc-indigo-border); border-radius:var(--wf-radius); background:#ffffff; padding:12px 14px;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                <span style="font-weight:600; color:var(--bc-indigo-text); font-size:12px; letter-spacing:.04em; text-transform:uppercase;">⚑ Your override note</span>
+                <span class="wf-muted" style="font-size:11px;">May 9, 2026 · 2:14pm</span>
+              </div>
+              <div style="font-size:13px;">I did mention cognitive ease in my answer.</div>
+              <div style="margin-top:6px;">
+                <button class="mock-button" style="font-size:12px; padding:.3rem .6rem;" aria-label="Edit override note">Edit</button>
+              </div>
+            </div>
+
+            <div style="margin-top:14px;">
+              <div class="wf-muted" style="font-size:12px; margin-bottom:6px;">How did you do?</div>
+              <div style="display:flex; gap:8px;">
+                <button class="wf-anno mock-button" data-note="Override does not auto-flip self-assessment — user re-confirms."
+                        style="flex:1; background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:500;">Got it ✓</button>
+                <button class="mock-button" style="flex:1;">Partial</button>
+                <button class="mock-button" style="flex:1;">Missed</button>
+                <button class="wf-anno mock-button" data-note="MSF R4 — tally-neutral; doesn't move Got it / Partial / Missed counts. Concept_label still recorded so warm-up (D29) can resurface the concept next session." style="flex:1; background:#f3f4f6; color:#374151; border-color:#d1d5db;">Not sure</button>
+              </div>
+              <button class="mock-button mock-button--primary" style="width:100%; margin-top:10px;">Next question</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bc-bottomtabs">
+          <button>Library</button><button>Search</button>
+          <button aria-selected="true">Quiz</button><button>Settings</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W05 — Question turn (Open-ended)</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 10 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

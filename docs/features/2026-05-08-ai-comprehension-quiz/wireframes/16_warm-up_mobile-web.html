@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W08 — Warm-up phase — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: N4 — phase chips on warm-up-q1 and warm-up-q2-feedback now use full "concept: <label>" form to match desktop variant (file 15).
+    Loop 2:
+    MSF R4/R5/R6 applied 2026-05-09.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W08 — Warm-up phase (Missed-concept revisit)</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="warm-up-banner">Warm-up banner</button>
+        <button class="wf-tab" aria-selected="false" data-state="warm-up-q1">Warm-up Q1</button>
+        <button class="wf-tab" aria-selected="false" data-state="warm-up-q2-feedback">Warm-up Q2 feedback</button>
+        <button class="wf-tab" aria-selected="false" data-state="warm-up-empty">Warm-up empty (skipped)</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true" aria-label="Toggle annotations">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web" style="padding:0; overflow:hidden;">
+
+    <!-- Reusable mobile chrome — repeated in each state for self-containment -->
+
+    <!-- =================== STATE: warm-up-banner =================== -->
+    <section class="wf-state active" data-state="warm-up-banner" aria-labelledby="state-banner-h-m">
+      <h1 id="state-banner-h-m" class="sr-only">Warm-up banner — just after Start Quiz (mobile)</h1>
+
+      <div class="wf-stack" style="height:100%; gap:0; min-height:812px;">
+
+        <!-- Top bar: hamburger + book title -->
+        <header style="height:52px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:10px; background:var(--wf-bg); flex-shrink:0;">
+          <button class="mock-button" aria-label="Open navigation menu" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; background:transparent; border-color:transparent; font-size:20px;">≡</button>
+          <div class="wf-stack" style="gap:0; min-width:0;">
+            <span style="font-size:14px; font-weight:600; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Thinking, Fast and Slow</span>
+            <span class="wf-muted" style="font-size:11px;">Daniel Kahneman · Session 4</span>
+          </div>
+        </header>
+
+        <!-- Horizontally scrollable tab strip -->
+        <nav role="tablist" aria-label="Book detail tabs"
+             style="border-bottom:1px solid var(--wf-border); display:flex; gap:18px; font-size:14px; padding:0 12px; overflow-x:auto; flex-shrink:0; white-space:nowrap;">
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Overview</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Summary</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Sections</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Audio</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Annotations</a>
+          <a role="tab" aria-selected="true"
+             style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+        </nav>
+
+        <!-- Tab content -->
+        <main style="padding:16px 14px 20px; flex:1; overflow:auto;">
+          <div class="wf-stack" style="gap:16px;">
+
+            <!-- Warm-up banner -->
+            <div role="region" aria-labelledby="warmup-h-m" class="wf-anno"
+                 data-note="Banner appears only when lookback (most-recent N=3 sessions, D29) finds Missed/Partial concepts not yet marked Got it AND in current scope"
+                 style="padding:16px; border-radius:10px; background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); color:var(--bc-indigo-text);">
+              <div class="wf-row" style="gap:8px; align-items:center; flex-wrap:wrap;">
+                <span class="mock-pill" style="background:#fff; border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:600; letter-spacing:.04em;">WARM-UP</span>
+                <h2 id="warmup-h-m" style="font-size:17px; font-weight:600; margin:0;">Let's revisit</h2>
+              </div>
+              <p style="margin:10px 0 0; font-size:14px; line-height:1.55;">
+                Last time you marked <strong>anchoring effect</strong> as Missed and <strong>availability heuristic</strong> as Partial — let's revisit.
+              </p>
+              <div class="wf-muted" style="font-size:12px; margin-top:8px; color:var(--bc-indigo-text); opacity:.85;">
+                2 questions, fresh stems. Counted in your tally.
+              </div>
+
+              <div class="wf-stack" style="gap:8px; margin-top:14px;">
+                <button class="mock-button mock-button--primary" style="font-size:14px; min-height:44px;">Begin warm-up</button>
+                <button class="mock-button wf-anno"
+                        data-note="Skip warm-up — agent moves straight to normal Q1 (D40)"
+                        style="font-size:14px; min-height:44px; background:transparent; border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Skip warm-up</button>
+              </div>
+            </div>
+
+            <!-- Lookback explainer card -->
+            <div class="mock-card wf-anno"
+                 data-note="Reviewer note — D41: source includes both user self-assessment (Partial/Missed) AND agent verdict (when agent disagreed with a Got-it). Closes the Dunning-Kruger blind spot."
+                 style="padding:14px;">
+              <div style="font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em; font-weight:600;">Why these concepts</div>
+              <ul style="margin:8px 0 0; padding:0 0 0 18px; font-size:13px; color:var(--wf-text); line-height:1.65;">
+                <li><strong>anchoring effect</strong> — you marked <em>Missed</em> in Session 3 (May 6, 2026). Not yet marked Got it.</li>
+                <li><strong>availability heuristic</strong> — you marked <em>Got it</em> in Session 2, but the agent's verdict was <em>Partial</em>. Resurfaces to close the blind spot.</li>
+              </ul>
+              <div class="wf-muted" style="font-size:12px; margin-top:8px;">
+                Lookback span: most-recent <strong>3 sessions</strong>. Filter: not-yet-Got-it (user OR agent verdict). Both concepts are inside your current scope (All Summaries).
+              </div>
+            </div>
+
+            <!-- Session tally row -->
+            <div class="wf-stack" style="gap:2px; padding:6px 0; font-size:11px; color:var(--wf-muted);">
+              <span>Session: 0 Q so far</span>
+              <span>Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</span>
+            </div>
+
+          </div>
+        </main>
+
+        <!-- Bottom tab bar -->
+        <nav aria-label="Primary"
+             style="border-top:1px solid var(--wf-border); display:flex; background:var(--wf-bg); flex-shrink:0;">
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-text); font-weight:500;">
+            <span aria-hidden="true" style="font-size:16px;">▣</span>Library
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⌕</span>Search
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⚙</span>Settings
+          </a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- =================== STATE: warm-up-q1 =================== -->
+    <section class="wf-state" data-state="warm-up-q1" aria-labelledby="state-q1-h-m">
+      <h1 id="state-q1-h-m" class="sr-only">Warm-up Q1 — fresh-stem MCQ on anchoring (mobile)</h1>
+
+      <div class="wf-stack" style="height:100%; gap:0; min-height:812px;">
+
+        <header style="height:52px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:10px; background:var(--wf-bg); flex-shrink:0;">
+          <button class="mock-button" aria-label="Open navigation menu" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; background:transparent; border-color:transparent; font-size:20px;">≡</button>
+          <div class="wf-stack" style="gap:0; min-width:0;">
+            <span style="font-size:14px; font-weight:600; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Thinking, Fast and Slow</span>
+            <span class="wf-muted" style="font-size:11px;">Session 4 · Scope: All Summaries</span>
+          </div>
+        </header>
+
+        <nav role="tablist" aria-label="Book detail tabs"
+             style="border-bottom:1px solid var(--wf-border); display:flex; gap:18px; font-size:14px; padding:0 12px; overflow-x:auto; flex-shrink:0; white-space:nowrap;">
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Overview</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Summary</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Sections</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Audio</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Annotations</a>
+          <a role="tab" aria-selected="true"
+             style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+        </nav>
+
+        <main style="padding:14px; flex:1; overflow:auto;">
+          <div class="wf-stack" style="gap:14px;">
+
+            <!-- Warm-up phase chips -->
+            <div class="wf-row wf-anno"
+                 data-note="Phase chip persists for both warm-up turns (D40) so users know warm-up is active and what concept is being revisited"
+                 style="gap:6px; flex-wrap:wrap;">
+              <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:600; font-size:11px;">Warm-up · 1 of 2 · concept: anchoring effect</span>
+              <span class="mock-pill" style="font-size:11px;">Fresh stem</span>
+            </div>
+
+            <!-- Question card -->
+            <article class="mock-card" style="padding:16px;">
+              <div class="wf-row" style="gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+                <span class="mock-pill" style="font-size:11px;">MCQ</span>
+                <span class="mock-pill" style="font-size:11px;">Source: Chapter 11</span>
+              </div>
+              <h2 style="font-size:16px; font-weight:600; margin:0 0 14px; line-height:1.45;">
+                A real-estate agent quotes a list price before asking what you'd offer for the house. You name a number that lands surprisingly close to her quote. Which behavioural pattern does this best illustrate?
+              </h2>
+
+              <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px;">
+                <li>
+                  <label style="display:flex; gap:10px; align-items:flex-start; padding:12px; min-height:44px; border:1px solid var(--wf-border); border-radius:8px; cursor:pointer; font-size:14px;">
+                    <input type="radio" name="q1" style="margin-top:3px;">
+                    <div><strong>A.</strong> An initial number biases subsequent estimates.</div>
+                  </label>
+                </li>
+                <li>
+                  <label style="display:flex; gap:10px; align-items:flex-start; padding:12px; min-height:44px; border:1px solid var(--wf-border); border-radius:8px; cursor:pointer; font-size:14px;">
+                    <input type="radio" name="q1" style="margin-top:3px;">
+                    <div><strong>B.</strong> Recent vivid examples inflate your estimate of how common something is.</div>
+                  </label>
+                </li>
+                <li>
+                  <label style="display:flex; gap:10px; align-items:flex-start; padding:12px; min-height:44px; border:1px solid var(--wf-border); border-radius:8px; cursor:pointer; font-size:14px;">
+                    <input type="radio" name="q1" style="margin-top:3px;">
+                    <div><strong>C.</strong> Owning something makes you value it more than its market price.</div>
+                  </label>
+                </li>
+                <li>
+                  <label style="display:flex; gap:10px; align-items:flex-start; padding:12px; min-height:44px; border:1px solid var(--wf-border); border-radius:8px; cursor:pointer; font-size:14px;">
+                    <input type="radio" name="q1" style="margin-top:3px;">
+                    <div><strong>D.</strong> Losses loom larger than equivalent gains.</div>
+                  </label>
+                </li>
+              </ul>
+
+              <hr class="mock-divider" style="margin:14px 0 12px;">
+
+              <div class="wf-stack" style="gap:8px;">
+                <button class="mock-button mock-button--primary" style="font-size:14px; min-height:44px;">Submit</button>
+                <button class="mock-button wf-anno"
+                        data-note="Skip — keeps concept un-tallied; warm-up phase advances to Q2"
+                        style="font-size:14px; min-height:44px;">Skip</button>
+                <div class="wf-row" style="gap:14px; font-size:13px; justify-content:space-between; padding:6px 2px 0;">
+                  <a href="#" class="wf-anno" data-note="Already asked — flags the question as a near-duplicate; agent regenerates with a fresh stem" style="color:var(--wf-accent); min-height:44px; display:inline-flex; align-items:center;">Already asked</a>
+                  <a href="#" style="color:var(--wf-accent); min-height:44px; display:inline-flex; align-items:center;">Explain</a>
+                </div>
+              </div>
+            </article>
+
+            <!-- Tally row -->
+            <div class="wf-stack" style="gap:2px; padding:4px 0; font-size:11px; color:var(--wf-muted);">
+              <span>Session: 0 Q so far</span>
+              <span>Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</span>
+            </div>
+
+          </div>
+        </main>
+
+        <nav aria-label="Primary"
+             style="border-top:1px solid var(--wf-border); display:flex; background:var(--wf-bg); flex-shrink:0;">
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-text); font-weight:500;">
+            <span aria-hidden="true" style="font-size:16px;">▣</span>Library
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⌕</span>Search
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⚙</span>Settings
+          </a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- =================== STATE: warm-up-q2-feedback =================== -->
+    <section class="wf-state" data-state="warm-up-q2-feedback" aria-labelledby="state-q2-h-m">
+      <h1 id="state-q2-h-m" class="sr-only">Warm-up Q2 feedback — open-ended on availability heuristic (mobile)</h1>
+
+      <div class="wf-stack" style="height:100%; gap:0; min-height:812px;">
+
+        <header style="height:52px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:10px; background:var(--wf-bg); flex-shrink:0;">
+          <button class="mock-button" aria-label="Open navigation menu" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; background:transparent; border-color:transparent; font-size:20px;">≡</button>
+          <div class="wf-stack" style="gap:0; min-width:0;">
+            <span style="font-size:14px; font-weight:600; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Thinking, Fast and Slow</span>
+            <span class="wf-muted" style="font-size:11px;">Session 4 · Scope: All Summaries</span>
+          </div>
+        </header>
+
+        <nav role="tablist" aria-label="Book detail tabs"
+             style="border-bottom:1px solid var(--wf-border); display:flex; gap:18px; font-size:14px; padding:0 12px; overflow-x:auto; flex-shrink:0; white-space:nowrap;">
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Overview</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Summary</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Sections</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Audio</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Annotations</a>
+          <a role="tab" aria-selected="true"
+             style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+        </nav>
+
+        <main style="padding:14px; flex:1; overflow:auto;">
+          <div class="wf-stack" style="gap:14px;">
+
+            <div class="wf-row" style="gap:6px; flex-wrap:wrap;">
+              <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:600; font-size:11px;">Warm-up · 2 of 2 · concept: availability heuristic</span>
+              <span class="mock-pill wf-anno"
+                    data-note="D41 — agent's prior verdict was Partial even though user self-assessed Got it; concept resurfaces here."
+                    style="font-size:11px;">Resurfaced via agent verdict</span>
+            </div>
+
+            <!-- Asked question -->
+            <article class="mock-card" style="padding:14px;">
+              <div class="wf-row" style="gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+                <span class="mock-pill" style="font-size:11px;">Open-ended</span>
+                <span class="mock-pill" style="font-size:11px;">Source: Chapter 12</span>
+              </div>
+              <p style="font-size:14px; margin:0; line-height:1.5;">
+                Imagine someone overestimates the risk of shark attacks after a news cycle full of beach incidents. Explain in your own words what cognitive shortcut is at play and why it leads people astray.
+              </p>
+            </article>
+
+            <!-- User answer -->
+            <div class="mock-card" style="padding:12px 14px; background:var(--wf-surface-2);">
+              <div class="wf-muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; font-weight:600;">Your answer</div>
+              <p style="margin:6px 0 0; font-size:13px; line-height:1.55;">
+                When something is easy to recall — like recent shark attack headlines — people treat it as more frequent than it really is. They mistake what comes to mind quickly for what is statistically common.
+              </p>
+            </div>
+
+            <!-- Agent feedback -->
+            <article class="mock-card wf-anno"
+                     data-note="Feedback shape mirrors a normal turn (D29) — warm-up turns are tallied normally"
+                     style="padding:14px; border-left:3px solid var(--wf-accent);">
+              <div class="wf-row" style="gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+                <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:600; font-size:11px;">Agent verdict: Got it</span>
+                <span class="mock-pill" style="font-size:11px;">Chapter 12 · pp. 129–131</span>
+              </div>
+              <p style="margin:0 0 8px; font-size:13px; line-height:1.6;">
+                Yes — that's the <strong>availability heuristic</strong>: judging frequency or probability by the ease with which examples come to mind. Recent, vivid, emotionally charged events are over-weighted. Your shark-attack framing nails the mechanism. To strengthen it: notice that the same shortcut runs in the opposite direction — events that are hard to recall feel rarer than they are.
+              </p>
+              <div class="wf-muted" style="font-size:11px;">Tap the citation chip to open Chapter 12 in the reader.</div>
+            </article>
+
+            <!-- Self-assessment -->
+            <div class="mock-card" style="padding:14px;">
+              <div class="wf-muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:10px;">How did you do?</div>
+              <div class="wf-row wf-anno" data-note="Self-assessment is what counts for the lifetime tally — Got it / Partial / Missed (D29)" style="gap:8px;">
+                <button class="mock-button mock-button--primary" style="font-size:13px; min-height:44px; flex:1;">Got it</button>
+                <button class="mock-button" style="font-size:13px; min-height:44px; flex:1;">Partial</button>
+                <button class="mock-button" style="font-size:13px; min-height:44px; flex:1;">Missed</button>
+                <button class="mock-button wf-anno" data-note="MSF R4 — tally-neutral; doesn't move counts. Concept_label still recorded so warm-up (D29) can resurface it next session." style="font-size:13px; min-height:44px; flex:1; background:#f3f4f6; border-color:#d1d5db; color:#4b5563;">Not sure</button>
+              </div>
+              <div style="margin-top:10px; text-align:right;">
+                <a href="#" class="wf-anno" data-note="Override — user can flip the agent's verdict if they disagree" style="font-size:13px; color:var(--wf-accent); min-height:44px; display:inline-flex; align-items:center;">Override agent verdict</a>
+              </div>
+            </div>
+
+            <!-- Continue -->
+            <div class="wf-stack" style="gap:8px;">
+              <span class="wf-muted" style="font-size:11px;">After this turn, the agent moves into the normal loop — no more warm-up.</span>
+              <button class="mock-button mock-button--primary" style="font-size:14px; min-height:44px;">Next question →</button>
+            </div>
+
+            <!-- Tally -->
+            <div class="wf-stack" style="gap:2px; padding:4px 0; font-size:11px; color:var(--wf-muted);">
+              <span>Session: 1 Got it · 0 Partial · 0 Missed</span>
+              <span>Lifetime: 24 Q · 15 Got it / 6 Partial / 3 Missed across 4 sessions</span>
+            </div>
+
+          </div>
+        </main>
+
+        <nav aria-label="Primary"
+             style="border-top:1px solid var(--wf-border); display:flex; background:var(--wf-bg); flex-shrink:0;">
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-text); font-weight:500;">
+            <span aria-hidden="true" style="font-size:16px;">▣</span>Library
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⌕</span>Search
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⚙</span>Settings
+          </a>
+        </nav>
+      </div>
+    </section>
+
+    <!-- =================== STATE: warm-up-empty =================== -->
+    <section class="wf-state" data-state="warm-up-empty" aria-labelledby="state-empty-h-m">
+      <h1 id="state-empty-h-m" class="sr-only">Warm-up empty — silently skipped, normal Q1 rendered (mobile)</h1>
+
+      <div class="wf-stack" style="height:100%; gap:0; min-height:812px;">
+
+        <header style="height:52px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 12px; gap:10px; background:var(--wf-bg); flex-shrink:0;">
+          <button class="mock-button" aria-label="Open navigation menu" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; background:transparent; border-color:transparent; font-size:20px;">≡</button>
+          <div class="wf-stack" style="gap:0; min-width:0;">
+            <span style="font-size:14px; font-weight:600; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Thinking, Fast and Slow</span>
+            <span class="wf-muted" style="font-size:11px;">Session 4 · Scope: Specific Chapters</span>
+          </div>
+        </header>
+
+        <nav role="tablist" aria-label="Book detail tabs"
+             style="border-bottom:1px solid var(--wf-border); display:flex; gap:18px; font-size:14px; padding:0 12px; overflow-x:auto; flex-shrink:0; white-space:nowrap;">
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Overview</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Summary</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Sections</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Audio</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center;">Annotations</a>
+          <a role="tab" aria-selected="true"
+             style="padding:12px 0; min-height:44px; display:inline-flex; align-items:center; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+        </nav>
+
+        <main style="padding:14px; flex:1; overflow:auto;">
+          <div class="wf-stack" style="gap:14px;">
+
+            <!-- Reviewer-only annotation banner -->
+            <div class="wf-anno"
+                 data-note="Reviewer-only — not rendered in production. Documents D40's silent-skip behaviour for the empty-state row."
+                 style="padding:10px 12px; border:1px dashed var(--wf-accent); border-radius:8px; font-size:11px; color:var(--wf-muted); background:var(--wf-surface-2);">
+              <strong style="color:var(--wf-text);">Dev / reviewer note:</strong> When lookback finds no qualifying concepts the warm-up is skipped <em>silently</em> — no banner, no question, straight to normal Q1 generation. The user sees only what's below; this dashed box is wireframe scaffolding.
+            </div>
+
+            <!-- Normal Q1 (no warm-up chip) -->
+            <article class="mock-card" style="padding:16px;">
+              <div class="wf-row" style="gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+                <span class="mock-pill" style="font-size:11px;">Spot the error</span>
+                <span class="mock-pill" style="font-size:11px;">Source: Chapter 26</span>
+              </div>
+              <h2 style="font-size:16px; font-weight:600; margin:0 0 12px; line-height:1.45;">
+                A friend says: "Prospect theory means people are risk-averse — they always pick the safer option over a gamble." What's wrong with this characterization?
+              </h2>
+              <textarea class="mock-input wf-anno"
+                        data-note="Open-text answer field — agent reads the response alongside the book before drafting feedback"
+                        rows="5"
+                        aria-label="Your answer"
+                        placeholder="Type your answer here…"
+                        style="font-size:14px; min-height:120px;"></textarea>
+
+              <hr class="mock-divider" style="margin:14px 0 12px;">
+
+              <div class="wf-stack" style="gap:8px;">
+                <button class="mock-button mock-button--primary" style="font-size:14px; min-height:44px;">Submit</button>
+                <button class="mock-button" style="font-size:14px; min-height:44px;">Skip</button>
+                <div class="wf-row" style="gap:14px; font-size:13px; justify-content:space-between; padding:6px 2px 0;">
+                  <a href="#" style="color:var(--wf-accent); min-height:44px; display:inline-flex; align-items:center;">Already asked</a>
+                  <a href="#" style="color:var(--wf-accent); min-height:44px; display:inline-flex; align-items:center;">Explain</a>
+                </div>
+              </div>
+            </article>
+
+            <div class="wf-stack" style="gap:2px; padding:4px 0; font-size:11px; color:var(--wf-muted);">
+              <span>Session: 0 Q so far</span>
+              <span>Lifetime: 23 Q · 14 Got it / 6 Partial / 3 Missed across 3 sessions</span>
+            </div>
+
+          </div>
+        </main>
+
+        <nav aria-label="Primary"
+             style="border-top:1px solid var(--wf-border); display:flex; background:var(--wf-bg); flex-shrink:0;">
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-text); font-weight:500;">
+            <span aria-hidden="true" style="font-size:16px;">▣</span>Library
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⌕</span>Search
+          </a>
+          <a style="flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--wf-muted);">
+            <span aria-hidden="true" style="font-size:16px;">⚙</span>Settings
+          </a>
+        </nav>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W08 — Warm-up phase (Missed-concept revisit)</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 16 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W06 Question Turn — Spot the Error — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1: PASS — D14 (no citation chip in default; chip only in feedback), shape chip visible in header, bolded prompt visually distinct via highlight bg, N5 Submit disabled when empty, A1 textarea labeled via mock-label[for], C1 Kahneman loss-aversion inversion content. S4 grading-loading documented via Submit data-note annotation (acceptable per C2). No fixes applied.
+    Loop 2: skipped — no HIGH or MEDIUM findings to address.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W06 — Question turn · Spot the error</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="typed">Typed</button>
+        <button class="wf-tab" aria-selected="false" data-state="feedback">Feedback</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="padding:0; max-width:none;">
+    <div class="wf-row" style="height:100%; align-items:stretch; gap:0;">
+      <!-- Sidebar -->
+      <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+        <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+        <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;">
+          <a style="padding:8px 12px; border-radius:6px; background:rgba(255,255,255,.06);">Library</a>
+          <a style="padding:8px 12px; border-radius:6px;">Search</a>
+          <a style="padding:8px 12px; border-radius:6px;">Settings</a>
+        </nav>
+      </aside>
+
+      <!-- Main -->
+      <div class="wf-stack" style="flex:1; min-width:0; gap:0;">
+        <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+          <span class="wf-muted">Library</span>
+          <span class="wf-muted">›</span>
+          <span>Thinking, Fast and Slow</span>
+        </header>
+
+        <!-- Book header -->
+        <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+          <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+          <div class="wf-stack" style="gap:6px;">
+            <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+            <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+          </div>
+        </section>
+
+        <!-- Tab strip -->
+        <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+          <a role="tab" aria-selected="false" style="padding:12px 0;">Overview</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0;">Summary</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0;">Sections</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0;">Audio</a>
+          <a role="tab" aria-selected="false" style="padding:12px 0;">Annotations</a>
+          <a role="tab" aria-selected="true"
+             style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+        </nav>
+
+        <!-- Tab content -->
+        <main style="padding:24px 32px; flex:1; overflow:auto;">
+
+          <!-- Running session header (shared chrome above question pane) -->
+          <section style="display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--wf-border-2); margin-bottom:20px; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:2px;">
+              <div style="font-size:13px; color:var(--wf-muted);">Active session · Scope: Specific Chapters</div>
+              <div style="font-size:14px;">Ch. 26 · Prospect Theory <span class="wf-muted">— Q4 of session</span></div>
+            </div>
+            <div class="wf-grow"></div>
+            <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Session: 1 partial · Lifetime: 1 partial</span>
+            <button class="mock-button" style="font-size:13px;" aria-label="End session">End session</button>
+          </section>
+
+          <!-- ============ DEFAULT STATE ============ -->
+          <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+            <h1 id="state-default-h" class="sr-only">Default state — empty answer</h1>
+
+            <article class="mock-card" style="padding:24px; max-width:760px;">
+              <!-- Question header row -->
+              <div class="wf-row" style="gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <span class="mock-pill wf-anno"
+                      data-note="Shape chip — agent picked spot-the-error this turn (D32, D3)"
+                      style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:500;">Spot the error</span>
+                <span class="mock-pill">Q4</span>
+                <span class="wf-grow"></span>
+                <span class="wf-muted wf-anno"
+                      data-note="No citation chip yet — D14 (Loop 4): spot-the-error citation is post-answer; pre-answer would let user look up the correct version"
+                      style="font-size:12px; font-style:italic;">Source revealed after you answer</span>
+              </div>
+
+              <!-- Stem -->
+              <p style="font-size:16px; line-height:1.6; margin-bottom:8px;">
+                Daniel Kahneman defines <em>loss aversion</em> as the tendency to weigh losses about half as heavily as equivalent gains.
+              </p>
+              <p style="font-size:16px; line-height:1.6; font-weight:600; background:var(--bc-highlight); padding:6px 10px; border-radius:6px; display:inline-block;">
+                What's wrong with this statement?
+              </p>
+
+              <!-- Answer textarea -->
+              <label class="mock-label" for="se-answer" style="margin-top:20px;">Your answer</label>
+              <textarea id="se-answer" class="mock-input" rows="5" placeholder="Describe the flaw in the statement above…" style="resize:vertical;"></textarea>
+
+              <!-- Action row -->
+              <div class="wf-row" style="margin-top:16px; gap:8px; flex-wrap:wrap;">
+                <button class="mock-button mock-button--primary" disabled style="opacity:.5; cursor:not-allowed;">Submit</button>
+                <button class="mock-button wf-anno" data-note="Skip — ends turn, NOT added to dedup (D18); 3 skips on same stem trigger angle hint (D37)">Skip</button>
+                <button class="mock-button wf-anno" data-note="Explain — soft cap of 2 calls per question (D35); 3rd click renders &quot;Try answering or Skip&quot;">Explain</button>
+                <span class="wf-grow"></span>
+                <a href="#" class="wf-anno wf-muted" data-note="Already asked — opens past Q&amp;A grouped by concept (D26)" style="font-size:13px;">Already asked?</a>
+              </div>
+            </article>
+
+            <p class="wf-muted" style="margin-top:16px; font-size:12px; max-width:760px;">
+              Note · concept_label = <span class="wf-mono" style="color:var(--bc-indigo-text);">"loss aversion"</span> (D40). Agent-side validator
+              regenerates if <span class="wf-mono">intended_error</span> is absent or matches a known-correct fact in the source (D32).
+            </p>
+          </section>
+
+          <!-- ============ TYPED STATE ============ -->
+          <section class="wf-state" data-state="typed" aria-labelledby="state-typed-h">
+            <h1 id="state-typed-h" class="sr-only">Typed state — answer entered, submit enabled</h1>
+
+            <article class="mock-card" style="padding:24px; max-width:760px;">
+              <div class="wf-row" style="gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:500;">Spot the error</span>
+                <span class="mock-pill">Q4</span>
+                <span class="wf-grow"></span>
+                <span class="wf-muted" style="font-size:12px; font-style:italic;">Source revealed after you answer</span>
+              </div>
+
+              <p style="font-size:16px; line-height:1.6; margin-bottom:8px;">
+                Daniel Kahneman defines <em>loss aversion</em> as the tendency to weigh losses about half as heavily as equivalent gains.
+              </p>
+              <p style="font-size:16px; line-height:1.6; font-weight:600; background:var(--bc-highlight); padding:6px 10px; border-radius:6px; display:inline-block;">
+                What's wrong with this statement?
+              </p>
+
+              <label class="mock-label" for="se-answer-typed" style="margin-top:20px;">Your answer · 50 words</label>
+              <textarea id="se-answer-typed" class="mock-input" rows="5" style="resize:vertical;">Losses are weighed roughly twice as heavily as gains, not half. The statement inverts the ratio — Kahneman's loss-aversion coefficient is around 2, meaning a $100 loss feels about as bad as a $200 gain feels good.</textarea>
+
+              <div class="wf-row" style="margin-top:16px; gap:8px; flex-wrap:wrap;">
+                <button class="mock-button mock-button--primary wf-anno" data-note="Submit enabled — sends typed answer to grading prompt; loading copy: &quot;Reading your answer alongside the book…&quot;">Submit</button>
+                <button class="mock-button">Skip</button>
+                <button class="mock-button">Explain</button>
+                <span class="wf-grow"></span>
+                <a href="#" class="wf-muted" style="font-size:13px;">Already asked?</a>
+              </div>
+            </article>
+          </section>
+
+          <!-- ============ FEEDBACK STATE ============ -->
+          <section class="wf-state" data-state="feedback" aria-labelledby="state-feedback-h">
+            <h1 id="state-feedback-h" class="sr-only">Feedback state — citation revealed, agent verdict</h1>
+
+            <article class="mock-card" style="padding:24px; max-width:760px;">
+              <!-- Question recap -->
+              <div class="wf-row" style="gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <span class="mock-pill" style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text); font-weight:500;">Spot the error</span>
+                <span class="mock-pill">Q4</span>
+                <span class="wf-grow"></span>
+                <span class="mock-pill wf-anno"
+                      data-note="Citation revealed only AFTER answer per D14 (Loop 4 extension to spot-the-error)"
+                      style="background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Source: Chapter 26 — Prospect Theory</span>
+              </div>
+
+              <p class="wf-muted" style="font-size:14px; line-height:1.55; margin-bottom:6px;">
+                Daniel Kahneman defines <em>loss aversion</em> as the tendency to weigh losses about half as heavily as equivalent gains.
+                <span style="font-weight:600;">What's wrong with this statement?</span>
+              </p>
+
+              <!-- User answer recap -->
+              <div style="margin-top:16px; padding:12px 14px; background:var(--wf-surface-2); border-left:3px solid var(--wf-border-2); border-radius:4px;">
+                <div class="mock-label" style="margin-bottom:4px;">Your answer</div>
+                <p style="font-size:14px; line-height:1.55;">Losses are weighed roughly twice as heavily as gains, not half. The statement inverts the ratio — Kahneman's loss-aversion coefficient is around 2, meaning a $100 loss feels about as bad as a $200 gain feels good.</p>
+              </div>
+
+              <hr class="mock-divider" style="margin:20px 0;">
+
+              <!-- Feedback panel -->
+              <div class="wf-row" style="gap:8px; margin-bottom:12px;">
+                <span class="mock-pill wf-anno"
+                      data-note="agent_verdict = correct (D41) — persisted on QuizQuestion; user click below remains authoritative for tally (D12)"
+                      style="background:#dcfce7; border-color:#86efac; color:#166534;">Agent: correct</span>
+              </div>
+
+              <div class="wf-stack" style="gap:14px;">
+                <div>
+                  <div style="font-weight:600; font-size:14px; margin-bottom:4px;">The flaw</div>
+                  <p style="font-size:14px; line-height:1.55;">The ratio is inverted. Kahneman reports a loss-aversion coefficient of approximately <span class="wf-mono">2</span> — losses are weighed about <em>twice</em> as heavily as equivalent gains, not half.</p>
+                </div>
+
+                <div>
+                  <div style="font-weight:600; font-size:14px; margin-bottom:4px;">Why this matters</div>
+                  <p style="font-size:14px; line-height:1.55;">The asymmetric weighting is what makes prospect theory predict status-quo bias and the endowment effect. Halve the ratio and you lose the explanatory engine — gains and losses would feel close to symmetric, and the theory collapses into expected-utility.</p>
+                </div>
+              </div>
+
+              <hr class="mock-divider" style="margin:20px 0;">
+
+              <!-- Self-assessment row -->
+              <div class="wf-row" style="gap:8px; flex-wrap:wrap; align-items:center;">
+                <span style="font-size:13px; font-weight:500;">How did you do?</span>
+                <button class="mock-button wf-anno"
+                        data-note="Self-assessment — user click is authoritative for visible tally (D12); updates Session + Lifetime counters"
+                        style="border-color:var(--wf-success); color:var(--wf-success);">Got it</button>
+                <button class="mock-button">Partial</button>
+                <button class="mock-button">Missed</button>
+                <span class="wf-grow"></span>
+                <button class="mock-button wf-anno" data-note="Override — appends free-text note; agent feedback stays visible; turn flagged in history (D15)">Override</button>
+                <button class="mock-button mock-button--primary">Next question</button>
+              </div>
+            </article>
+
+            <p class="wf-muted" style="margin-top:16px; font-size:12px; max-width:760px;">
+              Note · spot-the-error <strong>always</strong> uses post-answer citation (D14 Loop 4 extension). Pre-answer citation would let
+              the user look up the correct version of the deliberately-wrong statement, defeating the shape. concept_label =
+              <span class="wf-mono" style="color:var(--bc-indigo-text);">"loss aversion"</span> persists on QuizQuestion (D40);
+              agent_verdict (D41) feeds D29 warm-up alongside user self-assessment.
+            </p>
+          </section>
+
+        </main>
+      </div>
+    </div>
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W06 — Question turn · Spot the error</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 11 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

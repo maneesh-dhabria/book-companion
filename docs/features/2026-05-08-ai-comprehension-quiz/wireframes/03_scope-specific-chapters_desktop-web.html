@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>W02 Scope · Specific Chapters — desktop-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    /* Local extensions only — do not duplicate wireframe.css rules. */
+    .bc-banner { background: var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); color: var(--bc-indigo-text); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+    .bc-budget-track { height: 6px; background: var(--wf-border); border-radius: 999px; overflow: hidden; }
+    .bc-budget-fill  { height: 100%; background: var(--wf-accent); border-radius: 999px; transition: width .2s ease; }
+    .bc-budget-fill--warn { background: var(--wf-warning); }
+    .bc-chap-row { display:flex; align-items:center; gap:10px; padding: 8px 10px; border-radius: 6px; }
+    .bc-chap-row:hover { background: var(--wf-surface-2); }
+    .bc-chap-row--disabled { color: var(--wf-faint); font-style: italic; }
+    .bc-chap-row--checked { background: var(--bc-indigo-bg); }
+    .bc-part-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--wf-muted); padding: 12px 10px 4px; font-weight: 600; }
+    .bc-helper { font-size: 12px; color: var(--wf-muted); }
+    .bc-radio-row { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid var(--wf-border); border-radius: 8px; }
+    .bc-radio-row--active { border-color: var(--wf-accent); background: var(--bc-indigo-bg); }
+    .bc-cta { background: var(--wf-accent); color: #fff; border:1px solid var(--wf-accent); border-radius: 8px; padding: 8px 16px; font-weight: 500; }
+    .bc-cta:disabled { background: var(--wf-border); color: var(--wf-faint); border-color: var(--wf-border); cursor: not-allowed; }
+    .bc-bulk-toolbar { display:flex; align-items:center; gap:12px; padding: 8px 10px; background: var(--wf-surface-2); border-radius: 6px; font-size: 12px; }
+    .bc-bulk-toolbar .bc-link { color: var(--wf-accent); text-decoration: underline; cursor: pointer; }
+    .bc-bulk-toolbar .bc-link--disabled { color: var(--wf-faint); text-decoration: line-through; cursor: not-allowed; }
+    .bc-part-row { display:flex; align-items:center; justify-content:space-between; padding: 12px 10px 4px; }
+    .bc-part-row .bc-part-label { padding: 0; }
+    .bc-part-select { font-size: 11px; color: var(--wf-accent); text-decoration: underline; cursor: pointer; }
+    .bc-part-select--disabled { color: var(--wf-faint); text-decoration: line-through; cursor: not-allowed; }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log
+    Loop 1:
+      - HIGH A1: sidebar/tablist anchors lacked href -> added href="#" to sidebar nav and role=tab anchors.
+      - No other HIGH/MEDIUM: D20 6px pill budget bar (neutral track, indigo fill, warn variant, percent label) verified in all 6 states; D34 front/back-matter excluded from list (helper text states it explicitly); D31 auto-default banner present with Change-scope link; over-budget state inline-disables ch.9 with verbatim copy "Would exceed budget — deselect a chapter to add."; all 6 states reachable; CTA disabled in default; C1 copy is from "Thinking, Fast and Slow"; C3 footer present.
+    Loop 2: re-read, no remaining HIGH/MEDIUM. Exit.
+    MSF R2: bulk-select Pick-range link + Per-Part Select-all link added above chapter list; budget enforcement preserved.
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W02 Scope · Specific Chapters</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="partial">Partial</button>
+        <button class="wf-tab" aria-selected="false" data-state="near-budget">Near budget</button>
+        <button class="wf-tab" aria-selected="false" data-state="over-budget">Over budget</button>
+        <button class="wf-tab" aria-selected="false" data-state="auto-default">Auto-default</button>
+        <button class="wf-tab" aria-selected="false" data-state="single-chapter">Single chapter</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="padding:0; overflow:hidden;">
+
+    <!-- =========================================================
+         Reusable chrome macro (sidebar + topbar + book-header + tabs)
+         is repeated per state because only one state is active at a
+         time. Keeps each state independently inspectable.
+         ========================================================= -->
+
+    <!-- ============== STATE: default (empty selection) ============== -->
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default state — no chapters selected</h1>
+      <div class="wf-row" style="height:100%; align-items:stretch;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;">
+            <a href="#" style="padding:8px 12px; border-radius:6px;">Library</a>
+            <a href="#" style="padding:8px 12px; border-radius:6px;">Search</a>
+            <a href="#" style="padding:8px 12px; border-radius:6px;">Settings</a>
+          </nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span><span class="wf-muted">›</span>
+            <span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;">
+              <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+              <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+            </div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" href="#" aria-selected="false" style="padding:12px 0;">Overview</a>
+            <a role="tab" href="#" aria-selected="false" style="padding:12px 0;">Summary</a>
+            <a role="tab" href="#" aria-selected="false" style="padding:12px 0;">Sections</a>
+            <a role="tab" href="#" aria-selected="false" style="padding:12px 0;">Audio</a>
+            <a role="tab" href="#" aria-selected="false" style="padding:12px 0;">Annotations</a>
+            <a role="tab" href="#" aria-selected="true"
+               style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div class="grid" style="grid-template-columns: minmax(0, 1fr) 320px; display:grid; gap:24px;">
+              <!-- LEFT: scope + chapter list -->
+              <div class="wf-stack">
+                <div>
+                  <h2 style="font-size:16px; font-weight:600; margin-bottom:8px;">Scope</h2>
+                  <div class="wf-stack" style="gap:8px;">
+                    <label class="bc-radio-row">
+                      <input type="radio" name="scope" style="margin-top:3px;">
+                      <div>
+                        <div style="font-weight:500;">All Summaries</div>
+                        <div class="bc-helper">book summary + every chapter summary</div>
+                      </div>
+                    </label>
+                    <label class="bc-radio-row bc-radio-row--active">
+                      <input type="radio" name="scope" checked style="margin-top:3px;">
+                      <div>
+                        <div style="font-weight:500;">Specific Chapters</div>
+                        <div class="bc-helper">full text of selected chapters</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="mock-card">
+                  <div class="wf-row" style="justify-content:space-between;">
+                    <div style="font-weight:600; font-size:14px;">Chapters</div>
+                    <div class="bc-helper">Filtered to content chapters · front/back matter hidden</div>
+                  </div>
+                  <hr class="mock-divider">
+
+                  <div class="bc-bulk-toolbar wf-anno" data-note="MSF R2: bulk-select toolbar. 'Pick range…' opens a chapter range picker modal. Per-Part 'Select all' links toggle visible chapters in that part. Both honor the D20 budget cap — if the bulk action would push usage over 100%, it's rejected with the same inline copy ('Would exceed budget — deselect a chapter to add.') instead of silently truncating.">
+                    <span style="font-weight:500;">Bulk select:</span>
+                    <a href="#" class="bc-link">Pick range…</a>
+                    <span class="bc-helper" style="margin-left:auto;">e.g., Chapters 6–8</span>
+                  </div>
+
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 1 · Two Systems</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>1. The Characters of the Story</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>2. Attention and Effort</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>3. The Lazy Controller</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>4. The Associative Machine</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>5. Cognitive Ease</span></label>
+
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>6. Norms, Surprises, and Causes</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>7. A Machine for Jumping to Conclusions</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>8. How Judgments Happen</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>9. Answering an Easier Question</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>10. The Law of Small Numbers</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>11. Anchors</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>12. The Science of Availability</span></label>
+
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 3 · Overconfidence</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>19. The Illusion of Understanding</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>20. The Illusion of Validity</span></label>
+
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 4 · Choices</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>25. Bernoulli's Errors</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>26. Prospect Theory</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>27. The Endowment Effect</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>28. Bad Events</span></label>
+
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 5 · Two Selves</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>35. Two Selves</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>36. Life as a Story</span></label>
+                </div>
+
+                <div>
+                  <label class="mock-label" for="theme-d">Optional theme</label>
+                  <input id="theme-d" class="mock-input" placeholder="e.g., focus on prospect theory">
+                </div>
+
+                <div class="wf-row" style="gap:12px;">
+                  <button class="bc-cta" disabled>Start Quiz</button>
+                  <span class="bc-helper">Pick at least one chapter</span>
+                </div>
+              </div>
+
+              <!-- RIGHT: budget rail -->
+              <aside class="wf-stack">
+                <div class="mock-card wf-anno" data-note="Budget bar = % of token budget consumed by selected chapters (Claude-Code-style). Adding a chapter that would exceed 100% is blocked inline (D20).">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+                  <div class="bc-budget-track"><div class="bc-budget-fill" style="width:0%"></div></div>
+                  <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+                    <span class="bc-helper">0% of budget used</span>
+                    <span class="bc-helper">0 / 5 chapters</span>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px;">Tip</div>
+                  <p class="bc-helper" style="margin-top:6px;">Specific Chapters quizzes against the <em>full text</em> of what you pick — questions get more specific (numbers, examples, edge cases).</p>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== STATE: partial (3 chapters checked) ============== -->
+    <section class="wf-state" data-state="partial" aria-labelledby="state-partial-h">
+      <h1 id="state-partial-h" class="sr-only">Partial state — 3 chapters checked</h1>
+      <div class="wf-row" style="height:100%; align-items:stretch;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;">
+            <a href="#" style="padding:8px 12px; border-radius:6px;">Library</a>
+            <a href="#" style="padding:8px 12px; border-radius:6px;">Search</a>
+            <a href="#" style="padding:8px 12px; border-radius:6px;">Settings</a>
+          </nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span><span class="wf-muted">›</span><span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;">
+              <h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1>
+              <div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div>
+            </div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" href="#" style="padding:12px 0;">Overview</a><a role="tab" href="#" style="padding:12px 0;">Summary</a><a role="tab" href="#" style="padding:12px 0;">Sections</a><a role="tab" href="#" style="padding:12px 0;">Audio</a><a role="tab" href="#" style="padding:12px 0;">Annotations</a>
+            <a role="tab" href="#" aria-selected="true" style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div style="display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:24px;">
+              <div class="wf-stack">
+                <div>
+                  <h2 style="font-size:16px; font-weight:600; margin-bottom:8px;">Scope</h2>
+                  <div class="wf-stack" style="gap:8px;">
+                    <label class="bc-radio-row"><input type="radio" name="scope2" style="margin-top:3px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+                    <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope2" checked style="margin-top:3px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters</div></div></label>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div class="wf-row" style="justify-content:space-between;">
+                    <div style="font-weight:600; font-size:14px;">Chapters · 3 selected</div>
+                    <button class="mock-button" style="font-size:12px; padding:4px 10px;">Clear</button>
+                  </div>
+                  <hr class="mock-divider">
+                  <div class="bc-bulk-toolbar">
+                    <span style="font-weight:500;">Bulk select:</span>
+                    <a href="#" class="bc-link">Pick range…</a>
+                    <span class="bc-helper" style="margin-left:auto;">e.g., Chapters 6–8</span>
+                  </div>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 1 · Two Systems</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>1. The Characters of the Story</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>2. Attention and Effort</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>5. Cognitive Ease</span></label>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>9. Answering an Easier Question</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>10. The Law of Small Numbers</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>11. Anchors</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>12. The Science of Availability</span></label>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 4 · Choices</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>26. Prospect Theory</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>27. The Endowment Effect</span></label>
+                </div>
+                <div>
+                  <label class="mock-label" for="theme-p">Optional theme</label>
+                  <input id="theme-p" class="mock-input" placeholder="e.g., focus on prospect theory">
+                </div>
+                <div class="wf-row" style="gap:12px;">
+                  <button class="bc-cta">Start Quiz</button>
+                  <span class="bc-helper">3 chapters · ~58% of budget</span>
+                </div>
+              </div>
+              <aside class="wf-stack">
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+                  <div class="bc-budget-track"><div class="bc-budget-fill" style="width:58%"></div></div>
+                  <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+                    <span class="bc-helper" style="color:var(--bc-indigo-text); font-weight:500;">58% of budget used</span>
+                    <span class="bc-helper">3 chapters</span>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px;">Selected</div>
+                  <div class="wf-row" style="flex-wrap:wrap; gap:6px; margin-top:8px;">
+                    <span class="mock-pill">Ch 6</span><span class="mock-pill">Ch 7</span><span class="mock-pill">Ch 8</span>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== STATE: near-budget (5 chapters, 92%) ============== -->
+    <section class="wf-state" data-state="near-budget" aria-labelledby="state-near-h">
+      <h1 id="state-near-h" class="sr-only">Near-budget state — 5 chapters, 92%</h1>
+      <div class="wf-row" style="height:100%; align-items:stretch;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;"><a href="#" style="padding:8px 12px; border-radius:6px;">Library</a><a href="#" style="padding:8px 12px; border-radius:6px;">Search</a><a href="#" style="padding:8px 12px; border-radius:6px;">Settings</a></nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span><span class="wf-muted">›</span><span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;"><h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1><div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div></div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" href="#" style="padding:12px 0;">Overview</a><a role="tab" href="#" style="padding:12px 0;">Summary</a><a role="tab" href="#" style="padding:12px 0;">Sections</a><a role="tab" href="#" style="padding:12px 0;">Audio</a><a role="tab" href="#" style="padding:12px 0;">Annotations</a>
+            <a role="tab" href="#" aria-selected="true" style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div style="display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:24px;">
+              <div class="wf-stack">
+                <div>
+                  <h2 style="font-size:16px; font-weight:600; margin-bottom:8px;">Scope</h2>
+                  <div class="wf-stack" style="gap:8px;">
+                    <label class="bc-radio-row"><input type="radio" name="scope3" style="margin-top:3px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+                    <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope3" checked style="margin-top:3px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters</div></div></label>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div class="wf-row" style="justify-content:space-between;">
+                    <div style="font-weight:600; font-size:14px;">Chapters · 5 selected</div>
+                    <button class="mock-button" style="font-size:12px; padding:4px 10px;">Clear</button>
+                  </div>
+                  <hr class="mock-divider">
+                  <div class="bc-bulk-toolbar wf-anno" data-note="MSF R2 + D20: bulk affordances at 92% budget. Pick-range still opens the picker (user may pick a smaller range that fits). Per-Part 'Select all' on Part 2 is disabled because adding ch.9 + ch.12 would exceed cap — same rejection copy as D20 inline ('Would exceed budget — deselect a chapter to add.'). No silent truncation.">
+                    <span style="font-weight:500;">Bulk select:</span>
+                    <a href="#" class="bc-link">Pick range…</a>
+                    <span class="bc-helper" style="margin-left:auto; color:var(--wf-warning);">Would exceed budget — deselect a chapter to add.</span>
+                  </div>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+                    <a class="bc-part-select bc-part-select--disabled" aria-disabled="true" title="Would exceed budget — deselect a chapter to add.">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>10. The Law of Small Numbers</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>11. Anchors</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>12. The Science of Availability</span></label>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 4 · Choices</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>26. Prospect Theory</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>27. The Endowment Effect</span></label>
+                </div>
+                <div>
+                  <label class="mock-label" for="theme-n">Optional theme</label>
+                  <input id="theme-n" class="mock-input" placeholder="e.g., focus on prospect theory">
+                </div>
+                <div class="wf-row" style="gap:12px;">
+                  <button class="bc-cta">Start Quiz</button>
+                  <span class="bc-helper">5 chapters · close to budget cap</span>
+                </div>
+              </div>
+              <aside class="wf-stack">
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+                  <div class="bc-budget-track"><div class="bc-budget-fill bc-budget-fill--warn" style="width:92%"></div></div>
+                  <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+                    <span class="bc-helper" style="color:var(--wf-warning); font-weight:500;">92% of budget used</span>
+                    <span class="bc-helper">5 chapters</span>
+                  </div>
+                  <p class="bc-helper" style="margin-top:8px;">Adding another chapter may exceed the per-call cap.</p>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== STATE: over-budget ============== -->
+    <section class="wf-state" data-state="over-budget" aria-labelledby="state-over-h">
+      <h1 id="state-over-h" class="sr-only">Over-budget state — adding ch 9 would exceed the cap</h1>
+      <div class="wf-row" style="height:100%; align-items:stretch;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;"><a href="#" style="padding:8px 12px; border-radius:6px;">Library</a><a href="#" style="padding:8px 12px; border-radius:6px;">Search</a><a href="#" style="padding:8px 12px; border-radius:6px;">Settings</a></nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span><span class="wf-muted">›</span><span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;"><h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1><div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div></div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" href="#" style="padding:12px 0;">Overview</a><a role="tab" href="#" style="padding:12px 0;">Summary</a><a role="tab" href="#" style="padding:12px 0;">Sections</a><a role="tab" href="#" style="padding:12px 0;">Audio</a><a role="tab" href="#" style="padding:12px 0;">Annotations</a>
+            <a role="tab" href="#" aria-selected="true" style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div style="display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:24px;">
+              <div class="wf-stack">
+                <div>
+                  <h2 style="font-size:16px; font-weight:600; margin-bottom:8px;">Scope</h2>
+                  <div class="wf-stack" style="gap:8px;">
+                    <label class="bc-radio-row"><input type="radio" name="scope4" style="margin-top:3px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+                    <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope4" checked style="margin-top:3px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters</div></div></label>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div class="wf-row" style="justify-content:space-between;">
+                    <div style="font-weight:600; font-size:14px;">Chapters · 5 selected</div>
+                    <button class="mock-button" style="font-size:12px; padding:4px 10px;">Clear</button>
+                  </div>
+                  <hr class="mock-divider">
+                  <div class="bc-bulk-toolbar">
+                    <span style="font-weight:500;">Bulk select:</span>
+                    <a href="#" class="bc-link">Pick range…</a>
+                    <span class="bc-helper" style="margin-left:auto; color:var(--wf-warning);">Would exceed budget — deselect a chapter to add.</span>
+                  </div>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+                    <a class="bc-part-select bc-part-select--disabled" aria-disabled="true" title="Would exceed budget — deselect a chapter to add.">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span></label>
+                  <!-- The chapter the user just tried to add -->
+                  <label class="bc-chap-row bc-chap-row--disabled wf-anno" data-note="Rejected inline (D20). Existing selection retained; the would-add row is disabled with verbatim copy: 'Would exceed budget — deselect a chapter to add.'">
+                    <input type="checkbox" disabled>
+                    <span>9. Answering an Easier Question</span>
+                    <span class="bc-helper" style="margin-left:auto; color:var(--wf-warning);">Would exceed budget — deselect a chapter to add.</span>
+                  </label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>10. The Law of Small Numbers</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>11. Anchors</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>12. The Science of Availability</span></label>
+                </div>
+                <div>
+                  <label class="mock-label" for="theme-o">Optional theme</label>
+                  <input id="theme-o" class="mock-input" placeholder="e.g., focus on prospect theory">
+                </div>
+                <div class="wf-row" style="gap:12px;">
+                  <button class="bc-cta">Start Quiz</button>
+                  <span class="bc-helper">5 chapters · 92% of budget</span>
+                </div>
+              </div>
+              <aside class="wf-stack">
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+                  <div class="bc-budget-track"><div class="bc-budget-fill bc-budget-fill--warn" style="width:92%"></div></div>
+                  <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+                    <span class="bc-helper" style="color:var(--wf-warning); font-weight:500;">92% of budget used</span>
+                    <span class="bc-helper">5 chapters</span>
+                  </div>
+                  <p class="bc-helper" style="margin-top:8px;">Deselect a chapter to make room for another.</p>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== STATE: auto-default (recent reading override) ============== -->
+    <section class="wf-state" data-state="auto-default" aria-labelledby="state-auto-h">
+      <h1 id="state-auto-h" class="sr-only">Auto-default — chapters auto-selected from recent reading</h1>
+      <div class="wf-row" style="height:100%; align-items:stretch;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;"><a href="#" style="padding:8px 12px; border-radius:6px;">Library</a><a href="#" style="padding:8px 12px; border-radius:6px;">Search</a><a href="#" style="padding:8px 12px; border-radius:6px;">Settings</a></nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span><span class="wf-muted">›</span><span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;"><h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1><div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div></div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" href="#" style="padding:12px 0;">Overview</a><a role="tab" href="#" style="padding:12px 0;">Summary</a><a role="tab" href="#" style="padding:12px 0;">Sections</a><a role="tab" href="#" style="padding:12px 0;">Audio</a><a role="tab" href="#" style="padding:12px 0;">Annotations</a>
+            <a role="tab" href="#" aria-selected="true" style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div style="display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:24px;">
+              <div class="wf-stack">
+                <div class="bc-banner wf-anno" data-note="D31: when /reading-state shows the user finished chapters within the last 48h, Specific Chapters is preselected with those chapters checked — overrides D22's last-used-scope memory for this visit only.">
+                  <strong>Auto-selected:</strong> chapters you finished reading in the last 48 hours.
+                  <a href="#" style="margin-left:8px; color:inherit; text-decoration:underline;">Change scope</a>
+                </div>
+                <div>
+                  <h2 style="font-size:16px; font-weight:600; margin-bottom:8px;">Scope</h2>
+                  <div class="wf-stack" style="gap:8px;">
+                    <label class="bc-radio-row"><input type="radio" name="scope5" style="margin-top:3px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+                    <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope5" checked style="margin-top:3px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters · auto-default from recent reading</div></div></label>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div class="wf-row" style="justify-content:space-between;">
+                    <div style="font-weight:600; font-size:14px;">Chapters · 3 selected</div>
+                    <button class="mock-button" style="font-size:12px; padding:4px 10px;">Clear</button>
+                  </div>
+                  <hr class="mock-divider">
+                  <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>6. Norms, Surprises, and Causes</span> <span class="mock-pill" style="margin-left:auto; background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Read May 8</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>7. A Machine for Jumping to Conclusions</span> <span class="mock-pill" style="margin-left:auto; background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Read May 8</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>8. How Judgments Happen</span> <span class="mock-pill" style="margin-left:auto; background:var(--bc-indigo-bg); border-color:var(--bc-indigo-border); color:var(--bc-indigo-text);">Read May 9</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>9. Answering an Easier Question</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>10. The Law of Small Numbers</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>11. Anchors</span></label>
+                </div>
+                <div>
+                  <label class="mock-label" for="theme-a">Optional theme</label>
+                  <input id="theme-a" class="mock-input" placeholder="e.g., focus on prospect theory">
+                </div>
+                <div class="wf-row" style="gap:12px;">
+                  <button class="bc-cta">Start Quiz</button>
+                  <span class="bc-helper">3 chapters · ~58% of budget</span>
+                </div>
+              </div>
+              <aside class="wf-stack">
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+                  <div class="bc-budget-track"><div class="bc-budget-fill" style="width:58%"></div></div>
+                  <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+                    <span class="bc-helper" style="color:var(--bc-indigo-text); font-weight:500;">58% of budget used</span>
+                    <span class="bc-helper">3 chapters</span>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== STATE: single-chapter ============== -->
+    <section class="wf-state" data-state="single-chapter" aria-labelledby="state-single-h">
+      <h1 id="state-single-h" class="sr-only">Single-chapter state — only chapter 4 selected</h1>
+      <div class="wf-row" style="height:100%; align-items:stretch;">
+        <aside style="width:240px; background:var(--bc-sidebar-bg); color:var(--bc-sidebar-text); padding:16px; flex-shrink:0;">
+          <div style="font-weight:600; font-size:13px; opacity:.7; letter-spacing:.04em; text-transform:uppercase;">Book Companion</div>
+          <nav style="margin-top:24px; display:flex; flex-direction:column; gap:4px;"><a href="#" style="padding:8px 12px; border-radius:6px;">Library</a><a href="#" style="padding:8px 12px; border-radius:6px;">Search</a><a href="#" style="padding:8px 12px; border-radius:6px;">Settings</a></nav>
+        </aside>
+        <div class="wf-stack" style="flex:1; min-width:0;">
+          <header style="height:56px; border-bottom:1px solid var(--wf-border); display:flex; align-items:center; padding:0 24px; gap:16px; background:var(--wf-bg);">
+            <span class="wf-muted">Library</span><span class="wf-muted">›</span><span>Thinking, Fast and Slow</span>
+          </header>
+          <section style="padding:24px 32px 16px; display:flex; gap:20px; align-items:flex-start;">
+            <div class="mock-img" style="width:72px; height:104px; border-radius:6px;"></div>
+            <div class="wf-stack" style="gap:6px;"><h1 style="font-size:24px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</h1><div class="wf-muted" style="font-size:14px;">Daniel Kahneman · 2011 · 499 pages · 38 sections</div></div>
+          </section>
+          <nav role="tablist" style="border-bottom:1px solid var(--wf-border); padding:0 32px; display:flex; gap:24px; font-size:14px;">
+            <a role="tab" href="#" style="padding:12px 0;">Overview</a><a role="tab" href="#" style="padding:12px 0;">Summary</a><a role="tab" href="#" style="padding:12px 0;">Sections</a><a role="tab" href="#" style="padding:12px 0;">Audio</a><a role="tab" href="#" style="padding:12px 0;">Annotations</a>
+            <a role="tab" href="#" aria-selected="true" style="padding:12px 0; border-bottom:2px solid var(--wf-accent); color:var(--wf-text); font-weight:500;">Quiz</a>
+          </nav>
+          <main style="padding:24px 32px; flex:1; overflow:auto;">
+            <div style="display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:24px;">
+              <div class="wf-stack">
+                <div>
+                  <h2 style="font-size:16px; font-weight:600; margin-bottom:8px;">Scope</h2>
+                  <div class="wf-stack" style="gap:8px;">
+                    <label class="bc-radio-row"><input type="radio" name="scope6" style="margin-top:3px;"><div><div style="font-weight:500;">All Summaries</div><div class="bc-helper">book summary + every chapter summary</div></div></label>
+                    <label class="bc-radio-row bc-radio-row--active"><input type="radio" name="scope6" checked style="margin-top:3px;"><div><div style="font-weight:500;">Specific Chapters</div><div class="bc-helper">full text of selected chapters · single chapter is allowed</div></div></label>
+                  </div>
+                </div>
+                <div class="mock-card">
+                  <div class="wf-row" style="justify-content:space-between;">
+                    <div style="font-weight:600; font-size:14px;">Chapters · 1 selected</div>
+                    <button class="mock-button" style="font-size:12px; padding:4px 10px;">Clear</button>
+                  </div>
+                  <hr class="mock-divider">
+                  <div class="bc-bulk-toolbar">
+                    <span style="font-weight:500;">Bulk select:</span>
+                    <a href="#" class="bc-link">Pick range…</a>
+                    <span class="bc-helper" style="margin-left:auto;">e.g., Chapters 6–8</span>
+                  </div>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 1 · Two Systems</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>1. The Characters of the Story</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>2. Attention and Effort</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>3. The Lazy Controller</span></label>
+                  <label class="bc-chap-row bc-chap-row--checked"><input type="checkbox" checked> <span>4. The Associative Machine</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>5. Cognitive Ease</span></label>
+                  <div class="bc-part-row">
+                    <div class="bc-part-label">Part 2 · Heuristics and Biases</div>
+                    <a href="#" class="bc-part-select">Select all in Part</a>
+                  </div>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>6. Norms, Surprises, and Causes</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>7. A Machine for Jumping to Conclusions</span></label>
+                  <label class="bc-chap-row"><input type="checkbox"> <span>8. How Judgments Happen</span></label>
+                </div>
+                <div>
+                  <label class="mock-label" for="theme-s">Optional theme</label>
+                  <input id="theme-s" class="mock-input" placeholder="e.g., focus on prospect theory">
+                </div>
+                <div class="wf-row" style="gap:12px;">
+                  <button class="bc-cta">Start Quiz</button>
+                  <span class="bc-helper">1 chapter · ~14% of budget · single-chapter quizzes are supported</span>
+                </div>
+              </div>
+              <aside class="wf-stack">
+                <div class="mock-card">
+                  <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Token budget</div>
+                  <div class="bc-budget-track"><div class="bc-budget-fill" style="width:14%"></div></div>
+                  <div class="wf-row" style="justify-content:space-between; margin-top:8px;">
+                    <span class="bc-helper" style="color:var(--bc-indigo-text); font-weight:500;">14% of budget used</span>
+                    <span class="bc-helper">1 chapter</span>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W02 Scope · Specific Chapters</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 03 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

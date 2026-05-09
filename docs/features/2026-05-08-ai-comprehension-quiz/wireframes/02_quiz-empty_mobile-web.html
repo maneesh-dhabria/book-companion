@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz tab — Empty / first visit — mobile-web — Wireframe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <style>
+    /* Mobile-only helpers (not duplicating wireframe.css). */
+    .m-topbar { height:56px; padding:0 12px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--wf-border); background:var(--wf-bg); }
+    .m-tabstrip { display:flex; gap:18px; padding:0 12px; border-bottom:1px solid var(--wf-border); overflow-x:auto; font-size:13px; white-space:nowrap; }
+    .m-tabstrip a { padding:14px 0; min-height:44px; display:inline-flex; align-items:center; color:var(--wf-muted); }
+    .m-tabstrip a[aria-selected="true"] { color:var(--wf-text); border-bottom:2px solid var(--wf-accent); font-weight:500; }
+    .m-content { padding:16px 14px 80px; overflow:auto; }
+    .m-bookhead { display:flex; gap:12px; align-items:center; padding:12px 14px; border-bottom:1px solid var(--wf-border); }
+    .m-tabbar { display:flex; align-items:center; justify-content:space-around; height:64px; border-top:1px solid var(--wf-border); background:var(--wf-bg); position:absolute; left:0; right:0; bottom:0; font-size:11px; }
+    .m-tabbar a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:44px; min-width:44px; padding:6px 8px; color:var(--wf-muted); }
+    .m-tabbar a[aria-current="page"] { color:var(--wf-accent); }
+  </style>
+</head>
+<body data-annotations="on">
+  <!--
+    Review Log (auto-maintained by refinement loops)
+    Loop 1:
+      - N4: Restored verbatim D17 scope labels ("All Summaries (book summary + every chapter summary)" / "Specific Chapters (full text of selected chapters)") to match desktop.
+      - D1/A5/F1: Bumped icon-button (☰, ⋯) min-height from 36px to 44px and tab-strip/m-tabbar links to ≥44px touch targets.
+      - A1/A3: Added href="#" to all role="tab" anchors and m-tabbar links so they are keyboard-focusable.
+    Loop 2:
+  -->
+
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">W01 — Quiz tab — Empty / first visit</span>
+      <span class="wf-chrome__device">mobile-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="no-llm">No LLM</button>
+        <button class="wf-tab" aria-selected="false" data-state="no-summaries">No summaries</button>
+        <button class="wf-tab" aria-selected="false" data-state="theme-typed">Theme typed</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--mobile-web">
+
+    <!-- =================== STATE: default =================== -->
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default state — empty Quiz tab, first visit</h1>
+
+      <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+
+      <div class="m-topbar">
+        <button aria-label="Open navigation menu" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">☰</button>
+        <span style="font-weight:600; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+        <button aria-label="More actions" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">⋯</button>
+      </div>
+
+      <div class="m-bookhead">
+        <div class="mock-img" style="width:44px; height:64px; border-radius:4px;"></div>
+        <div>
+          <div style="font-size:14px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</div>
+          <div class="wf-muted" style="font-size:12px;">Daniel Kahneman · 38 sections</div>
+        </div>
+      </div>
+
+      <nav role="tablist" class="m-tabstrip">
+        <a role="tab" href="#" aria-selected="false">Overview</a>
+        <a role="tab" href="#" aria-selected="false">Summary</a>
+        <a role="tab" href="#" aria-selected="false">Sections</a>
+        <a role="tab" href="#" aria-selected="false">Audio</a>
+        <a role="tab" href="#" aria-selected="false">Annotations</a>
+        <a role="tab" href="#" aria-selected="true">Quiz</a>
+      </nav>
+
+      <div class="m-content">
+        <div class="wf-stack" style="gap:18px;">
+          <div>
+            <h2 style="font-size:18px; font-weight:600; margin:0 0 4px;">Quiz me on this book. Pick a scope to start.</h2>
+            <p class="wf-muted" style="font-size:13px; margin:0;">The agent will mix MCQ, open-ended, and spot-the-error questions.</p>
+          </div>
+
+          <fieldset class="mock-card" style="border:1px solid var(--wf-border); padding:14px;">
+            <legend style="padding:0 6px; font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em;">Scope</legend>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px; background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); cursor:pointer;">
+              <input type="radio" name="scope-m" checked style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">All Summaries (book summary + every chapter summary)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">Book summary + every chapter summary. Best for a breadth pass after finishing.</div>
+              </div>
+            </label>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px; border:1px solid transparent; margin-top:6px; cursor:pointer;">
+              <input type="radio" name="scope-m" style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">Specific Chapters (full text of selected chapters)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">Full text of selected chapters. Best for going deep on what you just read.</div>
+              </div>
+            </label>
+
+            <hr class="mock-divider" style="margin:14px 0 10px;">
+
+            <label class="mock-label" for="theme-m">Theme (optional)</label>
+            <input id="theme-m" class="mock-input wf-anno"
+                   data-note="Soft topical bias — D19"
+                   placeholder="e.g., focus on prospect theory">
+            <div class="wf-muted" style="font-size:11px; margin-top:6px;">Leave blank to range across the whole scope.</div>
+          </fieldset>
+
+          <div class="wf-anno"
+               data-note="First-session microcopy — D21"
+               style="padding:10px 12px; border-left:3px solid var(--wf-accent); background:var(--bc-indigo-bg); border-radius:6px; font-size:12px; color:var(--bc-indigo-text);">
+            <strong>First time here.</strong> The agent mixes MCQ and open-ended questions. After each one you’ll mark <em>Got it</em>, <em>Partial</em>, or <em>Missed</em> — your call is authoritative.
+          </div>
+
+          <button class="mock-button mock-button--primary" style="width:100%; font-size:15px; padding:.75rem 1rem;">Start Quiz</button>
+          <div class="wf-muted" style="font-size:12px; text-align:center;">Cold-start question takes a few seconds.</div>
+        </div>
+      </div>
+
+      <div class="m-tabbar">
+        <a href="#" aria-label="Library"><span aria-hidden="true">▦</span><span>Library</span></a>
+        <a href="#" aria-label="Search"><span aria-hidden="true">⌕</span><span>Search</span></a>
+        <a href="#" aria-label="Settings"><span aria-hidden="true">⚙</span><span>Settings</span></a>
+      </div>
+      <div class="wf-home-indicator"></div>
+    </section>
+
+    <!-- =================== STATE: no-llm =================== -->
+    <section class="wf-state" data-state="no-llm" aria-labelledby="state-no-llm-h">
+      <h1 id="state-no-llm-h" class="sr-only">No LLM provider detected</h1>
+
+      <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+      <div class="m-topbar">
+        <button aria-label="Open navigation menu" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">☰</button>
+        <span style="font-weight:600; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+        <button aria-label="More actions" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">⋯</button>
+      </div>
+      <div class="m-bookhead">
+        <div class="mock-img" style="width:44px; height:64px; border-radius:4px;"></div>
+        <div>
+          <div style="font-size:14px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</div>
+          <div class="wf-muted" style="font-size:12px;">Daniel Kahneman · 38 sections</div>
+        </div>
+      </div>
+      <nav role="tablist" class="m-tabstrip">
+        <a role="tab" href="#" aria-selected="false">Overview</a>
+        <a role="tab" href="#" aria-selected="false">Summary</a>
+        <a role="tab" href="#" aria-selected="false">Sections</a>
+        <a role="tab" href="#" aria-selected="false">Audio</a>
+        <a role="tab" href="#" aria-selected="false">Annotations</a>
+        <a role="tab" href="#" aria-selected="true">Quiz</a>
+      </nav>
+      <div class="m-content">
+        <div class="wf-stack" style="gap:16px;">
+          <h2 style="font-size:18px; font-weight:600; margin:0;">Quiz me on this book. Pick a scope to start.</h2>
+
+          <div role="alert"
+               style="display:flex; gap:10px; padding:12px; border-radius:8px; background:#fef3c7; border:1px solid #fcd34d; color:#78350f;">
+            <div aria-hidden="true" style="font-weight:700;">!</div>
+            <div>
+              <div style="font-weight:600; font-size:13px;">No LLM provider detected — install Claude Code or Codex CLI</div>
+              <div style="font-size:12px; margin-top:4px; color:#92400e;">Install <span class="wf-mono">claude</span> or <span class="wf-mono">codex</span>, then restart. The Quiz tab will re-enable.</div>
+            </div>
+          </div>
+
+          <fieldset class="mock-card wf-anno"
+                    data-note="Disabled — gotcha #6"
+                    disabled
+                    style="border:1px solid var(--wf-border); padding:14px; opacity:.55; pointer-events:none;">
+            <legend style="padding:0 6px; font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em;">Scope</legend>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px;">
+              <input type="radio" name="scope-md" disabled style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">All Summaries (book summary + every chapter summary)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">Book summary + every chapter summary.</div>
+              </div>
+            </label>
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px;">
+              <input type="radio" name="scope-md" disabled style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">Specific Chapters (full text of selected chapters)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">Full text of selected chapters.</div>
+              </div>
+            </label>
+            <hr class="mock-divider" style="margin:14px 0 10px;">
+            <label class="mock-label">Theme (optional)</label>
+            <input class="mock-input" placeholder="e.g., focus on prospect theory" disabled>
+          </fieldset>
+
+          <button class="mock-button" disabled style="opacity:.5; width:100%; cursor:not-allowed;">Start Quiz</button>
+          <a href="#" style="text-align:center; font-size:13px; color:var(--wf-accent);">View install guide</a>
+        </div>
+      </div>
+      <div class="m-tabbar">
+        <a href="#" aria-label="Library"><span aria-hidden="true">▦</span><span>Library</span></a>
+        <a href="#" aria-label="Search"><span aria-hidden="true">⌕</span><span>Search</span></a>
+        <a href="#" aria-label="Settings"><span aria-hidden="true">⚙</span><span>Settings</span></a>
+      </div>
+      <div class="wf-home-indicator"></div>
+    </section>
+
+    <!-- =================== STATE: no-summaries =================== -->
+    <section class="wf-state" data-state="no-summaries" aria-labelledby="state-no-summaries-h">
+      <h1 id="state-no-summaries-h" class="sr-only">No summaries yet — gating</h1>
+
+      <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+      <div class="m-topbar">
+        <button aria-label="Open navigation menu" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">☰</button>
+        <span style="font-weight:600; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+        <button aria-label="More actions" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">⋯</button>
+      </div>
+      <div class="m-bookhead">
+        <div class="mock-img" style="width:44px; height:64px; border-radius:4px;"></div>
+        <div>
+          <div style="font-size:14px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</div>
+          <div class="wf-muted" style="font-size:12px;">Daniel Kahneman · no summaries yet</div>
+        </div>
+      </div>
+      <nav role="tablist" class="m-tabstrip">
+        <a role="tab" href="#" aria-selected="false">Overview</a>
+        <a role="tab" href="#" aria-selected="false">Summary</a>
+        <a role="tab" href="#" aria-selected="false">Sections</a>
+        <a role="tab" href="#" aria-selected="false">Audio</a>
+        <a role="tab" href="#" aria-selected="false">Annotations</a>
+        <a role="tab" href="#" aria-selected="true">Quiz</a>
+      </nav>
+      <div class="m-content">
+        <div class="wf-stack" style="gap:16px;">
+          <h2 style="font-size:18px; font-weight:600; margin:0;">Quiz me on this book. Pick a scope to start.</h2>
+
+          <fieldset class="mock-card" style="border:1px solid var(--wf-border); padding:14px;">
+            <legend style="padding:0 6px; font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em;">Scope</legend>
+
+            <div class="wf-anno"
+                 data-note="All Summaries gated — Empty States table"
+                 style="padding:12px; border-radius:8px; border:1px solid var(--wf-border); background:var(--wf-surface);">
+              <label style="display:flex; gap:10px; align-items:flex-start; opacity:.6;">
+                <input type="radio" name="scope-mns" disabled style="margin-top:4px;">
+                <div>
+                  <div style="font-weight:500; font-size:14px;">All Summaries (book summary + every chapter summary)</div>
+                  <div class="wf-muted" style="font-size:12px; margin-top:2px;">Book summary + every chapter summary.</div>
+                </div>
+              </label>
+              <div style="margin-top:10px; padding:10px; border-radius:6px; background:#fef3c7; border:1px solid #fcd34d; color:#78350f; font-size:12px;">
+                <div style="margin-bottom:8px;">Generate summaries first to use this scope.</div>
+                <a href="#" class="mock-button" style="background:var(--wf-accent); color:#fff; border-color:var(--wf-accent); padding:.4rem .7rem; font-size:12px; min-height:32px;">Summarize this book</a>
+              </div>
+            </div>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px; background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); margin-top:10px; cursor:pointer;">
+              <input type="radio" name="scope-mns" checked style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">Specific Chapters (full text of selected chapters)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">No summaries needed — the agent reads chapter text directly.</div>
+              </div>
+            </label>
+
+            <hr class="mock-divider" style="margin:14px 0 10px;">
+            <label class="mock-label" for="theme-mns">Theme (optional)</label>
+            <input id="theme-mns" class="mock-input" placeholder="e.g., focus on prospect theory">
+          </fieldset>
+
+          <button class="mock-button mock-button--primary" style="width:100%;">Continue to chapter picker</button>
+        </div>
+      </div>
+      <div class="m-tabbar">
+        <a href="#" aria-label="Library"><span aria-hidden="true">▦</span><span>Library</span></a>
+        <a href="#" aria-label="Search"><span aria-hidden="true">⌕</span><span>Search</span></a>
+        <a href="#" aria-label="Settings"><span aria-hidden="true">⚙</span><span>Settings</span></a>
+      </div>
+      <div class="wf-home-indicator"></div>
+    </section>
+
+    <!-- =================== STATE: theme-typed =================== -->
+    <section class="wf-state" data-state="theme-typed" aria-labelledby="state-theme-typed-h">
+      <h1 id="state-theme-typed-h" class="sr-only">Theme field has a value</h1>
+
+      <div class="wf-statusbar"><span>9:41</span><span>5G</span></div>
+      <div class="m-topbar">
+        <button aria-label="Open navigation menu" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">☰</button>
+        <span style="font-weight:600; font-size:14px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Thinking, Fast and Slow</span>
+        <button aria-label="More actions" class="mock-button" style="padding:.6rem .7rem; min-height:44px; min-width:44px;">⋯</button>
+      </div>
+      <div class="m-bookhead">
+        <div class="mock-img" style="width:44px; height:64px; border-radius:4px;"></div>
+        <div>
+          <div style="font-size:14px; font-weight:600; line-height:1.2;">Thinking, Fast and Slow</div>
+          <div class="wf-muted" style="font-size:12px;">Daniel Kahneman · 38 sections</div>
+        </div>
+      </div>
+      <nav role="tablist" class="m-tabstrip">
+        <a role="tab" href="#" aria-selected="false">Overview</a>
+        <a role="tab" href="#" aria-selected="false">Summary</a>
+        <a role="tab" href="#" aria-selected="false">Sections</a>
+        <a role="tab" href="#" aria-selected="false">Audio</a>
+        <a role="tab" href="#" aria-selected="false">Annotations</a>
+        <a role="tab" href="#" aria-selected="true">Quiz</a>
+      </nav>
+      <div class="m-content">
+        <div class="wf-stack" style="gap:16px;">
+          <div>
+            <h2 style="font-size:18px; font-weight:600; margin:0 0 4px;">Quiz me on this book. Pick a scope to start.</h2>
+            <p class="wf-muted" style="font-size:13px; margin:0;">A theme is set — questions will lean toward that topic.</p>
+          </div>
+
+          <fieldset class="mock-card" style="border:1px solid var(--wf-border); padding:14px;">
+            <legend style="padding:0 6px; font-size:11px; color:var(--wf-muted); text-transform:uppercase; letter-spacing:.04em;">Scope</legend>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px; background:var(--bc-indigo-bg); border:1px solid var(--bc-indigo-border); cursor:pointer;">
+              <input type="radio" name="scope-mtt" checked style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">All Summaries (book summary + every chapter summary)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">Book summary + every chapter summary.</div>
+              </div>
+            </label>
+            <label style="display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:8px; border:1px solid transparent; margin-top:6px; cursor:pointer;">
+              <input type="radio" name="scope-mtt" style="margin-top:4px;">
+              <div>
+                <div style="font-weight:500; font-size:14px;">Specific Chapters (full text of selected chapters)</div>
+                <div class="wf-muted" style="font-size:12px; margin-top:2px;">Full text of selected chapters.</div>
+              </div>
+            </label>
+
+            <hr class="mock-divider" style="margin:14px 0 10px;">
+
+            <label class="mock-label" for="theme-mtt">Theme (optional)</label>
+            <input id="theme-mtt" class="mock-input wf-anno"
+                   data-note="Bypasses pre-drafted Q1 — D27"
+                   value="prospect theory"
+                   placeholder="e.g., focus on prospect theory"
+                   style="border-color:var(--wf-accent);">
+            <div style="font-size:11px; margin-top:6px; color:var(--bc-indigo-text);">Questions will bias toward this theme.</div>
+          </fieldset>
+
+          <div class="wf-anno"
+               data-note="First-session microcopy — D21"
+               style="padding:10px 12px; border-left:3px solid var(--wf-accent); background:var(--bc-indigo-bg); border-radius:6px; font-size:12px; color:var(--bc-indigo-text);">
+            <strong>First time here.</strong> Mix of MCQ and open-ended. Mark <em>Got it</em>, <em>Partial</em>, or <em>Missed</em> after each — your call is authoritative.
+          </div>
+
+          <button class="mock-button mock-button--primary" style="width:100%;">Start Quiz</button>
+          <div class="wf-muted" style="font-size:12px; text-align:center;">Themed sessions skip the pre-drafted first question — expect a brief load.</div>
+        </div>
+      </div>
+      <div class="m-tabbar">
+        <a href="#" aria-label="Library"><span aria-hidden="true">▦</span><span>Library</span></a>
+        <a href="#" aria-label="Search"><span aria-hidden="true">⌕</span><span>Search</span></a>
+        <a href="#" aria-label="Settings"><span aria-hidden="true">⚙</span><span>Settings</span></a>
+      </div>
+      <div class="wf-home-indicator"></div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>W01 — Quiz tab — Empty / first visit</span>
+      <span class="mock-pill">mobile-web</span>
+      <span>File 02 of 18</span>
+      <span>Generated 2026-05-09</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>
