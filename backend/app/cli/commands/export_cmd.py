@@ -109,6 +109,33 @@ async def export_book(
             raise typer.Exit(1) from None
 
 
+@export_app.command("quiz-session")
+@async_command
+async def export_quiz_session(
+    session_id: int = typer.Argument(..., help="Quiz session ID to export."),
+    output: str = typer.Option(None, "--output", "-o", help="Output file path."),
+):
+    """Export a single quiz session as Markdown (FR-100, §9.10)."""
+    async with get_services() as svc:
+        try:
+            body = await svc["export"].export_quiz_session(session_id, fmt="markdown")
+            if output:
+                from pathlib import Path
+
+                Path(output).write_text(body, encoding="utf-8")
+                print_success(f"Quiz session exported to {output}")
+            else:
+                console.print(body)
+        except ExportError as e:
+            print_error(str(e))
+            raise typer.Exit(1) from None
+        except typer.Exit:
+            raise
+        except Exception as e:
+            print_error(str(e))
+            raise typer.Exit(1) from None
+
+
 @export_app.command("library")
 @async_command
 async def export_library(

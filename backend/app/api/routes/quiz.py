@@ -616,3 +616,43 @@ async def stop_session(
         .options(selectinload(QuizSession.questions))
     )
     return _serialize_session_list_item(qs)
+
+
+@router.get("/api/v1/quiz-sessions/{session_id}/export")
+async def export_quiz_session(
+    session_id: int,
+    fmt: str = "markdown",
+    db: AsyncSession = Depends(get_db),
+):
+    """FR-100..FR-105 / §9.10: Markdown export for a single quiz session.
+
+    Refuses abandoned sessions (E15) → 404 with explanation.
+    """
+    from fastapi.responses import Response
+
+    from app.services.export_service import ExportError, ExportService, QuizExportError
+
+    if fmt != "markdown":
+        raise HTTPException(400, detail=f"Unsupported fmt={fmt!r}; only 'markdown'.")
+
+    svc = ExportService(session=db)
+    try:
+        body = await svc.export_quiz_session(session_id, fmt="markdown")
+    except QuizExportError as e:
+        raise HTTPException(404, detail=str(e)) from e
+    except ExportError as e:
+        # Unknown session OR unknown book → 404.
+        raise HTTPException(404, detail=str(e)) from e
+
+    # Look up the book slug for the filename.
+    qs = await db.scalar(select(QuizSession).where(QuizSession.id == session_id))
+    book = await db.scalar(select(Book).where(Book.id == qs.book_id)) if qs else None
+    from app.services.slug import gfm_slug
+
+    slug = gfm_slug(book.title) if (book and book.title) else f"book-{qs.book_id if qs else 0}"
+    filename = f"{slug}_quiz_session_{session_id}.md"
+    return Response(
+        content=body,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

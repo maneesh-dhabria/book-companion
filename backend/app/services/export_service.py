@@ -28,6 +28,10 @@ class ExportError(BookCompanionError):
     """Export-related errors."""
 
 
+class QuizExportError(ExportError):
+    """Raised when a quiz session cannot be exported (e.g., abandoned)."""
+
+
 _BLOCK_TRIGGER_LINE_RE = re.compile(r"^(\s*)([>#\-*+]|\d+\.)")
 
 
@@ -405,3 +409,121 @@ class ExportService:
         book_data = await self._collect_book_data(book)
         book_anns = await self._collect_book_annotations(book)
         return await self._render_summary_markdown(book_data, selection, book_annotations=book_anns)
+
+    async def export_quiz_session(
+        self,
+        session_id: int,
+        fmt: str = "markdown",
+    ) -> str:
+        """Render a single quiz session to Markdown (FR-100..FR-105, §9.10).
+
+        - Refuses to export ``abandoned`` sessions (E15 / FR-105).
+        - Sanitizes in-app `/api/v1/images/{id}` references in citation
+          snippets and feedback fields so the exported Markdown is portable.
+        - Uses ``app/templates/exports/quiz_session.md.j2`` via Jinja2.
+        """
+        if fmt != "markdown":
+            raise ExportError(f"Unsupported quiz-session export format: {fmt!r}")
+
+        from sqlalchemy.orm import selectinload
+
+        from app.db.models import QuizSession
+
+        result = await self.session.execute(
+            select(QuizSession)
+            .where(QuizSession.id == session_id)
+            .options(selectinload(QuizSession.questions))
+        )
+        qs = result.scalar_one_or_none()
+        if qs is None:
+            raise ExportError(f"Quiz session {session_id} not found.")
+        if qs.status == "abandoned":
+            raise QuizExportError(
+                f"Cannot export an abandoned session — answer at least one "
+                f"question first. (session_id={session_id})"
+            )
+
+        book = await self.book_repo.get_by_id(qs.book_id)
+        if book is None:
+            raise ExportError(f"Book {qs.book_id} for session {session_id} not found.")
+
+        questions_sorted = sorted(
+            (q for q in (qs.questions or []) if not q.is_stale),
+            key=lambda q: (q.created_at, q.id),
+        )
+
+        # Tally — single source of truth lives in the API route helper, but
+        # to avoid pulling that into a service-layer dep we recompute here
+        # using the same predicate.
+        tally = {"got_it": 0, "partial": 0, "missed": 0, "skipped": 0, "discarded": 0}
+        for q in questions_sorted:
+            if q.discarded:
+                tally["discarded"] += 1
+                continue
+            if q.skip_count > 0 and q.user_answer is None and q.self_assessment is None:
+                tally["skipped"] += 1
+                continue
+            if q.self_assessment in tally:
+                tally[q.self_assessment] += 1
+
+        # Inflate each question into a template-friendly dict.
+        question_views = [_quiz_question_to_view(q) for q in questions_sorted]
+
+        import jinja2
+
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(
+                str(Path(__file__).resolve().parent.parent / "templates" / "exports")
+            ),
+            autoescape=False,
+            trim_blocks=False,
+            lstrip_blocks=False,
+            keep_trailing_newline=True,
+        )
+        env.filters["sanitize_image_urls"] = _sanitize_image_urls
+        template = env.get_template("quiz_session.md.j2")
+        return template.render(
+            book={"title": book.title},
+            session=qs,
+            questions=question_views,
+            tally=tally,
+        )
+
+
+def _quiz_question_to_view(q) -> dict:
+    """Translate a QuizQuestion ORM row into a flat dict for the Jinja2 template."""
+    citation_raw = q.citation_json or "{}"
+    try:
+        citation = json.loads(citation_raw)
+    except (TypeError, json.JSONDecodeError):
+        citation = {"section_title": "", "snippet": str(citation_raw)}
+    feedback = None
+    if q.feedback_json:
+        try:
+            feedback = json.loads(q.feedback_json)
+        except (TypeError, json.JSONDecodeError):
+            feedback = None
+    mcq_options: list[str] = []
+    if q.mcq_options_json:
+        try:
+            mcq_options = json.loads(q.mcq_options_json) or []
+        except (TypeError, json.JSONDecodeError):
+            mcq_options = []
+    return {
+        "id": q.id,
+        "shape": q.shape,
+        "stem": q.stem,
+        "concept_label": q.concept_label,
+        "citation": {
+            "section_title": citation.get("section_title", ""),
+            "snippet": citation.get("snippet", ""),
+        },
+        "mcq_options": mcq_options,
+        "user_answer": q.user_answer,
+        "feedback": feedback,
+        "self_assessment": q.self_assessment,
+        "override_note": q.override_note,
+        "skip_count": q.skip_count,
+        "discarded": q.discarded,
+        "warm_up": q.warm_up,
+    }

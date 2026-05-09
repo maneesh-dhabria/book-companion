@@ -1,0 +1,37 @@
+# Quiz Session — {{ book.title }}
+
+- Session: #{{ session.id }} ({{ session.status }})
+- Created: {{ session.created_at }}
+- Ended: {{ session.ended_at or "—" }}
+- Scope: {{ session.scope_mode }}{% if session.scope_section_ids %} ({{ session.scope_section_ids | join(", ") }}){% endif %}
+- Theme: {{ session.theme or "—" }}
+- Tally: Got it {{ tally.got_it }} · Partial {{ tally.partial }} · Missed {{ tally.missed }} ({{ tally.skipped }} skipped, {{ tally.discarded }} discarded)
+
+---
+
+{% for q in questions %}
+## Turn {{ loop.index }} — {{ q.shape }}{% if q.warm_up %} (warm-up){% endif %}{% if q.discarded %} (discarded){% endif %}
+
+**Stem:** {{ q.stem }}
+
+{% if q.shape == "mcq" and q.mcq_options %}**Options:**
+{% for o in q.mcq_options -%}
+- {{ o }}
+{% endfor %}
+{% endif -%}
+
+**Citation:** {{ q.citation.section_title }} — “{{ q.citation.snippet | sanitize_image_urls }}”
+
+**Your answer:** {% if q.user_answer %}{{ q.user_answer }}{% elif q.skip_count > 0 %}_skipped_{% else %}—{% endif %}
+
+{% if q.feedback %}
+**Feedback:**
+- Correct: {{ q.feedback.correct | sanitize_image_urls }}
+- Missing: {{ q.feedback.missing | sanitize_image_urls }}
+- Actual: {{ q.feedback.actual | sanitize_image_urls }}
+{% endif %}
+
+**Self-assessment:** {{ q.self_assessment or "—" }}{% if q.override_note %} (override: {{ q.override_note }}){% endif %}
+
+---
+{% endfor %}
