@@ -27,6 +27,7 @@ from app.api.routes import (
     images,
     llm_status,
     processing,
+    quiz,
     reading_presets,
     reading_state,
     search,
@@ -157,9 +158,7 @@ def register_db_busy_handler(app: FastAPI) -> None:
     async def _handle_op_error(request: Request, exc: OperationalError):
         msg = str(getattr(exc, "orig", exc))
         if "database is locked" in msg:
-            _logger.warning(
-                "db_busy_timeout", path=request.url.path, method=request.method
-            )
+            _logger.warning("db_busy_timeout", path=request.url.path, method=request.method)
             return JSONResponse(
                 status_code=503,
                 content={"detail": "Database busy, please retry"},
@@ -213,6 +212,7 @@ def create_app() -> FastAPI:
     app.include_router(eval.router)
     app.include_router(views.router)
     app.include_router(processing.router)
+    app.include_router(quiz.router)
     app.include_router(export.router)
     app.include_router(backup.router)
     app.include_router(settings_routes.router)

@@ -605,3 +605,141 @@ class ResumeBannerResponse(BaseModel):
     last_audio_at: str | None = None
     # Plan-level extension P17: ResumeAffordance needs honest "X of Y" copy.
     last_audio_total_sentences: int | None = None
+
+
+# --- Quiz (T15) ---
+
+
+class QuizScope(BaseModel):
+    mode: Literal["all_summaries", "specific_chapters"]
+    section_ids: list[int] | None = None
+
+
+class QuizStartRequest(BaseModel):
+    scope: QuizScope
+    theme: str | None = None
+
+
+class QuizAnswerRequest(BaseModel):
+    answer: str
+
+
+class QuizSelfAssessmentRequest(BaseModel):
+    self_assessment: Literal["got_it", "partial", "missed"]
+
+
+class QuizOverrideRequest(BaseModel):
+    note: str
+
+
+class QuizCitation(BaseModel):
+    section_id: int | None = None
+    section_title: str | None = None
+    snippet: str | None = None
+
+
+class QuizQuestionResponse(BaseModel):
+    """Wire shape for a single question.
+
+    Notes:
+    - `agent_verdict` is intentionally absent (S9: backend-only).
+    - `mcq_options` is the unwrapped string list when shape='mcq'.
+    - `feedback` is the parsed 3-field object once graded.
+    """
+
+    id: int
+    session_id: int | None = None
+    book_id: int
+    shape: str
+    bloom_level: str
+    stem: str
+    concept_label: str
+    citation: QuizCitation
+    mcq_options: list[str] | None = None
+    intended_error: str | None = None
+    error_explanation: str | None = None
+    user_answer: str | None = None
+    feedback: dict[str, Any] | None = None
+    self_assessment: str | None = None
+    override_note: str | None = None
+    explain_history: list[str] = []
+    skip_count: int = 0
+    discarded: bool = False
+    warm_up: bool = False
+    queue_hit: bool = False
+    is_pregen: bool = False
+    is_stale: bool = False
+    created_at: datetime
+    answered_at: datetime | None = None
+
+
+class QuizSessionTally(BaseModel):
+    got_it: int = 0
+    partial: int = 0
+    missed: int = 0
+    skipped: int = 0
+    discarded: int = 0
+
+
+class QuizSessionListItem(BaseModel):
+    id: int
+    book_id: int
+    scope: QuizScope
+    theme: str | None = None
+    status: str
+    created_at: datetime
+    ended_at: datetime | None = None
+    question_count: int = 0
+    tally: QuizSessionTally
+    is_warm_up_session: bool = False
+
+
+class QuizLifetimeTally(BaseModel):
+    total_questions: int = 0
+    got_it: int = 0
+    partial: int = 0
+    missed: int = 0
+    session_count: int = 0
+    themes_summary: str | None = None
+
+
+class QuizSessionListResponse(BaseModel):
+    sessions: list[QuizSessionListItem] = []
+    lifetime_tally: QuizLifetimeTally
+
+
+class QuizSessionDetailResponse(BaseModel):
+    id: int
+    book_id: int
+    scope: QuizScope
+    theme: str | None = None
+    status: str
+    created_at: datetime
+    ended_at: datetime | None = None
+    questions: list[QuizQuestionResponse] = []
+    tally: QuizSessionTally
+
+
+class QuizStartResponse(BaseModel):
+    session: QuizSessionListItem
+    first_question: QuizQuestionResponse
+    warm_up_count: int = 0
+
+
+class QuizNextQuestionResponse(BaseModel):
+    question: QuizQuestionResponse
+    fatigue_prompt_pending: bool = False
+
+
+class QuizAnswerResponse(BaseModel):
+    question: QuizQuestionResponse
+
+
+class QuizExplainResponse(BaseModel):
+    question: QuizQuestionResponse
+    explanation: str
+
+
+class QuizDiscardResponse(BaseModel):
+    discarded_question: QuizQuestionResponse
+    next_question: QuizQuestionResponse
