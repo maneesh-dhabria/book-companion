@@ -316,6 +316,73 @@ class BookService:
         audio_repo = AudioFileRepository(self.db, data_dir=Path(self.config.data.directory))
         deleted = await audio_repo.delete_orphans(existing.id, surviving_section_ids)
 
+        # FR-64 / FR-82 / E16 — quiz cleanup. Must land in the SAME transaction
+        # as the section delete-and-recreate so a re-import is atomic from the
+        # quiz subsystem's perspective.
+        from datetime import UTC
+        from datetime import datetime as _dt
+
+        from app.db.models import (
+            ProcessingJob,
+            ProcessingJobStatus,
+            ProcessingStep,
+            QuizDedupState,
+            QuizQuestion,
+            QuizSession,
+        )
+
+        # FR-64: stale all questions for the book.
+        await self.db.execute(
+            sa_update(QuizQuestion).where(QuizQuestion.book_id == existing.id).values(is_stale=True)
+        )
+        # FR-64: reset dedup state if present (no-op when row is missing).
+        await self.db.execute(
+            sa_update(QuizDedupState)
+            .where(QuizDedupState.book_id == existing.id)
+            .values(
+                themes_summary=None,
+                themes_summary_computed_at=None,
+                last_rollup_question_count=0,
+            )
+        )
+        # E16: any in_progress quiz sessions are abandoned (their questions are
+        # now stale and would render incoherently). ended_at marks when.
+        await self.db.execute(
+            sa_update(QuizSession)
+            .where(
+                QuizSession.book_id == existing.id,
+                QuizSession.status == "in_progress",
+            )
+            .values(status="abandoned", ended_at=_dt.now(UTC))
+        )
+        # FR-82: clear pre-drafted Q1 slot.
+        existing.pre_drafted_q1_id = None
+        # FR-82: enqueue a fresh pregen Q1 job IFF no PENDING/RUNNING pregen
+        # already exists for this book (the partial UNIQUE INDEX would reject
+        # us anyway; pre-checking avoids rolling back the whole re-import).
+        from sqlalchemy import select as _select
+
+        existing_active = await self.db.scalar(
+            _select(ProcessingJob.id)
+            .where(
+                ProcessingJob.book_id == existing.id,
+                ProcessingJob.step == ProcessingStep.QUIZ_PREGEN_Q1,
+                ProcessingJob.status.in_(
+                    [ProcessingJobStatus.PENDING, ProcessingJobStatus.RUNNING]
+                ),
+            )
+            .limit(1)
+        )
+        if existing_active is None:
+            self.db.add(
+                ProcessingJob(
+                    book_id=existing.id,
+                    step=ProcessingStep.QUIZ_PREGEN_Q1,
+                    status=ProcessingJobStatus.PENDING,
+                )
+            )
+        await self.db.flush()
+
         await self.db.commit()
         logger.info("book_reimported", book_id=existing.id, audio_orphans_deleted=deleted)
         return existing
