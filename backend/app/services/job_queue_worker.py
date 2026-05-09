@@ -165,6 +165,8 @@ class JobQueueWorker:
             await self._run_audio_job(job.id, job.book_id, job.request_params or {})
         elif job.step == ProcessingStep.QUIZ_PREGEN_Q1:
             await self._run_quiz_pregen_q1(job.id, job.book_id)
+        elif job.step == ProcessingStep.QUIZ_ROLLUP:
+            await self._run_quiz_rollup(job.id, job.book_id)
         else:
             await self._run_processing(job.id, job.book_id, job.request_params or {})
 
@@ -620,6 +622,127 @@ class JobQueueWorker:
                 bg_job.error_message = str(e)[:2048]
                 await bg_session.commit()
                 log.warning("quiz.pregen.failed", book_id=book_id, error=str(e))
+
+    async def _run_quiz_rollup(self, job_id: int, book_id: int) -> None:
+        """T18 — handle QUIZ_ROLLUP jobs (FR-61, FR-62, FR-64, S7, G18, P8).
+
+        Threshold + delta gate semantics:
+        - **Threshold**: only run when `non_stale_count > dedup_verbatim_cap`.
+        - **Delta gate (G18)**: only run when
+          `(non_stale_count - last_rollup_question_count) >= rollup_delta_threshold`.
+        - **Truncation (P8)**: cap stems fed into the LLM at 200.
+        - On compute success: set `themes_summary`, `themes_summary_computed_at=now()`,
+          `last_rollup_question_count = non_stale_count`.
+
+        Below either gate the handler is a no-op (job COMPLETED, dedup state
+        untouched). Idempotent: re-running on already-rolled-up state hits the
+        delta gate and noops.
+        """
+        from datetime import UTC
+        from datetime import datetime as _dt
+
+        from app.config import Settings as _Settings
+        from app.db.models import QuizDedupState, QuizQuestion
+        from app.services.summarizer import create_llm_provider, detect_llm_provider
+
+        settings = _Settings()
+        async with self._session_factory() as bg_session:
+            bg_job = (
+                await bg_session.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
+            ).scalar_one_or_none()
+            if bg_job is None:
+                log.warning("queue_worker_run_missing_job", job_id=job_id)
+                return
+            try:
+                # FR-64: count non-stale, non-discarded questions for this book.
+                stems_q = await bg_session.execute(
+                    select(QuizQuestion.stem)
+                    .where(
+                        QuizQuestion.book_id == book_id,
+                        QuizQuestion.is_stale.is_(False),
+                        QuizQuestion.discarded.is_(False),
+                    )
+                    .order_by(QuizQuestion.created_at.desc(), QuizQuestion.id.desc())
+                )
+                stems = [row[0] for row in stems_q.all()]
+                non_stale_count = len(stems)
+
+                # Lazy-create dedup state on first encounter.
+                state = await bg_session.get(QuizDedupState, book_id)
+                if state is None:
+                    state = QuizDedupState(book_id=book_id, last_rollup_question_count=0)
+                    bg_session.add(state)
+                    await bg_session.flush()
+
+                # Threshold gate (S7).
+                if non_stale_count <= settings.quiz.dedup_verbatim_cap:
+                    bg_job.status = ProcessingJobStatus.COMPLETED
+                    await bg_session.commit()
+                    log.info(
+                        "quiz.rollup.below_threshold",
+                        book_id=book_id,
+                        non_stale_count=non_stale_count,
+                        threshold=settings.quiz.dedup_verbatim_cap,
+                    )
+                    return
+
+                # Delta gate (G18).
+                delta = non_stale_count - state.last_rollup_question_count
+                if delta < settings.quiz.rollup_delta_threshold:
+                    bg_job.status = ProcessingJobStatus.COMPLETED
+                    await bg_session.commit()
+                    log.info(
+                        "quiz.rollup.below_delta",
+                        book_id=book_id,
+                        delta=delta,
+                        threshold=settings.quiz.rollup_delta_threshold,
+                    )
+                    return
+
+                # FR-83-style graceful degrade for the rollup path.
+                provider_name = settings.llm.provider
+                if provider_name == "auto":
+                    provider_name = detect_llm_provider()
+                llm = create_llm_provider(
+                    provider_name,
+                    config_dir=settings.llm.config_dir,
+                    default_model=settings.llm.model,
+                    default_timeout=settings.llm.timeout_seconds,
+                    max_budget_usd=settings.llm.max_budget_usd,
+                )
+                if llm is None:
+                    bg_job.status = ProcessingJobStatus.COMPLETED
+                    await bg_session.commit()
+                    log.info("quiz.rollup.skipped_no_llm", book_id=book_id)
+                    return
+
+                # P8: truncate at 200 stems before sending to the LLM.
+                stems_for_prompt = stems[:200]
+                from app.services.quiz.prompt_builder import QuizPromptBuilder
+                from app.services.quiz.schemas import ROLLUP_SCHEMA
+
+                builder = QuizPromptBuilder(settings)
+                prompt = builder.build_rollup_prompt(stems=stems_for_prompt)
+                resp = await llm.generate(prompt, json_schema=ROLLUP_SCHEMA)
+                data = json.loads(resp.content)
+                themes_summary = data.get("themes_summary", "").strip()
+
+                state.themes_summary = themes_summary or None
+                state.themes_summary_computed_at = _dt.now(UTC)
+                state.last_rollup_question_count = non_stale_count
+
+                bg_job.status = ProcessingJobStatus.COMPLETED
+                await bg_session.commit()
+                log.info(
+                    "quiz.rollup.completed",
+                    book_id=book_id,
+                    non_stale_count=non_stale_count,
+                )
+            except Exception as e:  # noqa: BLE001
+                bg_job.status = ProcessingJobStatus.FAILED
+                bg_job.error_message = str(e)[:2048]
+                await bg_session.commit()
+                log.warning("quiz.rollup.failed", book_id=book_id, error=str(e))
 
 
 def serialize_request_params(body) -> dict[str, Any]:
