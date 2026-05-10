@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import * as api from '@/api/quizSessions'
 import { ApiError } from '@/api/client'
+import { useUiStore } from '@/stores/ui'
+
+const QUIZ_START_FALLBACK =
+  "Couldn't start quiz — the server returned an unexpected error. Retry?"
+const HTML_BODY = /^<!?(DOCTYPE|html|HTML)/
 import type {
   QuizLifetimeTally,
   QuizQuestion,
@@ -58,6 +63,11 @@ function emptyState(): BookQuizState {
 export const useQuizSessionsStore = defineStore('quizSessions', () => {
   const byBook = reactive(new Map<number, BookQuizState>())
   const lastToast = ref<QuizToast | null>(null)
+  const inlineDiagnostic = ref<{ reason: string; stderrTail: string | null } | null>(null)
+
+  function clearInlineDiagnostic(): void {
+    inlineDiagnostic.value = null
+  }
 
   function ensureBook(bookId: number): BookQuizState {
     let state = byBook.get(bookId)
@@ -94,11 +104,39 @@ export const useQuizSessionsStore = defineStore('quizSessions', () => {
     theme: string | null,
   ): Promise<void> {
     const state = ensureBook(bookId)
-    const resp = await api.startSession(bookId, { scope, theme })
-    state.activeSession = resp.session
-    state.currentQuestion = resp.first_question
-    // Prepend so the list reflects reality immediately; loadForBook can re-sort.
-    state.sessions = [resp.session, ...state.sessions.filter((s) => s.id !== resp.session.id)]
+    try {
+      const resp = await api.startSession(bookId, { scope, theme })
+      state.activeSession = resp.session
+      state.currentQuestion = resp.first_question
+      // Prepend so the list reflects reality immediately; loadForBook can re-sort.
+      state.sessions = [resp.session, ...state.sessions.filter((s) => s.id !== resp.session.id)]
+    } catch (e) {
+      if (e instanceof ApiError) {
+        // FR-05/FR-07/D15: surface as actionable toast + inline diagnostic.
+        // Empty/HTML messages get the friendly fallback; structured detail is
+        // passed through verbatim from ApiError.message.
+        let message = e.message
+        if (!message || HTML_BODY.test(message)) {
+          message = QUIZ_START_FALLBACK
+        }
+        inlineDiagnostic.value = { reason: message, stderrTail: e.llmStderrTail ?? null }
+        const ui = useUiStore()
+        ui.showToast(message, 'error', {
+          actionable: true,
+          dedupeKey: 'quiz-start',
+          dismissible: false,
+          action: {
+            label: 'Retry',
+            onClick: async () => {
+              await startSession(bookId, scope, theme)
+              ui.clearByKey('quiz-start')
+              inlineDiagnostic.value = null
+            },
+          },
+        })
+      }
+      throw e
+    }
   }
 
   async function loadNextQuestion(bookId: number): Promise<void> {
@@ -190,6 +228,8 @@ export const useQuizSessionsStore = defineStore('quizSessions', () => {
   return {
     byBook,
     lastToast,
+    inlineDiagnostic,
+    clearInlineDiagnostic,
     loadForBook,
     startSession,
     loadNextQuestion,
