@@ -297,6 +297,7 @@ defineExpose({ voicesReady, availableVoices })
       :open="showGenerateModal"
       :book-id="bookId"
       :total-units="coverage.total"
+      :generated-count="coverage.generated"
       :total-annotations="0"
       @close="onModalClose"
     />

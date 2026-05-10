@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { audioApi, type AudioJobRequest } from '@/api/audio'
 import { estimateGenerateCost } from '@/composables/audio/useGenerateCost'
 import { useAudioJobStore } from '@/stores/audioJob'
+import { useSettingsStore } from '@/stores/settings'
 
 const props = withDefaults(
   defineProps<{
@@ -11,10 +12,19 @@ const props = withDefaults(
     bookId: number
     totalUnits: number
     totalAnnotations: number
+    generatedCount?: number
+    bookSummaryGenerated?: boolean
+    totalWordCount?: number
     voice?: string
     kokoroStatus?: 'warm' | 'cold' | 'not_downloaded' | 'download_failed' | null
   }>(),
-  { voice: 'af_sarah', kokoroStatus: null },
+  {
+    voice: 'af_sarah',
+    kokoroStatus: null,
+    generatedCount: 0,
+    bookSummaryGenerated: false,
+    totalWordCount: 0,
+  },
 )
 
 const emit = defineEmits<{ close: []; downloadModel: [] }>()
@@ -33,18 +43,65 @@ const jobStore = (() => {
   }
 })()
 
+const settingsStore = (() => {
+  try {
+    return useSettingsStore()
+  } catch {
+    return null
+  }
+})()
+
+// FR-13: delta-aware contribution per content kind. X/Z are computed from
+// the user's enabled deltas (sections-missing-audio, book-summary-if-not-yet,
+// annotations); Y is the whole-book listen estimate independent of toggles.
+const deltaSummaryCount = computed(() =>
+  Math.max(0, props.totalUnits - props.generatedCount),
+)
+const deltaBookCount = computed(() => (props.bookSummaryGenerated ? 0 : 1))
+const deltaAnnotationsCount = computed(() => Math.max(0, props.totalAnnotations))
+
 const totalUnitsToGenerate = computed(() => {
   let n = 0
-  if (includeSummary.value) n += props.totalUnits
-  if (includeBook.value) n += 1
-  if (includeAnnotations.value) n += props.totalAnnotations
+  if (includeSummary.value) n += deltaSummaryCount.value
+  if (includeBook.value) n += deltaBookCount.value
+  if (includeAnnotations.value) n += deltaAnnotationsCount.value
   return n
 })
 
 const cost = computed(() => estimateGenerateCost({ totalUnits: totalUnitsToGenerate.value }))
 
-const minutesText = computed(() => `~${cost.value.minutes.toFixed(1)} min`)
-const mbText = computed(() => `~${Math.round(cost.value.megabytes)} MB`)
+const genMinText = computed(() => {
+  const m = cost.value.minutes
+  // 1 decimal when fractional, integer otherwise — keeps "0.6" but renders "0" cleanly.
+  const formatted = Number.isInteger(m) ? `${m}` : m.toFixed(1)
+  return `~${formatted}min to generate`
+})
+
+const listenMinText = computed(() => {
+  const wpm = settingsStore?.settings?.tts?.listen_wpm ?? 180
+  const minutes = props.totalWordCount > 0 && wpm > 0
+    ? Math.round(props.totalWordCount / wpm)
+    : 0
+  return `~${minutes}min to listen`
+})
+
+const diskMbText = computed(() => `~${Math.round(cost.value.megabytes)}MB on disk`)
+
+const sectionsToGenerateForSubline = computed(() =>
+  includeSummary.value ? deltaSummaryCount.value : 0,
+)
+
+const sublineText = computed(
+  () => `Generating ${sectionsToGenerateForSubline.value} of ${props.totalUnits} sections`,
+)
+
+const buttonLabel = computed(() =>
+  totalUnitsToGenerate.value === 0 ? 'Nothing to generate' : 'Generate',
+)
+
+const summaryDisabled = computed(() => deltaSummaryCount.value === 0)
+const bookDisabled = computed(() => deltaBookCount.value === 0)
+const annotationsDisabled = computed(() => deltaAnnotationsCount.value === 0)
 
 const needsDownload = computed(() => props.kokoroStatus === 'not_downloaded')
 
@@ -110,11 +167,21 @@ function onDownloadModel() {
 
       <fieldset class="mt-3 space-y-2">
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="includeSummary" type="checkbox" data-testid="include-section-summaries" />
+          <input
+            v-model="includeSummary"
+            type="checkbox"
+            data-testid="include-section-summaries"
+            :disabled="summaryDisabled"
+          />
           Section summaries
         </label>
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="includeBook" type="checkbox" data-testid="include-book-summary" />
+          <input
+            v-model="includeBook"
+            type="checkbox"
+            data-testid="include-book-summary"
+            :disabled="bookDisabled"
+          />
           Book summary
         </label>
         <label class="flex items-center gap-2 text-sm">
@@ -122,6 +189,7 @@ function onDownloadModel() {
             v-model="includeAnnotations"
             type="checkbox"
             data-testid="include-annotations"
+            :disabled="annotationsDisabled"
           />
           Annotations
           <span class="chip chip--warn">
@@ -130,8 +198,15 @@ function onDownloadModel() {
         </label>
       </fieldset>
 
-      <p class="mt-3 text-xs text-slate-500" data-testid="cost-estimate">
-        {{ minutesText }} · {{ mbText }} for {{ totalUnits }} sections
+      <p class="estimate-row mt-3 text-xs text-slate-500" data-testid="cost-estimate">
+        <span data-testid="estimate-generate">{{ genMinText }}</span>
+        <span aria-hidden="true"> · </span>
+        <span data-testid="estimate-listen">{{ listenMinText }}</span>
+        <span aria-hidden="true"> · </span>
+        <span data-testid="estimate-disk">{{ diskMbText }}</span>
+      </p>
+      <p class="estimate-subline text-xs text-slate-500" data-testid="estimate-subline">
+        {{ sublineText }}
       </p>
 
       <div
@@ -165,10 +240,10 @@ function onDownloadModel() {
           type="button"
           data-testid="confirm"
           class="btn-primary"
-          :disabled="submitting || (needsDownload ?? false)"
+          :disabled="submitting || (needsDownload ?? false) || totalUnitsToGenerate === 0"
           @click="onConfirm"
         >
-          Generate
+          {{ buttonLabel }}
         </button>
       </div>
     </div>
