@@ -32,30 +32,56 @@ async function load() {
 
 const SAMPLE_TEXT =
   'The quick brown fox jumps over the lazy dog, and learning never stops.'
+const KOKORO_VOICE = 'af_sarah'
+
+// FR-18: transient chip shows which engine is currently playing during the
+// A/B comparison. Empty string = chip hidden.
+const chipText = ref('')
+
+async function playWebSpeech(text: string) {
+  try {
+    const u = new SpeechSynthesisUtterance(text)
+    u.onend = () => {
+      // Clear the chip 1s after Web Speech ends so the user sees the final
+      // "Playing Web Speech…" state catch up to silence (FR-18).
+      setTimeout(() => {
+        chipText.value = ''
+      }, 1000)
+    }
+    chipText.value = 'Playing Web Speech…'
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(u)
+  } catch {
+    chipText.value = ''
+  }
+}
 
 async function listenComparison() {
+  let kokoroPlayed = false
   try {
     const r = await fetch('/api/v1/audio/sample', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ engine: 'kokoro', voice: 'af_sarah', text: SAMPLE_TEXT }),
+      body: JSON.stringify({ engine: 'kokoro', voice: KOKORO_VOICE, text: SAMPLE_TEXT }),
     })
     if (r.ok) {
       const blob = await r.blob()
       const url = URL.createObjectURL(blob)
       const a = new Audio(url)
-      a.addEventListener('ended', () => URL.revokeObjectURL(url))
+      a.addEventListener('ended', () => {
+        URL.revokeObjectURL(url)
+        void playWebSpeech(SAMPLE_TEXT)
+      })
+      chipText.value = `Playing Kokoro (${KOKORO_VOICE})…`
+      kokoroPlayed = true
       await a.play()
     }
   } catch {
-    /* ignore */
+    /* fall through to Web Speech */
   }
-  try {
-    const u = new SpeechSynthesisUtterance(SAMPLE_TEXT)
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(u)
-  } catch {
-    /* ignore */
+  if (!kokoroPlayed) {
+    // Kokoro unavailable — flip straight to Web Speech.
+    void playWebSpeech(SAMPLE_TEXT)
   }
 }
 
@@ -86,6 +112,14 @@ onMounted(load)
         >
           Listen to comparison
         </button>
+        <span
+          v-if="chipText"
+          class="bc-chip bc-chip--engine"
+          data-testid="engine-chip"
+          aria-live="polite"
+        >
+          {{ chipText }}
+        </span>
         <a
           v-if="data.available && data.path"
           :href="`#${data.path}`"
