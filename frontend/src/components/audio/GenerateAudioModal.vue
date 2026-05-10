@@ -157,11 +157,21 @@ function onDownloadModel() {
     role="dialog"
     aria-modal="true"
     aria-labelledby="gen-audio-title"
+    tabindex="-1"
+    @keydown.esc.prevent="emit('close')"
   >
     <div
-      class="w-[28rem] max-w-[92vw] rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+      class="relative w-[28rem] max-w-[92vw] rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
     >
-      <h2 id="gen-audio-title" class="text-lg font-semibold text-slate-800 dark:text-slate-100">
+      <button
+        type="button"
+        class="absolute right-3 top-3 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        aria-label="Close generate audio dialog"
+        @click="emit('close')"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+      <h2 id="gen-audio-title" class="pr-8 text-lg font-semibold text-slate-800 dark:text-slate-100">
         Generate audio
       </h2>
 
