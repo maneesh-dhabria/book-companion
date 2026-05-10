@@ -3,13 +3,13 @@ import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 import { computed, onMounted, ref } from 'vue'
 
-interface SpikeResp {
+interface CompareVoicesResp {
   available: boolean
   path?: string
   content_md?: string
 }
 
-const data = ref<SpikeResp>({ available: false })
+const data = ref<CompareVoicesResp>({ available: false })
 const loading = ref(true)
 const md = new MarkdownIt({ html: false, linkify: true })
 
@@ -22,7 +22,7 @@ async function load() {
   loading.value = true
   try {
     const r = await fetch('/api/v1/spikes/tts')
-    if (r.ok) data.value = (await r.json()) as SpikeResp
+    if (r.ok) data.value = (await r.json()) as CompareVoicesResp
   } catch {
     /* swallow */
   } finally {
@@ -63,12 +63,20 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="spike-findings rounded-md border border-slate-200 p-4">
-    <h3 class="mb-2 text-sm font-semibold text-slate-800">Spike findings</h3>
+  <section class="compare-voices rounded-md border border-slate-200 p-4">
+    <h3 class="mb-2 text-sm font-semibold text-slate-800">Compare voices</h3>
     <div v-if="loading" class="text-sm text-slate-500">Loading…</div>
-    <template v-else-if="data.available">
-      <!-- markdown content; sanitized via DOMPurify -->
-      <div class="prose prose-sm max-w-none" v-html="renderedHtml"></div>
+    <template v-else>
+      <!-- markdown content (when authored notes are present); sanitized via DOMPurify -->
+      <div
+        v-if="data.available"
+        class="prose prose-sm max-w-none"
+        v-html="renderedHtml"
+      ></div>
+      <p v-else class="text-sm text-slate-600">
+        Hear the same sample in both engines below. Click to compare Kokoro and your
+        browser's Web Speech voice side by side.
+      </p>
       <div class="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -79,16 +87,12 @@ onMounted(load)
           Listen to comparison
         </button>
         <a
-          v-if="data.path"
+          v-if="data.available && data.path"
           :href="`#${data.path}`"
           class="text-xs text-indigo-600 hover:underline"
           >{{ data.path.split('/').pop() }}</a
         >
       </div>
     </template>
-    <p v-else class="text-sm text-slate-600">
-      Spike not yet run. Run <code class="rounded bg-slate-100 px-1">bookcompanion spike tts</code>
-      to compare engines and capture findings.
-    </p>
   </section>
 </template>

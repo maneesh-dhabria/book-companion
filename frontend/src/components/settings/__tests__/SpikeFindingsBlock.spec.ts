@@ -27,14 +27,14 @@ describe('SpikeFindingsBlock', () => {
     expect(wrap.find('button[data-testid="listen-comparison"]').exists()).toBe(true)
   })
 
-  it('renders run-spike message when not available', async () => {
+  it('renders user-facing fallback when no authored notes are available (FR-17)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: async () => ({ available: false }) }),
     )
     const wrap = mount(SpikeFindingsBlock)
     await flushPromises()
-    expect(wrap.text()).toContain('Spike not yet run')
-    expect(wrap.text()).toContain('bookcompanion spike tts')
+    expect(wrap.text()).toMatch(/click to compare/i)
+    expect(wrap.text().toLowerCase()).not.toContain('bookcompanion spike tts')
   })
 })
