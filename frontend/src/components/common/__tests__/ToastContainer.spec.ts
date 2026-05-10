@@ -54,4 +54,47 @@ describe('ToastContainer', () => {
     const region = w.find('.toast-stack')
     expect(region.attributes('aria-live')).toBe('polite')
   })
+
+  // FR-04 / T7: actionable toast renders the action button with the action label.
+  it('renders action button when toast.actionable === true', () => {
+    const ui = useUiStore()
+    ui.showToast('Quiz failed', 'error', {
+      actionable: true,
+      action: { label: 'Retry', onClick: () => {} },
+      dedupeKey: 'quiz-start',
+      dismissible: false,
+    })
+    const w = mount(ToastContainer)
+    const btn = w.find('button[data-testid="toast-action"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toBe('Retry')
+  })
+
+  // FR-04 / T7: when dismissible === false, the close-X button must not render.
+  it('hides close button when dismissible === false', () => {
+    const ui = useUiStore()
+    ui.showToast('Sticky', 'error', {
+      actionable: true,
+      action: { label: 'Retry', onClick: () => {} },
+      dedupeKey: 'k',
+      dismissible: false,
+    })
+    const w = mount(ToastContainer)
+    expect(w.find('button[data-testid="toast-close"]').exists()).toBe(false)
+  })
+
+  // FR-04 / T7: clicking the action button invokes action.onClick.
+  it('action button click invokes action.onClick', async () => {
+    const onClick = vi.fn()
+    const ui = useUiStore()
+    ui.showToast('Quiz failed', 'error', {
+      actionable: true,
+      action: { label: 'Retry', onClick },
+      dedupeKey: 'quiz-start',
+      dismissible: false,
+    })
+    const w = mount(ToastContainer)
+    await w.find('button[data-testid="toast-action"]').trigger('click')
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
 })

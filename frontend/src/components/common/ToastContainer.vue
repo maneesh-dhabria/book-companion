@@ -25,6 +25,16 @@ const { toasts } = storeToRefs(ui)
       >
         <span class="toast-message">{{ t.message }}</span>
         <button
+          v-if="t.actionable && t.action"
+          type="button"
+          class="toast-action"
+          data-testid="toast-action"
+          @click="t.action?.onClick()"
+        >
+          {{ t.action.label }}
+        </button>
+        <button
+          v-if="t.dismissible"
           type="button"
           class="toast-close"
           aria-label="Dismiss notification"
@@ -83,6 +93,27 @@ const { toasts } = storeToRefs(ui)
   flex: 1;
   white-space: pre-wrap;
   word-break: break-word;
+}
+.toast-action {
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 4px 10px;
+}
+.toast-action:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+.toast--error .toast-action {
+  color: #dc2626;
+}
+.toast--error .toast-action:hover {
+  background: rgba(220, 38, 38, 0.08);
 }
 .toast-close {
   flex: 0 0 auto;
