@@ -2,4 +2,5 @@
 workstream: book-companion
 
 # Where pipeline docs are stored (default: .pmos)
-docs_path: .pmos
+# Aligned with repo convention 2026-05-10 — pipeline artifacts live under docs/.
+docs_path: docs
