@@ -394,6 +394,16 @@ async def next_question(
     except SubprocessTimeoutError as e:
         _log_outcome("next_question", outcome="timeout", session_id=session_id)
         raise HTTPException(504, detail=str(e)) from e
+    except SubprocessNonZeroExitError as e:
+        _log_outcome("next_question", outcome="llm_subprocess_failed", session_id=session_id)
+        summary = (e.stderr_truncated or "<no output>")[:200]
+        raise HTTPException(
+            502,
+            detail={
+                "detail": f"LLM provider error: {summary}",
+                "llm_stderr_tail": e.stderr_truncated or None,
+            },
+        ) from e
     except QuizGenerationError as e:
         _log_outcome("next_question", outcome="schema_failed", session_id=session_id)
         raise HTTPException(502, detail=str(e)) from e
