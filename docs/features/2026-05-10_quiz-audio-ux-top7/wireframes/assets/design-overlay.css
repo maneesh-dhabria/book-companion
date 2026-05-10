@@ -1,0 +1,64 @@
+/* Generated from frontend/DESIGN.md (sha 835a90d). Do not edit by hand. */
+:root {
+  --wf-bg:        #ffffff;
+  --wf-surface:   #f8f9fa;
+  --wf-surface-2: #f1f3f5;
+  --wf-border:    #e5e7eb;
+  --wf-border-2:  #d1d5db;
+  --wf-text:      #1a1a2e;
+  --wf-muted:     #6b7280;
+  --wf-faint:     #9ca3af;
+  --wf-accent:    #4f46e5;
+  --wf-accent-2:  #4338ca;
+  --wf-success:   #16a34a;
+  --wf-warning:   #d97706;
+  --wf-error:     #dc2626;
+  --wf-radius:    6px;
+  --wf-radius-lg: 12px;
+  --wf-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --wf-font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Feature-specific helpers (used across wireframes) */
+.bc-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; }
+.bc-chip--neutral { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+.bc-chip--engine { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+.bc-chip--success { background: #dcfce7; color: #166534; border-color: #86efac; }
+.bc-chip--warn { background: #fef3c7; color: #854d0e; border-color: #fde68a; }
+.bc-chip--error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+.bc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500; border: 1px solid transparent; cursor: pointer; line-height: 1; }
+.bc-btn--primary { background: #4f46e5; color: #fff; }
+.bc-btn--primary:hover { background: #4338ca; }
+.bc-btn--secondary { background: #fff; color: #1a1a2e; border-color: #d1d5db; }
+.bc-btn--ghost { background: transparent; color: #4f46e5; }
+.bc-btn--danger { background: #dc2626; color: #fff; }
+.bc-btn[disabled], .bc-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+
+.bc-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; }
+.bc-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+
+.bc-toast { background: #fff; border-radius: 8px; border-left: 4px solid #6b7280; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 10px 12px; min-width: 280px; max-width: 380px; font-size: 13px; }
+.bc-toast--error { border-left-color: #dc2626; }
+.bc-toast--success { border-left-color: #16a34a; }
+.bc-toast--info { border-left-color: #2563eb; }
+
+.bc-segmented { display: inline-flex; padding: 2px; background: #f1f3f5; border-radius: 9999px; border: 1px solid #e5e7eb; }
+.bc-segmented button { padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; color: #6b7280; border: none; background: transparent; cursor: pointer; }
+.bc-segmented button[aria-pressed="true"] { background: #fff; color: #1a1a2e; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+.bc-tabstrip { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; }
+.bc-tab { padding: 10px 14px; font-size: 13px; color: #6b7280; border-bottom: 2px solid transparent; cursor: pointer; background: transparent; border-top: none; border-left: none; border-right: none; }
+.bc-tab[aria-selected="true"] { color: #4f46e5; border-bottom-color: #4f46e5; font-weight: 600; }
+
+.bc-anno-callout { background: #fffbeb; border: 1px dashed #f59e0b; color: #78350f; font-size: 11px; line-height: 1.4; border-radius: 6px; padding: 6px 8px; }
+[data-annotations="off"] .bc-anno-callout { display: none !important; }
+
+.bc-tooltip { position: relative; display: inline-block; }
+.bc-tooltip__bubble { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; font-size: 11px; line-height: 1.4; padding: 6px 8px; border-radius: 6px; white-space: nowrap; max-width: 240px; }
+.bc-tooltip__bubble::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -4px; border: 4px solid transparent; border-top-color: #1a1a2e; }
+
+.bc-input { background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #1a1a2e; }
+.bc-input:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+
+.bc-playbar { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 -2px 12px rgba(0,0,0,0.06); padding: 10px 14px; display: flex; align-items: center; gap: 12px; }

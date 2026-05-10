@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz & Audio UX Top-7 — Wireframes index</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f8f9fa; color: #1a1a2e; font-family: var(--wf-font-sans); }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .preview-iframe { width: 100%; height: 200px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; transform: scale(0.7); transform-origin: 0 0; width: 142.85%; height: 285.7px; pointer-events: none; }
+    .preview-frame { width: 100%; height: 200px; overflow: hidden; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
+    .wf-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; transition: box-shadow .15s, transform .15s; text-decoration: none; color: inherit; display: block; }
+    .wf-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); border-color: #c7d2fe; }
+  </style>
+</head>
+<body class="p-8">
+  <header class="max-w-6xl mx-auto mb-6">
+    <div class="flex items-baseline justify-between flex-wrap gap-3">
+      <div>
+        <h1 class="text-[28px] font-semibold text-slate-900">Quiz &amp; Audio UX Top-7 — Wireframes</h1>
+        <p class="text-[13px] text-slate-500 mt-1">
+          10 desktop-web wireframes covering the seven top-severity findings from the 2026-05-10 design crit ·
+          Generated 2026-05-10 ·
+          <a href="../01_requirements.md" class="text-indigo-600 hover:underline">Requirements doc →</a>
+        </p>
+      </div>
+      <input id="filter" type="search" placeholder="Filter by name…" class="bc-input w-72" oninput="filterCards(this.value)">
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto">
+    <div id="cards" class="card-grid">
+      <a class="wf-card" href="01_quiz_first_visit_desktop-web.html" data-name="Quiz first visit J1 G3">
+        <div class="preview-frame"><iframe class="preview-iframe" src="01_quiz_first_visit_desktop-web.html" title="Quiz first visit"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">01 · Quiz first-visit</h3>
+        <p class="text-[12px] text-slate-500">Hero orientation + scope + lifetime tally · 3 states (J1, G3)</p>
+      </a>
+      <a class="wf-card" href="02_quiz_specific_chapters_desktop-web.html" data-name="Quiz specific chapters Q-7">
+        <div class="preview-frame"><iframe class="preview-iframe" src="02_quiz_specific_chapters_desktop-web.html" title="Quiz specific chapters"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">02 · Quiz scope — Specific chapters</h3>
+        <p class="text-[12px] text-slate-500">Chapter checkboxes + reading-time metric · 3 states (Q-7)</p>
+      </a>
+      <a class="wf-card" href="03_quiz_error_start_desktop-web.html" data-name="Quiz error start E1 FR-INLINE-DIAGNOSTIC FR-TOAST-LIFECYCLE">
+        <div class="preview-frame"><iframe class="preview-iframe" src="03_quiz_error_start_desktop-web.html" title="Quiz Start error E1"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">03 · Quiz Start error E1</h3>
+        <p class="text-[12px] text-slate-500">Toast + inline diagnostic · 3 states (Q-3, FR-TOAST-LIFECYCLE)</p>
+      </a>
+      <a class="wf-card" href="04_quiz_error_midsession_desktop-web.html" data-name="Quiz mid-session error E2 FR-MID-SESSION-RETRY">
+        <div class="preview-frame"><iframe class="preview-iframe" src="04_quiz_error_midsession_desktop-web.html" title="Quiz mid-session error E2"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">04 · Quiz mid-session error E2</h3>
+        <p class="text-[12px] text-slate-500">Inline Retry on QuestionCard · 3 states (FR-MID-SESSION-RETRY)</p>
+      </a>
+      <a class="wf-card" href="05_audio_empty_default_desktop-web.html" data-name="Audio empty default J2 J3 G7 D2">
+        <div class="preview-frame"><iframe class="preview-iframe" src="05_audio_empty_default_desktop-web.html" title="Audio empty"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">05 · Audio empty — default</h3>
+        <p class="text-[12px] text-slate-500">Verb-led headline + parallel CTAs · 3 states (A-1, A-3, G2, G7)</p>
+      </a>
+      <a class="wf-card" href="06_audio_empty_no_web_speech_desktop-web.html" data-name="Audio empty no web speech FR-LISTEN-UNAVAILABLE">
+        <div class="preview-frame"><iframe class="preview-iframe" src="06_audio_empty_no_web_speech_desktop-web.html" title="Audio empty no web speech"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">06 · Audio empty — no Web Speech</h3>
+        <p class="text-[12px] text-slate-500">Headline morphs · disabled Listen + tooltip · 2 states (J2.alt)</p>
+      </a>
+      <a class="wf-card" href="07_generate_modal_empty_desktop-web.html" data-name="Generate modal empty D3 FR-PARTIAL-DELTA FR-WPM-CONFIG">
+        <div class="preview-frame"><iframe class="preview-iframe" src="07_generate_modal_empty_desktop-web.html" title="Generate modal empty"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">07 · Generate-audio modal — empty</h3>
+        <p class="text-[12px] text-slate-500">Three-field estimate · 3 states (A-5, D3, FR-WPM-CONFIG)</p>
+      </a>
+      <a class="wf-card" href="08_generate_modal_partial_desktop-web.html" data-name="Generate modal partial FR-PARTIAL-DELTA">
+        <div class="preview-frame"><iframe class="preview-iframe" src="08_generate_modal_partial_desktop-web.html" title="Generate modal partial"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">08 · Generate-audio modal — partial</h3>
+        <p class="text-[12px] text-slate-500">Delta X/Z + total Y · 2 states (FR-PARTIAL-DELTA)</p>
+      </a>
+      <a class="wf-card" href="09_audio_populated_engine_picker_desktop-web.html" data-name="Audio populated engine picker FR-ENGINE-PICKER">
+        <div class="preview-frame"><iframe class="preview-iframe" src="09_audio_populated_engine_picker_desktop-web.html" title="Audio populated engine picker"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">09 · Audio populated — engine picker</h3>
+        <p class="text-[12px] text-slate-500">Segmented engine control on playbar · 3 states (FR-ENGINE-PICKER)</p>
+      </a>
+      <a class="wf-card" href="10_settings_compare_voices_desktop-web.html" data-name="Settings compare voices FR-COMPARE-VOICES FR-WPM-CONFIG">
+        <div class="preview-frame"><iframe class="preview-iframe" src="10_settings_compare_voices_desktop-web.html" title="Settings compare voices"></iframe></div>
+        <h3 class="mt-3 text-[14px] font-semibold text-slate-900">10 · Settings — Compare voices</h3>
+        <p class="text-[12px] text-slate-500">Renamed panel + dual wpm sliders · 3 states (A-7, FR-COMPARE-VOICES)</p>
+      </a>
+    </div>
+  </main>
+
+  <footer class="max-w-6xl mx-auto mt-10 text-[12px] text-slate-500 flex justify-between">
+    <span>10 wireframes · folder <code class="bc-chip bc-chip--neutral">docs/features/2026-05-10_quiz-audio-ux-top7/wireframes/</code></span>
+    <span>Generated 2026-05-10</span>
+  </footer>
+
+  <script>
+    function filterCards(q) {
+      const term = (q || '').toLowerCase();
+      document.querySelectorAll('.wf-card').forEach(c => {
+        const name = (c.dataset.name || '').toLowerCase();
+        c.style.display = name.includes(term) ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

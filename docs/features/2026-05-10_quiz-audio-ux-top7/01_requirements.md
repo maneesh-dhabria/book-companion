@@ -306,3 +306,25 @@ These FRs were surfaced or sharpened during grill loop 2 and need explicit handl
 ---
 
 **For UX friction analysis, run `/msf-req` after this doc is committed.** ✅ Done — see `msf-findings.md` adjacent. Loop 3 absorbed Must + Should; Nice items remain in findings doc for follow-up.
+
+---
+
+## Wireframes
+
+Generated: 2026-05-10
+Folder: `wireframes/`
+Index: `wireframes/index.html`
+Review log: `wireframes/REVIEW-LOG.md` (medium-rigor cross-file pass; 7 fixes applied, 10 deferred to /spec)
+
+| # | Component | Device | States | File |
+|---|-----------|--------|--------|------|
+| 01 | Quiz first-visit (J1) | desktop-web | default / in-flight / recovered | `01_quiz_first_visit_desktop-web.html` |
+| 02 | Quiz scope picker — Specific Chapters (J1.alt) | desktop-web | default / none-selected / at-cap | `02_quiz_specific_chapters_desktop-web.html` |
+| 03 | Quiz Start error (E1, FR-INLINE-DIAGNOSTIC, FR-TOAST-LIFECYCLE) | desktop-web | error / retrying / recovered | `03_quiz_error_start_desktop-web.html` |
+| 04 | Quiz mid-session error (E2, FR-MID-SESSION-RETRY) | desktop-web | error / retrying / recovered | `04_quiz_error_midsession_desktop-web.html` |
+| 05 | Audio empty state (J2/J3, D2, G7) | desktop-web | idle / playing / E3-error | `05_audio_empty_default_desktop-web.html` |
+| 06 | Audio empty — Web Speech unavailable (J2.alt, FR-LISTEN-UNAVAILABLE) | desktop-web | default / hover-disabled-Listen | `06_audio_empty_no_web_speech_desktop-web.html` |
+| 07 | Generate-audio modal — empty (J3, D3, FR-PARTIAL-DELTA) | desktop-web | default / toggled / confirming | `07_generate_modal_empty_desktop-web.html` |
+| 08 | Generate-audio modal — partial state (J5, FR-PARTIAL-DELTA) | desktop-web | partial / all-already-generated | `08_generate_modal_partial_desktop-web.html` |
+| 09 | Audio populated state (J4, FR-ENGINE-PICKER) | desktop-web | default-mp3 / web-speech / playing-mp3 | `09_audio_populated_engine_picker_desktop-web.html` |
+| 10 | Settings → Compare voices (J6/J3.alt, FR-COMPARE-VOICES, FR-WPM-CONFIG) | desktop-web | idle / playing-Kokoro / playing-Web-Speech | `10_settings_compare_voices_desktop-web.html` |

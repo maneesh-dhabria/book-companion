@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Audio empty — Web Speech unavailable — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Audio empty — Web Speech unavailable (J2.alt, FR-LISTEN-UNAVAILABLE)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="empty">Hover (tooltip)</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- DEFAULT — headline morphed -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="bc-card max-w-3xl">
+          <!-- Headline morphed per FR-LISTEN-UNAVAILABLE -->
+          <h2 class="text-[24px] font-semibold text-slate-900 leading-tight">Generate MP3s to listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600 max-w-[60ch]">
+            Web Speech isn't available in your browser. You can still generate MP3 files locally and play them with full seek + scrub controls.
+          </p>
+
+          <div class="mt-6 flex flex-wrap items-stretch gap-3">
+            <div>
+              <button class="bc-btn bc-btn--primary px-5 py-3 text-[15px] !cursor-not-allowed" disabled aria-disabled="true" aria-describedby="listen-tip">
+                <span aria-hidden="true">▶</span> Listen
+              </button>
+              <div class="text-[12px] text-slate-600 mt-1.5 ml-1">Web Speech unavailable</div>
+            </div>
+            <div>
+              <button class="bc-btn bc-btn--secondary px-5 py-3 text-[15px] !border-indigo-600 !text-indigo-700">
+                <span aria-hidden="true">⬇</span> Generate MP3 files
+              </button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">Recommended path · ~3.6 min · ~54 MB</div>
+            </div>
+          </div>
+
+          <p class="mt-6 text-[12px] text-slate-600">No audio files yet.</p>
+          <div class="bc-anno-callout mt-4" data-note="FR-LISTEN-UNAVAILABLE">
+            <strong>FR-LISTEN-UNAVAILABLE:</strong> when <code>'speechSynthesis' in window === false</code> OR <code>getVoices().length === 0</code> after pre-warm timeout — (a) headline morphs to "Generate MP3s to listen to this book", (b) Listen disabled with tooltip, (c) Generate stays fully functional.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOVER STATE — tooltip visible on disabled Listen -->
+    <section class="wf-state" data-state="empty">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900 leading-tight">Generate MP3s to listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600 max-w-[60ch]">Web Speech isn't available in your browser.</p>
+
+          <div class="mt-6 flex flex-wrap items-stretch gap-3">
+            <div class="bc-tooltip">
+              <button class="bc-btn bc-btn--primary px-5 py-3 text-[15px]" disabled aria-disabled="true" aria-describedby="listen-tip">
+                ▶ Listen
+              </button>
+              <span id="listen-tip" class="bc-tooltip__bubble" role="tooltip" style="white-space: normal; width:240px;">
+                Web Speech is unavailable in this browser. Generate MP3 files instead.
+              </span>
+              <div class="text-[12px] text-slate-600 mt-1.5 ml-1">Web Speech unavailable</div>
+            </div>
+            <div>
+              <button class="bc-btn bc-btn--secondary px-5 py-3 text-[15px] !border-indigo-600 !text-indigo-700">⬇ Generate MP3 files</button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">Recommended path</div>
+            </div>
+          </div>
+          <div class="bc-anno-callout mt-4" data-note="Tooltip copy">
+            <strong>Tooltip:</strong> exact copy from FR-LISTEN-UNAVAILABLE — "Web Speech is unavailable in this browser. Generate MP3 files instead." Linked via aria-describedby.
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Audio empty — Web Speech unavailable</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 06 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

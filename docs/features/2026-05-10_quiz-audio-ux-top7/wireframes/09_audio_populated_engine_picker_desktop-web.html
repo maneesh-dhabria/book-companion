@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Audio populated — engine picker — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Audio populated — engine picker (J4, FR-ENGINE-PICKER)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default (MP3)</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Switched to Web Speech</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Playing from MP3</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- DEFAULT — MP3 selected -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%; padding-bottom:140px;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900 leading-tight">Listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600 max-w-[60ch]">
+            14 of 17 sections have MP3s. Switch engines from the playbar to choose between offline MP3 playback and instant Web Speech.
+          </p>
+          <div class="mt-6 flex flex-wrap items-stretch gap-3">
+            <div>
+              <button class="bc-btn bc-btn--primary px-5 py-3 text-[15px]">▶ Listen</button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">Default: MP3 (offline)</div>
+            </div>
+            <div>
+              <button class="bc-btn bc-btn--secondary px-5 py-3 text-[15px]">⬇ Generate remaining 3 MP3s</button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">~30 sec · ~9 MB delta</div>
+            </div>
+          </div>
+
+          <div class="mt-4 h-2 rounded-full bg-slate-200 overflow-hidden max-w-md">
+            <div class="h-full bg-indigo-600" style="width: 82%"></div>
+          </div>
+          <p class="text-[12px] text-slate-500 mt-1">14 of 17 sections have MP3s.</p>
+        </div>
+
+        <!-- Playbar with engine picker -->
+        <div class="bc-playbar fixed left-1/2 -translate-x-1/2 bottom-4" style="width: 760px;">
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Previous section">⏮</button>
+          <button class="bc-btn bc-btn--primary !p-2" aria-label="Play"><span aria-hidden="true">▶</span></button>
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Next section">⏭</button>
+          <div class="flex-1 text-[12px] text-slate-500">
+            Ch 1 — The Characters of the Story · 0:00 / 3:42
+            <div class="h-1 mt-1 rounded-full bg-slate-200"><div class="h-full rounded-full bg-indigo-600" style="width: 0%"></div></div>
+          </div>
+          <!-- Engine picker (segmented) -->
+          <div class="bc-segmented" role="group" aria-label="Playback engine">
+            <button aria-pressed="false">Web Speech</button>
+            <button aria-pressed="true">MP3 (offline)</button>
+          </div>
+          <select class="bc-input text-[12px]" aria-label="Voice"><option>af_sarah</option><option>af_bella</option></select>
+        </div>
+        <div class="bc-anno-callout fixed bottom-4 left-4 max-w-[300px]" data-note="FR-ENGINE-PICKER default rule">
+          <strong>FR-ENGINE-PICKER:</strong> segmented control adjacent to voice selector. Default = MP3 because the book has ≥1 MP3 for the selected scope.
+        </div>
+      </div>
+    </section>
+
+    <!-- SWITCHED TO WEB SPEECH -->
+    <section class="wf-state" data-state="loading">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%; padding-bottom:140px;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900">Listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600">14 of 17 sections have MP3s. Currently using Web Speech.</p>
+          <div class="mt-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[12px] text-amber-900">
+            Switching engines stops current playback and resumes from the start of the current section in the new engine.
+          </div>
+        </div>
+        <div class="bc-playbar fixed left-1/2 -translate-x-1/2 bottom-4" style="width: 760px;">
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Previous">⏮</button>
+          <button class="bc-btn bc-btn--primary !p-2" aria-label="Play"><span aria-hidden="true">▶</span></button>
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Next">⏭</button>
+          <div class="flex-1 text-[12px] text-slate-500">
+            Ch 1 — The Characters of the Story · resumes from section start
+            <div class="h-1 mt-1 rounded-full bg-slate-200"><div class="h-full rounded-full bg-indigo-600" style="width: 0%"></div></div>
+          </div>
+          <div class="bc-segmented" role="group" aria-label="Playback engine">
+            <button aria-pressed="true">Web Speech</button>
+            <button aria-pressed="false">MP3 (offline)</button>
+          </div>
+          <select class="bc-input text-[12px]" aria-label="Voice"><option>Samantha</option><option>Alex</option></select>
+        </div>
+        <div class="bc-anno-callout fixed bottom-4 left-4 max-w-[300px]" data-note="Engine switch behaviour"><strong>FR-ENGINE-PICKER:</strong> mid-playback switch — stops current playback, resumes from the start of the current section in the new engine (no word-position carryover in v1).</div>
+      </div>
+    </section>
+
+    <!-- PLAYING FROM MP3 -->
+    <section class="wf-state" data-state="error">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%; padding-bottom:140px;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900">Listen to this book</h2>
+          <div class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+            <span class="bc-chip bc-chip--engine">MP3 (Kokoro · af_sarah)</span>
+            Now playing: <em>Chapter 1 — The Characters of the Story</em> · 1:07 / 3:42
+          </div>
+        </div>
+        <div class="bc-playbar fixed left-1/2 -translate-x-1/2 bottom-4" style="width: 760px;">
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Previous">⏮</button>
+          <button class="bc-btn bc-btn--primary !p-2" aria-label="Pause"><span aria-hidden="true">⏸</span></button>
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Next">⏭</button>
+          <div class="flex-1 text-[12px] text-slate-500">
+            Ch 1 — The Characters of the Story · 1:07 / 3:42
+            <div class="h-1 mt-1 rounded-full bg-slate-200"><div class="h-full rounded-full bg-indigo-600" style="width: 30%"></div></div>
+          </div>
+          <div class="bc-segmented" role="group" aria-label="Playback engine">
+            <button aria-pressed="false">Web Speech</button>
+            <button aria-pressed="true">MP3 (offline)</button>
+          </div>
+          <select class="bc-input text-[12px]" aria-label="Voice"><option>af_sarah</option></select>
+        </div>
+        <div class="bc-anno-callout fixed bottom-4 left-4 max-w-[300px]" data-note="MP3 scrubber"><strong>MP3 mode:</strong> scrubber is interactive (Web Speech has no native scrub).</div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Audio populated — engine picker</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 09 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

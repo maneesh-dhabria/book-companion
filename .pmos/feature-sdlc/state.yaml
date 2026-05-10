@@ -3,8 +3,8 @@ slug: quiz-audio-ux-top7
 tier: null
 mode: interactive
 started_at: 2026-05-10T07:41:20Z
-last_updated: 2026-05-10T09:00:00Z
-current_phase: creativity
+last_updated: 2026-05-10T10:00:00Z
+current_phase: msf-wf-gate
 tier: 3
 worktree_path: /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7
 branch: feat/quiz-audio-ux-top7
@@ -56,10 +56,21 @@ phases:
     notes: "1 persona × 2 scenarios × 12 journeys; 14 findings (4 Must, 6 Should, 4 Nice); Must+Should applied as requirements review loop 3 (FR-MID-SESSION-RETRY + FR-LISTEN-UNAVAILABLE added; FR-TOAST-LIFECYCLE/FR-INLINE-DIAGNOSTIC/FR-WPM-CONFIG/FR-ENGINE-PICKER/FR-PARTIAL-DELTA/FR-COMPARE-VOICES amended); Nice deferred."
   - id: creativity
     hardness: soft
-    status: pending
+    status: skipped
+    skipped_at: 2026-05-10T09:05:00Z
+    skipped_reason: user_chose_recommended_skip
+    notes: "Grill+MSF already covered the leverage; user opted skip to preserve momentum."
   - id: wireframes
     hardness: soft
-    status: pending
+    status: completed
+    started_at: 2026-05-10T09:10:00Z
+    completed_at: 2026-05-10T10:00:00Z
+    artifact_path: wireframes/index.html
+    rigor: medium
+    review_findings: 17
+    review_applied: 7
+    review_deferred: 10
+    notes: "10 desktop-web wireframes + index + REVIEW-LOG.md. Medium-rigor cross-file review pass. /msf-wf phase delegated to user gate (pmos learning: skip option for single-user apps even though Tier 3 nominally mandatory)."
   - id: prototype
     hardness: soft
     status: pending

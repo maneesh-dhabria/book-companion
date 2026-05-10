@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz Start error E1 — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Quiz Start error E1 (FR-INLINE-DIAGNOSTIC + FR-TOAST-LIFECYCLE)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Error visible</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Retrying</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Retry succeeded</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="position:relative;">
+
+    <!-- ERROR VISIBLE — toast + inline -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6 relative" style="background:#f8f9fa; min-height:100%;">
+        <!-- Toast (top-right, sticky, non-dismissable) -->
+        <div class="absolute top-4 right-4 bc-toast bc-toast--error" role="status" aria-live="polite">
+          <div class="flex items-start gap-2">
+            <span class="text-rose-600 text-base leading-none mt-0.5" aria-hidden="true">⚠</span>
+            <div class="flex-1">
+              <div class="font-medium text-slate-900">Couldn't start quiz</div>
+              <div class="text-slate-600 text-[12px] mt-0.5">Server returned 500 (LLM provider unreachable).</div>
+              <div class="mt-2 flex items-center gap-2">
+                <button class="bc-btn bc-btn--primary !py-1 !px-3 text-[12px]">Retry</button>
+                <span class="text-[11px] text-slate-400">No dismiss — sticky until retry success.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Test your retention</h2>
+            <p class="mt-1 text-[14px] text-slate-600">Form restored — your scope was kept.</p>
+            <fieldset class="border-0 p-0 mt-3">
+              <legend class="text-[13px] font-semibold text-slate-700 mb-2">Quiz scope</legend>
+              <label class="flex items-center gap-2 py-1"><input type="radio" name="scope" checked> All summaries <span class="text-slate-500 text-[12px]">· 17 chapters · ~45 min reading</span></label>
+              <label class="flex items-center gap-2 py-1"><input type="radio" name="scope"> Specific chapters</label>
+            </fieldset>
+
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary">Start quiz</button>
+              <span class="text-[12px] text-slate-500">5 questions · ~30 sec to generate</span>
+            </div>
+
+            <!-- Inline diagnostic (no Retry — Dismiss only) -->
+            <div class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 flex items-start gap-2" role="alert">
+              <span class="text-rose-600 text-base leading-none mt-0.5" aria-hidden="true">⚠</span>
+              <div class="flex-1">
+                <div class="text-[13px] text-rose-900 font-medium">Couldn't start quiz</div>
+                <div class="text-[12px] text-rose-800 mt-0.5">Server returned 500 — the LLM provider couldn't be reached. Adjust your scope and try again, or use Retry in the toast.</div>
+              </div>
+              <button class="text-[12px] text-rose-700 underline" aria-label="Dismiss inline error">Dismiss</button>
+            </div>
+            <div class="bc-anno-callout mt-3" data-note="FR-INLINE-DIAGNOSTIC + FR-TOAST-LIFECYCLE">
+              <strong>FR-INLINE-DIAGNOSTIC:</strong> inline region shows reason + Dismiss only — no Retry button (Retry lives in the toast). <strong>FR-TOAST-LIFECYCLE:</strong> toast is sticky, non-user-dismissable while it carries an action.
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- RETRYING -->
+    <section class="wf-state" data-state="loading">
+      <div class="p-6 relative" style="background:#f8f9fa; min-height:100%;">
+        <div class="absolute top-4 right-4 bc-toast bc-toast--error" role="status">
+          <div class="flex items-start gap-2">
+            <span class="text-rose-600 text-base mt-0.5" aria-hidden="true">⚠</span>
+            <div class="flex-1">
+              <div class="font-medium text-slate-900">Couldn't start quiz</div>
+              <div class="text-slate-600 text-[12px] mt-0.5">Server returned 500 (LLM provider unreachable).</div>
+              <div class="mt-2 flex items-center gap-2">
+                <button class="bc-btn bc-btn--primary !py-1 !px-3 text-[12px]" aria-disabled="true" disabled>
+                  <span class="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" aria-hidden="true"></span>
+                  Retrying…
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Test your retention</h2>
+            <fieldset class="border-0 p-0 mt-3">
+              <legend class="text-[13px] font-semibold text-slate-700 mb-2">Quiz scope</legend>
+              <label class="flex items-center gap-2 py-1"><input type="radio" name="scope" checked> All summaries</label>
+              <label class="flex items-center gap-2 py-1"><input type="radio" name="scope"> Specific chapters</label>
+            </fieldset>
+            <div class="mt-6"><button class="bc-btn bc-btn--primary" disabled aria-disabled="true">Start quiz</button></div>
+            <!-- Inline diagnostic kept while toast retry is in-flight -->
+            <div class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-800">
+              Couldn't start quiz — Server returned 500. Retrying via the toast…
+            </div>
+            <div class="bc-anno-callout mt-3" data-note="FR-INLINE-DIAGNOSTIC">
+              <strong>Retrying:</strong> inline diagnostic stays mounted; the form's Start button is disabled to prevent a double-submit.
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- RETRY SUCCEEDED — question card replaces form -->
+    <section class="wf-state" data-state="recovered">
+      <div class="p-6 relative" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <div class="flex items-center justify-between">
+              <span class="bc-chip bc-chip--neutral">Q1 of 5</span>
+              <span class="text-[12px] text-slate-500">Thinking, Fast and Slow</span>
+            </div>
+            <h2 class="mt-3 text-[18px] font-semibold text-slate-900 leading-snug">
+              Kahneman calls the effortless, automatic mode of thought "System 1." Which of the following is NOT a System 1 operation?
+            </h2>
+            <ol class="mt-4 space-y-2 text-[14px] text-slate-800">
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50 cursor-pointer"><span class="text-slate-400 mr-2">A.</span> Recognising a friend's face in a crowd</li>
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50 cursor-pointer"><span class="text-slate-400 mr-2">B.</span> Detecting hostility in a voice</li>
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50 cursor-pointer"><span class="text-slate-400 mr-2">C.</span> Multiplying 17 × 24 in your head</li>
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50 cursor-pointer"><span class="text-slate-400 mr-2">D.</span> Reading words on a billboard</li>
+            </ol>
+            <div class="mt-4 flex items-center justify-between">
+              <span class="text-[12px] text-emerald-700">Reconnected — toast and inline cleared on retry success.</span>
+              <button class="bc-btn bc-btn--primary">Submit answer</button>
+            </div>
+            <div class="bc-anno-callout mt-3" data-note="FR-TOAST-LIFECYCLE step (d)">
+              <strong>Recovered:</strong> retry succeeded → toast auto-cleared (FR-TOAST-LIFECYCLE step d), inline diagnostic cleared, question card mounted in place of the form.
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+            <div class="mt-3 text-[12px] text-slate-500">This session is your first.</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Quiz Start error E1</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 03 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

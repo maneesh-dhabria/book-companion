@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Settings — Compare voices — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Settings — Compare voices (J6 / J3.alt, FR-COMPARE-VOICES)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Idle</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Playing Kokoro</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Playing Web Speech</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- IDLE -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <div class="grid grid-cols-[200px_1fr] gap-6 max-w-5xl">
+          <!-- Settings nav -->
+          <nav class="bc-panel !p-2 h-fit text-[13px]">
+            <div class="px-2 py-1.5 text-slate-500">General</div>
+            <div class="px-2 py-1.5 text-slate-500">Reading</div>
+            <div class="px-2 py-1.5 rounded bg-indigo-50 text-indigo-700 font-medium">Text-to-speech</div>
+            <div class="px-2 py-1.5 text-slate-500">Annotations</div>
+            <div class="px-2 py-1.5 text-slate-500">Backups</div>
+          </nav>
+
+          <section class="space-y-4">
+            <div>
+              <h2 class="text-[18px] font-semibold text-slate-900">Text-to-speech</h2>
+              <p class="text-[13px] text-slate-500">Choose an engine and voice for audiobook playback.</p>
+            </div>
+
+            <!-- Compare voices panel — renamed -->
+            <section class="bc-panel" id="audio">
+              <div class="flex items-center justify-between">
+                <h3 class="text-[14px] font-semibold text-slate-800">Compare voices</h3>
+                <span class="bc-chip bc-chip--neutral text-[10px]">A/B test</span>
+              </div>
+              <p class="mt-1 text-[13px] text-slate-600">
+                Hear the same sample in both engines. Click below to compare Kokoro and your browser's Web Speech voice side by side.
+              </p>
+
+              <!-- Sample text from book first section -->
+              <div class="mt-3 rounded-md bg-slate-50 border border-slate-200 px-3 py-2 text-[13px] italic text-slate-700">
+                “To observe your mind in automatic mode, glance at the image and form an immediate opinion about the woman's hair. You knew at once that she has dark hair, and that she is angry.”
+                <div class="mt-1 not-italic text-[11px] text-slate-500">— Chapter 1, The Characters of the Story</div>
+              </div>
+
+              <div class="mt-3 flex items-center gap-2">
+                <button data-testid="listen-comparison" class="bc-btn bc-btn--primary text-[13px] !py-1.5">Listen to comparison</button>
+                <span class="text-[11px] text-slate-500">Plays Kokoro then Web Speech back-to-back.</span>
+              </div>
+              <div class="bc-anno-callout mt-3" data-note="FR-COMPARE-VOICES">
+                <strong>FR-COMPARE-VOICES:</strong> heading renamed (no "Spike" string), fallback paragraph rewritten as user-facing copy (no "Run bookcompanion spike tts"), sample text drawn from the book's first section content_md when accessed from a book context (MSF N3).
+              </div>
+            </section>
+
+            <!-- WPM sliders -->
+            <section class="bc-panel">
+              <h3 class="text-[14px] font-semibold text-slate-800">Speed estimates</h3>
+              <p class="text-[12px] text-slate-500 mt-0.5">Drives the "to listen" estimate in the Generate-audio modal and the "~Y min reading" line in the Quiz scope picker.</p>
+
+              <div class="mt-3 space-y-3">
+                <div>
+                  <div class="flex items-baseline justify-between">
+                    <label class="text-[13px] text-slate-700"><strong>Listen wpm</strong> <span class="text-slate-500">(audio playback)</span></label>
+                    <span class="text-[13px] text-slate-900 font-mono">200 wpm</span>
+                  </div>
+                  <input type="range" min="100" max="400" step="25" value="200" class="w-full mt-1">
+                  <div class="flex justify-between text-[10px] text-slate-400"><span>100</span><span>200 default</span><span>400</span></div>
+                </div>
+                <div>
+                  <div class="flex items-baseline justify-between">
+                    <label class="text-[13px] text-slate-700"><strong>Reading wpm</strong> <span class="text-slate-500">(quiz scope estimate)</span></label>
+                    <span class="text-[13px] text-slate-900 font-mono">250 wpm</span>
+                  </div>
+                  <input type="range" min="100" max="500" step="25" value="250" class="w-full mt-1">
+                  <div class="flex justify-between text-[10px] text-slate-400"><span>100</span><span>250 default</span><span>500</span></div>
+                </div>
+              </div>
+              <div class="bc-anno-callout mt-3" data-note="FR-WPM-CONFIG">
+                <strong>FR-WPM-CONFIG (S1 split):</strong> two independent sliders — <code>listen_wpm</code> (audio) and <code>reading_wpm</code> (chapter picker). Asymmetric defaults reflect that listening is slower than silent reading.
+              </div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAYING KOKORO -->
+    <section class="wf-state" data-state="loading">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <div class="grid grid-cols-[200px_1fr] gap-6 max-w-5xl">
+          <nav class="bc-panel !p-2 h-fit text-[13px]">
+            <div class="px-2 py-1.5 text-slate-500">General</div>
+            <div class="px-2 py-1.5 text-slate-500">Reading</div>
+            <div class="px-2 py-1.5 rounded bg-indigo-50 text-indigo-700 font-medium">Text-to-speech</div>
+            <div class="px-2 py-1.5 text-slate-500">Annotations</div>
+            <div class="px-2 py-1.5 text-slate-500">Backups</div>
+          </nav>
+          <section class="space-y-4">
+            <h2 class="text-[18px] font-semibold text-slate-900">Text-to-speech</h2>
+            <section class="bc-panel">
+              <h3 class="text-[14px] font-semibold text-slate-800">Compare voices</h3>
+              <p class="mt-1 text-[13px] text-slate-600">Hear the same sample in both engines.</p>
+              <div class="mt-3 rounded-md bg-slate-50 border border-slate-200 px-3 py-2 text-[13px] italic text-slate-700">
+                “To observe your mind in automatic mode, glance at the image and form an immediate opinion about the woman's hair…”
+              </div>
+              <div class="mt-3 flex items-center gap-2 flex-wrap">
+                <button class="bc-btn bc-btn--primary text-[13px] !py-1.5" disabled aria-disabled="true">
+                  <span class="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" aria-hidden="true"></span>
+                  Comparing…
+                </button>
+                <span class="bc-chip bc-chip--engine">Playing Kokoro (af_sarah)…</span>
+                <span class="text-[11px] text-slate-500">Up next: Web Speech (Samantha)</span>
+              </div>
+              <div class="bc-anno-callout mt-3" data-note="FR-COMPARE-VOICES (M4)"><strong>M4 fix:</strong> transient engine label chip mounts during A/B playback so the user always knows which engine is currently speaking.</div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAYING WEB SPEECH -->
+    <section class="wf-state" data-state="error">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <div class="grid grid-cols-[200px_1fr] gap-6 max-w-5xl">
+          <nav class="bc-panel !p-2 h-fit text-[13px]">
+            <div class="px-2 py-1.5 text-slate-500">General</div>
+            <div class="px-2 py-1.5 text-slate-500">Reading</div>
+            <div class="px-2 py-1.5 rounded bg-indigo-50 text-indigo-700 font-medium">Text-to-speech</div>
+            <div class="px-2 py-1.5 text-slate-500">Annotations</div>
+            <div class="px-2 py-1.5 text-slate-500">Backups</div>
+          </nav>
+          <section class="space-y-4">
+            <h2 class="text-[18px] font-semibold text-slate-900">Text-to-speech</h2>
+            <section class="bc-panel">
+              <h3 class="text-[14px] font-semibold text-slate-800">Compare voices</h3>
+              <p class="mt-1 text-[13px] text-slate-600">Hear the same sample in both engines.</p>
+              <div class="mt-3 rounded-md bg-slate-50 border border-slate-200 px-3 py-2 text-[13px] italic text-slate-700">
+                “To observe your mind in automatic mode, glance at the image and form an immediate opinion about the woman's hair…”
+              </div>
+              <div class="mt-3 flex items-center gap-2 flex-wrap">
+                <button class="bc-btn bc-btn--primary text-[13px] !py-1.5" disabled aria-disabled="true">
+                  <span class="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" aria-hidden="true"></span>
+                  Comparing…
+                </button>
+                <span class="bc-chip bc-chip--neutral">Playing Web Speech (Samantha)…</span>
+                <span class="text-[11px] text-emerald-700">Kokoro played first.</span>
+              </div>
+              <div class="bc-anno-callout mt-3" data-note="Sequence"><strong>Sequence:</strong> "Playing Kokoro (af_sarah)…" → "Playing Web Speech (Samantha)…" — the chip swaps; the user can compare directly.</div>
+            </section>
+          </section>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Settings — Compare voices</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 10 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

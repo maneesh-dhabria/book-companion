@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Audio empty state — default — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Audio empty state — default (J2/J3, D2, G2, G7)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Idle</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Listen pressed (Web Speech)</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Listen failed (E3)</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web" style="position:relative;">
+
+    <!-- IDLE -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900 leading-tight">Listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600 leading-relaxed max-w-[60ch]">
+            Instant playback via your browser, or generate MP3s for offline listening with seek and scrub.
+          </p>
+
+          <div class="mt-6 flex flex-wrap items-stretch gap-3">
+            <!-- Primary: Listen -->
+            <div>
+              <button class="bc-btn bc-btn--primary px-5 py-3 text-[15px]">
+                <span aria-hidden="true">▶</span> Listen
+              </button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">Uses your browser's voice (Web Speech)</div>
+            </div>
+            <!-- Secondary: Generate -->
+            <div>
+              <button class="bc-btn bc-btn--secondary px-5 py-3 text-[15px]">
+                <span aria-hidden="true">⬇</span> Generate MP3 files
+              </button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">For offline + scrubbing · ~3.6 min · ~54 MB</div>
+            </div>
+          </div>
+
+          <p class="mt-6 text-[12px] text-slate-500">No audio files yet — generate to enable seek/scrub.</p>
+
+          <div class="bc-anno-callout mt-4" data-note="FR-PRE-WARM, G2, G7, D2">
+            <strong>FR-PRE-WARM (G2):</strong> voice list pre-warmed on AudioTab mount → ≤2 s first-chapter latency.
+            <strong>G7:</strong> verb-led H2. <strong>D2:</strong> parallel CTAs (Listen primary + Generate secondary). The "No audio yet" line is demoted to caption — it's no longer the headline.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LISTEN PRESSED — playbar at bottom -->
+    <section class="wf-state" data-state="loading">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%; padding-bottom:120px;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900">Listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600 max-w-[60ch]">
+            Now playing on Web Speech. Use the playbar at the bottom to pause, change voice, or jump sections.
+          </p>
+          <div class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+            <span class="bc-chip bc-chip--engine">Web Speech</span>
+            Speaking: <em>Chapter 1 — The Characters of the Story</em> · 0:14 / ~3:42
+          </div>
+        </div>
+        <!-- Playbar (mounted globally) -->
+        <div class="bc-playbar fixed left-1/2 -translate-x-1/2 bottom-4" style="width: 720px;">
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Previous section">⏮</button>
+          <button class="bc-btn bc-btn--primary !p-2" aria-label="Pause"><span aria-hidden="true">⏸</span></button>
+          <button class="bc-btn bc-btn--secondary !p-2" aria-label="Next section">⏭</button>
+          <div class="flex-1 text-[12px] text-slate-500">
+            Ch 1 — The Characters of the Story · 0:14 / ~3:42
+            <div class="h-1 mt-1 rounded-full bg-slate-200"><div class="h-full rounded-full bg-indigo-600" style="width: 6%"></div></div>
+          </div>
+          <span class="bc-chip bc-chip--engine">Web Speech</span>
+          <select class="bc-input text-[12px]"><option>Samantha</option><option>Alex</option></select>
+        </div>
+        <div class="bc-anno-callout fixed bottom-4 left-4 max-w-[280px]" data-note="J2 step 4">
+          <strong>J2 step 4:</strong> Web Speech starts speaking within ≤2 s on first chapter (FR-PRE-WARM warms voice list); playbar mounts globally via AppShell.
+        </div>
+      </div>
+    </section>
+
+    <!-- ERROR (E3) — Web Speech speak() throws -->
+    <section class="wf-state" data-state="error">
+      <div class="p-6 relative" style="background:#f8f9fa; min-height:100%;">
+        <div class="absolute top-4 right-4 bc-toast bc-toast--error" role="status">
+          <div class="flex items-start gap-2">
+            <span class="text-rose-600 mt-0.5" aria-hidden="true">⚠</span>
+            <div class="flex-1">
+              <div class="font-medium text-slate-900">Couldn't start playback</div>
+              <div class="text-slate-600 text-[12px] mt-0.5">Web Speech threw "synthesis-failed". Try Generate MP3 files instead.</div>
+              <div class="mt-2 flex items-center gap-2">
+                <button class="bc-btn bc-btn--primary !py-1 !px-3 text-[12px]">Retry</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button>
+          <button class="bc-tab" aria-selected="true">Audio</button>
+          <button class="bc-tab">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="bc-card max-w-3xl">
+          <h2 class="text-[24px] font-semibold text-slate-900">Listen to this book</h2>
+          <p class="mt-2 text-[14px] text-slate-600 max-w-[60ch]">
+            Instant playback via your browser, or generate MP3s for offline listening.
+          </p>
+          <div class="mt-6 flex flex-wrap items-stretch gap-3">
+            <div>
+              <button class="bc-btn bc-btn--primary px-5 py-3 text-[15px]">▶ Listen</button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">Uses your browser's voice (Web Speech)</div>
+            </div>
+            <div>
+              <button class="bc-btn bc-btn--secondary px-5 py-3 text-[15px]">⬇ Generate MP3 files</button>
+              <div class="text-[12px] text-slate-500 mt-1.5 ml-1">For offline + scrubbing</div>
+            </div>
+          </div>
+          <p class="mt-6 text-[12px] text-slate-500">No audio files yet — generate to enable seek/scrub.</p>
+          <div class="bc-anno-callout mt-4" data-note="E3"><strong>E3:</strong> Listen click failed. Toast surfaces the failure with Retry; empty state stays so the user can pivot to Generate.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Audio empty state — default</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 05 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

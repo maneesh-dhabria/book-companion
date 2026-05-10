@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz mid-session error E2 — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Quiz mid-session error E2 (FR-MID-SESSION-RETRY)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Error</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Retrying</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Recovered (Q3 of 5)</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- ERROR -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <div class="flex items-center justify-between">
+              <span class="bc-chip bc-chip--neutral">Q3 of 5</span>
+              <span class="text-[12px] text-slate-500">Thinking, Fast and Slow · prior answers preserved</span>
+            </div>
+            <h2 class="mt-3 text-[18px] font-semibold text-slate-900">
+              <span class="text-slate-400">Loading next question…</span>
+            </h2>
+            <!-- Inline error WITH Retry, no toast -->
+            <div class="mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 flex items-start gap-3" role="alert">
+              <span class="text-rose-600 text-lg leading-none mt-0.5" aria-hidden="true">⚠</span>
+              <div class="flex-1">
+                <div class="text-[14px] text-rose-900 font-medium">Couldn't load the next question</div>
+                <div class="text-[12px] text-rose-800 mt-0.5">Server returned 504 (LLM timeout). Your previous 2 answers are saved — Retry resumes from this step.</div>
+                <div class="mt-3 flex items-center gap-2">
+                  <button class="bc-btn bc-btn--primary !py-1.5 !px-3 text-[13px]">Retry</button>
+                  <button class="bc-btn bc-btn--secondary !py-1.5 !px-3 text-[13px]">End session</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 text-[12px] text-slate-500">
+              <strong class="text-slate-700">Your answers so far:</strong>
+              <ul class="mt-1 space-y-1">
+                <li>Q1 — <span class="bc-chip bc-chip--success">Got it</span> &nbsp;System 1 vs System 2 (chose C — Multiplying 17 × 24)</li>
+                <li>Q2 — <span class="bc-chip bc-chip--warn">Partial</span> &nbsp;The lazy controller (chose B)</li>
+              </ul>
+            </div>
+            <div class="bc-anno-callout mt-3" data-note="FR-MID-SESSION-RETRY">
+              <strong>FR-MID-SESSION-RETRY:</strong> mid-session failures show inline error WITH Retry button (NO toast — one error surface). Session state is preserved so Retry resumes from the failed step, doesn't restart the session.
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[12px] text-slate-500">In this session</div>
+            <div class="text-[14px] text-slate-900 mt-1">2 answered · 1 Got it · 1 Partial</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- RETRYING -->
+    <section class="wf-state" data-state="loading">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <div class="flex items-center justify-between">
+              <span class="bc-chip bc-chip--neutral">Q3 of 5</span>
+              <span class="text-[12px] text-slate-500">Retrying…</span>
+            </div>
+            <div class="mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 flex items-start gap-3">
+              <span class="text-rose-600 text-lg leading-none mt-0.5" aria-hidden="true">⚠</span>
+              <div class="flex-1">
+                <div class="text-[14px] text-rose-900 font-medium">Couldn't load the next question</div>
+                <div class="mt-3 flex items-center gap-2">
+                  <button class="bc-btn bc-btn--primary !py-1.5 !px-3 text-[13px]" aria-disabled="true" disabled>
+                    <span class="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" aria-hidden="true"></span>
+                    Retrying…
+                  </button>
+                  <button class="bc-btn bc-btn--secondary !py-1.5 !px-3 text-[13px]" disabled aria-disabled="true">End session</button>
+                </div>
+              </div>
+            </div>
+            <div class="bc-anno-callout mt-3"><strong>State note:</strong> retry button shows spinner; session state untouched.</div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[14px] text-slate-900 mt-1">2 answered · 1 Got it · 1 Partial</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECOVERED — Q3 question loaded -->
+    <section class="wf-state" data-state="error">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <div class="flex items-center justify-between">
+              <span class="bc-chip bc-chip--neutral">Q3 of 5</span>
+              <span class="text-[12px] text-emerald-700">Reconnected — resumed from step 3.</span>
+            </div>
+            <h2 class="mt-3 text-[18px] font-semibold text-slate-900 leading-snug">
+              In Chapter 5 — "Cognitive Ease" — Kahneman argues that *familiarity* and *clarity* both increase the sense of truth. What is the term he uses for the umbrella feeling these conditions produce?
+            </h2>
+            <ol class="mt-4 space-y-2 text-[14px] text-slate-800">
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50"><span class="text-slate-400 mr-2">A.</span> Cognitive strain</li>
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50"><span class="text-slate-400 mr-2">B.</span> Cognitive ease</li>
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50"><span class="text-slate-400 mr-2">C.</span> Mere exposure</li>
+              <li class="rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50"><span class="text-slate-400 mr-2">D.</span> Heuristic substitution</li>
+            </ol>
+            <div class="mt-4 flex items-center justify-end">
+              <button class="bc-btn bc-btn--primary">Submit answer</button>
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[14px] text-slate-900 mt-1">2 answered · 1 Got it · 1 Partial</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Quiz mid-session error E2</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 04 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

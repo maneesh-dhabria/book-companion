@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz first-visit — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Quiz first-visit (J1, G3)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">In-flight</button>
+        <button class="wf-tab" aria-selected="false" data-state="recovered">Error-recovered</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- DEFAULT -->
+    <section class="wf-state active" data-state="default" aria-labelledby="state-default-h">
+      <h1 id="state-default-h" class="sr-only">Default state — Quiz first visit</h1>
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <!-- Tabstrip -->
+        <nav class="bc-tabstrip mb-4" role="tablist" aria-label="Book detail tabs">
+          <button class="bc-tab" role="tab">Summary</button>
+          <button class="bc-tab" role="tab">Read</button>
+          <button class="bc-tab" role="tab">Audio</button>
+          <button class="bc-tab" role="tab" aria-selected="true">Quiz</button>
+          <button class="bc-tab" role="tab">Annotations</button>
+        </nav>
+
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <!-- Main panel -->
+          <div class="bc-card">
+            <!-- Hero / orientation copy (G3) -->
+            <h2 class="text-[20px] font-semibold text-slate-900 leading-snug">Test your retention</h2>
+            <p class="mt-1 text-[14px] text-slate-600 leading-relaxed max-w-[58ch]">
+              Test your retention with AI-generated questions about <em>Thinking, Fast and Slow</em>.
+              We'll generate ~5 questions in under a minute, score
+              <span class="bc-chip bc-chip--success">Got it</span>
+              <span class="bc-chip bc-chip--warn">Partial</span>
+              <span class="bc-chip bc-chip--neutral">Missed</span>
+              and track your tally across sessions.
+            </p>
+
+            <hr class="my-5 border-slate-200">
+
+            <!-- Scope picker -->
+            <fieldset class="border-0 p-0">
+              <legend class="text-[13px] font-semibold text-slate-700 mb-2">Quiz scope</legend>
+              <label class="flex items-start gap-2 py-1">
+                <input type="radio" name="scope" checked class="mt-1">
+                <div>
+                  <div class="text-[14px] text-slate-900">All summaries</div>
+                  <div class="text-[12px] text-slate-500">17 chapters · ~45 min reading</div>
+                </div>
+              </label>
+              <label class="flex items-start gap-2 py-1">
+                <input type="radio" name="scope" class="mt-1">
+                <div>
+                  <div class="text-[14px] text-slate-900">Specific chapters</div>
+                  <div class="text-[12px] text-slate-500">Choose any subset.</div>
+                </div>
+              </label>
+            </fieldset>
+
+            <!-- Theme -->
+            <div class="mt-4">
+              <label class="block text-[13px] font-semibold text-slate-700 mb-1">Theme (optional)</label>
+              <input class="bc-input w-full max-w-md" placeholder="e.g. System 1 vs System 2">
+            </div>
+
+            <!-- Start button + microcopy -->
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary">Start quiz</button>
+              <span class="text-[12px] text-slate-500">5 questions · ~30 sec to generate</span>
+            </div>
+          </div>
+
+          <!-- Right rail -->
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900 leading-none">0</div>
+            <div class="text-[12px] text-slate-500 mt-1">past sessions</div>
+            <p class="text-[12px] text-slate-500 mt-3 leading-relaxed">
+              We track Got it / Partial / Missed across every session so you can watch retention improve.
+            </p>
+            <div class="bc-anno-callout mt-3" data-note="G3">
+              <strong>FR-Q1 / G3:</strong> empty-tally helper copy explains what the rail tracks before any session exists.
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- IN-FLIGHT -->
+    <section class="wf-state" data-state="loading" aria-labelledby="state-loading-h">
+      <h1 id="state-loading-h" class="sr-only">In-flight — Start pressed</h1>
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4" role="tablist">
+          <button class="bc-tab" role="tab">Summary</button>
+          <button class="bc-tab" role="tab">Read</button>
+          <button class="bc-tab" role="tab">Audio</button>
+          <button class="bc-tab" role="tab" aria-selected="true">Quiz</button>
+          <button class="bc-tab" role="tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Test your retention</h2>
+            <p class="mt-1 text-[14px] text-slate-600">Generating your quiz…</p>
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary" aria-disabled="true" disabled>
+                <span class="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" aria-hidden="true"></span>
+                Generating…
+              </button>
+              <span class="text-[12px] text-slate-500">Calling the LLM · ~15 sec elapsed</span>
+            </div>
+            <div class="bc-anno-callout mt-4" data-note="J1.4 spinner">
+              <strong>J1 step 4:</strong> Start button shows in-flight spinner until first question card replaces this form.
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ERROR-RECOVERED -->
+    <section class="wf-state" data-state="recovered" aria-labelledby="state-error-h">
+      <h1 id="state-error-h" class="sr-only">Error recovered — form restored, no toast/inline visible</h1>
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4" role="tablist">
+          <button class="bc-tab" role="tab">Summary</button>
+          <button class="bc-tab" role="tab">Read</button>
+          <button class="bc-tab" role="tab">Audio</button>
+          <button class="bc-tab" role="tab" aria-selected="true">Quiz</button>
+          <button class="bc-tab" role="tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Test your retention</h2>
+            <p class="mt-1 text-[14px] text-slate-600 max-w-[58ch]">
+              Form restored after a successful retry. No toast, no inline diagnostic — they cleared on retry-success.
+            </p>
+            <fieldset class="border-0 p-0 mt-4">
+              <legend class="text-[13px] font-semibold text-slate-700 mb-2">Quiz scope</legend>
+              <label class="flex items-start gap-2 py-1">
+                <input type="radio" name="scope2" checked class="mt-1">
+                <span class="text-[14px] text-slate-900">All summaries <span class="text-slate-500 text-[12px]">· 17 chapters · ~45 min reading</span></span>
+              </label>
+              <label class="flex items-start gap-2 py-1">
+                <input type="radio" name="scope2" class="mt-1">
+                <span class="text-[14px] text-slate-900">Specific chapters</span>
+              </label>
+            </fieldset>
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary">Start quiz</button>
+              <span class="text-[12px] text-slate-500">5 questions · ~30 sec to generate</span>
+            </div>
+            <div class="bc-anno-callout mt-4" data-note="FR-INLINE-DIAGNOSTIC + FR-TOAST-LIFECYCLE">
+              <strong>Recovered:</strong> per FR-TOAST-LIFECYCLE step (d), retry-success clears the originating toast; per FR-INLINE-DIAGNOSTIC, the inline region clears on form edit OR toast retry success. The user is back to a clean editable form.
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Quiz first-visit</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 01 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

@@ -9,8 +9,8 @@
 - **Feature folder:** /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7/docs/features/2026-05-10_quiz-audio-ux-top7
 - **Seed input:** `docs/2026-05-10_quiz-and-audio-design-crit/design-crit/design-crit.md` (top-7 TL;DR scope)
 - **Started:** 2026-05-10T07:41:20Z
-- **Last updated:** 2026-05-10T09:00:00Z
-- **Current phase:** creativity (gate pending)
+- **Last updated:** 2026-05-10T10:00:00Z
+- **Current phase:** msf-wf gate (subgate of wireframes Phase 6)
 
 ## Phases
 
@@ -22,8 +22,8 @@
 | 3   | requirements      | hard     | completed | `01_requirements.md` | 2026-05-10T07:55:00Z | Tier 3 confirmed; 7 OQs; 1 review loop; loop 2 (post-grill) applied 2026-05-10T08:30:00Z — 7 doc gaps + 8 new FRs + D6 reversal + Backend Defect subsection |
 | 3b  | grill             | soft     | completed | `grills/2026-05-10_01_requirements.md` | 2026-05-10T08:30:00Z | standard depth; 8 Qs; 7 doc gaps applied to 01_requirements.md; 3 OQs resolved (3,5,6); D6 REVERSED (rename, not remove); FR-Q3-REPRO gates /spec entry (live repro of `POST /quiz-sessions` 500 still pending) |
 | 4a  | msf-req           | soft     | completed | `msf-findings.md`   | 2026-05-10T09:00:00Z | 14 findings; Must+Should applied as requirements review loop 3 (2 new FRs + 6 FR amendments); Nice deferred |
-| 4b  | creativity        | soft     | pending   | —                   | —                    | —     |
-| 4c  | wireframes        | soft     | pending   | —                   | —                    | —     |
+| 4b  | creativity        | soft     | skipped   | —                   | 2026-05-10T09:05:00Z | user chose Recommended-Skip; grill+MSF covered the leverage |
+| 4c  | wireframes        | soft     | completed | `wireframes/index.html` | 2026-05-10T10:00:00Z | 10 desktop-web HTMLs + index + REVIEW-LOG.md; medium-rigor cross-file review (17 findings → 7 applied, 10 deferred to /spec); /msf-wf delegated to user gate |
 | 4d  | prototype         | soft     | pending   | —                   | —                    | —     |
 | 5   | spec              | hard     | pending   | —                   | —                    | —     |
 | 6   | simulate-spec     | soft     | pending   | —                   | —                    | —     |

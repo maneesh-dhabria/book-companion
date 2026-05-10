@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Generate-audio modal — empty — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Generate-audio modal — empty (J3, D3, FR-PARTIAL-DELTA, FR-WPM-CONFIG)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">All 17 sections</button>
+        <button class="wf-tab" aria-selected="false" data-state="loading">Toggled subset</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">Confirming</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- DEFAULT — all 17 sections -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6 flex items-center justify-center" style="background:rgba(0,0,0,0.4); min-height:100%;">
+        <div class="bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 p-6 w-[32rem]" role="dialog" aria-modal="true" aria-labelledby="gen-modal-h-7-1">
+          <div class="flex items-start justify-between gap-3"><h2 id="gen-modal-h-7-1" class="text-[18px] font-semibold text-slate-900">Generate audio for this book</h2><button class="bc-btn bc-btn--ghost text-[18px] leading-none px-2" aria-label="Close dialog">×</button></div>
+          <p class="text-[12px] text-slate-500 mt-0.5">Thinking, Fast and Slow · 17 sections</p>
+
+          <fieldset class="mt-4 space-y-2">
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" checked> Book summary <span class="bc-chip bc-chip--neutral text-[10px]">1 unit</span></label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" checked> Section summaries <span class="bc-chip bc-chip--neutral text-[10px]">17 units</span></label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox"> Annotations <span class="bc-chip bc-chip--warn text-[10px]">recommended</span></label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox"> Section content (full text) <span class="bc-chip bc-chip--neutral text-[10px]">17 units · longer</span></label>
+          </fieldset>
+
+          <!-- Three-field estimate row -->
+          <div class="mt-5 rounded-md bg-slate-50 border border-slate-200 px-3 py-3">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div class="text-[11px] uppercase tracking-wider text-slate-500">to generate</div>
+                <div class="text-[16px] font-semibold text-slate-900">~3.6 min</div>
+                <div class="text-[10px] text-amber-700 mt-0.5">commitment</div>
+              </div>
+              <div class="border-l border-r border-slate-200">
+                <div class="text-[11px] uppercase tracking-wider text-emerald-700">to listen</div>
+                <div class="text-[16px] font-semibold text-emerald-700">~25 min</div>
+                <div class="text-[10px] text-emerald-600 mt-0.5">value received</div>
+              </div>
+              <div>
+                <div class="text-[11px] uppercase tracking-wider text-slate-500">on disk</div>
+                <div class="text-[16px] font-semibold text-slate-900">~54 MB</div>
+                <div class="text-[10px] text-amber-700 mt-0.5">commitment</div>
+              </div>
+            </div>
+            <div class="text-center text-[11px] text-slate-500 mt-2">
+              Listen estimate uses <code>listen_wpm = 200</code> (Settings → Text-to-speech).
+            </div>
+          </div>
+
+          <div class="bc-anno-callout mt-3" data-note="D3 + FR-PARTIAL-DELTA + FR-WPM-CONFIG">
+            <strong>D3:</strong> three labelled fields. <strong>FR-PARTIAL-DELTA:</strong> X (gen) and Z (disk) are the commitment cost; Y (listen) is the value received. In the empty state X/Z = whole-book = same as delta. <strong>FR-WPM-CONFIG:</strong> Y = sum(word_count) ÷ <code>listen_wpm</code> with default 200.
+          </div>
+
+          <div class="mt-5 flex justify-end gap-2">
+            <button class="bc-btn bc-btn--secondary">Cancel</button>
+            <button class="bc-btn bc-btn--primary">Generate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOGGLED SUBSET — only Section summaries unchecked -->
+    <section class="wf-state" data-state="loading">
+      <div class="p-6 flex items-center justify-center" style="background:rgba(0,0,0,0.4); min-height:100%;">
+        <div class="bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 p-6 w-[32rem]" role="dialog" aria-modal="true" aria-labelledby="gen-modal-h-7-2">
+          <div class="flex items-start justify-between gap-3"><h2 id="gen-modal-h-7-2" class="text-[18px] font-semibold text-slate-900">Generate audio for this book</h2><button class="bc-btn bc-btn--ghost text-[18px] leading-none px-2" aria-label="Close dialog">×</button></div>
+          <p class="text-[12px] text-slate-500 mt-0.5">Thinking, Fast and Slow · 17 sections</p>
+          <fieldset class="mt-4 space-y-2">
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" checked> Book summary</label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox"> Section summaries <span class="text-slate-400 text-[11px]">(unchecked — skip)</span></label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" checked> Annotations <span class="bc-chip bc-chip--warn text-[10px]">recommended</span></label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox"> Section content (full text)</label>
+          </fieldset>
+          <div class="mt-5 rounded-md bg-slate-50 border border-slate-200 px-3 py-3">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div><div class="text-[11px] uppercase text-slate-500">to generate</div><div class="text-[16px] font-semibold text-slate-900">~25 sec</div></div>
+              <div class="border-l border-r border-slate-200"><div class="text-[11px] uppercase text-emerald-700">to listen</div><div class="text-[16px] font-semibold text-emerald-700">~25 min</div><div class="text-[10px] text-slate-500">whole-book Y</div></div>
+              <div><div class="text-[11px] uppercase text-slate-500">on disk</div><div class="text-[16px] font-semibold text-slate-900">~6 MB</div></div>
+            </div>
+            <div class="text-center text-[11px] text-slate-500 mt-2">Reactive: estimate updates per checkbox.</div>
+          </div>
+          <div class="bc-anno-callout mt-3" data-note="Reactive estimate"><strong>Reactive:</strong> X and Z drop with the deselected content type; Y stays whole-book — listening duration is independent of which units are pre-generated this click.</div>
+          <div class="mt-5 flex justify-end gap-2">
+            <button class="bc-btn bc-btn--secondary">Cancel</button>
+            <button class="bc-btn bc-btn--primary">Generate</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIRMING -->
+    <section class="wf-state" data-state="error">
+      <div class="p-6 flex items-center justify-center" style="background:rgba(0,0,0,0.4); min-height:100%;">
+        <div class="bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 p-6 w-[32rem]" role="dialog" aria-modal="true" aria-labelledby="gen-modal-h-7-3">
+          <div class="flex items-start justify-between gap-3"><h2 id="gen-modal-h-7-3" class="text-[18px] font-semibold text-slate-900">Generate audio for this book</h2><button class="bc-btn bc-btn--ghost text-[18px] leading-none px-2" aria-label="Close dialog">×</button></div>
+          <p class="text-[12px] text-slate-500 mt-0.5">Thinking, Fast and Slow · 17 sections</p>
+          <fieldset class="mt-4 space-y-2 opacity-60 pointer-events-none">
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" checked disabled> Book summary</label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" checked disabled> Section summaries</label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" disabled> Annotations</label>
+            <label class="flex items-center gap-2 text-[14px]"><input type="checkbox" disabled> Section content</label>
+          </fieldset>
+          <div class="mt-5 rounded-md bg-slate-50 border border-slate-200 px-3 py-3">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div><div class="text-[11px] uppercase text-slate-500">to generate</div><div class="text-[16px] font-semibold text-slate-900">~3.6 min</div></div>
+              <div class="border-l border-r border-slate-200"><div class="text-[11px] uppercase text-emerald-700">to listen</div><div class="text-[16px] font-semibold text-emerald-700">~25 min</div></div>
+              <div><div class="text-[11px] uppercase text-slate-500">on disk</div><div class="text-[16px] font-semibold text-slate-900">~54 MB</div></div>
+            </div>
+          </div>
+          <div class="mt-5 flex justify-end gap-2">
+            <button class="bc-btn bc-btn--secondary" disabled aria-disabled="true">Cancel</button>
+            <button class="bc-btn bc-btn--primary" disabled aria-disabled="true">
+              <span class="inline-block h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" aria-hidden="true"></span>
+              Starting…
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Generate-audio modal — empty</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 07 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>

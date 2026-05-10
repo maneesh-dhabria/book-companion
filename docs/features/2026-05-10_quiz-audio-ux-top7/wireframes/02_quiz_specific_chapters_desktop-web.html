@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quiz scope — Specific chapters — desktop-web — Wireframe</title>
+  <link rel="stylesheet" href="./assets/wireframe.css">
+  <link rel="stylesheet" href="./assets/design-overlay.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body data-annotations="off">
+  <header class="wf-chrome">
+    <div class="wf-chrome__inner">
+      <span class="wf-chrome__title">Quiz scope — Specific chapters (J1.alt, Q-7)</span>
+      <span class="wf-chrome__device">desktop-web</span>
+      <nav class="wf-tabs" aria-label="State switcher">
+        <button class="wf-tab" aria-selected="true"  data-state="default">Default (4 selected)</button>
+        <button class="wf-tab" aria-selected="false" data-state="empty">None selected</button>
+        <button class="wf-tab" aria-selected="false" data-state="error">At-cap warning</button>
+      </nav>
+      <button id="toggle-anno" class="wf-tab" aria-pressed="true">Annotations</button>
+    </div>
+  </header>
+
+  <main class="wf-frame wf-frame--desktop-web">
+
+    <!-- DEFAULT — 4 of 12 selected -->
+    <section class="wf-state active" data-state="default">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Pick chapters to quiz on</h2>
+
+            <fieldset class="border-0 p-0 mt-3">
+              <legend class="text-[13px] font-semibold text-slate-700 mb-2">Quiz scope</legend>
+              <label class="inline-flex items-center gap-2 mr-4"><input type="radio" name="scope"> <span class="text-[14px]">All summaries</span></label>
+              <label class="inline-flex items-center gap-2"><input type="radio" name="scope" checked> <span class="text-[14px]">Specific chapters</span></label>
+            </fieldset>
+
+            <div class="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
+              <label class="flex items-center gap-2 py-1"><input type="checkbox" checked> Ch 1 — The Characters of the Story</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 2 — Attention and Effort</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox" checked> Ch 3 — The Lazy Controller</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 4 — The Associative Machine</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox" checked> Ch 5 — Cognitive Ease</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 6 — Norms, Surprises, and Causes</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 7 — A Machine for Jumping to Conclusions</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox" checked> Ch 8 — How Judgments Happen</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 9 — Answering an Easier Question</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 10 — The Law of Small Numbers</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 11 — Anchors</label>
+              <label class="flex items-center gap-2 py-1"><input type="checkbox"> Ch 12 — The Science of Availability</label>
+            </div>
+
+            <!-- Reading-time metric replaces 0 / 60,000 tokens -->
+            <div class="mt-4 flex items-center gap-3 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
+              <div class="flex-1">
+                <div class="text-[13px] text-slate-900 font-medium">
+                  4 of 12 chapters · ~30 min reading
+                </div>
+                <div class="h-1.5 mt-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div class="h-full bg-indigo-600" style="width: 33%"></div>
+                </div>
+              </div>
+              <span class="bc-tooltip">
+                <button class="bc-btn bc-btn--ghost text-[12px] !px-2 !py-1" aria-label="Why a budget?">ⓘ</button>
+                <span class="bc-tooltip__bubble" role="tooltip">~47% of the per-quiz scope budget · 250 wpm reading speed</span>
+              </span>
+            </div>
+            <div class="bc-anno-callout mt-2" data-note="Q-7 / FR-WPM-CONFIG">
+              <strong>Q-7 / FR-WPM-CONFIG:</strong> "0 / 60,000 tokens" replaced with chapter count + reading-time at <code>reading_wpm = 250</code>. Tooltip retains the technical token cap for power users.
+            </div>
+
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary">Start quiz</button>
+              <span class="text-[12px] text-slate-500">5 questions · ~30 sec to generate</span>
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- NONE SELECTED -->
+    <section class="wf-state" data-state="empty">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Pick chapters to quiz on</h2>
+            <p class="mt-2 text-[13px] text-amber-700">Pick at least one chapter to start.</p>
+            <div class="mt-3 flex items-center gap-3 rounded-md bg-slate-50 border border-slate-200 px-3 py-2">
+              <div class="flex-1">
+                <div class="text-[13px] text-slate-900 font-medium">0 of 12 chapters · 0 min reading</div>
+                <div class="h-1.5 mt-2 rounded-full bg-slate-200"></div>
+              </div>
+            </div>
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary" disabled aria-disabled="true">Start quiz</button>
+              <span class="text-[12px] text-slate-500">Pick at least one chapter.</span>
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- AT-CAP WARNING -->
+    <section class="wf-state" data-state="error">
+      <div class="p-6" style="background:#f8f9fa; min-height:100%;">
+        <nav class="bc-tabstrip mb-4">
+          <button class="bc-tab">Summary</button><button class="bc-tab">Read</button><button class="bc-tab">Audio</button>
+          <button class="bc-tab" aria-selected="true">Quiz</button><button class="bc-tab">Annotations</button>
+        </nav>
+        <div class="grid grid-cols-[1fr_280px] gap-6">
+          <div class="bc-card">
+            <h2 class="text-[20px] font-semibold text-slate-900">Pick chapters to quiz on</h2>
+            <div class="mt-4 flex items-center gap-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
+              <div class="flex-1">
+                <div class="text-[13px] text-amber-900 font-medium">11 of 12 chapters · ~88 min reading — at the per-quiz scope cap</div>
+                <div class="h-1.5 mt-2 rounded-full bg-amber-200 overflow-hidden">
+                  <div class="h-full bg-amber-600" style="width: 100%"></div>
+                </div>
+                <p class="text-[12px] text-amber-800 mt-2">Adding Ch 12 would exceed the per-quiz scope cap. Deselect a chapter or run two separate quizzes.</p>
+              </div>
+            </div>
+            <div class="mt-6 flex items-center gap-3">
+              <button class="bc-btn bc-btn--primary">Start quiz</button>
+              <span class="text-[12px] text-slate-500">5 questions · ~30 sec to generate</span>
+            </div>
+          </div>
+          <aside class="bc-panel">
+            <h3 class="text-[13px] font-semibold text-slate-700 mb-2">Lifetime tally</h3>
+            <div class="text-[28px] font-semibold text-slate-900">0</div>
+            <div class="text-[12px] text-slate-500">past sessions</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wf-footer">
+    <div class="wf-footer__inner">
+      <span>Quiz scope — Specific chapters</span>
+      <span class="mock-pill">desktop-web</span>
+      <span>File 02 of 10</span>
+      <span>Generated 2026-05-10</span>
+      <a class="wf-grow" style="text-align:right;color:var(--wf-accent)" href="./index.html">Back to index</a>
+    </div>
+  </footer>
+
+  <script>
+    const tabs = document.querySelectorAll('.wf-tab[data-state]');
+    const states = document.querySelectorAll('.wf-state');
+    tabs.forEach(t => t.addEventListener('click', () => {
+      tabs.forEach(x => x.setAttribute('aria-selected', x === t));
+      states.forEach(s => s.classList.toggle('active', s.dataset.state === t.dataset.state));
+    }));
+    const annoBtn = document.getElementById('toggle-anno');
+    annoBtn.addEventListener('click', () => {
+      const on = document.body.dataset.annotations === 'on';
+      document.body.dataset.annotations = on ? 'off' : 'on';
+      annoBtn.setAttribute('aria-pressed', String(!on));
+    });
+  </script>
+</body>
+</html>
