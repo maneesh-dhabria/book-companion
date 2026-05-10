@@ -4,6 +4,8 @@ import { computed, onMounted, ref } from 'vue'
 import KokoroStatusIndicator from '@/components/settings/KokoroStatusIndicator.vue'
 import SpikeFindingsBlock from '@/components/settings/SpikeFindingsBlock.vue'
 import VoiceSampleButton from '@/components/settings/VoiceSampleButton.vue'
+import WpmSlider from '@/components/settings/WpmSlider.vue'
+import { useSettingsStore } from '@/stores/settings'
 
 type Engine = 'web-speech' | 'kokoro'
 
@@ -19,6 +21,29 @@ const saving = ref(false)
 const savedAt = ref<number | null>(null)
 const error = ref<string | null>(null)
 const noVoicesAvailable = ref(false)
+
+// FR-16: dual wpm sliders. Listen wpm drives audio listen-time estimates;
+// Reading wpm drives reading-time estimates (Quiz scope budget, etc.).
+const settingsStore = (() => {
+  try {
+    return useSettingsStore()
+  } catch {
+    return null
+  }
+})()
+const listenWpm = computed({
+  get: () => settingsStore?.settings?.tts?.listen_wpm ?? 180,
+  set: (v: number) => {
+    if (settingsStore?.settings?.tts) settingsStore.settings.tts.listen_wpm = v
+  },
+})
+const readingWpm = computed({
+  get: () => settingsStore?.settings?.reading?.reading_wpm ?? 250,
+  set: (v: number) => {
+    if (settingsStore?.settings?.reading)
+      settingsStore.settings.reading.reading_wpm = v
+  },
+})
 
 async function load() {
   try {
@@ -210,6 +235,31 @@ onMounted(() => {
           </div>
         </div>
       </label>
+    </fieldset>
+
+    <fieldset class="space-y-3 rounded-md border border-slate-200 p-4">
+      <legend class="px-1 text-sm font-medium text-slate-700">Reading + listening speed</legend>
+      <p class="text-xs text-slate-500">
+        Used for time-to-listen and time-to-read estimates across the app.
+      </p>
+      <WpmSlider
+        label="Listen wpm"
+        :min="100"
+        :max="400"
+        :step="25"
+        :model-value="listenWpm"
+        settings-path="tts.listen_wpm"
+        @update:model-value="(v: number) => (listenWpm = v)"
+      />
+      <WpmSlider
+        label="Reading wpm"
+        :min="100"
+        :max="500"
+        :step="25"
+        :model-value="readingWpm"
+        settings-path="reading.reading_wpm"
+        @update:model-value="(v: number) => (readingWpm = v)"
+      />
     </fieldset>
 
     <fieldset class="space-y-3 rounded-md border border-slate-200 p-4">
