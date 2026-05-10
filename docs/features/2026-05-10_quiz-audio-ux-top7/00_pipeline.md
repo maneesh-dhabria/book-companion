@@ -9,8 +9,8 @@
 - **Feature folder:** /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7/docs/features/2026-05-10_quiz-audio-ux-top7
 - **Seed input:** `docs/2026-05-10_quiz-and-audio-design-crit/design-crit/design-crit.md` (top-7 TL;DR scope)
 - **Started:** 2026-05-10T07:41:20Z
-- **Last updated:** 2026-05-10T07:55:00Z
-- **Current phase:** grill
+- **Last updated:** 2026-05-10T07:55:30Z
+- **Current phase:** grill (paused — user)
 
 ## Phases
 
@@ -20,7 +20,7 @@
 | 0a  | worktree          | infra    | completed | —                   | 2026-05-10T07:41:20Z | feat/quiz-audio-ux-top7 |
 | 1   | init-state        | infra    | completed | `00_pipeline.md`    | 2026-05-10T07:41:20Z | —     |
 | 3   | requirements      | hard     | completed | `01_requirements.md` | 2026-05-10T07:55:00Z | Tier 3 confirmed; 7 OQs; 1 review loop |
-| 3b  | grill             | soft     | pending   | —                   | —                    | next  |
+| 3b  | grill             | soft     | paused    | —                   | 2026-05-10T07:55:30Z | paused_reason=user (inter-phase pause; resume with `/feature-sdlc --resume`) |
 | 4a  | msf-req           | soft     | pending   | —                   | —                    | —     |
 | 4b  | creativity        | soft     | pending   | —                   | —                    | —     |
 | 4c  | wireframes        | soft     | pending   | —                   | —                    | —     |
