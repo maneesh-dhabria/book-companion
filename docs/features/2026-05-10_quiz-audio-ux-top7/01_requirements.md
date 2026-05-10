@@ -11,10 +11,10 @@ status: Approved
 
 **Date:** 2026-05-10
 **Last updated:** 2026-05-10
-**Status:** Approved (post-Phase-5 review)
+**Status:** Approved (post-grill loop 2)
 **Tier:** 3 — Feature
 **Mode:** interactive
-**Open Questions:** 7
+**Open Questions:** 4 (3 resolved in grill loop 2)
 
 ## Problem
 
@@ -50,7 +50,24 @@ The single self-hosted user of Book Companion (matches the workstream's User Seg
 
 - Quiz shipped to v0.3.0 two days ago (2026-05-08) and **regressed trust** on its primary action: a real bug (the 500) is invisible because the API client doesn't front errors. This is the only finding in the bundle that's actively misleading users; the rest are friction.
 - Audio shipped two engines (Web Speech instant + Kokoro generated) in v1.6 (2026-05-03) but the empty-state UI was built around Kokoro's Generate flow only. The instant path is unreachable from the surface that introduces it.
-- Settings → TTS still carries a "Spike findings" research block left over from the same 2026-05-03 spec's discovery phase; it never had a copy edit before users saw it.
+- Settings → TTS still carries a "Spike findings" research block left over from the same 2026-05-03 spec's discovery phase; it never had a copy edit before users saw it. (Note: a codebase grill found this block ALSO contains a user-valuable "Listen to comparison" A/B button — see Decisions D6 reversal.)
+
+### Backend Defect (Q-3 root cause)
+
+`POST /api/v1/quiz-sessions` returns 500 on the live build for the only seeded book. The design-crit observed the symptom (button stays active, no toast); the underlying defect was not diagnosed before the requirements doc was approved. Grill loop 2 added this as a hard precondition for `/spec` entry.
+
+**Status:** Repro pending. Captured below before /spec begins.
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST /api/v1/quiz-sessions` |
+| Symptom | 500; UI silent (no toast, no spinner clear) |
+| Repro environment | Worktree at `feat/quiz-audio-ux-top7`, fresh `bookcompanion serve --port 8765`, single seeded book |
+| Live traceback | _TBD — run repro and paste full stack trace + request body + response payload here._ |
+| Suspected root cause | _TBD — to be filled by /spec entry repro task._ |
+| Scope assessment | _TBD — does fix require schema migration, prompt template change, dependency update, or local code-only patch? Drives whether requirements need further amendment._ |
+
+**Constraint on /spec:** /spec MUST open with a Q-3 repro task that fills the four `_TBD_` fields above. If the scope assessment reveals the fix requires changes outside the top-7 UX scope (e.g., backend schema, LLM prompt rewrite), pause and amend requirements before continuing.
 
 ## Goals & Non-Goals
 
@@ -59,11 +76,11 @@ The single self-hosted user of Book Companion (matches the workstream's User Seg
 ### Goals
 
 - **G1 — Errors are visible.** When `POST /quiz-sessions` (or any quiz API call) fails, the user sees a toast within 1 s of the click, with the failure reason and a Retry button — measured by: zero silent-fail console lines on the Quiz tab.
-- **G2 — Two real listening paths.** A new Audio user can either (a) press Play and hear the book within 1 click via Web Speech, or (b) press a separate Generate CTA and produce MP3s — measured by: one click from Audio tab to first audible word on Web Speech, with `speechSynthesis.speaking === true` within ≤ 2 s on the first chapter and ≤ 1 s on subsequent chapters (loosened from a flat 1 s to absorb the cold-start voice load that Chrome and Safari exhibit).
+- **G2 — Two real listening paths.** A new Audio user can either (a) press Play and hear the book within 1 click via Web Speech, or (b) press a separate Generate CTA and produce MP3s — measured by: one click from Audio tab to first audible word on Web Speech, with `speechSynthesis.speaking === true` within ≤ 2 s on the first chapter and ≤ 1 s on subsequent chapters. The ≤ 2 s budget is achievable because AudioTab.vue pre-warms the voice list on mount (see FR-PRE-WARM) — `getVoices()` + `voiceschanged` resolve before the user reaches the Listen button.
 - **G3 — Quiz is self-explanatory on first visit.** A user who has never read the changelog can read the Quiz tab and know what a quiz is, how many questions to expect, how long it will take, and what the lifetime tally tracks — measured by: orientation copy present + ≥1 explicit count/duration estimate near the Start button.
 - **G4 — Generate-audio dialog discloses three estimates separately.** Generation time, listening duration, and disk size are three distinct labelled fields, not one ambiguous string — measured by: regex test against the dialog finding all three terms.
 - **G5 — Token jargon is gone from the quiz scope picker.** A user-facing budget metric replaces "0 / 60,000 tokens" — measured by: no string `tokens` visible to the user on the Quiz tab.
-- **G6 — Settings/TTS reads as user copy, not research notes.** The "Spike findings" heading is renamed or removed — measured by: no string `Spike` visible on Settings → TTS.
+- **G6 — Settings/TTS reads as user copy, not research notes.** The "Spike findings" heading is renamed to user-facing copy (D6 reversal: rename, not remove — block contains a user-valuable "Listen to comparison" A/B button) — measured by: no string `Spike` visible on Settings → TTS AND the `data-testid="listen-comparison"` button still mounted and functional.
 - **G7 — Audio empty-state hierarchy leads with a verb.** The first line a new user sees is an action ("Listen to this book"), not a status ("No audio yet") — measured by: empty-state H2/H1 contains an imperative verb.
 
 ### Non-Goals (explicit scope cuts)
@@ -135,7 +152,13 @@ The Generate-audio modal (`GenerateAudioModal.vue:46-47`) replaces the single am
 ~Xmin to generate · ~Ymin to listen · ~ZMB on disk
 ```
 
-Where X is wall-clock generation, Y is total speech duration, Z is total file size.
+Where:
+
+- **X** is wall-clock generation time, computed for **only the sections that will be generated this click** (delta in the partial-generation case).
+- **Y** is total speech duration for the whole-book listening, computed as `sum(section.word_count) ÷ wpm`. `wpm` is an env constant (default `200`) exposed in Settings → TTS for user override (see FR-WPM-CONFIG). Y is whole-book regardless of how many sections are generated, since playback covers the full set.
+- **Z** is delta disk usage for the sections being generated this click.
+
+In the empty state (no MP3s yet), all three reflect the whole-book numbers; they're the same as delta. In partial state (some sections already generated), X and Z reflect the delta; Y stays whole-book.
 
 ### Shape 3 — Quiz first-visit + scope-picker copy (Q-1, Q-7) and Settings/TTS heading (A-7)
 
@@ -143,7 +166,7 @@ Three small, file-localised copy/structure changes:
 
 - `QuizTab.vue` (or `ScopePicker.vue`) — add a hero block: *"Test your retention with AI-generated questions about this book. We'll generate ~5 questions in under a minute, score Got it / Partial / Missed, and track your tally across sessions."* + inline microcopy near the Start button: *"5 questions · ~30 sec to generate"*.
 - `ScopePicker.vue` token-progress rendering — replace `"X / 60,000 tokens"` with a chapter count + a reading-time estimate computed at **~250 words per minute against the section's `content_md` word count** (e.g., `"4 of 12 chapters · ~30 min reading"`). Tooltip the underlying token cap for anyone who wants the technical metric.
-- `SpikeFindingsBlock.vue:67` — rename the heading to "About this engine" or remove the entire block (depending on whether the body content is still useful to ship; see Open Question OQ-6).
+- `SpikeFindingsBlock.vue:67` — rename the heading to **"Compare voices"** and clean the dev-only fallback paragraph (`"Run bookcompanion spike tts..."`). KEEP the "Listen to comparison" button — codebase grill confirmed it's user-valuable (A/B-plays the same text on Kokoro and Web Speech back-to-back). When no spike has been run, the fallback should read user-facing copy (e.g., *"Generate audio for any section to enable side-by-side voice comparison."*) instead of a CLI command. (D6 reversed — see Decisions table.)
 
 ASCII diagram of the audio empty-state is in Shape 2 above. Wireframes will live at `frontend/DESIGN.md` references after the wireframes phase.
 
@@ -201,12 +224,27 @@ ASCII diagram of the audio empty-state is in Shape 2 above. Wireframes will live
 
 | #  | Decision                                                                                                                                                                                              | Options Considered                                                                                                                                                                                         | Rationale                                                                                                                                                                                                                                                                                |
 | -- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1 | **Global API-error toast at the client wrapper level**, with an opt-in inline error region for user-initiated actions (Quiz Start). Tracks the TanStack Query / SWR / Pinia-Axios convention.            | (a) Per-component try/catch in every action that calls the API; (b) Global toast only, no inline; (c) Inline only, no global; (d) **Global + inline (chosen).**                                            | (a) repeats the same code in 30+ places and was clearly skipped here; (b) loses the actionable Retry next to the failure; (c) misses background errors. Hybrid is the durable convention (see Research Sources tkdodo, SWR, dev.to refs).                                                |
+| D1 | **Global API-error toast at the client wrapper level**, with an opt-in inline DIAGNOSTIC region for user-initiated actions (Quiz Start). Toast carries the actionable Retry; inline shows the failure reason + Dismiss only — no double-Retry. Toast lifecycle: sticky for actionable (Retry-bearing); 4 s auto-dismiss for confirmations; dedupe by message within a 5 s window; clear on retry success. Tracks the TanStack Query / SWR / Pinia-Axios convention. | (a) Per-component try/catch in every action that calls the API; (b) Global toast only, no inline; (c) Inline only, no global; (d) **Global + inline-diagnostic (chosen).**                                            | (a) repeats the same code in 30+ places and was clearly skipped here; (b) loses a near-action diagnostic anchor; (c) misses background errors. Hybrid with diagnostic-only inline (resolved in grill loop 2) avoids the two-Retry-button confusion that "global + inline-actionable" would create. (See Research Sources tkdodo, SWR, dev.to refs.) |
 | D2 | **CTA labels on the Audio empty state are "Listen" + "Generate MP3 files"**, with subtitles ("uses your browser" / "for offline + scrubbing"). Avoid "Listen now" / "Listen later" framing.              | (a) "Listen now" / "Listen later"; (b) "Stream" / "Download"; (c) "Web Speech" / "Kokoro" (engine names); (d) **"Listen" / "Generate MP3 files" (chosen).**                                                | (a) hides the artifact difference; (b) "Stream" is online-vs-offline framing, not artifact; (c) requires the user to learn engine names. Peer apps (ElevenLabs, Speechify, NaturalReader) frame the second CTA by artifact (Download / Generate / Export), which (d) mirrors.            |
-| D3 | **Generate-audio estimate splits into three labelled fields** in one line: "~Xmin to generate · ~Ymin to listen · ~ZMB on disk". The dialog also keeps the existing per-content-type checkboxes.        | (a) One ambiguous line (status quo); (b) Two-line "Time: X · Size: Y"; (c) **Three-field one-line (chosen);** (d) Three-line vertical list per content type.                                              | Industry research found no peer that splits all three pre-commit — this is a deliberate differentiator since the user has a real disk-space cost to weigh. (b) drops the listening-duration which is the *value* received. (d) inflates the modal vertically without informational gain. |
+| D3 | **Generate-audio estimate splits into three labelled fields** in one line: "~Xmin to generate · ~Ymin to listen · ~ZMB on disk". X and Z are DELTA (only sections being generated this click); Y is TOTAL (whole-book listening duration, computed as `sum(word_count) ÷ wpm` with `wpm = 200` configurable, see FR-WPM-CONFIG). The dialog also keeps the existing per-content-type checkboxes; X/Y/Z update reactively as checkboxes toggle. | (a) One ambiguous line (status quo); (b) Two-line "Time: X · Size: Y"; (c) **Three-field one-line, delta-X/Z + total-Y (chosen);** (d) Three-line vertical list per content type. | Industry research found no peer that splits all three pre-commit — this is a deliberate differentiator since the user has a real disk-space cost to weigh. (b) drops the listening-duration which is the *value* received. (d) inflates the modal vertically without informational gain. Delta-vs-total split (resolved in grill loop 2) prevents the "~3.6 min to generate" string showing on a partial-state book that finishes in 35 s. |
 | D4 | **Replace the quiz scope-picker token progress with a derived "X of N chapters · ~Y min reading" line.** Tooltip the underlying LLM token budget for anyone who wants the technical number.              | (a) Hide the budget entirely; (b) Keep "0 / 60,000 tokens"; (c) **Chapter count + reading-time estimate, tooltip for tokens (chosen).**                                                                    | (a) loses the cap-warning when the user selects too many; (b) is the status quo and unintelligible; (c) gives a decision-anchor (chapters they care about) plus an escape hatch for the technical user.                                                                                  |
 | D5 | **Quiz orientation copy lives at the top of the Quiz tab panel, not in a dismissable callout.** It's short — one paragraph + the per-button microcopy.                                                  | (a) Dismissable hero callout (with "don't show again"); (b) Tooltip / "?" icon next to the form; (c) **Always-on hero paragraph (chosen);** (d) Modal on first visit only.                                | (a)/(d) require dismissal state; the user is single-tenant and the form takes the whole panel anyway. (b) buries the orientation. Always-on costs ~3 lines of vertical space and is the simplest correct answer.                                                                          |
-| D6 | **The Settings → TTS "Spike findings" block is removed entirely** rather than renamed. The body content was a research dump; nothing in it is required for the user to make TTS settings decisions.    | (a) Rename heading to "About this engine"; (b) **Remove the block (chosen);** (c) Move the content to a dev-only docs page.                                                                                | (a) keeps the same problem (no decision tied to it); (b) is the cleanest. (c) is overengineering for content that no longer serves a purpose. See OQ-6 for confirmation.                                                                                                                  |
+| D6 | **The Settings → TTS "Spike findings" block is RENAMED to "Compare voices" with the dev-only fallback paragraph cleaned up.** The "Listen to comparison" A/B button is preserved (it plays the same sample text on Kokoro and Web Speech back-to-back — genuinely user-valuable). | (a) **Rename heading to "Compare voices" + clean fallback (chosen, post-grill);** (b) Remove the block entirely (original choice — reversed); (c) Move the content to a dev-only docs page; (d) Move the comparison button into the engine-picker UI added by FR-ENGINE-PICKER. | Original D6 chose (b) under the assumption the body was research-only. Codebase inspection in grill loop 2 found the "Listen to comparison" button — removing it would delete a useful affordance. (d) is appealing but (a) is lower-risk and ships in the same patch as the heading rename. The dev-only fallback ("Run bookcompanion spike tts...") is replaced with user-facing copy. |
+
+## Functional Requirements (added in grill loop 2)
+
+These FRs were surfaced or sharpened during grill loop 2 and need explicit handles for `/spec` to reference.
+
+| ID | Requirement | Surface | Tied to |
+|----|-------------|---------|---------|
+| FR-PRE-WARM | On `AudioTab.vue` mount, the component MUST call `speechSynthesis.getVoices()` and await one `voiceschanged` event (or a 500 ms timeout, whichever fires first) before enabling the Listen CTA. This warms the voice list so the first speak() call doesn't pay the async-voice-load cost. | `frontend/src/components/audio/AudioTab.vue` | G2 measurability |
+| FR-WPM-CONFIG | `Settings.audio.tts.wpm` (default 200) is the single source of truth for the listen-time formula. It is exposed in Settings → TTS as a numeric input (range 100–400, step 25). The Generate-audio modal's Y estimate, the section-level listening-time hints (anywhere a "~Y min to listen" string appears), and any future per-section duration estimate read from this constant. | Settings → TTS panel; `GenerateAudioModal.vue`; backend env / config | D3 (listen-time formula) |
+| FR-TOAST-LIFECYCLE | The toast store contract: (a) actionable toasts (any toast with a button) are sticky until user dismisses or replaced by a same-key toast; (b) confirmation/info toasts auto-dismiss at 4 s; (c) toasts dedupe on `message` within a 5 s window — a same-message toast within that window REPLACES the existing one, doesn't stack; (d) calling the action's success path (e.g., the Retry handler completing successfully) clears the originating toast. | `frontend/src/stores/ui.ts` (`showToast` extension) + `ToastContainer.vue` | D1 |
+| FR-ENGINE-PICKER | The Audio tab's POPULATED state (after MP3s exist for some/all sections) MUST keep both Listen and Generate CTAs visible. An engine picker (radio or segmented control) determines whether Listen plays Web Speech or queues the existing MP3s. Existing per-tab override / global Settings → TTS engine selection drives the default. Empty-state copy adapts to "X of Y sections have MP3s" once partial. | `AudioTab.vue` (populated-state branch) | D2; G2 (preserved post-generation) |
+| FR-PARTIAL-DELTA | The Generate-audio modal's X (gen time) and Z (disk) values are computed for ONLY the sections that will be generated this click (i.e., not already covered by an MP3). Y is computed for the whole book regardless. Modal labels MAY include the count for clarity (e.g., "Generating 3 of 17 sections"). | `GenerateAudioModal.vue:46-47, 134` | D3 |
+| FR-INLINE-DIAGNOSTIC | The inline error region under Quiz Start (D1's diagnostic surface) shows: (a) the failure reason from `ApiError.message` (or the FR-TOAST-LIFECYCLE fallback string when message is empty/HTML), (b) a Dismiss link. It does NOT carry a Retry button — Retry lives only in the toast. The region is hidden when the form is edited (any input change) or when the toast Retry succeeds. | `QuizTab.vue` / `ScopePicker.vue` form footer | D1 |
+| FR-COMPARE-VOICES | Settings → TTS "Compare voices" panel (renamed from "Spike findings") MUST: (a) render with heading text containing no `Spike` substring, (b) keep the `data-testid="listen-comparison"` button mounted and functional, (c) replace the dev-only `Run bookcompanion spike tts` fallback paragraph with user-facing copy ("Generate audio for any section to enable side-by-side voice comparison." or equivalent). | `frontend/src/components/settings/SpikeFindingsBlock.vue` (rename file as part of /spec optional cleanup) | D6 reversal; G6 |
+| FR-Q3-REPRO | `/spec` MUST NOT begin until the `## Backend Defect (Q-3 root cause)` subsection has all four `_TBD_` fields filled with a live repro of `POST /api/v1/quiz-sessions` 500. If the scope assessment shows the fix exceeds the top-7 UX scope, `/spec` MUST pause and re-amend requirements before continuing. | Backend defect repro task | Q-3 |
 
 ## Success Metrics
 
@@ -247,10 +285,10 @@ ASCII diagram of the audio empty-state is in Shape 2 above. Wireframes will live
 | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OQ-1  | What's the canonical Quiz orientation paragraph wording? Draft: *"Test your retention with AI-generated questions about this book. We'll generate ~5 questions in under a minute, score Got it / Partial / Missed, and track your tally across sessions."* — confirm or rewrite. |
 | OQ-2  | What's the exact CTA labelling for the audio empty state? Draft above is *"Listen"* (primary) + *"Generate MP3 files"* (secondary). Confirm or alter — peer apps use "Play"/"Listen" interchangeably for primary; "Generate / Download / Export" all viable for secondary. |
-| OQ-3  | What playback estimate formula should the dialog use for "~Y min to listen"? Per-section average ~150 wpm × token-to-word conversion? Or take the actual generated MP3 durations once available and pre-compute on Section model? Spec phase decides. |
+| OQ-3  | ✅ RESOLVED (grill loop 2) — Pre-gen formula `sum(word_count) ÷ wpm` with `wpm = 200` (configurable via Settings → TTS, see FR-WPM-CONFIG). Whole-book Y; post-gen MP3 durations not used. |
 | OQ-4  | What's the right number of quiz questions for the orientation copy? Currently the backend generates a fixed N (or LLM-decided?) — confirm in `/spec` before finalising the user-facing "~5 questions" string.                |
-| OQ-5  | Inline retry-bound error region: should it appear *under* the Start button (replacing the form's bottom margin) or *above* (replacing the orientation copy)? Either works; pick during wireframes.                            |
-| OQ-6  | "Spike findings" block on Settings → TTS — does the body content carry any user-actionable info, or is it pure research notes? D6 chose remove; if the body has user value (e.g., browser-voice availability table), rename instead. |
+| OQ-5  | ✅ RESOLVED (grill loop 2) — Inline region is DIAGNOSTIC-ONLY (no Retry; that's in the toast). Placement under the Start button. See FR-INLINE-DIAGNOSTIC. |
+| OQ-6  | ✅ RESOLVED from code (grill loop 2) — Block contains a user-valuable "Listen to comparison" A/B button. D6 REVERSED to "rename heading to 'Compare voices' + clean dev-only fallback; preserve comparison button." See FR-COMPARE-VOICES. |
 | OQ-7  | When `ApiError.message` from the quiz endpoints is empty or contains an HTML body (e.g., uvicorn's default 500 page), what fallback string should the toast show? Draft: *"Couldn't start quiz — the server returned an unexpected error. Retry?"* Confirm or rewrite during `/spec`. Applies to all quiz endpoints, not just `start_session`. |
 
 ---
@@ -260,6 +298,7 @@ ASCII diagram of the audio empty-state is in Shape 2 above. Wireframes will live
 | Loop | Findings | Changes Made                                                                                                                                                                                                                              |
 | ---- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1    | 7 surfaced (4 + 3 across two AskUserQuestion batches). 5 fixed, 2 added as OQs. | STRUCT-1 fixed (added Finding-ID legend table). CRIT-1 → OQ-7 (toast fallback copy deferred to /spec). CRIT-2 fixed (G2 loosened to ≤2 s first / ≤1 s subsequent). CRIT-5 fixed (added "no parallel Listen+Generate" non-goal). CRIT-7 fixed (pinned 250 wpm formula in Solution Direction Shape 3). POLISH-1 skipped (Goals/Friction lenses kept separate by intent). User confirmed gate-4 terminal exit. |
+| 2 (grill) | 8 questions asked (standard depth); 0 deferred; 1 resolved from code. | Q1 (Q-3 root cause) → added `## Backend Defect` subsection + FR-Q3-REPRO. Q2 (listen-time formula) → pinned `wpm=200` configurable; added FR-WPM-CONFIG; updated D3 + Solution Shape 2. Q3 (cold-start) → added FR-PRE-WARM; reworded G2. Q4 (toast lifecycle) → added FR-TOAST-LIFECYCLE; sharpened D1. Q5 (populated audio state) → added FR-ENGINE-PICKER (new gap not in OQs). Q6 (partial-state estimate) → added FR-PARTIAL-DELTA; updated D3. Q7 (toast vs inline retry) → added FR-INLINE-DIAGNOSTIC; sharpened D1; resolved OQ-5. Q8 (D6 reversal from code) → flipped D6 to RENAME; added FR-COMPARE-VOICES; updated G6 measurement; resolved OQ-6. Net: 7 doc gaps applied, 3 OQs resolved (3, 5, 6), 4 OQs remain (1, 2, 4, 7). |
 
 ---
 
