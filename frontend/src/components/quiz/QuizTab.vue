@@ -36,6 +36,11 @@
         :sections="sections"
         :seeded-theme="seededTheme"
         @start="onStartFromScope"
+        @change="store.clearInlineDiagnostic"
+      />
+      <InlineDiagnostic
+        :diag="store.inlineDiagnostic"
+        @dismiss="store.clearInlineDiagnostic"
       />
       <ThemesCoveredPanel
         :themes-summary="themesSummary"
@@ -50,6 +55,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { COPY } from './copy'
 import ScopePicker from './ScopePicker.vue'
+import InlineDiagnostic from './InlineDiagnostic.vue'
 import ResumeBanner from './ResumeBanner.vue'
 import ActiveSession from './ActiveSession.vue'
 import PastQAPanel from './PastQAPanel.vue'
@@ -131,7 +137,13 @@ async function onStopAndStart() {
 const sections = computed(() => props.sections)
 
 async function onStartFromScope(payload: { scope: QuizScope; theme: string | null }) {
-  await store.startSession(props.bookId, payload.scope, payload.theme)
+  // FR-05: errors surface via toast + inline diagnostic — swallow the throw
+  // here so Vue doesn't log an unhandled-rejection on the silent UX recovery path.
+  try {
+    await store.startSession(props.bookId, payload.scope, payload.theme)
+  } catch {
+    /* handled by store via toast + inlineDiagnostic */
+  }
 }
 </script>
 

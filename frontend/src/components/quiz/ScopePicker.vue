@@ -90,6 +90,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   start: [{ scope: { mode: QuizScopeMode; section_ids: number[] | null }; theme: string | null }]
+  change: []
 }>()
 
 const budgetMax = computed(() => props.budgetMax ?? 60_000)
@@ -106,6 +107,10 @@ watch(
     if (next != null && next.length > 0) theme.value = next
   },
 )
+
+// FR-05: any input mutation clears the inline diagnostic upstream so the
+// hero stays in sync with the user's current intent.
+watch([scopeMode, selectedSectionIds, theme], () => emit('change'), { deep: true })
 
 const ELIGIBLE_TYPES = new Set(['chapter', 'part', 'section'])
 const lsKey = computed(() => `quiz.lastScope.book-${props.bookId}`)
