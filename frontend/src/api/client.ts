@@ -6,24 +6,46 @@ class ApiError extends Error {
    * a sensible string regardless of the underlying shape so consumers
    * that read ``e.message`` (e.g. toast surfaces) get clean output. */
   public readonly detail: unknown
+  /** FR-07: when the server returns the 502 LLM-error envelope
+   * `{detail: "...", llm_stderr_tail: "..."}`, expose the tail as a typed
+   * accessor. `null` for every other shape. Per D15, message-substitution for
+   * empty/HTML/garbage `.message` lives in the store layer — this class stays
+   * faithful. */
+  public readonly llmStderrTail: string | null = null
 
   constructor(
     public status: number,
     detail: unknown,
     public code: string = 'UNKNOWN',
   ) {
-    const message = Array.isArray(detail)
-      ? (detail as Array<{ msg?: string }>)
-          .map((d) => (d?.msg ?? String(d)))
-          .join('; ')
-      : typeof detail === 'string'
-        ? detail
-        : detail === undefined || detail === null
-          ? 'Request failed'
-          : JSON.stringify(detail)
+    let message: string
+    let llmStderrTail: string | null = null
+    if (
+      detail !== null &&
+      typeof detail === 'object' &&
+      !Array.isArray(detail) &&
+      'detail' in (detail as Record<string, unknown>) &&
+      typeof (detail as Record<string, unknown>).detail === 'string'
+    ) {
+      // 502 LLM envelope (FR-07): unwrap inner `.detail` string and capture tail.
+      message = (detail as { detail: string }).detail
+      const tail = (detail as Record<string, unknown>).llm_stderr_tail
+      if (typeof tail === 'string') llmStderrTail = tail
+    } else if (Array.isArray(detail)) {
+      message = (detail as Array<{ msg?: string }>)
+        .map((d) => d?.msg ?? String(d))
+        .join('; ')
+    } else if (typeof detail === 'string') {
+      message = detail
+    } else if (detail === undefined || detail === null) {
+      message = 'Request failed'
+    } else {
+      message = JSON.stringify(detail)
+    }
     super(message)
     this.name = 'ApiError'
     this.detail = detail
+    this.llmStderrTail = llmStderrTail
   }
 }
 
