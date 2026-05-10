@@ -255,6 +255,17 @@ function onDownloadModel() {
           {{ buttonLabel }}
         </button>
       </div>
+
+      <p class="mt-3 text-right text-xs text-slate-400">
+        Voice + speed:
+        <router-link
+          to="/settings/tts#audio"
+          class="text-indigo-600 hover:underline"
+          data-testid="settings-link"
+        >
+          Settings → Text-to-speech
+        </router-link>
+      </p>
     </div>
   </div>
 </template>

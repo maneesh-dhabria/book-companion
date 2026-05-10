@@ -9,8 +9,12 @@ interface CompareVoicesResp {
   content_md?: string
 }
 
+const props = defineProps<{ bookId?: number }>()
+
 const data = ref<CompareVoicesResp>({ available: false })
 const loading = ref(true)
+// FR-19: per-component cache for the markdown-stripped section[0] preamble.
+const sampleTextCache = ref<string | null>(null)
 const md = new MarkdownIt({ html: false, linkify: true })
 
 const renderedHtml = computed(() => {
@@ -30,9 +34,47 @@ async function load() {
   }
 }
 
-const SAMPLE_TEXT =
+const PANGRAM_FALLBACK =
   'The quick brown fox jumps over the lazy dog, and learning never stops.'
 const KOKORO_VOICE = 'af_sarah'
+
+// FR-19: lightweight markdown stripper. Removes bold/italic markers, headings,
+// inline code, and link wrappers; collapses whitespace. Plain text only.
+function stripMarkdown(input: string): string {
+  return input
+    .replace(/!\[[^\]]*]\([^)]*\)/g, '') // images
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1') // links → text
+    .replace(/`([^`]+)`/g, '$1') // inline code
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+    .replace(/\*([^*]+)\*/g, '$1') // italic *
+    .replace(/__([^_]+)__/g, '$1') // bold _
+    .replace(/_([^_]+)_/g, '$1') // italic _
+    .replace(/^#{1,6}\s+/gm, '') // headings
+    .replace(/^>\s?/gm, '') // blockquote
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function resolveSampleText(): Promise<string> {
+  if (sampleTextCache.value !== null) return sampleTextCache.value
+  if (props.bookId === undefined) {
+    sampleTextCache.value = PANGRAM_FALLBACK
+    return PANGRAM_FALLBACK
+  }
+  try {
+    const r = await fetch(`/api/v1/books/${props.bookId}`)
+    if (!r.ok) throw new Error(`book fetch failed: ${r.status}`)
+    const j = (await r.json()) as { sections?: Array<{ content_md?: string }> }
+    const md = j.sections?.[0]?.content_md ?? ''
+    const stripped = stripMarkdown(md).slice(0, 280)
+    const text = stripped.length >= 20 ? stripped : PANGRAM_FALLBACK
+    sampleTextCache.value = text
+    return text
+  } catch {
+    sampleTextCache.value = PANGRAM_FALLBACK
+    return PANGRAM_FALLBACK
+  }
+}
 
 // FR-18: transient chip shows which engine is currently playing during the
 // A/B comparison. Empty string = chip hidden.
@@ -57,12 +99,13 @@ async function playWebSpeech(text: string) {
 }
 
 async function listenComparison() {
+  const sampleText = await resolveSampleText()
   let kokoroPlayed = false
   try {
     const r = await fetch('/api/v1/audio/sample', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ engine: 'kokoro', voice: KOKORO_VOICE, text: SAMPLE_TEXT }),
+      body: JSON.stringify({ engine: 'kokoro', voice: KOKORO_VOICE, text: sampleText }),
     })
     if (r.ok) {
       const blob = await r.blob()
@@ -70,7 +113,7 @@ async function listenComparison() {
       const a = new Audio(url)
       a.addEventListener('ended', () => {
         URL.revokeObjectURL(url)
-        void playWebSpeech(SAMPLE_TEXT)
+        void playWebSpeech(sampleText)
       })
       chipText.value = `Playing Kokoro (${KOKORO_VOICE})…`
       kokoroPlayed = true
@@ -81,7 +124,7 @@ async function listenComparison() {
   }
   if (!kokoroPlayed) {
     // Kokoro unavailable — flip straight to Web Speech.
-    void playWebSpeech(SAMPLE_TEXT)
+    void playWebSpeech(sampleText)
   }
 }
 
