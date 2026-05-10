@@ -167,6 +167,13 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
     }
   }
 
+  // FR-11/FR-12: setEngine — toggle the active TTS engine. Full mid-playback
+  // restart-section logic lives in T18; for now this stub flips the ref so
+  // EnginePicker (T17) can drive the populated layout.
+  function setEngine(kind: TtsEngineKind): void {
+    engine.value = kind
+  }
+
   return {
     isActive,
     bookId,
@@ -190,6 +197,7 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
     canPlay,
     isPlaying,
     isError,
+    setEngine,
     open,
     close,
     play,

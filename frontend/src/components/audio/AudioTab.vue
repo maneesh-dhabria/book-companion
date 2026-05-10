@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { audioApi, type AudioInventoryItem } from '@/api/audio'
 import DifferencePopover from '@/components/audio/DifferencePopover.vue'
 import EngineChip from '@/components/audio/EngineChip.vue'
+import EnginePicker from '@/components/audio/EnginePicker.vue'
 import GenerateAudioModal from '@/components/audio/GenerateAudioModal.vue'
 import { useAudioJobStore } from '@/stores/audioJob'
 import { useTtsPlayerStore } from '@/stores/ttsPlayer'
@@ -74,6 +75,17 @@ const audioEmptyHeading = computed(() =>
   listenAvailable.value ? 'Listen to this book' : 'Generate MP3s to listen to this book',
 )
 
+// FR-11: populated state default — pre-generated MP3s exist → start in 'mp3'
+// to honour the user's prior generation work. Otherwise stay on 'web-speech'.
+const populatedEngine = ref<'mp3' | 'web-speech'>('web-speech')
+function syncDefaultEngine() {
+  populatedEngine.value = coverage.value.generated >= 1 ? 'mp3' : 'web-speech'
+}
+function onEngineChange(kind: 'mp3' | 'web-speech') {
+  populatedEngine.value = kind
+  ttsPlayer.setEngine?.(kind)
+}
+
 // Generation estimate copy: ~30s per content unit on Kokoro; instant on
 // Web Speech (no pre-generation).
 const estimateCopy = computed(() => {
@@ -125,6 +137,7 @@ async function load() {
     const inv = await audioApi.inventory(props.bookId)
     files.value = inv.files
     coverage.value = inv.coverage
+    syncDefaultEngine()
     loaded.value = true
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'failed to load'
@@ -236,7 +249,16 @@ defineExpose({ voicesReady, availableVoices })
     </div>
 
     <div v-else-if="state === 'partial'" data-testid="state-partial">
-      <p class="text-sm text-slate-700">
+      <div
+        data-testid="audio-engine-row"
+        class="flex flex-wrap items-center gap-3 audio-engine-row"
+      >
+        <EnginePicker
+          :model-value="populatedEngine"
+          @update:model-value="onEngineChange"
+        />
+      </div>
+      <p class="text-sm text-slate-700 mt-2">
         {{ coverage.generated }} of {{ coverage.total }} sections have audio.
       </p>
       <div
@@ -256,7 +278,16 @@ defineExpose({ voicesReady, availableVoices })
     </div>
 
     <div v-else-if="state === 'full'" data-testid="state-full">
-      <p class="text-sm text-slate-700">
+      <div
+        data-testid="audio-engine-row"
+        class="flex flex-wrap items-center gap-3 audio-engine-row"
+      >
+        <EnginePicker
+          :model-value="populatedEngine"
+          @update:model-value="onEngineChange"
+        />
+      </div>
+      <p class="text-sm text-slate-700 mt-2">
         All {{ coverage.total }} sections have audio.
       </p>
     </div>
