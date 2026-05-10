@@ -39,8 +39,9 @@ describe('AudioTab', () => {
     })
     const wrap = mount(AudioTab, { props: { bookId: 1 } })
     await flushPromises()
-    expect(wrap.text()).toContain('No audio yet')
-    expect(wrap.find('button[data-testid="generate-audio"]').exists()).toBe(true)
+    // T16: empty-state copy verb-led + caption update.
+    expect(wrap.text()).toContain('No audio files yet')
+    expect(wrap.find('button[data-testid="generate-cta"]').exists()).toBe(true)
   })
 
   it('renders empty-state with engine chip + estimate + scope + diff trigger (FR-E04..E06)', async () => {

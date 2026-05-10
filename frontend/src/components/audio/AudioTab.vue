@@ -59,6 +59,21 @@ const defaultEngine = computed<'kokoro' | 'web-speech'>(() =>
   ttsPlayer.defaultEngine === 'mp3' ? 'kokoro' : 'web-speech',
 )
 
+// FR-09: Listen is unavailable when the browser has no speechSynthesis at
+// all, OR when voicesReady has settled and getVoices() came back empty
+// (private mode / hardened profiles can disable voices without nulling
+// the API). The morph also covers REVIEW-LOG #2 — the sr-only tip is
+// always rendered, not conditionally injected after the fact.
+const listenAvailable = computed<boolean>(() => {
+  if (typeof window === 'undefined') return true
+  if (!('speechSynthesis' in window)) return false
+  if (!voicesReady.value) return true
+  return availableVoices.value.length > 0
+})
+const audioEmptyHeading = computed(() =>
+  listenAvailable.value ? 'Listen to this book' : 'Generate MP3s to listen to this book',
+)
+
 // Generation estimate copy: ~30s per content unit on Kokoro; instant on
 // Web Speech (no pre-generation).
 const estimateCopy = computed(() => {
@@ -133,6 +148,14 @@ function onGenerate() {
   showGenerateModal.value = true
 }
 
+function onListen() {
+  // FR-10: kick off Web Speech playback for the empty-state book. Wired in T17/T18
+  // when the engine picker / play-section pipeline lands; for now this is a hook
+  // that engine-aware tests can spy on without coupling to ttsPlayer's full API.
+  if (!listenAvailable.value) return
+  ttsPlayer.startBookListen?.(props.bookId)
+}
+
 function onModalClose() {
   showGenerateModal.value = false
 }
@@ -166,18 +189,36 @@ defineExpose({ voicesReady, availableVoices })
       <div class="flex items-center gap-2">
         <EngineChip :engine="defaultEngine" />
       </div>
-      <p class="text-sm text-slate-700 dark:text-slate-200">No audio yet for this book.</p>
+      <h2 data-testid="audio-empty-heading" class="audio-empty-heading">
+        {{ audioEmptyHeading }}
+      </h2>
+      <p data-testid="audio-empty-subtitle" class="text-sm text-slate-700 dark:text-slate-200">
+        Instant playback via your browser, or generate MP3s for offline listening.
+      </p>
       <p data-testid="audio-estimate" class="text-xs text-slate-500 dark:text-slate-400">
         {{ estimateCopy }} · <span data-testid="audio-scope">{{ scopeCopy }}</span>
       </p>
-      <div class="mt-2 flex items-center gap-3 audio-empty-actions">
+      <div class="mt-2 flex flex-wrap items-center gap-3 audio-empty-actions">
         <button
           type="button"
-          data-testid="generate-audio"
+          data-testid="listen-cta"
           class="btn-primary"
+          :disabled="!listenAvailable"
+          aria-describedby="listen-tip"
+          @click="onListen"
+        >
+          Listen
+        </button>
+        <span id="listen-tip" class="sr-only">
+          Web Speech is unavailable in this browser. Generate MP3 files instead.
+        </span>
+        <button
+          type="button"
+          data-testid="generate-cta"
+          class="btn-secondary"
           @click="onGenerate"
         >
-          Generate audio
+          Generate MP3 files
         </button>
         <button
           type="button"
@@ -189,6 +230,9 @@ defineExpose({ voicesReady, availableVoices })
         </button>
         <DifferencePopover :open="showDiff" @close="showDiff = false" />
       </div>
+      <p data-testid="audio-empty-caption" class="text-slate-500 text-sm">
+        No audio files yet — generate to enable seek/scrub.
+      </p>
     </div>
 
     <div v-else-if="state === 'partial'" data-testid="state-partial">
@@ -236,5 +280,22 @@ defineExpose({ voicesReady, availableVoices })
 }
 .audio-empty-actions {
   position: relative;
+}
+.audio-empty-heading {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text, #0f172a);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>
