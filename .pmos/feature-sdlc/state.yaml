@@ -3,8 +3,8 @@ slug: quiz-audio-ux-top7
 tier: null
 mode: interactive
 started_at: 2026-05-10T07:41:20Z
-last_updated: 2026-05-10T11:30:00Z
-current_phase: spec
+last_updated: 2026-05-10T12:30:00Z
+current_phase: simulate-spec
 tier: 3
 worktree_path: /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7
 branch: feat/quiz-audio-ux-top7
@@ -86,7 +86,12 @@ phases:
     notes: "Live POST /api/v1/books/1/quiz-sessions reproduced 500. Root cause: SubprocessNonZeroExitError uncaught in route handler. Fix scope: two small changes (route exception handler + stderr capture in claude_cli.py); within top-7."
   - id: spec
     hardness: hard
-    status: pending
+    status: completed
+    started_at: 2026-05-10T11:35:00Z
+    completed_at: 2026-05-10T12:30:00Z
+    artifact_path: 02_spec.md
+    child_tier: 3
+    notes: "525 lines, 16 sections, 22 FRs, 16 decisions (D1-D6 carried + D7-D16 new), all anchors emitted. Status promoted to 'Ready for Plan'. Spec-time gap fixed: wpm fields purely additive (no rename, no legacy shim) since TTSConfig had no wpm field shipped."
   - id: simulate-spec
     hardness: soft
     status: pending
