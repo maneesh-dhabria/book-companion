@@ -4,17 +4,17 @@ type: feature
 feature: quiz-audio-ux-top7
 spec_ref: null
 date: 2026-05-10
-status: Draft
+status: Approved
 ---
 
 # Quiz & Audio UX — Top-7 Fixes — Requirements
 
 **Date:** 2026-05-10
 **Last updated:** 2026-05-10
-**Status:** Draft
+**Status:** Approved (post-Phase-5 review)
 **Tier:** 3 — Feature
 **Mode:** interactive
-**Open Questions:** 6
+**Open Questions:** 7
 
 ## Problem
 
@@ -29,6 +29,18 @@ The seven highest-severity findings, in priority order:
 5. **A-5** The Generate-audio dialog estimate "~3.6 min · ~54 MB for 17 sections" is ambiguous: 3.6 min generation time? Playback duration? It's generation; playback would be ~25 min.
 6. **Q-7** The Quiz scope picker shows "0 / 60,000 tokens" — raw LLM-context jargon with no decision anchor.
 7. **A-7** Settings → Text-to-speech ships with a "Spike findings" heading — engineering artefact left over from the 2026-05-03 audio spec's research phase.
+
+### Finding-ID legend (for top-down readers)
+
+| ID  | One-line headline                                                          | Severity | Surface                          |
+| --- | -------------------------------------------------------------------------- | -------- | -------------------------------- |
+| Q-3 | Start-quiz silently fails — no toast / spinner / retry on 500              | high     | Quiz tab + global API client     |
+| A-1 | Single "Generate audio" CTA contradicts "Instant on Web Speech" copy       | high     | Audio tab empty state            |
+| Q-1 | Quiz first-visit is a bare form with no orientation                       | high     | Quiz tab                         |
+| A-3 | Audio empty-state hierarchy inverted ("No audio yet" reads as headline)   | high     | Audio tab empty state            |
+| A-5 | Generate-audio estimate "~3.6 min · ~54 MB" is ambiguous (gen vs. play)   | high     | Generate-audio modal             |
+| Q-7 | Quiz scope picker shows "0 / 60,000 tokens" — engineering jargon          | high     | Quiz tab scope picker            |
+| A-7 | Settings → TTS still shows a "Spike findings" engineering heading         | high     | Settings → Text-to-speech panel  |
 
 ### Who experiences this?
 
@@ -47,7 +59,7 @@ The single self-hosted user of Book Companion (matches the workstream's User Seg
 ### Goals
 
 - **G1 — Errors are visible.** When `POST /quiz-sessions` (or any quiz API call) fails, the user sees a toast within 1 s of the click, with the failure reason and a Retry button — measured by: zero silent-fail console lines on the Quiz tab.
-- **G2 — Two real listening paths.** A new Audio user can either (a) press Play and hear the book within 1 click via Web Speech, or (b) press a separate Generate CTA and produce MP3s — measured by: one click from Audio tab to first audible word on Web Speech.
+- **G2 — Two real listening paths.** A new Audio user can either (a) press Play and hear the book within 1 click via Web Speech, or (b) press a separate Generate CTA and produce MP3s — measured by: one click from Audio tab to first audible word on Web Speech, with `speechSynthesis.speaking === true` within ≤ 2 s on the first chapter and ≤ 1 s on subsequent chapters (loosened from a flat 1 s to absorb the cold-start voice load that Chrome and Safari exhibit).
 - **G3 — Quiz is self-explanatory on first visit.** A user who has never read the changelog can read the Quiz tab and know what a quiz is, how many questions to expect, how long it will take, and what the lifetime tally tracks — measured by: orientation copy present + ≥1 explicit count/duration estimate near the Start button.
 - **G4 — Generate-audio dialog discloses three estimates separately.** Generation time, listening duration, and disk size are three distinct labelled fields, not one ambiguous string — measured by: regex test against the dialog finding all three terms.
 - **G5 — Token jargon is gone from the quiz scope picker.** A user-facing budget metric replaces "0 / 60,000 tokens" — measured by: no string `tokens` visible to the user on the Quiz tab.
@@ -62,6 +74,7 @@ The single self-hosted user of Book Companion (matches the workstream's User Seg
 - **NOT solving the medium-severity findings (Q-4, Q-5, Q-8, Q-9, Q-10, A-2, A-4, A-6, A-8, A-10) or the cross-cutting X-* set** — because the orchestrator scoped this run to the top-7 TL;DR. Each is captured in the design-crit and will be picked up in a subsequent feature.
 - **NOT changing the backend quiz-session generation model (provider, prompts, scoring schema)** — because the design-crit didn't critique it. The 500 root cause is a separate backend defect to be fixed in `/spec` of this feature.
 - **NOT moving the quiz/audio features behind a feature flag** — because both already shipped to the only user.
+- **NOT supporting parallel Listen + Generate in one session** — because the two paths share the playbar today and simultaneous use produces an ambiguous UI state. Treat the choice as exclusive per click; revisit if both paths land healthy and the user explicitly asks for it.
 
 ## User Experience Analysis
 
@@ -129,7 +142,7 @@ Where X is wall-clock generation, Y is total speech duration, Z is total file si
 Three small, file-localised copy/structure changes:
 
 - `QuizTab.vue` (or `ScopePicker.vue`) — add a hero block: *"Test your retention with AI-generated questions about this book. We'll generate ~5 questions in under a minute, score Got it / Partial / Missed, and track your tally across sessions."* + inline microcopy near the Start button: *"5 questions · ~30 sec to generate"*.
-- `ScopePicker.vue` token-progress rendering — replace `"X / 60,000 tokens"` with a chapter count + a derived reading-time estimate (e.g., `"4 of 12 chapters · ~30 min reading"`). Tooltip the underlying token cap for anyone who wants the technical metric.
+- `ScopePicker.vue` token-progress rendering — replace `"X / 60,000 tokens"` with a chapter count + a reading-time estimate computed at **~250 words per minute against the section's `content_md` word count** (e.g., `"4 of 12 chapters · ~30 min reading"`). Tooltip the underlying token cap for anyone who wants the technical metric.
 - `SpikeFindingsBlock.vue:67` — rename the heading to "About this engine" or remove the entire block (depending on whether the body content is still useful to ship; see Open Question OQ-6).
 
 ASCII diagram of the audio empty-state is in Shape 2 above. Wireframes will live at `frontend/DESIGN.md` references after the wireframes phase.
@@ -238,6 +251,15 @@ ASCII diagram of the audio empty-state is in Shape 2 above. Wireframes will live
 | OQ-4  | What's the right number of quiz questions for the orientation copy? Currently the backend generates a fixed N (or LLM-decided?) — confirm in `/spec` before finalising the user-facing "~5 questions" string.                |
 | OQ-5  | Inline retry-bound error region: should it appear *under* the Start button (replacing the form's bottom margin) or *above* (replacing the orientation copy)? Either works; pick during wireframes.                            |
 | OQ-6  | "Spike findings" block on Settings → TTS — does the body content carry any user-actionable info, or is it pure research notes? D6 chose remove; if the body has user value (e.g., browser-voice availability table), rename instead. |
+| OQ-7  | When `ApiError.message` from the quiz endpoints is empty or contains an HTML body (e.g., uvicorn's default 500 page), what fallback string should the toast show? Draft: *"Couldn't start quiz — the server returned an unexpected error. Retry?"* Confirm or rewrite during `/spec`. Applies to all quiz endpoints, not just `start_session`. |
+
+---
+
+## Review Log
+
+| Loop | Findings | Changes Made                                                                                                                                                                                                                              |
+| ---- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | 7 surfaced (4 + 3 across two AskUserQuestion batches). 5 fixed, 2 added as OQs. | STRUCT-1 fixed (added Finding-ID legend table). CRIT-1 → OQ-7 (toast fallback copy deferred to /spec). CRIT-2 fixed (G2 loosened to ≤2 s first / ≤1 s subsequent). CRIT-5 fixed (added "no parallel Listen+Generate" non-goal). CRIT-7 fixed (pinned 250 wpm formula in Solution Direction Shape 3). POLISH-1 skipped (Goals/Friction lenses kept separate by intent). User confirmed gate-4 terminal exit. |
 
 ---
 
