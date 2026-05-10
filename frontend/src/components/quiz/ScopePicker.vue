@@ -66,6 +66,9 @@
     <ThemeInput v-model="theme" />
 
     <div class="actions">
+      <p class="quiz-microcopy" data-test="quiz-microcopy">
+        One question at a time · ~10 sec to generate · scored Got it / Partial / Missed
+      </p>
       <button
         type="button"
         class="btn-primary"

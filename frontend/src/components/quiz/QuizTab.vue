@@ -31,6 +31,13 @@
 
     <!-- Default 'ready' mode: scope picker, themes covered, past-Q&A if any -->
     <template v-else>
+      <header class="quiz-hero">
+        <h2>Test your retention</h2>
+        <p>
+          Test your retention with AI-generated questions. We'll generate one question at a
+          time — ~10 sec each — and score Got it / Partial / Missed.
+        </p>
+      </header>
       <ScopePicker
         :book-id="bookId"
         :sections="sections"
@@ -159,5 +166,18 @@ async function onStartFromScope(payload: { scope: QuizScope; theme: string | nul
 .quiz-banner-warn {
   background: var(--color-warn-bg, #fff8e1);
   color: var(--color-warn-text, #6b4500);
+}
+.quiz-hero {
+  margin-bottom: 1rem;
+}
+.quiz-hero h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+.quiz-hero p {
+  margin: 0;
+  color: var(--color-text-muted, #4b5563);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 </style>
