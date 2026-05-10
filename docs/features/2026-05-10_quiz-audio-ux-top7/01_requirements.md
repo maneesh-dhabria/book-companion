@@ -56,18 +56,19 @@ The single self-hosted user of Book Companion (matches the workstream's User Seg
 
 `POST /api/v1/quiz-sessions` returns 500 on the live build for the only seeded book. The design-crit observed the symptom (button stays active, no toast); the underlying defect was not diagnosed before the requirements doc was approved. Grill loop 2 added this as a hard precondition for `/spec` entry.
 
-**Status:** Repro pending. Captured below before /spec begins.
+**Status:** ✅ Repro captured 2026-05-10T11:27 UTC against worktree `feat/quiz-audio-ux-top7` on port 8765.
 
 | Field | Value |
 |-------|-------|
-| Endpoint | `POST /api/v1/quiz-sessions` |
-| Symptom | 500; UI silent (no toast, no spinner clear) |
-| Repro environment | Worktree at `feat/quiz-audio-ux-top7`, fresh `bookcompanion serve --port 8765`, single seeded book |
-| Live traceback | _TBD — run repro and paste full stack trace + request body + response payload here._ |
-| Suspected root cause | _TBD — to be filled by /spec entry repro task._ |
-| Scope assessment | _TBD — does fix require schema migration, prompt template change, dependency update, or local code-only patch? Drives whether requirements need further amendment._ |
+| Endpoint | `POST /api/v1/books/{book_id}/quiz-sessions` (the design-crit's reference to `POST /quiz-sessions` was a shorthand; the actual route is book-scoped) |
+| Symptom | HTTP 500 with body `Internal Server Error` (text/plain, 21 bytes) — no FastAPI JSON body, just the bare uvicorn default. UI silent because the API client doesn't toast and the response has no parseable detail. |
+| Repro request | `POST http://localhost:8765/api/v1/books/1/quiz-sessions` with body `{"scope": {"mode": "all_summaries"}}`. Book 1 = "Understanding Michael Porter" (status PARSED, fully summarized). |
+| Live traceback | Final frame: `app.exceptions.SubprocessNonZeroExitError: CLI exited with code 1: <no output>` raised from `app/services/summarizer/claude_cli.py:194` inside `LLMProvider.generate()`. Propagates up through `quiz_service.py:182` (`generate_question`) → `quiz_service.py:310` (`start_session`) → route handler at `app/api/routes/quiz.py:280`. |
+| Direct cause | `app/api/routes/quiz.py:279-295` catches `QuizValidationError`, `QuizBudgetError`, `SubprocessNotFoundError`, `SubprocessTimeoutError`, `QuizGenerationError` — but **not** `SubprocessNonZeroExitError`. When Claude CLI exits non-zero with no stdout, the exception propagates to FastAPI's default 500 handler (text/plain, no body). |
+| Underlying cause | The Claude CLI subprocess exits code 1 with empty stdout when given the question-generation prompt + `QUESTION_SCHEMA`. Likely sub-causes (need narrowing in /spec): (a) Claude CLI auth state stale in the worktree env, (b) JSON-schema validation failing inside the CLI before any output, (c) `CLAUDE_CONFIG_DIR` env var not propagating correctly. The CLI's silent exit-1 is itself a CLI-side robustness gap (should surface the error to stderr). For our scope, the user-facing fix is independent of which sub-cause it is. |
+| Scope assessment | **Within top-7 scope.** Two changes required, both small: (1) add an `except SubprocessNonZeroExitError` handler in `quiz.py:start_session` and other quiz endpoints that call the LLM (next-question, explain) — return HTTP 502 with `detail="LLM provider error: <msg>"` so FR-INLINE-DIAGNOSTIC has parseable content; (2) extend `claude_cli.py:194` to capture stderr (currently raises with `<no output>`) so the 502 detail carries actionable diagnostic context. Neither requires schema migrations, prompt template changes, or out-of-top-7 code paths. The deeper investigation of why Claude CLI exits 1 silently is a follow-up — once the route returns a 502 with stderr context, the user can see the real failure and act. |
 
-**Constraint on /spec:** /spec MUST open with a Q-3 repro task that fills the four `_TBD_` fields above. If the scope assessment reveals the fix requires changes outside the top-7 UX scope (e.g., backend schema, LLM prompt rewrite), pause and amend requirements before continuing.
+**Constraint on /spec satisfied:** Repro complete; root cause identified; scope contained. /spec proceeds.
 
 ## Goals & Non-Goals
 

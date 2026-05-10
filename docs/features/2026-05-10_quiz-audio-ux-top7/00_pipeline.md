@@ -9,8 +9,8 @@
 - **Feature folder:** /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7/docs/features/2026-05-10_quiz-audio-ux-top7
 - **Seed input:** `docs/2026-05-10_quiz-and-audio-design-crit/design-crit/design-crit.md` (top-7 TL;DR scope)
 - **Started:** 2026-05-10T07:41:20Z
-- **Last updated:** 2026-05-10T10:00:00Z
-- **Current phase:** msf-wf gate (subgate of wireframes Phase 6)
+- **Last updated:** 2026-05-10T11:30:00Z
+- **Current phase:** spec (FR-Q3-REPRO satisfied)
 
 ## Phases
 
@@ -24,7 +24,8 @@
 | 4a  | msf-req           | soft     | completed | `msf-findings.md`   | 2026-05-10T09:00:00Z | 14 findings; Must+Should applied as requirements review loop 3 (2 new FRs + 6 FR amendments); Nice deferred |
 | 4b  | creativity        | soft     | skipped   | —                   | 2026-05-10T09:05:00Z | user chose Recommended-Skip; grill+MSF covered the leverage |
 | 4c  | wireframes        | soft     | completed | `wireframes/index.html` | 2026-05-10T10:00:00Z | 10 desktop-web HTMLs + index + REVIEW-LOG.md; medium-rigor cross-file review (17 findings → 7 applied, 10 deferred to /spec); /msf-wf delegated to user gate |
-| 4d  | prototype         | soft     | pending   | —                   | —                    | —     |
+| 4d  | prototype         | soft     | skipped   | —                   | 2026-05-10T10:05:00Z | user chose Recommended-Skip; wireframes sufficient for /spec |
+| 4e  | q3-repro (FR-Q3)  | hard     | completed | `01_requirements.md ## Backend Defect` | 2026-05-10T11:30:00Z | live 500 reproduced; root cause = uncaught SubprocessNonZeroExitError in quiz route handler; fix scope contained within top-7 |
 | 5   | spec              | hard     | pending   | —                   | —                    | —     |
 | 6   | simulate-spec     | soft     | pending   | —                   | —                    | —     |
 | 7   | plan              | hard     | pending   | —                   | —                    | —     |

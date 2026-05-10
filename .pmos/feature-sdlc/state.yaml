@@ -3,8 +3,8 @@ slug: quiz-audio-ux-top7
 tier: null
 mode: interactive
 started_at: 2026-05-10T07:41:20Z
-last_updated: 2026-05-10T10:00:00Z
-current_phase: msf-wf-gate
+last_updated: 2026-05-10T11:30:00Z
+current_phase: spec
 tier: 3
 worktree_path: /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7
 branch: feat/quiz-audio-ux-top7
@@ -73,7 +73,17 @@ phases:
     notes: "10 desktop-web wireframes + index + REVIEW-LOG.md. Medium-rigor cross-file review pass. /msf-wf phase delegated to user gate (pmos learning: skip option for single-user apps even though Tier 3 nominally mandatory)."
   - id: prototype
     hardness: soft
-    status: pending
+    status: skipped
+    skipped_at: 2026-05-10T10:05:00Z
+    skipped_reason: user_chose_recommended_skip
+    notes: "Wireframes sufficient for /spec context on a single-user personal tool."
+  - id: q3-repro
+    hardness: hard
+    status: completed
+    started_at: 2026-05-10T11:25:00Z
+    completed_at: 2026-05-10T11:30:00Z
+    artifact_path: 01_requirements.md (## Backend Defect subsection)
+    notes: "Live POST /api/v1/books/1/quiz-sessions reproduced 500. Root cause: SubprocessNonZeroExitError uncaught in route handler. Fix scope: two small changes (route exception handler + stderr capture in claude_cli.py); within top-7."
   - id: spec
     hardness: hard
     status: pending
