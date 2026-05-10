@@ -1,0 +1,82 @@
+- generic [ref=e3]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Book Companion home" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - text: BC
+    - generic [ref=e6]:
+      - link "📚 Library" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: 📚
+        - generic [ref=e9]: Library
+      - link "💡 Concepts" [ref=e10] [cursor=pointer]:
+        - /url: /concepts
+        - generic [ref=e11]: 💡
+        - generic [ref=e12]: Concepts
+      - link "💬 Annotations" [ref=e13] [cursor=pointer]:
+        - /url: /annotations
+        - generic [ref=e14]: 💬
+        - generic [ref=e15]: Annotations
+      - link "⚙️ Settings" [ref=e16] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e17]: ⚙️
+        - generic [ref=e18]: Settings
+  - generic [ref=e19]:
+    - banner [ref=e20]:
+      - link "Book Companion" [ref=e22] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e23]:
+        - textbox "Search... (⌘K)" [ref=e24] [cursor=pointer]
+        - link "Upload" [ref=e25] [cursor=pointer]:
+          - /url: /upload
+    - main [ref=e26]:
+      - main [ref=e27]:
+        - generic [ref=e28]:
+          - img "Cover for Understanding Michael Porter" [ref=e29]
+          - generic [ref=e30]:
+            - heading "Understanding Michael Porter" [level=1] [ref=e31]
+            - generic [ref=e32]: Magretta, Joan
+            - generic [ref=e33]:
+              - generic [ref=e34]:
+                - generic [ref=e35]: business frameworks
+                - button "Remove business frameworks" [ref=e36] [cursor=pointer]: ×
+              - generic [ref=e37]:
+                - generic [ref=e38]: competitive advantage
+                - button "Remove competitive advantage" [ref=e39] [cursor=pointer]: ×
+              - generic [ref=e40]:
+                - generic [ref=e41]: strategy
+                - button "Remove strategy" [ref=e42] [cursor=pointer]: ×
+              - generic [ref=e43]:
+                - generic [ref=e44]: trade-offs
+                - button "Remove trade-offs" [ref=e45] [cursor=pointer]: ×
+              - button "+ Add tag" [ref=e47] [cursor=pointer]
+            - generic [ref=e48]:
+              - generic "All sections summarized" [ref=e49]: ✓
+              - generic [ref=e50]: All 12 sections summarized
+            - generic [ref=e51]:
+              - link "Read" [ref=e52] [cursor=pointer]:
+                - /url: /books/1/sections/3
+              - button "More actions" [ref=e54] [cursor=pointer]: ⋯
+        - tablist "Book detail sections" [ref=e55]:
+          - tab "Overview" [ref=e56] [cursor=pointer]
+          - tab "Summary" [ref=e57] [cursor=pointer]
+          - tab "Sections" [ref=e58] [cursor=pointer]
+          - tab "Audio" [ref=e59] [cursor=pointer]
+          - tab "Annotations" [ref=e60] [cursor=pointer]
+          - tab "Quiz" [selected] [ref=e61] [cursor=pointer]
+        - tabpanel [ref=e62]:
+          - generic [ref=e64]:
+            - group "Quiz scope" [ref=e65]:
+              - generic [ref=e66]: Quiz scope
+              - generic [ref=e67]:
+                - radio "All summaries" [checked] [ref=e68]
+                - text: All summaries
+              - generic [ref=e69]:
+                - radio "Specific chapters" [ref=e70]
+                - text: Specific chapters
+            - generic [ref=e71]:
+              - generic [ref=e72]: Theme (optional)
+              - textbox "Theme (optional) 0 / 200" [ref=e73]:
+                - /placeholder: e.g. behavioural-finance applications
+              - generic [ref=e74]: 0 / 200
+            - button "Start quiz" [active] [ref=e76] [cursor=pointer]
+  - region "Notifications"

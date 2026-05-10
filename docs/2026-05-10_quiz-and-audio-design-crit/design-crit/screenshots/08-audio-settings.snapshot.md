@@ -1,0 +1,61 @@
+- generic [ref=e3]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Book Companion home" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - text: BC
+    - generic [ref=e6]:
+      - link "📚 Library" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: 📚
+        - generic [ref=e9]: Library
+      - link "💡 Concepts" [ref=e10] [cursor=pointer]:
+        - /url: /concepts
+        - generic [ref=e11]: 💡
+        - generic [ref=e12]: Concepts
+      - link "💬 Annotations" [ref=e13] [cursor=pointer]:
+        - /url: /annotations
+        - generic [ref=e14]: 💬
+        - generic [ref=e15]: Annotations
+      - link "⚙️ Settings" [ref=e16] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e17]: ⚙️
+        - generic [ref=e18]: Settings
+  - generic [ref=e19]:
+    - banner [ref=e20]:
+      - link "Book Companion" [ref=e22] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e23]:
+        - textbox "Search... (⌘K)" [ref=e24] [cursor=pointer]
+        - link "Upload" [ref=e25] [cursor=pointer]:
+          - /url: /upload
+    - main [ref=e26]:
+      - generic [ref=e28]:
+        - navigation "Settings sections" [ref=e29]:
+          - heading "Settings" [level=2] [ref=e30]
+          - list [ref=e31]:
+            - listitem [ref=e32] [cursor=pointer]
+            - listitem [ref=e35] [cursor=pointer]
+            - listitem [ref=e38] [cursor=pointer]
+            - listitem [ref=e41] [cursor=pointer]
+            - listitem [ref=e44] [cursor=pointer]
+            - listitem [ref=e47] [cursor=pointer]
+            - listitem [ref=e50] [cursor=pointer]
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - heading "Text-to-speech" [level=2] [ref=e56]
+            - paragraph [ref=e57]: Choose an engine and voice for audiobook playback.
+          - generic [ref=e58]:
+            - heading "Spike findings" [level=3] [ref=e59]
+            - paragraph [ref=e60]
+          - group "Engine" [ref=e62]:
+            - generic [ref=e63]: Engine
+            - generic [ref=e64]
+            - generic [ref=e75]
+          - group "Playback" [ref=e91]:
+            - generic [ref=e92]: Playback
+            - generic [ref=e93]
+            - generic [ref=e97]
+          - generic [ref=e100]:
+            - button "Save" [ref=e101] [cursor=pointer]
+            - button "Reset to defaults" [ref=e102] [cursor=pointer]
+  - region "Notifications"

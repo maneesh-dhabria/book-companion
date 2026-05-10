@@ -1,0 +1,93 @@
+- generic [ref=e3]:
+  - navigation "Main navigation" [ref=e4]:
+    - link "Book Companion home" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - text: BC
+    - generic [ref=e6]:
+      - link "📚 Library" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: 📚
+        - generic [ref=e9]: Library
+      - link "💡 Concepts" [ref=e10] [cursor=pointer]:
+        - /url: /concepts
+        - generic [ref=e11]: 💡
+        - generic [ref=e12]: Concepts
+      - link "💬 Annotations" [ref=e13] [cursor=pointer]:
+        - /url: /annotations
+        - generic [ref=e14]: 💬
+        - generic [ref=e15]: Annotations
+      - link "⚙️ Settings" [ref=e16] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e17]: ⚙️
+        - generic [ref=e18]: Settings
+  - generic [ref=e19]:
+    - banner [ref=e20]:
+      - link "Book Companion" [ref=e22] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e23]:
+        - textbox "Search... (⌘K)" [ref=e24] [cursor=pointer]
+        - link "Upload" [ref=e25] [cursor=pointer]:
+          - /url: /upload
+    - main [ref=e26]:
+      - main [ref=e27]:
+        - generic [ref=e28]:
+          - img "Cover for Understanding Michael Porter" [ref=e29]
+          - generic [ref=e30]:
+            - heading "Understanding Michael Porter" [level=1] [ref=e31]
+            - generic [ref=e32]: Magretta, Joan
+            - generic [ref=e33]:
+              - generic [ref=e34]:
+                - generic [ref=e35]: business frameworks
+                - button "Remove business frameworks" [ref=e36] [cursor=pointer]: ×
+              - generic [ref=e37]:
+                - generic [ref=e38]: competitive advantage
+                - button "Remove competitive advantage" [ref=e39] [cursor=pointer]: ×
+              - generic [ref=e40]:
+                - generic [ref=e41]: strategy
+                - button "Remove strategy" [ref=e42] [cursor=pointer]: ×
+              - generic [ref=e43]:
+                - generic [ref=e44]: trade-offs
+                - button "Remove trade-offs" [ref=e45] [cursor=pointer]: ×
+              - button "+ Add tag" [ref=e47] [cursor=pointer]
+            - generic [ref=e48]:
+              - generic "All sections summarized" [ref=e49]: ✓
+              - generic [ref=e50]: All 12 sections summarized
+            - generic [ref=e51]:
+              - link "Read" [ref=e52] [cursor=pointer]:
+                - /url: /books/1/sections/3
+              - button "More actions" [ref=e54] [cursor=pointer]: ⋯
+        - tablist "Book detail sections" [ref=e55]:
+          - tab "Overview" [ref=e56] [cursor=pointer]
+          - tab "Summary" [ref=e57] [cursor=pointer]
+          - tab "Sections" [ref=e58] [cursor=pointer]
+          - tab "Audio" [selected] [ref=e59] [cursor=pointer]
+          - tab "Annotations" [ref=e60] [cursor=pointer]
+          - tab "Quiz" [ref=e61] [cursor=pointer]
+        - tabpanel [ref=e62]:
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - generic [ref=e66]: Web Speech
+              - paragraph [ref=e67]: No audio yet for this book.
+              - paragraph [ref=e68]: Instant on Web Speech (no pre-generation needed) · 17 chapter summaries
+              - generic [ref=e69]:
+                - button "Generate audio" [active] [ref=e70] [cursor=pointer]
+                - button "What's the difference?" [ref=e71]
+            - dialog "Generate audio" [ref=e80]:
+              - generic [ref=e81]:
+                - heading "Generate audio" [level=2] [ref=e82]
+                - group [ref=e83]:
+                  - generic [ref=e84]:
+                    - checkbox "Section summaries" [checked] [ref=e85]
+                    - text: Section summaries
+                  - generic [ref=e86]:
+                    - checkbox "Book summary" [checked] [ref=e87]
+                    - text: Book summary
+                  - generic [ref=e88]:
+                    - checkbox "Annotations recommended" [checked] [ref=e89]
+                    - text: Annotations
+                    - generic [ref=e90]: recommended
+                - paragraph [ref=e91]: ~3.6 min · ~54 MB for 17 sections
+                - generic [ref=e92]:
+                  - button "Cancel" [ref=e93] [cursor=pointer]
+                  - button "Generate" [ref=e94] [cursor=pointer]
+  - region "Notifications"
