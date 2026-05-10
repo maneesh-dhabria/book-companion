@@ -1,0 +1,79 @@
+schema_version: 1
+slug: quiz-audio-ux-top7
+tier: null
+mode: interactive
+started_at: 2026-05-10T07:41:20Z
+last_updated: 2026-05-10T07:55:00Z
+current_phase: grill
+tier: 3
+worktree_path: /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7
+branch: feat/quiz-audio-ux-top7
+feature_folder: /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7/docs/features/2026-05-10_quiz-audio-ux-top7
+seed_input: docs/2026-05-10_quiz-and-audio-design-crit/design-crit/design-crit.md (top-7 TL;DR)
+phases:
+  - id: setup
+    hardness: infra
+    status: completed
+    artifact_path: null
+    started_at: 2026-05-10T07:41:20Z
+    completed_at: 2026-05-10T07:41:20Z
+  - id: worktree
+    hardness: infra
+    status: completed
+    artifact_path: null
+    started_at: 2026-05-10T07:41:20Z
+    completed_at: 2026-05-10T07:41:20Z
+  - id: init-state
+    hardness: infra
+    status: completed
+    artifact_path: 00_pipeline.md
+    started_at: 2026-05-10T07:41:20Z
+    completed_at: 2026-05-10T07:41:20Z
+  - id: requirements
+    hardness: hard
+    status: completed
+    artifact_path: 01_requirements.md
+    started_at: 2026-05-10T07:41:20Z
+    completed_at: 2026-05-10T07:55:00Z
+    child_tier: 3
+    notes: "7 open questions logged in §Open Questions; 1 review loop, 5 findings fixed + 2 deferred"
+  - id: grill
+    hardness: soft
+    status: pending
+  - id: msf-req
+    hardness: soft
+    status: pending
+  - id: creativity
+    hardness: soft
+    status: pending
+  - id: wireframes
+    hardness: soft
+    status: pending
+  - id: prototype
+    hardness: soft
+    status: pending
+  - id: spec
+    hardness: hard
+    status: pending
+  - id: simulate-spec
+    hardness: soft
+    status: pending
+  - id: plan
+    hardness: hard
+    status: pending
+  - id: execute
+    hardness: hard
+    status: pending
+  - id: verify
+    hardness: hard
+    status: pending
+  - id: complete-dev
+    hardness: hard
+    status: pending
+  - id: final-summary
+    hardness: infra
+    status: pending
+  - id: capture-learnings
+    hardness: infra
+    status: pending
+open_questions_log: []
