@@ -180,3 +180,31 @@ async def test_next_question_502(app, client):
         assert body["detail"]["llm_stderr_tail"] == "next-tail"
     finally:
         app.dependency_overrides.pop(deps.get_quiz_service, None)
+
+
+# ---- T3: explain_question --------------------------------------------------
+
+
+class _StubQuizExplain:
+    async def explain_question(self, **_):
+        raise SubprocessNonZeroExitError(
+            returncode=1, stderr_truncated="explain-tail", stderr_full="explain-tail"
+        )
+
+
+@pytest.mark.asyncio
+async def test_explain_question_502(app, client):
+    await _seed_book(app, book_id=1)
+    sid = await _seed_session(app, book_id=1)
+    qid = await _seed_question(app, book_id=1, session_id=sid)
+    app.dependency_overrides[deps.get_quiz_service] = lambda: _StubQuizExplain()
+    try:
+        r = await client.post(
+            f"/api/v1/quiz-sessions/{sid}/questions/{qid}/explain"
+        )
+        assert r.status_code == 502, r.text
+        body = r.json()
+        assert body["detail"]["detail"].startswith("LLM provider error: ")
+        assert body["detail"]["llm_stderr_tail"] == "explain-tail"
+    finally:
+        app.dependency_overrides.pop(deps.get_quiz_service, None)
