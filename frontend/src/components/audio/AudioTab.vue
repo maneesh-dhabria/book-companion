@@ -14,6 +14,45 @@ const showGenerateModal = ref(false)
 const showDiff = ref(false)
 const ttsPlayer = useTtsPlayerStore()
 
+// FR-08 / D10: Web Speech voices populate asynchronously on Safari/Chrome.
+// Race the `voiceschanged` event vs a 500ms timeout so first-paint isn't
+// blocked indefinitely. `availableVoices` is recomputed when ready so
+// downstream gates (FR-09 listen-unavailable morph, voice selector) can
+// inspect the live list.
+const voicesReady = ref(false)
+const availableVoices = ref<SpeechSynthesisVoice[]>([])
+
+function refreshVoices(): void {
+  const synth = window.speechSynthesis
+  if (!synth) return
+  availableVoices.value = synth.getVoices() ?? []
+}
+
+onMounted(() => {
+  const synth = window.speechSynthesis
+  if (!synth) {
+    // FR-09: no Web Speech at all — voicesReady still flips so downstream
+    // computeds can decide what to render (the unavailable morph reads
+    // 'speechSynthesis' in window directly).
+    voicesReady.value = true
+    return
+  }
+  refreshVoices()
+  if (availableVoices.value.length > 0) {
+    voicesReady.value = true
+    return
+  }
+  let resolved = false
+  const finish = () => {
+    if (resolved) return
+    resolved = true
+    refreshVoices()
+    voicesReady.value = true
+  }
+  synth.addEventListener('voiceschanged', finish, { once: true })
+  setTimeout(finish, 500)
+})
+
 // Default engine label/string. Defaults to 'web-speech' when no setting
 // has been pulled yet — the Settings TTS panel populates this on mount.
 const defaultEngine = computed<'kokoro' | 'web-speech'>(() =>
@@ -99,6 +138,9 @@ function onModalClose() {
 }
 
 onMounted(load)
+
+// Test seam — keep voicesReady accessible to mount-based pre-warm tests.
+defineExpose({ voicesReady, availableVoices })
 </script>
 
 <template>
