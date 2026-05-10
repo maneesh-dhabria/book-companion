@@ -167,11 +167,38 @@ export const useTtsPlayerStore = defineStore('ttsPlayer', () => {
     }
   }
 
-  // FR-11/FR-12: setEngine — toggle the active TTS engine. Full mid-playback
-  // restart-section logic lives in T18; for now this stub flips the ref so
-  // EnginePicker (T17) can drive the populated layout.
+  // FR-12: setEngine — toggle the active TTS engine. Mid-playback the
+  // current playback is stopped via the engine layer, sentenceIndex is
+  // reset to 0 (no word-position carryover across engines), the engine
+  // ref flips, and playback is re-issued so the new engine starts from
+  // the section's first sentence.
   function setEngine(kind: TtsEngineKind): void {
+    if (engine.value === kind) {
+      // No-op: same engine; preserve current playback state.
+      return
+    }
+    const wasPlaying = status.value === 'playing' || status.value === 'starting'
+    if (wasPlaying) {
+      // Pause via the active engine — covers both <audio>.pause() and
+      // speechSynthesis.cancel() through useTtsEngine's routing.
+      try {
+        useTtsEngine().pauseActive()
+      } catch {
+        /* engine teardown errors must not block the swap */
+      }
+    }
+    sentenceIndex.value = 0
     engine.value = kind
+    if (wasPlaying && isActive.value) {
+      // Re-issue play through the engine layer; it now routes to the
+      // newly-selected engine for the current section.
+      void useTtsEngine()
+        .playActive()
+        .catch(() => {
+          /* setError is wired in the engine layer */
+        })
+      status.value = 'playing'
+    }
   }
 
   return {
