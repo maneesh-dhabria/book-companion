@@ -87,12 +87,11 @@ const listenMinText = computed(() => {
 
 const diskMbText = computed(() => `~${Math.round(cost.value.megabytes)}MB on disk`)
 
-const sectionsToGenerateForSubline = computed(() =>
-  includeSummary.value ? deltaSummaryCount.value : 0,
-)
-
+// FR-15: subline numerator binds to totalUnitsToGenerate so the count
+// re-renders when the user toggles any of the three checkboxes.
+// Denominator stays at totalUnits (whole-book section count).
 const sublineText = computed(
-  () => `Generating ${sectionsToGenerateForSubline.value} of ${props.totalUnits} sections`,
+  () => `Generating ${totalUnitsToGenerate.value} of ${props.totalUnits} sections`,
 )
 
 const buttonLabel = computed(() =>
