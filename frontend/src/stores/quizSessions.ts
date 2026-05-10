@@ -64,9 +64,27 @@ export const useQuizSessionsStore = defineStore('quizSessions', () => {
   const byBook = reactive(new Map<number, BookQuizState>())
   const lastToast = ref<QuizToast | null>(null)
   const inlineDiagnostic = ref<{ reason: string; stderrTail: string | null } | null>(null)
+  // FR-06: mid-session failures (next-question / submit / record-self-assessment)
+  // surface inline on the question card with a Retry button — no toast.
+  const midSessionError = ref<{ message: string; action: () => Promise<void> } | null>(null)
 
   function clearInlineDiagnostic(): void {
     inlineDiagnostic.value = null
+  }
+
+  async function retryMidSession(): Promise<void> {
+    const current = midSessionError.value
+    if (!current) return
+    await current.action()
+    if (midSessionError.value === current) midSessionError.value = null
+  }
+
+  function captureMidSessionError(e: unknown, retry: () => Promise<void>): void {
+    if (!(e instanceof ApiError)) return
+    midSessionError.value = {
+      message: e.message || "Couldn't load — Retry?",
+      action: retry,
+    }
   }
 
   function ensureBook(bookId: number): BookQuizState {
@@ -142,19 +160,29 @@ export const useQuizSessionsStore = defineStore('quizSessions', () => {
   async function loadNextQuestion(bookId: number): Promise<void> {
     const state = ensureBook(bookId)
     if (!state.activeSession) return
-    const resp = await api.nextQuestion(state.activeSession.id)
-    state.currentQuestion = resp.question
+    try {
+      const resp = await api.nextQuestion(state.activeSession.id)
+      state.currentQuestion = resp.question
+    } catch (e) {
+      captureMidSessionError(e, () => loadNextQuestion(bookId))
+      throw e
+    }
   }
 
   async function submitAnswer(bookId: number, answer: string): Promise<void> {
     const state = ensureBook(bookId)
     if (!state.activeSession || !state.currentQuestion) return
-    const resp = await api.submitAnswer(
-      state.activeSession.id,
-      state.currentQuestion.id,
-      answer,
-    )
-    state.currentQuestion = resp.question
+    try {
+      const resp = await api.submitAnswer(
+        state.activeSession.id,
+        state.currentQuestion.id,
+        answer,
+      )
+      state.currentQuestion = resp.question
+    } catch (e) {
+      captureMidSessionError(e, () => submitAnswer(bookId, answer))
+      throw e
+    }
   }
 
   async function recordSelfAssessment(
@@ -230,6 +258,8 @@ export const useQuizSessionsStore = defineStore('quizSessions', () => {
     lastToast,
     inlineDiagnostic,
     clearInlineDiagnostic,
+    midSessionError,
+    retryMidSession,
     loadForBook,
     startSession,
     loadNextQuestion,

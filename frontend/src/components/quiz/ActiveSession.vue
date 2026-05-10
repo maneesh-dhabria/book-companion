@@ -22,6 +22,27 @@
     <LoadingSpinner v-if="loadingQuestion" :copy="COPY.loadingQuestion" />
     <LoadingSpinner v-else-if="loadingGrade" :copy="COPY.loadingGrading" />
 
+    <!-- FR-06: mid-session retry — failures during next-question / submit /
+         record-self-assessment surface inline; clicking Retry re-runs the
+         failed action without losing session state. -->
+    <div
+      v-if="store.midSessionError"
+      data-testid="mid-session-error"
+      class="mid-session-error"
+      role="alert"
+    >
+      <p class="mid-session-error-message">{{ store.midSessionError.message }}</p>
+      <button
+        type="button"
+        data-action="retry"
+        class="btn-primary mid-session-error-retry"
+        :disabled="midRetrying"
+        @click="onMidRetry"
+      >
+        Retry
+      </button>
+    </div>
+
     <QuestionTurn
       v-if="currentQuestion && !loadingQuestion && !loadingGrade"
       :key="currentQuestion.id"
@@ -143,6 +164,18 @@ const isFirstSession = computed(() => lifetime.value.session_count === 0)
 
 const loadingQuestion = ref(false)
 const loadingGrade = ref(false)
+const midRetrying = ref(false)
+
+async function onMidRetry() {
+  midRetrying.value = true
+  try {
+    await store.retryMidSession()
+  } catch {
+    /* failure repopulates store.midSessionError; user can click again */
+  } finally {
+    midRetrying.value = false
+  }
+}
 
 // FR-72: warm-up enumerates Missed/Partial concept_labels from prior sessions.
 // Wiring deferred to a follow-up; for now the banner stays hidden by default.
@@ -208,6 +241,24 @@ async function onStopped(_session: QuizSessionListItem) {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+.mid-session-error {
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  background: rgba(254, 226, 226, 0.6);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mid-session-error-message {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 0.875rem;
+}
+.mid-session-error-retry {
+  align-self: flex-start;
+  margin-left: 0;
 }
 .turn-controls {
   display: flex;
