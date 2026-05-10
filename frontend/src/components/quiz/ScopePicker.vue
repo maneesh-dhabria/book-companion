@@ -1,8 +1,8 @@
 <template>
   <div data-test="scope-picker" class="scope-picker">
-    <fieldset class="scope-mode">
-      <legend>Quiz scope</legend>
-      <label>
+    <fieldset class="scope-mode" role="tablist" aria-label="Quiz scope">
+      <legend class="visually-hidden">Quiz scope</legend>
+      <label role="tab" :aria-selected="scopeMode === 'all_summaries'">
         <input
           type="radio"
           name="scope-mode"
@@ -13,7 +13,7 @@
         />
         All summaries
       </label>
-      <label>
+      <label role="tab" :aria-selected="scopeMode === 'specific_chapters'">
         <input
           type="radio"
           name="scope-mode"
@@ -25,6 +25,14 @@
         Specific chapters
       </label>
     </fieldset>
+
+    <p
+      data-test="scope-budget-label"
+      class="scope-budget-label"
+      :title="tokenTooltip"
+    >
+      {{ chapterLabel }}
+    </p>
 
     <template v-if="scopeMode === 'specific_chapters'">
       <ChapterMultiSelect
@@ -78,6 +86,7 @@ import ChapterMultiSelect from './ChapterMultiSelect.vue'
 import ThemeInput from './ThemeInput.vue'
 import { COPY } from './copy'
 import { getReadingStateByBook } from '@/api/readingState'
+import { useSettingsStore } from '@/stores/settings'
 import type { QuizScopeMode, SectionBrief } from '@/types'
 
 const props = defineProps<{
@@ -123,6 +132,39 @@ const usedTokens = computed(() => {
   const ids = new Set(selectedSectionIds.value)
   return props.sections.filter((s) => ids.has(s.id)).reduce((sum, s) => sum + tokensFor(s), 0)
 })
+
+// FR-21 (Q-7): replace token-progress display with chapter+reading metric.
+// In all_summaries mode every chapter counts; in specific_chapters mode only the picked ones.
+const eligibleSections = computed(() =>
+  props.sections.filter((s) => ELIGIBLE_TYPES.has(s.section_type)),
+)
+const totalChapters = computed(() => eligibleSections.value.length)
+const selectedChapters = computed(() => {
+  if (scopeMode.value === 'all_summaries') return totalChapters.value
+  const ids = new Set(selectedSectionIds.value)
+  return eligibleSections.value.filter((s) => ids.has(s.id)).length
+})
+const settingsStore = useSettingsStore()
+const readingWpm = computed(() => settingsStore.settings?.reading?.reading_wpm ?? 250)
+const readingMinutes = computed(() => {
+  const ids = new Set(
+    scopeMode.value === 'all_summaries'
+      ? eligibleSections.value.map((s) => s.id)
+      : selectedSectionIds.value,
+  )
+  const words = eligibleSections.value
+    .filter((s) => ids.has(s.id))
+    .reduce((sum, s) => sum + (s.word_count ?? 0), 0)
+  return Math.round(words / Math.max(1, readingWpm.value))
+})
+const chapterLabel = computed(() => {
+  const denom = totalChapters.value
+  const noun = denom === 1 ? 'chapter' : 'chapters'
+  return `${selectedChapters.value} of ${denom} ${noun} · ~${readingMinutes.value} min reading`
+})
+const tokenTooltip = computed(
+  () => `${usedTokens.value.toLocaleString()} / ${budgetMax.value.toLocaleString()} tokens`,
+)
 
 const canStart = computed(() => {
   if (scopeMode.value === 'all_summaries') return true

@@ -21,6 +21,13 @@ export interface AppSettings {
   web: {
     show_cost_estimates: boolean
   }
+  // FR-03: dual-track wpm config — independent listen/reading speeds.
+  tts: {
+    listen_wpm: number
+  }
+  reading: {
+    reading_wpm: number
+  }
 }
 
 export interface DatabaseStats {

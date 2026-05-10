@@ -1,4 +1,5 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ScopePicker from '@/components/quiz/ScopePicker.vue'
@@ -41,6 +42,7 @@ const BIG_SECTIONS: SectionBrief[] = [
 ]
 
 beforeEach(() => {
+  setActivePinia(createPinia())
   Object.values(readingStateMocks).forEach((fn) => fn.mockReset())
   readingStateMocks.getReadingStateByBook.mockResolvedValue({ most_recent_section_ids: [] })
   localStorage.clear()
