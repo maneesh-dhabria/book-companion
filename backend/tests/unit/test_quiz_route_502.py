@@ -20,7 +20,6 @@ from app.db.models import Base
 from app.db.session import create_session_factory
 from app.exceptions import SubprocessNonZeroExitError
 
-
 # ---- fixtures (kept self-contained to avoid cross-suite coupling) ----------
 
 
@@ -118,9 +117,7 @@ async def _seed_question(app, *, book_id: int, session_id: int) -> int:
             bloom_level="apply",
             stem="Q?",
             concept_label="x",
-            citation_json=_json.dumps(
-                {"section_id": 101, "section_title": "Ch", "snippet": "..."}
-            ),
+            citation_json=_json.dumps({"section_id": 101, "section_title": "Ch", "snippet": "..."}),
             explain_history_json="[]",
         )
         session.add(q)
@@ -199,9 +196,7 @@ async def test_explain_question_502(app, client):
     qid = await _seed_question(app, book_id=1, session_id=sid)
     app.dependency_overrides[deps.get_quiz_service] = lambda: _StubQuizExplain()
     try:
-        r = await client.post(
-            f"/api/v1/quiz-sessions/{sid}/questions/{qid}/explain"
-        )
+        r = await client.post(f"/api/v1/quiz-sessions/{sid}/questions/{qid}/explain")
         assert r.status_code == 502, r.text
         body = r.json()
         assert body["detail"]["detail"].startswith("LLM provider error: ")

@@ -103,6 +103,12 @@ class TTSConfig(BaseModel):
     auto_advance: bool = True
     prewarm_on_startup: bool = True
     annotation_context: Literal["span"] = "span"
+    listen_wpm: int = Field(200, ge=100, le=400, multiple_of=25)
+
+
+class ReadingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reading_wpm: int = Field(250, ge=100, le=500, multiple_of=25)
 
 
 class ProcessingConfig(BaseModel):
@@ -176,6 +182,7 @@ class Settings(BaseSettings):
     backup: BackupConfig = BackupConfig()
     processing: ProcessingConfig = ProcessingConfig()
     tts: TTSConfig = TTSConfig()
+    reading: ReadingConfig = Field(default_factory=ReadingConfig)
     quiz: QuizConfig = QuizConfig()
 
     def model_post_init(self, __context: Any) -> None:

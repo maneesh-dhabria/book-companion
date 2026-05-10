@@ -128,9 +128,7 @@ class SettingsService:
             "llm": {
                 "provider": self.settings.llm.provider,
                 "config_dir": (
-                    str(self.settings.llm.config_dir)
-                    if self.settings.llm.config_dir
-                    else None
+                    str(self.settings.llm.config_dir) if self.settings.llm.config_dir else None
                 ),
                 "model": self.settings.llm.model,
                 "timeout_seconds": self.settings.llm.timeout_seconds,
@@ -142,6 +140,18 @@ class SettingsService:
             },
             "web": {
                 "show_cost_estimates": self.settings.web.show_cost_estimates,
+            },
+            "tts": {
+                "engine": self.settings.tts.engine,
+                "voice": self.settings.tts.voice,
+                "default_speed": self.settings.tts.default_speed,
+                "auto_advance": self.settings.tts.auto_advance,
+                "prewarm_on_startup": self.settings.tts.prewarm_on_startup,
+                "annotation_context": self.settings.tts.annotation_context,
+                "listen_wpm": self.settings.tts.listen_wpm,
+            },
+            "reading": {
+                "reading_wpm": self.settings.reading.reading_wpm,
             },
         }
         return data
