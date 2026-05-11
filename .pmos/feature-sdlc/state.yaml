@@ -3,8 +3,8 @@ slug: quiz-audio-ux-top7
 tier: null
 mode: interactive
 started_at: 2026-05-10T07:41:20Z
-last_updated: 2026-05-10T17:55:00Z
-current_phase: complete-dev
+last_updated: 2026-05-11T00:30:00Z
+current_phase: capture-learnings
 tier: 3
 worktree_path: /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7
 branch: feat/quiz-audio-ux-top7
@@ -126,10 +126,14 @@ phases:
     notes: "All 22 FRs verified in primary surface. Static: ruff/vue-tsc/eslint clean; pytest 1161 passed; vitest 729 passed. Multi-agent review: CLAUDE.md compliance 0 violations; bug-scan + cross-file each surfaced edge-case items. LIVE Playwright at :8765 across Quiz, Audio, Settings → TTS, hard-reload book 2; forced-502 verified inline diagnostic + actionable Retry toast. 10 deferred polish gaps logged in §4e (1 medium, 9 low) — none block ship."
   - id: complete-dev
     hardness: hard
-    status: pending
+    status: completed
+    started_at: 2026-05-11T00:00:00Z
+    completed_at: 2026-05-11T00:30:00Z
+    notes: "Rebase+ff-merge feat/quiz-audio-ux-top7 → main (no rebase needed; main hadn't moved). Worktree removed. Deploy skipped (personal local-use tool). CLAUDE.md gotcha #30 added (vitest explicit-props masks mount-site prop drift). Changelog entry 2026-05-11. Version bump 0.3.0 → 0.4.0 (backend/pyproject.toml). Tag v0.4.0 created + pushed. Pushed main + tag to origin. Feature branch deleted."
   - id: final-summary
     hardness: infra
-    status: pending
+    status: completed
+    completed_at: 2026-05-11T00:30:00Z
   - id: capture-learnings
     hardness: infra
     status: pending

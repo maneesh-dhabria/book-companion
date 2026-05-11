@@ -9,8 +9,8 @@
 - **Feature folder:** /Users/maneeshdhabria/Desktop/Projects/personal/book-companion-quiz-audio-ux-top7/docs/features/2026-05-10_quiz-audio-ux-top7
 - **Seed input:** `docs/2026-05-10_quiz-and-audio-design-crit/design-crit/design-crit.md` (top-7 TL;DR scope)
 - **Started:** 2026-05-10T07:41:20Z
-- **Last updated:** 2026-05-10T17:55:00Z
-- **Current phase:** complete-dev (verify passed-with-deferrals; 10 polish gaps deferred to backlog)
+- **Last updated:** 2026-05-11T00:30:00Z
+- **Current phase:** capture-learnings (shipped: merged to main, v0.4.0 tagged + pushed)
 
 ## Phases
 
@@ -31,9 +31,9 @@
 | 7   | plan              | hard     | completed | `03_plan.md`        | 2026-05-10T13:00:00Z | T0+T1-T25+TN across 6 phases; ~23h estimated; T11 retargeted to QuizTab.vue; 2 spec amendments applied |
 | 8   | execute           | hard     | completed | `execute/phase-1.md`..`phase-6.md` | 2026-05-10T17:10:00Z | All 6 phases complete: Phase 1 (T0-T5, backend, 11 tests) + Phase 2 (T6-T8, toast/ApiError, 17 tests) + Phase 3 (T9-T13, Quiz UI, 18 tests) + Phase 4 (T14-T18, Audio empty/populated, 12 tests) + Phase 5 (T19-T21, Generate modal, 8 tests) + Phase 6 (T22-T25, Settings TTS, 10 tests). 76 tests across 28 commits. Final suite: 344 audio + quiz + settings + stores green; vue-tsc clean. |
 | 9   | verify            | hard     | completed | `verify/2026-05-10-review.md` | 2026-05-10T17:55:00Z | passed-with-deferrals. Static (ruff/vue-tsc/eslint/pytest 1161/vitest 729) all green. 3-agent review (CLAUDE.md compliance 0 violations; bug-scan + cross-file edge-case items). LIVE Playwright at :8765: Quiz hero/microcopy + ScopePicker chapter-reading + Audio empty-state morph + Generate-modal 3-field estimate + ARIA + Settings TTS Compare-voices + dual sliders + footer anchor + hard-reload P7 + forced-502 inline diagnostic + Retry toast. 10 polish gaps deferred (§4e: 1 medium, 9 low). |
-| 10  | complete-dev      | hard     | in-progress | —                   | —                    | —     |
-| 11  | final-summary     | infra    | pending   | —                   | —                    | —     |
-| 12  | capture-learnings | infra    | pending   | —                   | —                    | —     |
+| 10  | complete-dev      | hard     | completed | —                   | 2026-05-11T00:30:00Z | rebase+ff-merge → main (main hadn't moved, rebase was a no-op); worktree removed; deploy skipped (personal local-use tool); CLAUDE.md gotcha #30 (vitest explicit-props masks mount-site prop drift); changelog 2026-05-11; bump 0.3.0→0.4.0; tag v0.4.0; pushed main + tag to origin; feat branch deleted |
+| 11  | final-summary     | infra    | completed | —                   | 2026-05-11T00:30:00Z | see chat summary |
+| 12  | capture-learnings | infra    | in-progress | —                  | —                    | —     |
 
 ## Deferred questions
 
