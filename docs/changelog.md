@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-05-11 — Quiz & Audio UX polish (top-7 design-crit)
+
+- **Quiz failures are no longer silent**: when starting or advancing a quiz hits an
+  LLM backend error, you now get an actionable toast ("Retry") plus an inline
+  diagnostic showing the failure reason and the tail of the model's error output,
+  instead of a dead button. Mid-session retry happens in place without losing the
+  session.
+- **Quiz first-visit orientation**: the Quiz tab now opens with a "Test your retention"
+  hero and a short expectation-setter; the scope picker shows a human metric
+  ("~30 min reading · 4 of 12 chapters") instead of a raw token count.
+- **Audio empty-state, rebuilt**: a verb-led headline and two parallel choices —
+  ▶ Listen now (Web Speech, instant) and ⬇ Generate MP3s (Kokoro, downloadable).
+  When the browser has no speech voices, the headline morphs to make the MP3 path
+  the obvious one.
+- **Generate-audio dialog clarity**: a 3-field estimate row disambiguates
+  "~3.6 min to generate · ~25 min to listen · ~54 MB on disk", the estimates update
+  live as you toggle which content to include, the dialog has a labelled close-X and
+  closes on Esc, and a footer link jumps to Settings → Text-to-speech.
+- **Settings → Text-to-speech**: separate playback-speed sliders for listening vs.
+  reading; the old "Spike findings" heading is now "Compare voices" with a plain-
+  language fallback, the sample text is drawn from the current book's first section,
+  and the engine chip animates through the A/B comparison.
+- Fixed: `POST /quiz-sessions` and the per-question endpoints now return a 502 with
+  the captured stderr tail when the LLM subprocess exits non-zero, instead of a
+  bare 500.
+
+### References
+
+- docs/features/2026-05-10_quiz-audio-ux-top7/02_spec.md
+- docs/features/2026-05-10_quiz-audio-ux-top7/03_plan.md
+- docs/features/2026-05-10_quiz-audio-ux-top7/verify/2026-05-10-review.md
+- docs/2026-05-10_quiz-and-audio-design-crit/design-crit/design-crit.md
+
 ## 2026-05-09 — AI Comprehension Quiz
 
 - **New Quiz tab on the book page**: turn each book into an active recall surface
